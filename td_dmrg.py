@@ -22,46 +22,10 @@ from pyblock3.algebra.mpe import MPE
 def compute_obs(op,mps):
     '''
     Compute expectation value of observable repped by given operator from MPS wf
+    op must be an MPO
     '''
 
     return np.dot(mps.conj(), op @ mps)/np.dot(mps.conj(),mps);
-
-
-def compute_occ(site_i, mps, h):
-
-    norbs = mps.n_sites
-
-    # occupancy operator in dmrg
-    occ_op = ops_dmrg.occ(site_i, norbs);
-    occ_mpo = h.build_mpo(occ_op);
-    return compute_obs(occ_mpo, mps);
-
-
-def compute_Sz(site_i, mps, h):
-
-    norbs = mps.n_sites
-
-    # Sz operator in dmrg
-    Sz_op = ops_dmrg.Sz(site_i, norbs);
-    Sz_mpo = h.build_mpo(Sz_op);
-    return compute_obs(Sz_mpo, mps);
-
-
-def compute_current(site_i, mps, h):
-
-    norbs = mps.n_sites
-
-    # J of up spins
-    Jup = ops_dmrg.Jup(site_i, norbs);
-    Jup_mpo = h.build_mpo(Jup);
-
-    # J of up spins
-    Jdown = ops_dmrg.Jdown(site_i, norbs);
-    Jdown_mpo = h.build_mpo(Jdown);
-    
-    Jup_val = -np.imag(compute_obs(Jup_mpo, mps)); # -imag is same as *i
-    Jdown_val = -np.imag(compute_obs(Jdown_mpo, mps));
-    return Jup_val, Jdown_val;
 
     
 ##########################################################################################################
@@ -92,6 +56,17 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
     occvals = np.zeros( (3,N+1), dtype = complex );
     Szvals = np.zeros( (3,N+1), dtype = complex );
 
+    # create observable MPOs outside loop to save time
+    norbs = mps.n_sites
+    current_mpo_up = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs) );
+    current_mpo_down = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs) );
+    occ_mpo_L = h_obj.build_mpo(ops_dmrg.occ(i_left, norbs) );
+    occ_mpo_D = h_obj.build_mpo(ops_dmrg.occ(i_dot, norbs) );
+    occ_mpo_R = h_obj.build_mpo(ops_dmrg.occ(i_right, norbs) );
+    Sz_mpo_L = h_obj.build_mpo(ops_dmrg.Sz(i_left, norbs) );
+    Sz_mpo_D = h_obj.build_mpo(ops_dmrg.Sz(i_dot, norbs) );
+    Sz_mpo_R = h_obj.build_mpo(ops_dmrg.Sz(i_right, norbs) );
+
     # init mpe
     mpe_obj = MPE(mps, mpo, mps);
 
@@ -104,10 +79,10 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
             for sitej in i_all: # iter over sites
                 
                 if(sitej % 2 == 0): # spin up sites
-                    occ_init[sitej] = compute_occ([sitej],mps, h_obj);
-                    Sz_init[sitej] = 0.0
+                    occ_init[sitej] = compute_obs(h_obj.build_mpo(ops_dmrg.occ([sitej,sitej+1], norbs) ), mps);
+                    Sz_init[sitej] = compute_obs(h_obj.build_mpo(ops_dmrg.Sz([sitej,sitej+1], norbs) ), mps);
                 else: # spin down sites
-                    occ_init[sitej] = compute_occ([sitej], mps, h_obj);
+                    occ_init[sitej] = 0.0
                     Sz_init[sitej] = 0.0;
 
             initstatestr = "\nInitial state:"
@@ -115,18 +90,20 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
             initstatestr += "\n    Sz = "+str(np.real(Sz_init));
 
         # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=1).energies
+        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
+        mpst = mpe_obj.ket; # update wf
 
         # compute observables
         timevals[i] = i*dt;
         energyvals[i] = energies[-1];
-        currentvals[0][i], currentvals[1][i] = compute_current(i_dot, mps, h_obj);
-        occvals[0][i] = compute_occ(i_left, mps, h_obj);
-        occvals[1][i] = compute_occ(i_dot, mps, h_obj);
-        occvals[2][i] = compute_occ(i_right, mps, h_obj);
-        Szvals[0][i] = compute_Sz(i_left, mps, h_obj);
-        Szvals[1][i] = compute_Sz(i_dot, mps, h_obj);
-        Szvals[2][i] = compute_Sz(i_right, mps, h_obj);
+        currentvals[0][i] = -np.imag(compute_obs(current_mpo_up, mpst) );
+        currentvals[1][i] = -np.imag(compute_obs(current_mpo_down, mpst) );
+        occvals[0][i] = compute_obs(occ_mpo_L, mpst);
+        occvals[1][i] = compute_obs(occ_mpo_D, mpst);
+        occvals[2][i] = compute_obs(occ_mpo_R, mpst);
+        Szvals[0][i] = compute_obs(Sz_mpo_L, mpst);
+        Szvals[1][i] = compute_obs(Sz_mpo_D, mpst);
+        Szvals[2][i] = compute_obs(Sz_mpo_R, mpst);
         
         # update stdout        
         if(verbose>4): print("    time: ", i*dt);
