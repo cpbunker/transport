@@ -42,29 +42,30 @@ from pyblock3.algebra.mpe import MPE
 
 def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
     '''
-    More flexible version of siam.py DotCurrentWrapper with inputs allowing tuning of nelecs, mu, Vgate
-
-    Walks thru all the steps for plotting current thru a SIAM. Impurity is a quantum dot
-    - construct the biasless hamiltonian, 1e and 2e parts
+    Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
+    and td-FCI for nonequil dynamics. Impurity is a quantum dot w/ gate voltage and hubbard U
+    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
     - encode hamiltonians in an scf.UHF inst
     - do FCI on scf.UHF to get exact gd state
-    - turn on bias to induce current
-    - use ruojing's code to do time propagation
+    - turn on thyb to intro nonequilibrium (current will flow)
+    - use ruojing's code (td_fci module) to do time propagation
 
     Args:
     nleads, tuple of ints of left lead sites, right lead sites
     nelecs, tuple of num up e's, 0 due to ASU formalism
     timestop, float, how long to run for
     deltat, float, time step increment
-    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta
+    	if None, gives defaults vals for all (see below)
     Rlead_pol, int -1, 0, 1
-        if +/- 1, will polarize right lead spins to up/down state
+        if +/- 1, will polarize right lead spins to up/down state, using mag field strength B from
+        	phys params. If this is the case will also save output to /spinpol/
         if 0, does nothing (default)
-        also does nothing if B=0 no matter what rlead_pol actually is
+        also does nothing if B=0 no matter what rlead_pol actually is, because then mag field is 0
     prefix: assigns prefix (eg folder) to default output file name
 
     Returns:
-    none, but outputs t, observable data to /dat/Data/ folder
+    none, but outputs t, observable data to /dat/DotData/ folder
     '''
 
     # check inputs
@@ -91,13 +92,14 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
         U = 1.0; # hubbard repulsion
         B = 0.0; # magnetic field strength
         theta = 0.0;
+        thyb_eq = 1e-5; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+        thyb_eq = 1e-5; # small but nonzero val is more robust
 
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    thyb_eq = 1e-5; # small but nonzero = more robust
     eq_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
     h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, Rlead_pol = Rlead_pol, verbose = verbose);
         
@@ -138,9 +140,37 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     return fname; # end dot data
 
 
-def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
+def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 400], noises = [1e-3,1e-4,1e-5,0], phys_params=None, Rlead_pol = 0, prefix = "", verbose = 0):
     '''
-    Exactly as above, but uses dmrg instead of td-fci
+    Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
+    and td-DMRG for nonequilibirum dynamics. Impurity is a quantum dot w/ gate voltage, hubbard U
+    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
+    - store eq ham in FCIDUMP object which allows us to access it w/ pyblock3
+    - from FCIDUMP create a pyblock3.hamiltonian.Hamiltonian object\
+    - use this to build a Matrix Product Operator (MPO) and initial guess MPS
+    - use these to construct Matrix Product Expectation (MPE) which calls dmrg() to get gd state
+    - construct noneq ham (thyb = 1e-5 -> 0.4 default) and repeat to get MPE (in td_dmrg module)
+    - then MPE.tddmrg() method updates wf in time and we can get observables (in td_dmrg module)
+    	NB tddmrg uses max bonddim of dmrg as of now
+
+    Args:
+    nleads, tuple of ints of left lead sites, right lead sites
+    nelecs, tuple of num up e's, 0 due to ASU formalism
+    timestop, float, how long to run for
+    deltat, float, time step increment
+    bond_dims, list of increasing bond dim over dmrg sweeps, optional
+    noises, list of decreasing noises over dmrg sweeps, optional
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta
+    	if None, gives defaults vals for all (see below)
+    Rlead_pol, int -1, 0, 1
+        if +/- 1, will polarize right lead spins to up/down state, using mag field strength B from
+        	phys params. If this is the case will also save output to /spinpol/
+        if 0, does nothing (default)
+        also does nothing if B=0 no matter what rlead_pol actually is, because then mag field is 0
+    prefix: assigns prefix (eg folder) to default output file name
+
+    Returns:
+    none, but outputs t, observable data to /dat/DotDataDMRG/ folder
     '''
 
     setup_start = time.time();
@@ -151,12 +181,8 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
-    if(Rlead_pol == 1 or Rlead_pol == -1): prefix = "spinpol/";
-    
-
-    # dmrg controls
-    bond_dims = [bond_dims_i,bond_dims_i+25,bond_dims_i+50];
-    noises = [1e-3,1e-4,1e-5,0] # need to give noise on order of smallest energy
+    assert( bond_dims[0] <= bond_dims[-1]); # checks bdims has increasing behavior and is list
+    assert( noises[0] >= noises[-1] ); # checks noises has decreasing behavior and is list
 
     # set up the hamiltonian
     n_imp_sites = 1 # dot
@@ -174,27 +200,28 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
         U = 1.0; # hubbard repulsion
         B = 0.0; # magnetic field strength
         theta = 0.0;
+        thyb_eq = 1e-5; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+        thyb_eq = 1e-5; # small but nonzero val is more robust
 
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    thyb_eq = 1e-5; # small but nonzero val is more robust
     ham_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
     h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, Rlead_pol = Rlead_pol, verbose = verbose);
 
     # store physics in fci dump object
-    hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);      
+    hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
 
     # instead of np array, dmrg wants ham as a matrix product operator (MPO)
     h_obj = hamiltonian.Hamiltonian(hdump,flat=True);
     h_mpo = h_obj.build_qc_mpo();
     h_mpo, _ = h_mpo.compress(cutoff=1E-15); # compressing saves memory
-    if verbose: print("- Built H as MPO");
+    if verbose: print("- Built H as compressed MPO: ", h_mpo.show_bond_dims() );
 
     # initial ansatz for wf, in matrix product state (MPS) form
-    psi_mps = h_obj.build_mps(bond_dims_i);
+    psi_mps = h_obj.build_mps(bond_dims[0]);
     E_mps_init = td_dmrg.compute_obs(h_mpo, psi_mps);
     if verbose: print("- Initial gd energy = ", E_mps_init);
 
@@ -206,8 +233,8 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
     # solve system by doing dmrg sweeps
     # MPE.dmrg method takes list of bond dimensions, noises, threads defaults to 1e-7
     # can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
-    # noises[0] = 1e-3 and tol = 1e-8 needed here
-    dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=0); # will print sweep output
+    # noises[0] = 1e-3 and tol = 1e-8 work best from trial and error
+    dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=0);
     E_dmrg = dmrg_obj.energies;
     if verbose: print("- Final gd energy = ", E_dmrg[-1]);
 
@@ -218,7 +245,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, 0.0, theta; # dot hopping on now, B field off
     h1e_neq, g2e_neq, input_str_neq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
-    hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
+    hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
     h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
@@ -229,9 +256,10 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims_i = 50, phys_params
 
     # write results to external file
     folder = "dat/DotDataDMRG/";
+    if(Rlead_pol == 1 or Rlead_pol == -1): prefix += "spinpol/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
-    hstring = time.asctime();
-    hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG, bdims = "+str(bond_dims)
+    hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
+    hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_neq;
     hstring += init_str; # write initial state to txt
