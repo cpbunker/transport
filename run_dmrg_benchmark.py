@@ -46,7 +46,7 @@ plot.PlotObservables(f, nleads = nleads, splots = splots);
 # test ASU, dmrg code with std inputs
 
 params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta
-siam_current.DotDataDmrg(nleads,nelecs_ASU,tf,dt,phys_params = params, bond_dims_i = 250, Rlead_pol = Rlead_pol, verbose = verbose);
+#siam_current.DotDataDmrg(nleads,nelecs_ASU,tf,dt,phys_params = params, bond_dims_i = 250, Rlead_pol = Rlead_pol, verbose = verbose);
 f = "dat/DotDataDMRG/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)+"_t"+str(theta)+"_Vg-0.5.npy"
 plot.PlotObservables(f, nleads = nleads, splots = splots);
 
