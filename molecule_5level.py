@@ -21,11 +21,8 @@ Specific case:
 - analytical solution, 1e basis: (10 choose 1) = 10 states
 '''
 
-import utils
-
 import numpy as np
 import matplotlib.pyplot as plt
-from pyscf import fci
 
 ##########################################
 #### create hamiltonians
@@ -139,6 +136,8 @@ def plot_DOS(energies, sigma, size = 100, verbose = 0):
 #### wrapper funcs, test code
 
 def Main():
+
+    from pyscf import fci
 
     # top level inputs
     verbose = 5;
