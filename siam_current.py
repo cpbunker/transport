@@ -24,18 +24,12 @@ pyscf fci module:
 
 '''
 
-import plot
 import ops
-import fci_mod
-import td_fci
+
 import td_dmrg
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
-from pyscf import fci
-from pyblock3 import fcidump, hamiltonian
-from pyblock3.algebra.mpe import MPE
 
 #################################################
 #### get current data
@@ -67,6 +61,11 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     Returns:
     none, but outputs t, observable data to /dat/DotData/ folder
     '''
+    
+    # imports here so dmrg can be run even if pyscf not on machine
+    from pyscf import fci
+    import fci_mod
+    import td_fci
 
     # check inputs
     assert( isinstance(n_leads, tuple) );
@@ -74,7 +73,6 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
-    if(Rlead_pol == 1 or Rlead_pol == -1): prefix = "spinpol/";
 
     # set up the hamiltonian
     n_imp_sites = 1 # dot
@@ -101,7 +99,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
     eq_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
-    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, Rlead_pol = Rlead_pol, verbose = verbose);
+    h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, Rlead_pol = Rlead_pol, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
@@ -117,7 +115,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-    neq_h1e, dummy, input_str_noneq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
+    neq_h1e, dummy, input_str_noneq = ops.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
 
     # from fci gd state, do time propagation
@@ -126,6 +124,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     
     # write results to external file
     folder = "dat/DotData/";
+    if(Rlead_pol == 1 or Rlead_pol == -1): prefix += "spinpol/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
@@ -172,8 +171,9 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
     Returns:
     none, but outputs t, observable data to /dat/DotDataDMRG/ folder
     '''
-
-    setup_start = time.time();
+    
+    from pyblock3 import fcidump, hamiltonian
+    from pyblock3.algebra.mpe import MPE
 
     # check inputs
     assert( isinstance(n_leads, tuple) );
@@ -209,7 +209,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
     ham_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
-    h1e, g2e, input_str = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, Rlead_pol = Rlead_pol, verbose = verbose);
+    h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, Rlead_pol = Rlead_pol, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
@@ -238,13 +238,10 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
     E_dmrg = dmrg_obj.energies;
     if verbose: print("- Final gd energy = ", E_dmrg[-1]);
 
-    setup_stop = time.time();
-    print("\n\n\n\n\n",60*"*","Setup time = ", setup_stop - setup_start,60*"*","\n\n\n\n\n")
-
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, 0.0, theta; # dot hopping on now, B field off
-    h1e_neq, g2e_neq, input_str_neq = fci_mod.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
+    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
@@ -327,262 +324,12 @@ def Fourier(signal, samplerate, angular = False, dominant = 0, shorten = False):
 
     return  FT, nu;
 
-
-#################################################
-#### wrappers and test code
-
-def MolCurrentPlot():
-
-    # get current data from txt
-    nleads = (2,2);
-    nimp = 5;
-    fname = "dat/MolCurrentWrapper_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1]);
-    xJ, yJ = plot.PlotTxt2D(fname+"_J.txt"); #current
-    xE, yE = plot.PlotTxt2D(fname+"_E.txt"); # energy
-    yE = yE/yE[0] - 1; # normalize energy to 0
-    ti, tf = xJ[0], xJ[-1]
-    dt = (tf-ti)/len(xJ);
-
-    # control layout of plots
-    ax1 = plt.subplot2grid((5, 3), (0, 0), rowspan = 2)               # energy spectrum, top left
-    ax2 = plt.subplot2grid((5, 3), (0, 1), rowspan = 2, colspan = 2)               # freqs top right
-    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3, rowspan=2) # J vs t
-    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)            # E vs t
-
-    # plot energy spectrum 
-    Energies = [-11.96,-11.56,-11.55, -11.34, -11.31];
-    xElevels, yElevels = plot.ESpectrumPlot(Energies);
-    for E in yElevels: # each energy level is sep line
-        ax1.plot(xElevels, E);
-    ax1.set_ylabel("Energy (a.u.)")
-    ax1.grid(which = 'both')
-    ax1.tick_params(axis = 'x', which = 'both', bottom = False, top = False, labelbottom = False);
-
-    # plot frequencies
-    Fnorm, freq = Fourier(yJ, 1/dt, angular = True); # gives dominant frequencies # not yet working
-    ax2.plot(freq, Fnorm);
-    ax2.set_xlabel("$\omega$ (2$\pi$/s)")
-
-    if False: # compare with dominant freq
-        wmax = Fourier(yJ, 1/dt, angular = True, dominant = 1); # gets dominant freq
-        ampl_formax = np.amax(yJ)/2; # amplitude when plotting dominant freq
-        ax3.plot(xJ, ampl_formax*(np.sin(wmax[0]*xJ) ), linestyle = "dashed");
-
-    # plot J vs t on bottom 
-    ax3.plot(xJ, yJ);
-    ax3.set_title("td-FCI through $d$ orbital, 2 lead sites on each side");
-    ax3.set_xlabel("time (dt = 0.1 s)");
-    ax3.set_ylabel("Current*$\pi/V_{bias}$");
-
-    # plot E vs t on bottom  
-    ax4.plot(xE, yE);
-    ax4.set_xlabel("time (dt = 0.1 s)");
-    ax4.set_ylabel("$E/E_i$ - 1");
-    #ax4.get_yaxis().get_major_formatter()._set_offset(1)
-
-    # config and show
-    plt.tight_layout();
-    plt.show();
-
-    return; # end mol current plot
-
-
-def DotCurrentPlot():
-
-    # control layout of plots
-    ax1 = plt.subplot2grid((5, 3), (0, 0), rowspan = 2)               # energy spectrum, top left
-    ax2 = plt.subplot2grid((5, 3), (0, 1), rowspan = 2, colspan = 2)               # freqs top right
-    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3, rowspan=2) # J vs t
-    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)            # E vs t
-
-    # global formatting
-    mystyle = 'solid';
-    mycolor = 'tab:blue'
-
-    # get current data from txt
-    nleads = (3,3);
-    nimp = 1;
-    nelecs = (sum(nleads)+1,0); # half filling
-    mu, Vg = [0], np.linspace(-1.0, 1.0, 9); # physical inputs
-    mu, Vg = [0], [-1.0, -0.5];
-    fname = "dat/DotCurrentData/";
-    xJ, yJ, xE, yE = UnpackDotData(fname, nleads, nimp, nelecs, mu, Vg);
-
-    # e spectrum must be done manually
-    Energies = [-10.24, -9.68, -9.52, -9.30, -9.19]; 
-    xElevels, yElevels = plot.ESpectrumPlot(Energies);
-    for E in yElevels: # each energy level is sep line
-        ax1.plot(xElevels, E, color = mycolor);
-    # repeat for Vg = -0.5
-    Energies = [-9.70, -8.91, -8.87, -8.70, -8.47]; 
-    xElevels, yElevels = plot.ESpectrumPlot(Energies);
-    xElevels += 1;
-    for E in yElevels: # each energy level is sep line
-        ax1.plot(xElevels, E, color = 'tab:orange');
-    ax1.set_ylabel("Energy (a.u.)")
-    ax1.grid(which = 'both')
-    ax1.tick_params(axis = 'x', which = 'both', bottom = False, top = False, labelbottom = False);
-
-    for i in range(len(Vg)):
-
-        if Vg[i] == 0.0 or Vg[i] == -0.25:
-            mystyle = "dashed";
-            mys = 0.1
-        else:
-            mystyle = "solid"
-            mys = 0.0
-
-        yE[i] = yE[i]/yE[i][0] - 1; # normalize energy to 0
-        ti, tf = xJ[i][0], xJ[i][-1]
-        dt = (tf-ti)/len(xJ[i]);
-
-        # plot frequencies
-        Fnorm, freq = Fourier(yJ[i], 1/dt, angular = True); # gives dominant frequencies
-        ax2.plot(freq, Fnorm);
-        ax2.set_xlabel("$\omega$ (2$\pi$/s)")
-        ax2.set_ylabel("Fourier amp.")
-        ax2.axvline(x = 2*np.pi/(sum(nleads)+1), color = "grey", linestyle = "dashed" );
-
-        # plot J vs t on bottom 
-        ax3.plot(xJ[i], yJ[i]+mys, linestyle = mystyle, label = "$V_g$ = "+str(Vg[i]));
-        ax3.set_title("td-FCI through dot, "+str(nleads[0])+" lead sites on each side");
-        ax3.set_xlabel("time (dt = 0.005 s)");
-        ax3.set_ylabel("$J*\pi/V_{bias}$");
-
-        # plot E vs t on bottom  
-        ax4.plot(xE[i], yE[i] );
-        ax4.set_xlabel("time (dt = 0.005 s)");
-        ax4.set_ylabel("$E/E_i$ - 1");
-
-
-    # config and show
-    ax2.grid();
-    plt.tight_layout();
-    ax3.legend();
-    plt.show();
-
-    return; # end dot current plot
-
-
-def DebugPlot():
-
-    # plot data from txt
-    nleads = (1,1);
-    nimp = 5;
-    fname = "dat/Debug_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_J.txt";
-    x, J = plot.PlotTxt2D(fname)
-
-    # compare with fine time step data
-    fname_fine = "dat/Debug_fine_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_J.txt";
-    xfine, Jfine = plot.PlotTxt2D(fname_fine)
-
-    # plot
-    plt.plot(x,J, label = "dt = 0.1 s");
-    plt.plot(xfine, Jfine, label = "dt = 0.01 s", linestyle = "dashed");
-
-    # plot data from txt
-    fname = "dat/Debug_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_E.txt";
-    x, E = plot.PlotTxt2D(fname)
-    E = E/E[0] # norm
-
-    # compare with fine time step data
-    fname_fine = "dat/Debug_fine_"+str(nleads[0])+"_"+str(nimp)+"_"+str(nleads[1])+"_E.txt";
-    xfine, Efine = plot.PlotTxt2D(fname_fine)
-    Efine = Efine/Efine[0] # norm
-
-    # plot
-    fig, (ax1, ax2) = plt.subplots(2,1);
-    ax1.plot(x,J, label = "dt = 0.1 s");
-    ax1.plot(xfine, Jfine, label = "dt = 0.01 s", linestyle = "dashed");
-    ax2.plot(x,E, label = "E, dt = 0.1 s");
-    ax2.plot(xfine, Efine, label = "E, dt = 0.01 s", linestyle = "dashed");
-
-    # config and show
-    labels = ["Time (s)", "Current*$\pi/V_{bias}$", "td-FCI: $d$ orbital, 1 lead site on each side"]
-    #ax1.set_xlabel(labels[0]);
-    ax1.set_ylabel(labels[1]);
-    ax1.set_title(labels[2]);
-    ax1.legend();
-    ax2.set_ylabel("Normalized energy");
-    ax2.set_xlabel("Time (s)");
-    #ax2.legend();
-    plt.show();
-    
-    
-def dtVsdE():
-
-    # system inputs
-    nleads = (4,4);
-    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    mu = 0;
-    Vg = -1.0;
-
-    # time step is variable
-    tf = 1.0;
-    dts = [0.2, 0.1, 0.02, 0.01, 0.002, 0.001];
-    dts = [0.167, 0.0167]
-    
-    for dt in dts:
-    
-        # run code
-        print("****    ",dt);
-        prefix = "dt"+str(dt)+"_";
-        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, prefix = prefix, verbose = 5);
-
-
-def DotDataVsVgate():
-    '''
-    Get current data thru DotCurrentData which generates E, J vs time txt files
-    Tune gate voltage
-    '''
-
-    # system inputs
-    nleads = (3,3);
-    nelecs = (nleads[0] + nleads[1] + 1,0); # half filling
-    tf = 40.0
-    dt = 0.005
-
-    # tunable phys params
-    mu = 0
-    for Vg in np.linspace(-1.0, 1.0, 9):
-
-        # run code
-        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
-
-    Vg = -0.5;
-    for mu in np.linspace(-1.0,0.0,9):
-
-        DotCurrentData(nleads, nelecs, tf, dt, mu, Vg, verbose = 5);
-
-    return; # end dot data vs V gate
-
     
 #################################################
 #### exec code
 
 if(__name__ == "__main__"):
 
-    import time
-    start_t = time.time(); #time in sec
-
-    verbose = 4;
-
-    # system inputs
-    nleads = (3,2);
-    nelecs = (sum(nleads)+1,0); # half filling
-    tf = 8.0
-    dt = 0.01
-
-    # dmrg run, std params, for benchmark
-    datafile = DotDataDmrg(nleads,nelecs,tf,dt,phys_params = None, verbose = verbose);
-
-    stop_t = time.time();
-    print("total elapsed time = "+str((stop_t-start_t)/60)+" minutes");
-    print("Real sec./comp. sec = "+str((stop_t-start_t)/tf) );
-    
-    # plot results
-    datafile = "dat/DotDataDMRG/3_1_2_e6_B0_t0_Vg-0.5.npy"
-    splots = ['Jtot','occ','delta_occ','Sz'];
-    plot.PlotObservables(nleads, 0.4, datafile, splots = splots);
+    pass;
 
 

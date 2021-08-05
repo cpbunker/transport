@@ -7,7 +7,6 @@ import siam_current
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines
-import pyscf as ps
 
 # format matplotlib globally
 

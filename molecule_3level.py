@@ -21,7 +21,6 @@ Specific case:
 import ops
 
 import numpy as np
-from pyscf import fci
 import matplotlib.pyplot as plt
 
 ##########################################
@@ -91,6 +90,8 @@ def h2e(norbs, U):
 
 def Test():
 
+    from pyscf import fci
+
     verbose = 2;
     np.set_printoptions(suppress=True); # no sci notatation printing
 
@@ -147,8 +148,6 @@ def Test():
 #### exec code
 
 if __name__ == "__main__":
-
-    #Test();
 
     # compare DS and alpha when E=0, D<0
     # mark pederson predicts DS linear in alpha in this case
