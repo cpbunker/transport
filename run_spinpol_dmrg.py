@@ -17,10 +17,11 @@ import matplotlib.pyplot as plt
 #### prepare dot in diff spin states
 
 # top level
-verbose = 4;
-nleads = (2,2);
+verbose = 5;
+nleads = (6,6);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = False # whether to run computations, if not data already exists
+bdims = [2400, 2600, 2800, 3000];
+get_data = True # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -31,11 +32,9 @@ Vg = -0.5;
 U = 1.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
-Bs = [tl*5]
-thetas = [0.0]
 
 #time info
-dt = 0.01;
+dt = 0.04;
 tf = 5.0;
 
 datafs = [];
@@ -50,8 +49,7 @@ if get_data: # must actually compute data
         # data run at this particular B, theta
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        fname = siam_current.DotDataDmrg(nleads, nelecs, tf, dt, phys_params=params, Rlead_pol = 1, prefix = "spinpol/", verbose = verbose);
-        datafs.append(fname);
+        siam_current.DotDataDmrg(nleads, nelecs, tf, dt, phys_params=params, bond_dims = bdims, Rlead_pol = 1, verbose = verbose);
 
         # end timing
         stop_t = time.time();
