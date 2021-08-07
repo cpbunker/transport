@@ -21,7 +21,7 @@ verbose = 5;
 nleads = (6,6);
 nelecs = (sum(nleads)+1,0); # half filling
 bdims = [2400, 2600, 2800, 3000];
-get_data = True # whether to run computations, if not data already exists
+get_data = False # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -32,6 +32,8 @@ Vg = -0.5;
 U = 1.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
+Bs = [tl*5, tl*5];
+thetas = [0.0, np.pi/4];
 
 #time info
 dt = 0.04;
