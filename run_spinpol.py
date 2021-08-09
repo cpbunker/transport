@@ -16,21 +16,21 @@ import matplotlib.pyplot as plt
 #### prepare dot in diff spin states
 
 # top level
-verbose = 4;
+verbose = 5;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True # whether to run computations, if not data already exists
+get_data = False # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = 0.4;
-Vb = -0.05;
+Vb = -0.005;
 mu = 0.0;
 Vg = -0.1;
 U = 1.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
-Rlead_polo = 1
+Rlead_pol = 1
 
 #time info
 dt = 0.04;
