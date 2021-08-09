@@ -15,7 +15,7 @@ import time
 #### 2_1_2 spinpol system
 
 verbose = 5;
-nleads = (3,3);
+nleads = (2,2);
 nelecs = (3,2); # half filling
 nelecs_ASU = (sum(nleads)+1,0); # all spin up formalism
 splots = ['Jtot','occ','delta_occ','Sz','E']; # which subplots to make
@@ -25,7 +25,7 @@ Rlead_pol = 1;
 
 #time info
 dt = 0.04;
-tf = 1.0;
+tf = 5.0;
 
 # benchmark with spin free, fci code, std inputs
 #td_fci.SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = verbose);
@@ -35,7 +35,7 @@ tf = 1.0;
 
 # ASU fci code
 params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta
-#siam_current.DotData(nleads,nelecs_ASU,tf,dt,phys_params = params, Rlead_pol = Rlead_pol, verbose = verbose);
+#siam_current.DotData(nleads,nelecs_ASU,tf,dt,phys_params = params, Rlead_pol = Rlead_pol, prefix="spinpol/", verbose = verbose);
 #f = "dat/DotData/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)+"_t"+str(theta)+"_Vg-0.5.npy"
 #plot.PlotObservables(f, nleads = nleads, splots = splots);
 
@@ -43,11 +43,11 @@ params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta
 
 ti = time.time()
 params = 1.0, 0.4, -0.005, 0.0, -0.5, 1.0, B, theta
-siam_current.DotDataDmrg(nleads,nelecs_ASU,tf,dt,phys_params = params, Rlead_pol = Rlead_pol, verbose = verbose);
+siam_current.DotDataDmrg(nleads,nelecs_ASU,tf,dt,phys_params = params, bond_dims=[50,75,100], Rlead_pol = Rlead_pol, prefix="spinpol/", verbose = verbose);
 tf = time.time()
 print("\nElapsed time = ", tf - ti)
-#f = "dat/DotDataDMRG/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)+"_t"+str(theta)+"_Vg-0.5.npy"
-#plot.PlotObservables(f, nleads = nleads, splots = splots);
+f = "dat/DotDataDMRG/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)+"_t"+str(theta)+"_Vg-0.5.npy"
+plot.PlotObservables(f, nleads = nleads, splots = splots);
 
 
 

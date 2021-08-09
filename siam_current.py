@@ -124,7 +124,6 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
     
     # write results to external file
     folder = "dat/DotData/";
-    if(Rlead_pol == 1 or Rlead_pol == -1): prefix += "spinpol/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
@@ -253,7 +252,6 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
 
     # write results to external file
     folder = "dat/DotDataDMRG/";
-    if(Rlead_pol == 1 or Rlead_pol == -1): prefix += "spinpol/";
     fname = folder+prefix+ str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
     hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
