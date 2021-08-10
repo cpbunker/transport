@@ -5,7 +5,8 @@ June 2021
 
 fci_mod.py
 
-Wrapper funcs for doing fci using pySCF
+Helpful funcs for using pySCF, pyblock3
+Imports are within functions since some machines can run only pyblock3 or pyscf
 
 pyscf/fci module:
 - configuration interaction solvers of form fci.direct_x.FCI()
@@ -19,16 +20,15 @@ import ops
 
 import numpy as np
 import functools
-from pyscf import fci, gto, scf, ao2mo
 
 
 ##########################################################################################################
-####
+#### conversions
 
 
-def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
+def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
-    Run whole SIAM machinery for given  model hamiltonian
+    Converts hamiltonians in array form to scf object
     
     Args:
     - h1e, 2d np array, 1e part of siam ham
@@ -40,6 +40,8 @@ def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
     mol, gto.mol object which holds some physical params
     scf inst, holds physics: h1e, h2e, mo coeffs etc
     '''
+
+    from pyscf import gto, scf
     
     # initial guess density matrices
     Pa = np.zeros(norbs)
@@ -61,21 +63,66 @@ def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
                                    # what matter is h1e, h2e are now encoded in this scf instance
 
     return mol, scf_inst;
+
+
+def scf_to_arr(mol, scf_obj,):
+    '''
+    Converts physics of an atomic/molecular system, as contained in an scf inst
+    ie produced by passing molecular geometry object mol to
+    - scf.RHF(mol) restricted hartree fock
+    - scf.UHF(mol) unrestricted hartree fock
+    - scf.RKS(mol).run() restricted Kohn sham
+    - etc
+    to ab initio hamiltonian arrays h1e and g2e
+    '''
+
+    from pyscf import ao2mo
+
+    # unpack scf object
+    hcore = scf_obj.get_hcore();
+    coeffs = scf_obj.mo_coeff;
+    norbs = np.shape(coeffs)[0];
+
+    # convert to h1e and h2e array reps in molecular orb basis
+    h1e = np.dot(coeffs.T, hcore @ coeffs);
+    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
+
+    return h1e, g2e;
+
+
+def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
+    '''
+    Convert physics contained in an FCIDUMP object or file to a Matrix
+    Product Expectation (MPE) for doing DMRG
+
+    Args:
+    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
+    bdim_i, int, initial bond dimension of the MPE
+
+    Returns:
+    MPE object
+    '''
+
+    from pyblock3 import fcidump, hamiltonian, algebra
+    from pyblock3.algebra.mpe import MPE
+
+    # convert fcidump to hamiltonian obj
+    if( isinstance(fd, string) ): # fd is file, must be read
+        hobj = hamiltonian.Hamiltonian(FCIDUMP().read(fd), flat=True);
+    else: # fcidump obj already
+        h_obj = hamiltonian.Hamiltonian(fd, flat=True);
+
+    # Matrix Product Operator
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    psi_mps = h_obj.build_mps(bdim_i);
+
+    # MPE
+    return MPE(psi_mps, h_mpo, psi_mps);
     
     
 def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
-    '''
-    Run whole SIAM machinery, with impurity Silas' molecule
-    returns np arrays: 1e hamiltonian, 2e hamiltonian, molecule obj, and scf object
-
-    Args:
-    - nleads, tuple of ints, left lead sites, right lead sites
-    - nsites, int, num imp sites
-    - norbs, num spin orbs (= 2*(nsites + nleads[0]+nleads[1]))
-    - nelecs, tuple of up and down e's, 2nd must always be zero in spin up formalism
-    - physical params, tuple of:
-        lead hopping, imp hopping, bias voltage, chem potential, tuple of mol params specific to Silas' module (see molecule_5level.py)
-    '''
+    # WILL NEED OVERHAUL 
 
     # checks
     assert norbs == 2*(nsites + nleads[0]+nleads[1]);
@@ -136,6 +183,8 @@ def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
     '''
     solve gd state with direct FCI
     '''
+
+    from pyscf import fci
     
     cisolver = fci.direct_spin1.FCI();
     E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
@@ -149,6 +198,8 @@ def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
 def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     '''
     '''
+
+    from pyscf import fci, ao2mo
 
     # init ci solver with ham from molecule inst
     cisolver = fci.direct_uhf.FCISolver(mol);
