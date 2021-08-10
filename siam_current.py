@@ -103,7 +103,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, Rlead_pol = 0, 
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.dot_model(h1e, g2e, norbs, nelecs, verbose = verbose);
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);

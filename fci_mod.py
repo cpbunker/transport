@@ -26,9 +26,9 @@ from pyscf import fci, gto, scf, ao2mo
 ####
 
 
-def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
+def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
-    Run whole SIAM machinery for given  model hamiltonian
+    Converts hamiltonians in array form to scf object
     
     Args:
     - h1e, 2d np array, 1e part of siam ham
@@ -61,21 +61,33 @@ def dot_model(h1e, g2e, norbs, nelecs, verbose = 0):
                                    # what matter is h1e, h2e are now encoded in this scf instance
 
     return mol, scf_inst;
+
+
+def scf_to_arr(mol, scf_obj,):
+    '''
+    Converts physics of an atomic/molecular system, as contained in an scf inst
+    ie produced by passing molecular geometry object mol to
+    - scf.RHF(mol) restricted hartree fock
+    - scf.UHF(mol) unrestricted hartree fock
+    - scf.RKS(mol).run() restricted Kohn sham
+    - etc
+    to ab initio hamiltonian arrays h1e and g2e
+    '''
+
+    # unpack scf object
+    hcore = scf_obj.get_hcore();
+    coeffs = scf_obj.mo_coeff;
+    norbs = np.shape(coeffs)[0];
+
+    # convert to h1e and h2e array reps in molecular orb basis
+    h1e = np.dot(coeffs.T, hcore @ coeffs);
+    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
+
+    return h1e, g2e;
     
     
 def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
-    '''
-    Run whole SIAM machinery, with impurity Silas' molecule
-    returns np arrays: 1e hamiltonian, 2e hamiltonian, molecule obj, and scf object
-
-    Args:
-    - nleads, tuple of ints, left lead sites, right lead sites
-    - nsites, int, num imp sites
-    - norbs, num spin orbs (= 2*(nsites + nleads[0]+nleads[1]))
-    - nelecs, tuple of up and down e's, 2nd must always be zero in spin up formalism
-    - physical params, tuple of:
-        lead hopping, imp hopping, bias voltage, chem potential, tuple of mol params specific to Silas' module (see molecule_5level.py)
-    '''
+    # WILL NEED OVERHAUL 
 
     # checks
     assert norbs == 2*(nsites + nleads[0]+nleads[1]);
