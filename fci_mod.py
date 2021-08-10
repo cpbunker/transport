@@ -5,7 +5,8 @@ June 2021
 
 fci_mod.py
 
-Wrapper funcs for doing fci using pySCF
+Helpful funcs for using pySCF, pyblock3
+Imports are within functions since some machines can run only pyblock3 or pyscf
 
 pyscf/fci module:
 - configuration interaction solvers of form fci.direct_x.FCI()
@@ -19,11 +20,10 @@ import ops
 
 import numpy as np
 import functools
-from pyscf import fci, gto, scf, ao2mo
 
 
 ##########################################################################################################
-####
+#### conversions
 
 
 def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
@@ -40,6 +40,8 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     mol, gto.mol object which holds some physical params
     scf inst, holds physics: h1e, h2e, mo coeffs etc
     '''
+
+    from pyscf import gto, scf
     
     # initial guess density matrices
     Pa = np.zeros(norbs)
@@ -74,6 +76,8 @@ def scf_to_arr(mol, scf_obj,):
     to ab initio hamiltonian arrays h1e and g2e
     '''
 
+    from pyscf import ao2mo
+
     # unpack scf object
     hcore = scf_obj.get_hcore();
     coeffs = scf_obj.mo_coeff;
@@ -84,6 +88,37 @@ def scf_to_arr(mol, scf_obj,):
     g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
 
     return h1e, g2e;
+
+
+def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
+    '''
+    Convert physics contained in an FCIDUMP object or file to a Matrix
+    Product Expectation (MPE) for doing DMRG
+
+    Args:
+    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
+    bdim_i, int, initial bond dimension of the MPE
+
+    Returns:
+    MPE object
+    '''
+
+    from pyblock3 import fcidump, hamiltonian, algebra
+    from pyblock3.algebra.mpe import MPE
+
+    # convert fcidump to hamiltonian obj
+    if( isinstance(fd, string) ): # fd is file, must be read
+        hobj = hamiltonian.Hamiltonian(FCIDUMP().read(fd), flat=True);
+    else: # fcidump obj already
+        h_obj = hamiltonian.Hamiltonian(fd, flat=True);
+
+    # Matrix Product Operator
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    psi_mps = h_obj.build_mps(bdim_i);
+
+    # MPE
+    return MPE(psi_mps, h_mpo, psi_mps);
     
     
 def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
@@ -148,6 +183,8 @@ def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
     '''
     solve gd state with direct FCI
     '''
+
+    from pyscf import fci
     
     cisolver = fci.direct_spin1.FCI();
     E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
@@ -161,6 +198,8 @@ def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
 def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     '''
     '''
+
+    from pyscf import fci, ao2mo
 
     # init ci solver with ham from molecule inst
     cisolver = fci.direct_uhf.FCISolver(mol);
