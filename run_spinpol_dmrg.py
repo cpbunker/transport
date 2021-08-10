@@ -21,7 +21,7 @@ verbose = 5;
 nleads = (6,6);
 nelecs = (sum(nleads)+1,0); # half filling
 bdims = [2400, 2600, 2800, 3000];
-get_data = True # whether to run computations, if not data already exists
+get_data = False # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -33,8 +33,8 @@ U = 1.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
 U = 1.0
-Bs = [tl*5,tl*5,tl*5];
-thetas = [np.pi/2, 3*np.pi/4, np.pi];
+Bs = [tl*5,tl*5];
+thetas = [0.0, np.pi/4];
 
 #time info
 dt = 0.04;
@@ -64,7 +64,7 @@ if get_data: # must actually compute data
     print("Number of time steps = ",tf/dt);
 
 else: # already there
-    splots = ['Jtot','J','occ','Sz']; # which subplots to plot
+    splots = ['Jtot','J','Sz','Szleads','occ','E']; # which subplots to plot
     for i in range(len(Bs)):
         datafs.append("dat/DotDataDMRG/spinpol/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
         
