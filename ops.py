@@ -338,7 +338,7 @@ def stitch_h1e(h_imp, h_imp_leads, h_leads, h_bias, n_leads, verbose = 0):
             if(i>1 and j>1 and i<n_imp_sos+2 and j< n_imp_sos+2): #skip first two, last two rows, columns
                 h[2*n_leads[0] - 2 + i, 2*n_leads[0] - 2 + j] += h_imp[i-2,j-2];
             
-    if(verbose > 3):
+    if(verbose > 4):
         print("- h_leads + h_bias:\n",h_leads,"\n- h_imp_leads:\n",h_imp_leads,"\n- h_imp:\n",h_imp);
     return h; # end stitch h1e
     
@@ -472,7 +472,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
     h1e += h_B(B, theta, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
-    if(verbose > 1): print("\n- Full one electron hamiltonian = \n",h1e);
+    if(verbose > 3): print("\n- Full one electron hamiltonian = \n",h1e);
 
     # polarize the right lead if asked
     if(Rlead_pol == 1 or Rlead_pol == -1): # turn on mag field for right lead

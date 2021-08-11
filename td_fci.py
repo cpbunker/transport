@@ -366,7 +366,7 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
         Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
         Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
 
-        if(verbose > 4): print("    time: ", i*dt);
+        if(verbose > 2): print("    time: ", i*dt);
 
     # return val is array of observables
     # ordering is always t, E, Jup, Jdown, occ left, occ dot, occ right, Sz left, Sz dot, Sz right

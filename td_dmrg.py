@@ -106,7 +106,7 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
         Szvals[2][i] = compute_obs(Sz_mpo_R, mpst);
         
         # update stdout        
-        if(verbose>4): print("    time: ", i*dt);
+        if(verbose>2): print("    time: ", i*dt);
 
     # return time and tuple of observables as functions of time, 1d arrays
     observables = [timevals, energyvals, thyb*currentvals[0], thyb*currentvals[1], occvals[0], occvals[1], occvals[2], Szvals[0], Szvals[1], Szvals[2]];
