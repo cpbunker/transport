@@ -17,24 +17,25 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 5;
-nleads = (2,2);
+nleads = (3,3);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = False # whether to run computations, if not data already exists
+get_data = False; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
-th = 0.4;
-Vb = -0.005;
+th = 0.1; # can scale down and same effects are seen. Make sure to do later
+Vb = -0.5;
 mu = 0.0;
-Vg = -0.1;
-U = 1.0
+Vg = -4.0;
+U = 8.0
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
 Rlead_pol = 1
+assert( Vg == -0.5*U);
 
 #time info
 dt = 0.04;
-tf = 5.0;
+tf = 3.0;
 
 datafs = [];
 if get_data: # must actually compute data
@@ -46,7 +47,7 @@ if get_data: # must actually compute data
         datafs.append(fname);
 
 else: # already there
-    splots = ['Jtot','J','Sz','Szleads']; # which subplots to plot
+    splots = ['Jtot','occ','delta_occ','Sz','delta_Sz',]; # which subplots to plot
     for i in range(len(Bs)):
         datafs.append("dat/DotData/spinpolsweep/"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
         

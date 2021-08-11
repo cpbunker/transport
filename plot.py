@@ -185,7 +185,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
     return; # end plot observables
 
 
-def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
+def CompObservablesB(dats, nleads, Bs, ts, Vg, whichi = 0,splots = ['Jtot','Sz'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
@@ -240,17 +240,34 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, splots = ['Jtot','Sz'] ):
 
         # plot occupancy vs time
         if 'occ' in splots:
-            axes[axcounter].plot(t, occL+0.1*dati, label = "Left lead"); # occupancy
-            axes[axcounter].plot(t, occD+0.1*dati, label = "dot");
-            axes[axcounter].plot(t, occR+0.1*dati, label = "Right lead");
-            axes[axcounter].set_ylabel("Occupancy")
-            axes[axcounter].legend();
+            if dati == whichi:
+                axes[axcounter].plot(t, occL, label = "Left lead"); # occupancy
+                axes[axcounter].plot(t, occD, label = "dot");
+                axes[axcounter].plot(t, occR, label = "Right lead");
+                axes[axcounter].set_ylabel("Occupancy")
+                axes[axcounter].legend();
+            axcounter += 1;
+
+        # change in occupancy vs time
+        if 'delta_occ' in splots:
+            if dati == whichi:
+                axes[axcounter].plot(t, occL - occL[0], label = "Left lead");
+                axes[axcounter].plot(t, occD - occD[0], label = "dot");
+                axes[axcounter].plot(t, occR - occR[0], label = "Right lead");
+                axes[axcounter].set_ylabel(r"$\Delta$ Occupancy");
+                axes[axcounter].legend();
             axcounter += 1;
 
         # plot Sz of dot vs time
         if 'Sz' in splots:
             axes[axcounter].plot(t, SzD);
             axes[axcounter].set_ylabel("Dot $S_z$");
+            axcounter += 1;
+
+        # plot change in Sz of dot vs time
+        if 'delta_Sz' in splots:
+            axes[axcounter].plot(t, SzD - SzD[0]);
+            axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
             axcounter += 1;
 
         # plot Sz of leads vs time
@@ -417,7 +434,7 @@ def PlotFiniteSize():
     plt.show();
     return; # end plot finite size
 
-def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J','Sz'], mytitle = "", verbose = 0):
+def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, whichi=0, splots = ['Jtot','J','Sz'], mytitle = "", verbose = 0):
     '''
     Plot current and energy against time for dot impurity
     Fourier analyze and plot modes
@@ -433,7 +450,7 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J
     # control layout of plots
     numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex=True);
-    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple"]
+    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan"]
 
     # plot data across Vg sweep
     for i in range(len(Vgs)):
@@ -467,11 +484,22 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J
 
         # plot occupancy vs time
         if 'occ' in splots:
-            axes[axcounter].plot(t, occL, label = "Left lead"); # occupancy
-            axes[axcounter].plot(t, occD, label = "dot");
-            axes[axcounter].plot(t, occR, label = "Right lead");
-            axes[axcounter].set_ylabel("Occupancy")
-            axes[axcounter].legend();
+            if i == whichi:
+                axes[axcounter].plot(t, occL, label = "Left lead"); # occupancy
+                axes[axcounter].plot(t, occD, label = "dot");
+                axes[axcounter].plot(t, occR, label = "Right lead");
+                axes[axcounter].set_ylabel("Occupancy")
+                axes[axcounter].legend();
+            axcounter += 1;
+
+        # change in occupancy vs time
+        if 'delta_occ' in splots:
+            if i == whichi:
+                axes[axcounter].plot(t, occL - occL[0], label = "Left lead");
+                axes[axcounter].plot(t, occD - occD[0], label = "dot");
+                axes[axcounter].plot(t, occR - occR[0], label = "Right lead");
+                axes[axcounter].set_ylabel(r"$\Delta$ Occupancy");
+                axes[axcounter].legend();
             axcounter += 1;
 
         # plot Sz of dot vs time
@@ -511,7 +539,7 @@ def CurrentPlot(folder, nleads, nimp, nelecs, Vgs, B, theta, splots = ['Jtot','J
         axi.minorticks_on();
         axi.grid(which='major', color='#DDDDDD', linewidth=0.8);
         axi.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.tight_layout();
+    #plt.tight_layout();
     plt.show();
 
     return; # end dot current plot
