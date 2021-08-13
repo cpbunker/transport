@@ -195,7 +195,7 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, whichi = 0,splots = ['Jtot','Sz']
     assert(len(Bs) == len(ts) == len(dats) );
 
     # top level inputs
-    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple"]
+    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan"];
     mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
     numplots = len(splots);
     if 'Freq' in splots:
@@ -307,7 +307,45 @@ def CompObservablesB(dats, nleads, Bs, ts, Vg, whichi = 0,splots = ['Jtot','Sz']
     plt.show();
 
     return;
-    
+
+
+def CompConductancesB(datafs, thetas, times, Vb):
+    '''
+    Compare conductance (time avg current/Vbias) for different init spin states of dot
+    due to different B fields on impurity
+    '''
+
+    # check params
+    assert(len(thetas) == len(datafs) );
+
+    conductances = [];
+    for dati in range(len(datafs)): # iter over data sets
+
+        # unpack observables
+        observables = np.load(datafs[dati]);
+        print("Loading data from "+datafs[dati]);
+        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        J = Jup + Jdown;
+
+        # get conductance by averaging over time window
+        timestarti = np.argmin(abs(t - times[0])); # index where time avg starts
+        timestopi = np.argmin(abs(t - times[1])); # index where time avg ends
+        print(t[timestarti],t[timestopi]);
+
+        Javg = sum(J[timestarti:timestopi])/(timestopi - timestarti)
+        conductances.append( abs(Javg/Vb));
+
+    fig, ax = plt.subplots();
+    ax.plot(thetas, conductances, color = "tab:red");
+    ax.set_xlabel("$\\theta$");
+    ax.set_ylabel("$\\langle J \\rangle_{t=["+str(times[0])+","+str(times[1])+"]}$");
+    ax.set_title("Conductance");
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
+    return;
+        
     
 def PlotdtdE():
 

@@ -65,7 +65,7 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     return mol, scf_inst;
 
 
-def scf_to_arr(mol, scf_obj,):
+def scf_to_arr(mol, scf_obj):
     '''
     Converts physics of an atomic/molecular system, as contained in an scf inst
     ie produced by passing molecular geometry object mol to
