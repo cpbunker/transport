@@ -17,27 +17,27 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 3;
-nleads = (4,4);
+nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = True; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = 0.1; # can scale down and same effects are seen. Make sure to do later
-Vb = -0.5;
+Vb = -0.0;
 mu = 0.0;
-Vg = -1.73
+Vg = -1.0;
 U = -2*Vg;
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5, tl*5, tl*5, tl*5, tl*5];
 thetas = [0.0, np.pi/8, np.pi/4, 3*np.pi/8, np.pi/2, 5*np.pi/8, 3*np.pi/4, 7*np.pi/8, np.pi];
-Bs = [tl*5, tl*5,tl*5, tl*5,tl*5];
-thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4,np.pi];
+Bs = [tl*5]
+thetas = [0.0]
 Rlead_pol = 1
 #assert( Vg == -0.5*U);
 
 #time info
 dt = 0.04;
-tf = 4.0;
+tf = 1.0;
 
 datafs = [];
 if get_data: # must actually compute data

@@ -13,13 +13,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # top level
-nleads = (3,3);
-Rlead_pol = 0;
+nleads = (4,4);
 
 # phys params, must be floats
 tl = 1.0;
 th = 0.1; 
-Vb = -0.5;
+Vb = -0.2;
 mu = 0.0;
 Vg = -1.41;
 U = 2.82;
@@ -51,10 +50,15 @@ plt.plot([1,2],LeftEs, label = "Left lead gains");
 
 # top level, physical params carried down
 
-# right lead ham, spinfree form
-RL_ham = [[0.0, -tl,0.0], [-tl,0.0,-tl], [0.0,-tl, 0.0] ]; # spin free tight binding ham
+# right lead ham, spinfree tight binding
+RL_ham = np.zeros((nleads[1],nleads[1]));
+for diagi in range(nleads[1]-1):
+    RL_ham[diagi, diagi+1] += -tl;
+    RL_ham[diagi+1, diagi] += -tl;
+
 RL_ham += -0.5*Vb*np.eye(nleads[1]); # add bias
 g2e = np.zeros( (nleads[0],nleads[0],nleads[0],nleads[0] )); # noninteracting
+print(RL_ham);
 
 nes = [(nleads[1],0),(nleads[1]-1,0)];
 RightEs = [];
