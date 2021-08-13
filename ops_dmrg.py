@@ -159,34 +159,6 @@ def h_B(B, theta, site_i, norbs, verbose=0):
     return hB;
 
 
-def alt_spin(B, norbs):
-    '''
-    Generally, alternate up and down spins on siam sites
-    Specifically, prep a half filled siam system to be in a spinless state
-
-    Can remove by putting in -B instead of B
-    '''
-
-    #return 0.0;
-
-    # return var
-    h_alt_spin = np.zeros((norbs,norbs))
-
-    nsites = int(norbs/2);
-    for sitei in range(0, nsites, 2): # consider sites in pairs
-
-        # break up pair and convert to spin orb indices
-        site1 = [2*sitei, 2*sitei+1]
-        site2 = [2*(sitei+1), 2*(sitei+1)+1]
-
-        # first site gets B that prefers up spins
-        h_alt_spin += h_B(-B,0.0,site1,norbs)
-
-        # second site prefers down spins
-        h_alt_spin += h_B(B,0.0,site2,norbs);
-
-    return h_alt_spin;
-
 #####################################
 #### wrapper functions, test code
     
