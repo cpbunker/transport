@@ -84,10 +84,10 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
         U = 1.0; # hubbard repulsion
         B = 0.0; # magnetic field strength
         theta = 0.0;
-        thyb_eq = 1e-5; # small but nonzero val is more robust
+        thyb_eq = 0.0; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
-        thyb_eq = 1e-5; # small but nonzero val is more robust
+        thyb_eq = 0.0; # small but nonzero val is more robust
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
@@ -115,7 +115,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
     init_str, observables = td_fci.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, kernel_mode = "plot", verbose = verbose);
     
     # write results to external file
-    fname = prefix+"fci"_str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
