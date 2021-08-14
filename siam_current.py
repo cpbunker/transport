@@ -91,7 +91,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    eq_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
+    eq_params = V_leads, thyb_eq, 0.0, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
     h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
@@ -106,7 +106,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    neq_params = 0.0, V_imp_leads, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    neq_params = 0.0, V_imp_leads, V_bias, 0.0, 0.0, 0.0, 0.0, 0.0;
     neq_h1e, dummy, input_str_noneq = ops.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
     h1e += neq_h1e; # updated to include thyb
 
