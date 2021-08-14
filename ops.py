@@ -101,8 +101,8 @@ def h_imp_leads(V,N):
         h[i+1,Lidown] += -V;
         h[Riup, i] += -V;
         h[i, Riup] += -V;
-        h[Ridown,i+1] += 0.0;
-        h[i+1,Ridown] += 0.0;
+        h[Ridown,i+1] += -V;
+        h[i+1,Ridown] += -V;
         
     return h; # end h imp leads
     
