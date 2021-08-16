@@ -48,7 +48,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
     nelecs, tuple of num up e's, 0 due to ASU formalism
     timestop, float, how long to run for
     deltat, float, time step increment
-    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
     	if None, gives defaults vals for all (see below)
     prefix: assigns prefix (eg folder) to default output file name
 
@@ -84,14 +84,15 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
         U = 1.0; # hubbard repulsion
         B = 0.0; # magnetic field strength
         theta = 0.0;
+        phi = 0.0;
         thyb_eq = 0.0; # small but nonzero val is more robust
     else: # customized
-        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = phys_params;
         thyb_eq = 0.0; # small but nonzero val is more robust
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    eq_params = V_leads, thyb_eq, 0.0, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero = more robust
+    eq_params = V_leads, thyb_eq, 0.0, mu, V_gate, U, B, theta, phi; # dot hopping turned off, but nonzero = more robust
     h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
@@ -102,13 +103,13 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
     E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
 
     # remove spin prep terms
-    h1e += ops.h_B(-B, theta, imp_i, norbs, verbose = verbose);
+    h1e += ops.h_B(-B, theta, phi, imp_i, norbs, verbose = verbose);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    neq_params = 0.0, V_imp_leads, V_bias, 0.0, 0.0, 0.0, 0.0, 0.0;
+    neq_params = 0.0, V_imp_leads, V_bias, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     neq_h1e, dummy, input_str_noneq = ops.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
-    h1e += neq_h1e; # updated to include thyb
+    h1e += neq_h1e; # updated to include thyb and Vbias
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
@@ -149,7 +150,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
     deltat, float, time step increment
     bond_dims, list of increasing bond dim over dmrg sweeps, optional
     noises, list of decreasing noises over dmrg sweeps, optional
-    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
     	if None, gives defaults vals for all (see below)
     prefix: assigns prefix (eg folder) to default output file name
 
@@ -185,15 +186,16 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
         U = 1.0; # hubbard repulsion
         B = 0.0; # magnetic field strength
         theta = 0.0;
+        phi = 0.0;
         thyb_eq = 1e-5; # small but nonzero val is more robust
     else: # customized
-        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+        V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = phys_params;
         thyb_eq = 1e-5; # small but nonzero val is more robust
 
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    ham_params = V_leads, thyb_eq, V_bias, mu, V_gate, U, B, theta; # dot hopping turned off, but nonzero to fix numerical errors
+    ham_params = V_leads, thyb_eq, 0.0, mu, V_gate, U, B, theta, phi; # thyb, Vbias turned off
     h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
 
     # store physics in fci dump object
@@ -225,7 +227,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
 
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, 0.0, theta; # dot hopping on now, B field off
+    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, 0.0, 0.0, 0.0; # dot hopping on now, B field off
     h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);

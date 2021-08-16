@@ -24,14 +24,15 @@ get_data = True; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
-th = 0.1; # can scale down and same effects are seen. Make sure to do later
-Vb = -0.0;
+th = tl/10; # can scale down and same effects are seen. Make sure to do later
+Vb = -3*tl;
 mu = 0.0;
-Vgmin, Vgmax = -5*tl, -10*tl
-Vgs = np.linspace(Vgmin, Vgmax, 5);
-# U will always be -2*Vg
+Vgmin, Vgmax = -1*tl, -10*tl
+Vgs = np.linspace(Vgmin, Vgmax, 10);
+U = -Vgmax;
 B = 5*abs(Vgmax)
-theta = 0.0
+theta = 0.0;
+phi = 0.0;
 
 #time info
 dt = 0.04;
@@ -41,8 +42,8 @@ if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, -2*Vg, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/shadow_nobias/", phys_params=params, verbose = verbose);
+        params = tl, th, Vb, mu, Vg, U, B, theta, phi;
+        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/shadow/", phys_params=params, verbose = verbose);
 
 
 # plot results
@@ -52,7 +53,7 @@ splots = ['Jtot','delta_Sz','Szleads']; # which subplots to plot
 
 for i in range(len(Vgs)):
     Vg = Vgs[i];
-    datafs.append("dat/shadow_nobias/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
+    datafs.append("dat/shadow/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
     labs.append("Vg = "+str(Vg) );
     
 plot.CompObservablesB(datafs, nleads, Vg, labs, whichi = 0, splots = splots);

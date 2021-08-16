@@ -25,25 +25,26 @@ get_data = True; # whether to run computations, if not data already exists
 # phys params, must be floats
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
-Vb = -3*tl
+Vb = -2.0*tl
 mu = 0.0;
-Vg = -5*tl;
+Vg = -3.0*tl;
 U = -2*Vg;
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5];
 thetas = [0.0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi];
+phi = 0.0;
 
 #time info
 dt = 0.04;
-tf = 1.0;
+tf = 3.0;
 
 datafs = [];
 labs = [];
-splots = ['Jtot','occ','delta_occ','Sz','delta_Sz','Szleads']; # which subplots 
+splots = ['Jtot','J','occ','delta_occ','delta_Sz','Szleads']; # which subplots 
 if get_data: # must actually compute data
 
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
-        params = tl, th, Vb, mu, Vg, U, B, theta;
+        params = tl, th, Vb, mu, Vg, U, B, theta, phi;
         fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/shadow/", phys_params=params, verbose = verbose);
 
 for i in range(len(Bs)):
