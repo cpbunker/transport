@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 
 # top level
 verbose = 3;
-nleads = (2,2);
+nleads = (3,3);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True; # whether to run computations, if not data already exists
+get_data = False; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -39,7 +39,7 @@ tf = 3.0;
 
 datafs = [];
 labs = [];
-splots = ['Jtot','J','occ','delta_occ','delta_Sz','Szleads']; # which subplots 
+splots = ['Jtot','J','delta_occ','delta_Sz','Szleads']; # which subplots 
 if get_data: # must actually compute data
 
     for i in range(len(Bs)): # iter over B, theta inputs
@@ -51,7 +51,7 @@ for i in range(len(Bs)):
     datafs.append("dat/shadow/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
     labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     
-plot.CompObservablesB(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
 
 
     

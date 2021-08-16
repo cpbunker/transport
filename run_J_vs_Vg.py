@@ -56,7 +56,7 @@ for i in range(len(Vgs)):
     datafs.append("dat/shadow/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
     labs.append("Vg = "+str(Vg) );
     
-plot.CompObservablesB(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
 
     
 

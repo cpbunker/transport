@@ -185,7 +185,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','
     return; # end plot observables
 
 
-def CompObservablesB(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] ):
+def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
@@ -195,6 +195,7 @@ def CompObservablesB(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] )
     colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan"];
     mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
     numplots = len(splots);
+    if 'J' in splots: numplots += 1; # J prints 2 separate
     if 'Freq' in splots:
         fig, axes = plt.subplots(numplots); # dont share x axis
         numplots += -1; # this should force xlabel to last vs t plot, instead of freq plot
@@ -218,11 +219,14 @@ def CompObservablesB(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] )
 
         if 'J' in splots:
             axes[axcounter].plot(t, Jup, color=colors[dati], linestyle = "dashed", label = "$J_{up}$"); # current
-            axes[axcounter].plot(t, Jdown, color=colors[dati], linewidth = 3, linestyle = "dotted", label = "$J_{down}$");
             axes[axcounter].set_ylabel("Current");
             dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            axes[axcounter].legend(handles=[dashline],labels=['$J_{up}$']);           
+            axcounter += 1;
+            axes[axcounter].plot(t, Jdown, color=colors[dati], linewidth = 3, linestyle = "dotted", label = "$J_{down}$");
+            axes[axcounter].set_ylabel("Current");
             dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-            axes[axcounter].legend(handles=[dashline, dotline],labels=['$J_{up}$','$J_{down}$']);           
+            axes[axcounter].legend(handles=[dotline],labels=['$J_{down}$']);           
             axcounter += 1;
 
         # plot occupancy vs time
@@ -296,7 +300,7 @@ def CompObservablesB(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] )
     return;
 
 
-def CompConductancesB(datafs, thetas, times, Vb):
+def CompConductances(datafs, thetas, times, Vb):
     '''
     Compare conductance (time avg current/Vbias) for different init spin states of dot
     due to different B fields on impurity
