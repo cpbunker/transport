@@ -99,7 +99,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(dataf, nleads = (0,0), thyb = (1e-5,0.4), splots = ['Jtot','occ','Sz']):
+def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','occ','Sz']):
     '''
     plot observables from td fci run
     Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
@@ -226,7 +226,8 @@ def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['Jtot','Sz'] ):
             axes[axcounter].plot(t, Jdown, color=colors[dati], linewidth = 3, linestyle = "dotted", label = "$J_{down}$");
             axes[axcounter].set_ylabel("Current");
             dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-            axes[axcounter].legend(handles=[dotline],labels=['$J_{down}$']);           
+            axes[axcounter].legend(handles=[dotline],labels=['$J_{down}$']);
+            axes[axcounter-1].set_ylim(axes[axcounter].get_ylim() );
             axcounter += 1;
 
         # plot occupancy vs time
@@ -309,31 +310,35 @@ def CompConductances(datafs, thetas, times, Vb):
     # check params
     assert(len(thetas) == len(datafs) );
 
-    conductances = [];
+    conductances = np.zeros((2,len(datafs)));
     for dati in range(len(datafs)): # iter over data sets
 
         # unpack observables
         observables = np.load(datafs[dati]);
         print("Loading data from "+datafs[dati]);
-        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-        J = Jup + Jdown;
+        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);# scatter
+        J = [Jup, Jdown]
 
-        # get conductance by averaging over time window
-        timestarti = np.argmin(abs(t - times[0])); # index where time avg starts
-        timestopi = np.argmin(abs(t - times[1])); # index where time avg ends
-        print(t[timestarti],t[timestopi]);
+        # get conductance for each spin
+        for spini in range(2):
+        
+            # get conductance by averaging over time window
+            timestarti = np.argmin(abs(t - times[0])); # index where time avg starts
+            timestopi = np.argmin(abs(t - times[1])); # index where time avg ends
 
-        Javg = sum(J[timestarti:timestopi])/(timestopi - timestarti)
-        conductances.append( abs(Javg/Vb));
+            Javg = sum(J[spini][timestarti:timestopi])/(timestopi - timestarti)
+            conductances[spini, dati] = abs(Javg/Vb);
 
     fig, ax = plt.subplots();
-    ax.plot(thetas, conductances, color = "tab:red");
-    ax.set_xlabel("$\\theta$");
-    ax.set_ylabel("$\\langle J \\rangle_{t=["+str(times[0])+","+str(times[1])+"]}$");
-    ax.set_title("Conductance");
+    ax.scatter(conductances[0], thetas/np.pi, marker = "o", color = "navy", label="$G_{up}$");
+    ax.scatter(conductances[1], thetas/np.pi, marker = "o", color = "tab:red", label="$G_{down}$");
+    ax.set_ylabel("$\\theta/\pi$");
+    ax.set_xlabel("$\\langle J_{\sigma} \\rangle_{t}/V_{bias}$");
+    ax.set_title("Conductance, t=["+str(times[0])+","+str(times[1])+"]");
     ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.legend()
     plt.show();
     return;
         
