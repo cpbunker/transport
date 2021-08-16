@@ -391,16 +391,16 @@ def h_bias(V, dot_is, norbs, verbose = 0):
     for i in range(norbs): # iter over diag of h1e
 
         # pick out lead orbs
-        if i < dot_is[0]:
+        if i < dot_is[0]: # left leads
             hb[i,i] = V/2;
-        elif i > dot_is[-1]:
+        elif i > dot_is[-1]: # right leads
             hb[i,i] = -V/2;
 
     if(verbose > 3): print("h_bias:\n", hb)
     return hb;
 
 
-def h_B(B, theta, site_i, norbs, verbose=0):
+def h_B(B, theta, phi, site_i, norbs, verbose=0):
     '''
     Turn on a magnetic field of strength B in the theta hat direction, on site i
     This has the effect of preparing the spin state of the site
@@ -419,8 +419,8 @@ def h_B(B, theta, site_i, norbs, verbose=0):
 
     hB = np.zeros((norbs,norbs));
     for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
-        hB[i,i+1] = B*np.sin(theta)/2; # implement the mag field, x part
-        hB[i+1,i] = B*np.sin(theta)/2;
+        hB[i,i+1] = B*np.sin(theta)*np.exp(np.complex(0,-phi))/2; # implement the mag field, x part
+        hB[i+1,i] = B*np.sin(theta)*np.exp(np.complex(0,phi))/2;
         hB[i,i] = B*np.cos(theta)/2;    # z part
         hB[i+1,i+1] = -B*np.cos(theta)/2;
         
@@ -431,7 +431,7 @@ def h_B(B, theta, site_i, norbs, verbose=0):
 #####################################
 #### full system hamiltonians
 
-def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
+def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian, with
     Impurity hamiltonian:
@@ -443,10 +443,6 @@ def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
     - nsites, int, num impurity sites
     - nelecs, tuple of number es, 0 due to All spin up formalism
     - physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta. if None gives defaults
-    - Rlead_pol, int -1, 0, 1
-        if +/- 1, will polarize right lead spins to up/down state
-        if 0, does nothing (default)
-        also does nothing if B=0 no matter what rlead_pol actually is
     
     Returns:
     h1e, 2d np array, 1e part of siam ham
@@ -457,7 +453,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
     # unpack inputs
     norbs = 2*(sum(nleads)+nsites);
     dot_i = [2*nleads[0], 2*nleads[0]+1];
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = physical_params;
+    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = physical_params;
     
     input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
     if verbose: print(input_str);
@@ -471,13 +467,8 @@ def dot_hams(nleads, nsites, nelecs, physical_params, Rlead_pol=0, verbose = 0):
     hd = h_dot_1e(V_gate, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
-    h1e += h_B(B, theta, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
+    h1e += h_B(B, theta, phi, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
     if(verbose > 3): print("\n- Full one electron hamiltonian = \n",h1e);
-
-    # polarize the right lead if asked
-    if(Rlead_pol == 1 or Rlead_pol == -1): # turn on mag field for right lead
-        Rsites = np.arange(0,norbs, 1, dtype = int)[dot_i[-1]+1:];
-        h1e += h_B(-abs(B)*Rlead_pol,0.0,Rsites,norbs, verbose = verbose);
         
     # 2e hamiltonian only comes from impurity
     if(verbose > 1):
