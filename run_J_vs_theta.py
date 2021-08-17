@@ -29,13 +29,13 @@ Vg = 0.0;
 U = 100*tl;
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5,tl*5, tl*5, tl*5,tl*5];
 thetas = np.array([0.0, np.pi/8, np.pi/4, 3*np.pi/8,np.pi/2, 5*np.pi/8, 3*np.pi/4, 7*np.pi/8, np.pi]);
-Bs = [tl*5, tl*5];
-thetas = np.array([0.0, np.pi/8]);
+Bs = [tl*5];
+thetas = np.array([0.0]);
 phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 0.4;
+tf = 5.0;
 
 datafs = [];
 labs = [];
