@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 verbose = 3;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = False; # whether to run computations, if not data already exists
+get_data = True; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -31,11 +31,13 @@ Vg = 0.0;
 U = 100*tl;
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5,tl*5, tl*5, tl*5,tl*5];
 thetas = np.array([0.0, np.pi/8, np.pi/4, 3*np.pi/8,np.pi/2, 5*np.pi/8, 3*np.pi/4, 7*np.pi/8, np.pi]);
+Bs = [tl*5, tl*5];
+thetas = np.array([0.0, np.pi/8]);
 phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 5.0;
+tf = 0.4;
 
 datafs = [];
 labs = [];
@@ -45,10 +47,10 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/GvsTheta/", phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/temp/", phys_params=params, verbose = verbose);
 
 for i in range(len(Bs)):
-    datafs.append("dat/GvsTheta/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+    datafs.append("dat/temp/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
     labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     
 plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
