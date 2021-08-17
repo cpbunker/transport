@@ -25,7 +25,6 @@ pyscf fci module:
 '''
 
 import ops
-import td_dmrg
 
 import time
 import numpy as np
@@ -160,6 +159,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
     
     from pyblock3 import fcidump, hamiltonian
     from pyblock3.algebra.mpe import MPE
+    import td_dmrg
 
     # check inputs
     assert( isinstance(n_leads, tuple) );
