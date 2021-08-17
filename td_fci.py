@@ -16,7 +16,6 @@ import ops
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
 import numpy as np
-import matplotlib.pyplot as plt
 import functools
 import os
 einsum = lib.einsum
@@ -300,6 +299,8 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     timevals, 1d arr of time steps
     observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
     '''
+
+    import matplotlib.pyplot as plt
 
     N = int(tf/dt+1e-6)
     i_all = np.arange(0,ci.norb, 1, dtype = int);

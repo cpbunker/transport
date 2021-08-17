@@ -8,10 +8,8 @@ Now assuming polarizer btwn Rlead, dot
 '''
 
 import siam_current
-import plot
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 ##################################################################################
 #### prepare dot in diff spin states
@@ -47,14 +45,17 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/temp/", phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
 
-for i in range(len(Bs)):
-    datafs.append("dat/temp/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
-    labs.append("$\\theta$ = "+str(thetas[i])[:3] );
+else:
+    import plot # do here for compatibility
+
+    for i in range(len(Bs)):
+        datafs.append("fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+        labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     
-plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
-plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
+    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+    plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
 
 
     
