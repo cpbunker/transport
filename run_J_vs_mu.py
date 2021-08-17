@@ -4,7 +4,6 @@ M^2QM at UF
 August 2021
 
 Runner file for prepping dot spin state with B field, getting current output
-Now assuming polarizer btwn Rlead, dot
 '''
 
 import siam_current
@@ -26,23 +25,24 @@ get_data = True; # whether to run computations, if not data already exists
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
-mu = 0.0;
-Vgmin, Vgmax = -4*tl, 4*tl
-Vgs = np.linspace(Vgmin, Vgmax, 9);
+mumin, mumax = -20,50
+mus = np.linspace(-20,50,11);
+# Vg will be = mu
 U = 100*tl;
-B = 5*abs(Vgmax)
+B = 5*tl;
 theta = 0.0;
 phi = 0.0;
 
 #time info
-dt = 0.004;
+dt = 0.0004;
 tf = 5.0;
 
 if get_data: # must actually compute data
 
-    for i in range(len(Vgs)): # iter over Vg vals;
-        Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, -2*Vg, B, theta, phi;
+    for i in range(len(mus)): # iter over Vg vals;
+        mu = mus[i];
+        Vg = mu
+        params = tl, th, Vb, mu, Vg, U, B, theta, phi;
         siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
 
 
