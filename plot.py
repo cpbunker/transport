@@ -289,7 +289,7 @@ def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['J','Jtot'] ):
             axcounter += 1;
 
     # format and show
-    axes[0].legend();
+    axes[0].legend(ncol=2);
     for axi in range(len(axes) ): # customize axes
         if axi == 0: axes[axi].set_title(mytitle);
         if axi == numplots-1: axes[axi].set_xlabel(myxlabel);
