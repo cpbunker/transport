@@ -185,7 +185,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','o
     return; # end plot observables
 
 
-def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['J','Jtot'] ):
+def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['J','Jtot','delta_occ'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
