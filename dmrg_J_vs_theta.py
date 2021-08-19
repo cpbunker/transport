@@ -11,15 +11,17 @@ import siam_current
 
 import numpy as np
 
+import sys
+
 ##################################################################################
 #### prepare dot in diff spin states
 
 # top level params from command line
 verbose = int(sys.argv[1]);
-nleads = (int(sys.argv[2],int(sys.argv[3]));
+nleads = (int(sys.argv[2]),int(sys.argv[3]));
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = bool(sys.argv[4]); # whether to run computations, if not data already exists
-print("Command line inputs:", verbose, nelecs, get_data);
+print("Command line inputs:", verbose, nleads, get_data);
 
 # phys params, must be floats
 tl = 1.0;

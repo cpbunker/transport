@@ -4,24 +4,27 @@ M^2QM at UF
 August 2021
 
 Runner file for prepping dot spin state with B field, getting current output
-Now assuming polarizer btwn Rlead, dot
 '''
 
-import sys
 
 import siam_current
 
 import numpy as np
+
+import sys
 
 ##################################################################################
 #### prepare dot in diff spin states
 
 # top level params from command line
 verbose = int(sys.argv[1]);
-nleads = (int(sys.argv[2],int(sys.argv[3]));
+nleads = (int(sys.argv[2]),int(sys.argv[3]));
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = bool(sys.argv[4]); # whether to run computations, if not data already exists
-print("Command line inputs:", verbose, nelecs, get_data);
+
+# time info
+dt = 0.004
+tf = float(sys.argv[5]);
 
 # phys params, must be floats
 tl = 1.0;
@@ -30,15 +33,9 @@ Vb = -1/100*tl
 U = 100*tl;
 mu = 10.0*tl
 Vg = mu;
-Bs = [tl*5, tl*5, tl*5,tl*5,tl*5,tl*5, tl*5, tl*5,tl*5];
-thetas = np.array([0.0, np.pi/8, np.pi/4, 3*np.pi/8,np.pi/2, 5*np.pi/8, 3*np.pi/4, 7*np.pi/8, np.pi]);
-Bs = [tl*5];
-thetas = np.array([0.0]);
+thetas = np.array([float(sys.argv[6]) ] ); # take theta vals from command line one at time for parallelization
+Bs = [tl*5]
 phi = 0.0;
-
-#time info
-dt = 0.004;
-tf = 0.4
 
 datafs = [];
 labs = [];
