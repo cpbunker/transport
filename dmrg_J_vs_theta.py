@@ -16,7 +16,7 @@ import numpy as np
 
 # top level
 verbose = 3;
-nleads = (2,2);
+nleads = (4,4);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = True; # whether to run computations, if not data already exists
 
