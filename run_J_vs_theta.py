@@ -18,12 +18,12 @@ import numpy as np
 verbose = 3;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = False; # whether to run computations, if not data already exists
+get_data = True; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
-Vb = -1/10*tl
+Vb = -1/100*tl
 U = 100*tl;
 mu = 10.0*tl
 Vg = mu
@@ -35,7 +35,7 @@ phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 5.0;
+tf = 0.4
 
 datafs = [];
 labs = [];
@@ -45,7 +45,7 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/temp/", phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
 
 else:
     import plot # do here for compatibility
