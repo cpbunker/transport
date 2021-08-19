@@ -18,15 +18,15 @@ import numpy as np
 verbose = 3;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True; # whether to run computations, if not data already exists
+get_data = False; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/10*tl
-Vg = 16.0;
 U = 100*tl;
-mu = 16.0
+mu = 10.0*tl
+Vg = mu
 Bs = [tl*5, tl*5, tl*5,tl*5,tl*5,tl*5, tl*5, tl*5,tl*5];
 thetas = np.array([0.0, np.pi/8, np.pi/4, 3*np.pi/8,np.pi/2, 5*np.pi/8, 3*np.pi/4, 7*np.pi/8, np.pi]);
 Bs = [tl*5];
