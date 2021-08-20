@@ -17,10 +17,10 @@ import sys
 #### prepare dot in diff spin states
 
 # top level params from command line
-verbose = int(sys.argv[1]);
-nleads = (int(sys.argv[2]),int(sys.argv[3]));
+get_data = bool(float(sys.argv[1]));
+verbose = int(sys.argv[2]);
+nleads = (int(sys.argv[3]),int(sys.argv[4]));
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = bool(sys.argv[4]); # whether to run computations, if not data already exists
 
 # time info
 dt = 0.004
@@ -30,16 +30,13 @@ tf = float(sys.argv[5]);
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl
-U = 100*tl;
 mu = 10.0*tl
 Vg = mu;
-thetas = np.array([float(sys.argv[6]) ] ); # take theta vals from command line one at time for parallelization
-Bs = [tl*5]
+U = 100*tl;
+thetas = np.array([float(sys.argv[6])] ); # take theta vals from command line one at time for parallelization
+Bs = [tl*5];
 phi = 0.0;
 
-datafs = [];
-labs = [];
-splots = ['Jtot','J','delta_occ','delta_Sz','Szleads']; # which subplots 
 if get_data: # must actually compute data
 
     for i in range(len(Bs)): # iter over B, theta inputs
@@ -50,8 +47,11 @@ if get_data: # must actually compute data
 else:
     import plot # do here for compatibility
 
-    for i in range(len(Bs)):
-        datafs.append("dat/temp/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(Bs[i])+"_t"+str(thetas[i])[:3]+"_Vg"+str(Vg)+".npy");
+    datafs = sys.argv[7:];
+    labs = [];
+    splots = ['Jtot','J','delta_occ']; # which subplots 
+    thetas = np.pi*np.array([0,1,2,3,4,5,6,7,8])/8
+    for i in range(len(thetas)):
         labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     
     plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
