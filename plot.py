@@ -185,7 +185,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','o
     return; # end plot observables
 
 
-def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['J','Jtot','delta_occ'] ):
+def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0,splots = ['J','Jtot','delta_occ'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
@@ -193,7 +193,7 @@ def CompObservables(dats, nleads, Vg, labs, whichi = 0,splots = ['J','Jtot','del
 
     # top level inputs
     colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan","black","navy","yellow"];
-    mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
+    if mytitle=="0.0": mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
     numplots = len(splots);
     if 'J' in splots: numplots += 1; # J prints 2 separate
     if 'Freq' in splots:

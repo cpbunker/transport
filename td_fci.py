@@ -542,23 +542,26 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     # physical params, should always be floats
     if( phys_params == None): # defaults
         t = 1.0 # lead hopping
-        td = 1e-5 # dot-lead hopping not turned on yet, but still nonzero to make code more robust
+        td = 0.0 # dot-lead hopping not turned on yet, but still nonzero to make code more robust
         td_noneq = 0.4 # for when it is turned on
         V = -0.005 # bias
         Vg = -0.5 # gate voltage
         U = 1.0 # dot interaction
 
     else: # custom
-        td = 1e-5 # dot-lead hopping not turned on yet!
+        td = 0.0 # dot-lead hopping not turned on yet!
         t, td_noneq, V, Vg, U = phys_params
 
     if(verbose):
         print("\nInputs:\n- Left, right leads = ",(ll,lr),"\n- nelecs = ", nelec,"\n- Gate voltage = ",Vg,"\n- Bias voltage = ",V,"\n- Lead hopping = ",t,"\n- Dot lead hopping = ",td,"\n- U = ",U);
 
     #### make hamiltonian matrices, spin free formalism
-    # remember impurity is just one level dot
+    # remember impurity is just one level doto
+
+    # quick fox for run_110
+    if nelec == (0,1): Vg = -10.0
     
-    # make ground state Hamiltonian, equilibrium (ie t_hyb not turned on yet)
+    # make ground state Hamiltonian, equilibrium (ie t_hyb and Vbias not turned on yet)
     if(verbose): print("1. Construct hamiltonian")
     h1e = np.zeros((norb,)*2)
     for i in range(norb):
@@ -571,10 +574,6 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     h1e[idot,idot] = Vg # input gate voltage on dot
     g2e = np.zeros((norb,norb, norb, norb)); # 2 body terms = hubbard
     g2e[idot,idot,idot,idot] = U
-    for i in range(idot): # bias for leftward current (since V < 0)
-        h1e[i,i] = V/2
-    for i in range(idot+1,norb):
-        h1e[i,i] = -V/2
     
     if(verbose > 2):
         print("- Full one electron hamiltonian:\n", h1e)
@@ -595,7 +594,9 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     mf.get_hcore = lambda *args:h1e # put h1e into scf solver
     mf.get_ovlp = lambda *args:np.eye(norb) # init overlap as identity
     mf._eri = g2e # put h2e into scf solver
-    mf.kernel(dm0=(Pa,Pb))
+    if sum(nelecs) == 1: mf.kernel();
+    else: mf.kernel(dm0=(Pa,Pb))
+
     # ground state FCI
     mo_a = mf.mo_coeff[0]
     mo_b = mf.mo_coeff[1]
@@ -621,12 +622,18 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
 
     # intro nonequilibrium terms (t_hyb = td nonzero)
     if(verbose): print("3. Time propagation")
+    if nelec == (0,1): h1e[idot, idot] = 0.0;
     if nleads[0] != 0: # left lead coupling
         h1e[idot, idot-1] += -td_noneq; 
         h1e[idot-1, idot] += -td_noneq;
     if nleads[1] != 0: # right lead coupling
         h1e[idot+1, idot] += -td_noneq;
         h1e[idot, idot+1] += -td_noneq;
+    for i in range(idot): # bias for leftward current (since V < 0)
+        h1e[i,i] += V/2
+    for i in range(idot+1,norb):
+        h1e[i,i] += -V/2
+
     if(verbose > 2 ): print("- Nonequilibrium terms:\n", h1e);
 
     if True: # get noneq energies
@@ -640,14 +647,7 @@ def SpinfreeTest(nleads, nelecs, tf, dt, phys_params = None, verbose = 0):
     init_str, observables = kernel(kernel_mode, eris, ci, tf, dt, i_dot = [idot], t_dot = td_noneq, verbose = verbose);
     print(init_str);
 
-    # save results as .npy
-    fname = os.getcwd();
-    fname += "/dat/SpinfreeTest/" # folder is func name
-    fname += str(nleads[0])+str(1)+str(nleads[1])+"_e"+str(sum(nelecs))+".npy";
-    np.save(fname, observables);
-    print("4. Saved data to "+fname);
-
-    return fname;
+    return observables;
     
 
 if __name__ == "__main__":

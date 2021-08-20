@@ -47,14 +47,18 @@ if get_data: # must actually compute data
 else:
     import plot # do here for compatibility
 
+    print("Command line sysntax is get_data, verbose, nleads[0], nleads[1], tf, theta / title, datafs");
+
+    # get data files and labels
     datafs = sys.argv[7:];
     labs = [];
     splots = ['Jtot','J','delta_occ']; # which subplots 
     thetas = np.pi*np.array([0,1,2,3,4,5,6,7,8])/8
     for i in range(len(thetas)):
         labs.append("$\\theta$ = "+str(thetas[i])[:3] );
-    
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+   
+    # plot
+    plot.CompObservables(datafs, nleads, Vg, labs, mytitle = sys.argv[6], splots = splots);
     plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
 
 
