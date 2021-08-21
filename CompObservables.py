@@ -18,4 +18,4 @@ for f in files:
             if f[ci]=='V' and f[ci+1]=='g': # next is Vg val
                 labs.append("Vg = "+f[ci+2:-4]);
 
-plot.CompObservables(datafs, (2,2), "", labs);
+plot.CompObservables(datafs, (2,2), "", labs, mytitle = "$V_g$ sweep at $\mu = 10.0$, $U=100.0$");

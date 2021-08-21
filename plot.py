@@ -185,7 +185,7 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','o
     return; # end plot observables
 
 
-def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0,splots = ['J','Jtot','delta_occ'] ):
+def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0,splots = ['Jtot'] ):
     '''
     Compare current etc for different init spin states of dot
     due to different B fields
@@ -201,6 +201,7 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0,splots = [
         numplots += -1; # this should force xlabel to last vs t plot, instead of freq plot
     else:
         fig, axes = plt.subplots(numplots, sharex = True);
+        if numplots== 1: axes = [axes];
 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
