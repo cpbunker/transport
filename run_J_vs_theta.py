@@ -51,10 +51,11 @@ else:
     labs = [];
     splots = ['Jtot','J','delta_occ']; # which subplots 
     thetas = np.pi*np.array([0,1,2,3,4,5,6,7,8])/8
+    thetas = np.array([0.0, 3.14]);
     for i in range(len(thetas)):
         labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+    plot.CompObservables(datafs, nleads, Vg, labs, splots = splots, mytitle = sys.argv[6]);
     plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
 
 

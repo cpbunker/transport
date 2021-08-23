@@ -19,20 +19,19 @@ import sys
 verbose = 3;
 nleads = (1,0);
 nelecs = (1,1);
-nelecs_ASU = (sum(nelecs_ASU), 0);
-splots = ['occ','Sz']; # which subplots to make
+splots = ['Jtot','occ','Sz','Szleads']; # which subplots to make
 th = 1.0;
-Vb = -0.1;
+Vb = -0.01;
 Vg = 0.0;
 B = 5.0;
 theta = 0.0;
 
 #time info
-dt = 0.04;
-tf = 3.14
+dt = 0.004;
+tf = 2*3.14;
 
 #### benchmark with spinfree td fci
-if False: # already ran data
+if( int(sys.argv[1])): # run data
 
     # spin free can only do U=0
     U = 0.0;
@@ -51,26 +50,28 @@ if False: # already ran data
     np.save(fname, observables);
     print("Saving data to "+fname);
 
-else: # plot
+if( int(sys.argv[2])): # plot
     fname = "dat/bench/spinfree/110_updown.npy";
     plot.PlotObservables(fname, nleads = nleads, splots = splots);
 
 #### sweep U vals with ASU formalism
 
-Us = np.array([0.0]);
+nleads_ASU = (1,1);
+nelecs_ASU = (2,0);
+Us = np.array([0.0, 10.0, 20.0, 50.0]);
 
-if( int(sys.argv[1])): # command line tells whether to get data
+if( int(sys.argv[3])): # command line tells whether to get data
 
     for U in Us: # sweep U vals
 
         params = 0.0, th, Vb, 0.0, Vg, U, B, theta, 0.0;
-        siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/bench/fci/", verbose = verbose);
+        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/param_tuning/Usweep/110_Vbias", verbose = verbose);
 
-else:
+if( int(sys.argv[4])):
     datafs = [];
     labs = [];
     for i in range(len(Us)):
         U = Us[i];
-        datafs.append("dat/bench/fci/fci_1_1_0_e2_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
+        datafs.append("dat/bench/fci/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
         labs.append("U = "+str(U));
-    plot.CompObservables(datafs, nleads, "", labs, mytitle = "U sweep");
+    plot.CompObservables(datafs, nleads_ASU, "", labs,whichi = 3, mytitle = "U sweep",splots = splots);
