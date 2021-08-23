@@ -1,9 +1,9 @@
 '''
 Christian Bunker
 M^2QM at UF
-July 2021
+August 2021
 
-Runner file for benchmarking td-FCI
+1_1_0 system to match analytical results
 '''
 
 import td_fci
@@ -15,22 +15,26 @@ import matplotlib.pyplot as plt
     
 import sys
 
-#### 1_1_0 system to match analytical results
-
+#### top level
 verbose = 3;
 nleads = (1,0);
 nelecs = (1,1);
+nelecs_ASU = (sum(nelecs_ASU), 0);
 splots = ['occ','Sz']; # which subplots to make
+th = 1.0;
+Vb = -0.1;
+Vg = 0.0;
+B = 5.0;
+theta = 0.0;
 
 #time info
 dt = 0.04;
 tf = 3.14
 
-if ( bool(int(sys.argv[1]) ) ):
+#### benchmark with spinfree td fci
+if False: # already ran data
 
-    # benchmark with spin free code
-    th = 1.0;
-    Vb = -0.1;
+    # spin free can only do U=0
     U = 0.0;
     params = 0.0, th, Vb, 0.0, U; # featureless dot # no mu or mag field in spin free
 
@@ -47,9 +51,26 @@ if ( bool(int(sys.argv[1]) ) ):
     np.save(fname, observables);
     print("Saving data to "+fname);
 
-else:
+else: # plot
     fname = "dat/bench/spinfree/110_updown.npy";
     plot.PlotObservables(fname, nleads = nleads, splots = splots);
 
+#### sweep U vals with ASU formalism
 
+Us = np.array([0.0]);
 
+if( int(sys.argv[1])): # command line tells whether to get data
+
+    for U in Us: # sweep U vals
+
+        params = 0.0, th, Vb, 0.0, Vg, U, B, theta, 0.0;
+        siam_current.DotData(nleads, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/bench/fci/", verbose = verbose);
+
+else:
+    datafs = [];
+    labs = [];
+    for i in range(len(Us)):
+        U = Us[i];
+        datafs.append("dat/bench/fci/fci_1_1_0_e2_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
+        labs.append("U = "+str(U));
+    plot.CompObservables(datafs, nleads, "", labs, mytitle = "U sweep");
