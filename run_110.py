@@ -65,13 +65,13 @@ if( int(sys.argv[3])): # command line tells whether to get data
     for U in Us: # sweep U vals
 
         params = 0.0, th, Vb, 0.0, Vg, U, B, theta, 0.0;
-        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/param_tuning/Usweep/110_Vbias", verbose = verbose);
+        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/param_tuning/Usweep/110_Vbias01", verbose = verbose);
 
 if( int(sys.argv[4])):
     datafs = [];
     labs = [];
     for i in range(len(Us)):
         U = Us[i];
-        datafs.append("dat/bench/fci/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
+        datafs.append("dat/param_tuning/Usweep/110_Vbias01/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
         labs.append("U = "+str(U));
     plot.CompObservables(datafs, nleads_ASU, "", labs,whichi = 3, mytitle = "U sweep",splots = splots);

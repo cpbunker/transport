@@ -24,9 +24,9 @@ get_data = False; # whether to run computations, if not data already exists
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
-mu = -10.0*tl;
-Vgs = [-15.0,-12.5, -10.0, -7.5, -5.0, 0.0]
-U = 100*tl;
+mu = 10.0*tl;
+Vgs = [7.5,9.0, 10.0, 11.0, 12.5]
+U =  0.0 #100*tl;
 B = 5*tl;
 theta = 0.0;
 phi = 0.0;
@@ -40,7 +40,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
+        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/param_tuning/U0/", phys_params=params, verbose = verbose);
 
 else:
 
@@ -49,11 +49,11 @@ else:
     # plot results
     datafs = [];
     labs = [];
-    splots = ['Jtot','J']; # which subplots to plot
+    splots = ['Jtot','J','occ','Sz','Szleads']; # which subplots to plot
 
     for i in range(len(Vgs)):
         Vg = Vgs[i];
-        datafs.append("dat/mu10/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
+        datafs.append("dat/param_tuning/U0/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
         labs.append("Vg = "+str(Vg) );
     
     plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
