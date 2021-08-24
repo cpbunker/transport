@@ -15,7 +15,7 @@ import numpy as np
 #### prepare dot in diff spin states
 
 # top level
-verbose = 3;
+verbose = 5;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = False; # whether to run computations, if not data already exists
@@ -26,6 +26,7 @@ th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 10.0*tl;
 Vgs = [7.5,9.0, 10.0, 11.0, 12.5]
+Vgs = [12.5];
 U =  0.0 #100*tl;
 B = 5*tl;
 theta = 0.0;

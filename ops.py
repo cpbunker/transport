@@ -230,17 +230,18 @@ def Jup(site_i, norbs):
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
     # current operator (1e only)
-    J = np.zeros((norbs,norbs));
+    JL = np.zeros((norbs,norbs)); # leftwards
+    JR = np.zeros((norbs, norbs)); # rightwards
 
     # even spin index is up spins
     upi = site_i[0];
     assert(upi % 2 == 0); # check even
-    J[upi-2,upi] = -1/2;  # dot up spin to left up spin #left moving is negative current
-    J[upi,upi-2] =  1/2; # left up spin to dot up spin # hc of above # right moving is +
-    J[upi+2,upi] = 1/2;  # up spin to right up spin
-    J[upi,upi+2] =  -1/2; # hc
+    JL[upi-2,upi] = -1/2;  # dot up spin to left up spin #left moving is negative current
+    JR[upi,upi-2] =  1/2; # left up spin to dot up spin # hc of above # right moving is +
+    JR[upi+2,upi] = 1/2;  # up spin to right up spin
+    JL[upi,upi+2] =  -1/2; # hc
 
-    return J;
+    return JL, JR;
 
 
 def Jdown(site_i, norbs):
@@ -256,17 +257,18 @@ def Jdown(site_i, norbs):
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
     # current operator (1e only)
-    J = np.zeros((norbs,norbs));
+    JL = np.zeros((norbs,norbs)); # leftwards
+    JR = np.zeros((norbs, norbs)); # rightwards
 
     # odd spin index is down spins
     dwi = site_i[1];
     assert(dwi % 2 == 1); # check odd
-    J[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
-    J[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
-    J[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin
-    J[dwi,dwi+2] =  -1/2; # hc
+    JL[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
+    JR[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
+    JR[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin
+    JL[dwi,dwi+2] =  -1/2; # hc
 
-    return J;
+    return JL, JR;
 
 #### 2 e ham operators
     

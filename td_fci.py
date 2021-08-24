@@ -236,8 +236,8 @@ def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
     '''
 
     # up, down current operators (1 e operators)
-    Jup = ops.Jup(site_i, norbs); # up e current
-    Jdown = ops.Jdown(site_i, norbs); # down e current
+    # each op now returns tuple of left and right
+
     
     # have to store as an eris object
     Jup_eris = ERIs(Jup, np.zeros((norbs,norbs,norbs,norbs)), mocoeffs);
@@ -249,7 +249,7 @@ def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
 ################################################################
 #### kernel
 
-def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind = False, verbose = 0):
+def kernel_bleh(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind = False, verbose = 0):
     '''
     Wrapper for the different kernel implementations
     Lots of assertions to prevent confusion
@@ -288,7 +288,7 @@ def kernel(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind =
     
         return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose);
 
-def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
+def kernel(eris, ci, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, dot occupancy, current
@@ -299,16 +299,35 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
     observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
     '''
 
-
     N = int(tf/dt+1e-6)
-    i_all = np.arange(0,ci.norb, 1, dtype = int);
-    i_left = i_all[:i_dot[0] ];
-    i_right = i_all[i_dot[-1]+1:];
+    all_i = np.arange(0,ci.norb, 1, dtype = int);
+    left_i = all_i[:dot_i[0] ];
+    right_i = all_i[dot_i[-1]+1:];
+    norbs = ci.norb;
+
+
+    # operators for observables
+    JupL, JupR = ops.Jup(dot_i, norbs); # up e current
+    JdownL, JdownR = ops.Jdown(dot_i, norbs); # down e current
+    occL, occD, occR = ops.occ(left_i, norbs), ops.occ(dot_i, norbs), ops.occ(right_i, norbs);
+    SzL, SzD, SzR = ops.Sz(left_i, norbs), ops.Sz(dot_i, norbs), ops.Sz(right_i, norbs);
+
+    # eris for observables
+    JupL_eris = ERIs(JupL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    JupR_eris = ERIs(JupR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    JdownL_eris = ERIs(JdownL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    JdownR_eris = ERIs(JdownR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    occL_eris = ERIs(occL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    occD_eris = ERIs(occD, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    occR_eris = ERIs(occR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    SzL_eris = ERIs(SzL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    SzD_eris = ERIs(SzD, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    SzR_eris = ERIs(SzR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
     
-    # return vals
+    #  observable return vals
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
-    current_vals = np.zeros((2,N+1)); # up and down e current separate
+    current_vals = np.zeros((4,N+1)); # up and down e current separate
     occ_vals = np.zeros( (3,N+1), dtype = complex ); # occ list has [left lead occ, dot occ, right lead occ]
     Sz_vals = np.zeros( (3,N+1), dtype = complex ); # see below
     
@@ -320,21 +339,21 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
 
         # before any time stepping, get initial state
         if(i==0):
-            occ_init = np.zeros(len(i_all), dtype = complex);
-            Sz_init = np.zeros(len(i_all), dtype = complex);
-            Sx_init = np.zeros(len(i_all), dtype = complex);
-            Sy_init = np.zeros(len(i_all), dtype = complex);
-            for sitej in i_all:# iter over sites
-                if spinblind: # sites are pairs of spin orbs
+            occ_init = np.zeros(len(all_i), dtype = complex);
+            Sz_init = np.zeros(len(all_i), dtype = complex);
+            Sx_init = np.zeros(len(all_i), dtype = complex);
+            Sy_init = np.zeros(len(all_i), dtype = complex);
+            for sitej in all_i:# iter over sites
+                if ASU: # sites are pairs of spin orbs
                     if sitej % 2 == 0: # do up and down together
                         sitejlist = [sitej, sitej+1];
-                        occ_init[sitej] = compute_occ(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sz_init[sitej] = compute_Sz(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sx_init[sitej] = compute_Sx(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                        Sy_init[sitej] = compute_Sy(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind); 
+                        occ_init[sitej] = compute_occ(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
+                        Sz_init[sitej] = compute_Sz(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
+                        Sx_init[sitej] = compute_Sx(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
+                        Sy_init[sitej] = compute_Sy(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU); 
                 else: # sites are just sites
-                    occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-                    Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+                    occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
+                    Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
             initstatestr = "\nInitial state:"
             initstatestr += "\n    occ = "+str(np.real(occ_init));
             initstatestr += "\n    Sz = "+str(Sz_init);
@@ -352,31 +371,38 @@ def kernel_plot(eris, ci, tf, dt, i_dot, t_hyb, RK, spinblind, verbose):
         # compute observables
         t_vals[i] = i*dt;
         energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        Jup, Jdown = compute_current(i_dot, (d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        current_vals[0][i], current_vals[1][i] = t_hyb*Jup, t_hyb*Jdown; # add in hop strength
+        JupL_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JupL_eris));
+        JupR_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JupR_eris));
+        JdownL_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JdownL_eris));
+        JdownR_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JdownR_eris));
+        current_vals[0][i] = t_hyb*JupL_val;
+        current_vals[1][i] = t_hyb*JupR_val;
+        current_vals[2][i] = t_hyb*JdownL_val;
+        current_vals[3][i] = t_hyb*JdownR_val; # add in hopping strength
         
         # occupancy of left lead, dot, right lead
-        occ_vals[0][i] = compute_occ(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        occ_vals[1][i] = compute_occ(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        occ_vals[2][i] = compute_occ(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        occ_vals[0][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occL_eris);
+        occ_vals[1][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occD_eris);
+        occ_vals[2][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occR_eris);
 
         # total z spin of left lead, dot, right lead
-        Sz_vals[0][i] = compute_Sz(i_left,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
-        Sz_vals[1][i] = compute_Sz(i_dot,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);       
-        Sz_vals[2][i] = compute_Sz(i_right,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, ci.norb, ASU = spinblind);
+        Sz_vals[0][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzL_eris);
+        Sz_vals[1][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzD_eris);      
+        Sz_vals[2][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzR_eris);
 
         if(verbose > 2): print("    time: ", i*dt);
 
     # return val is array of observables
-    # ordering is always t, E, Jup, Jdown, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
-    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], occ_vals[0], occ_vals[1], occ_vals[2], Sz_vals[0], Sz_vals[1], Sz_vals[2]]
+    # ordering is always t, E, JupL, JupR, JdownL, JdownR, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
+    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], current_vals[2], current_vals[3], occ_vals[0], occ_vals[1], occ_vals[2], Sz_vals[0], Sz_vals[1], Sz_vals[2]]
     return initstatestr, np.array(observables)
     
-def kernel_std(eris, ci, tf, dt, RK):
+def kernel_old(eris, ci, tf, dt, RK):
     '''
     Kernel for td calc copied straight from ruojing
     Outputs density matrices in form (1e alpha, 1e beta), (2e aa, 2e ab, 2e bb)
-    Access thru calling kernel (see above) with mode=std
+    Equivalent to calculating wf at every time step instead of just some observables and discarding
+    Not in use at moment
     '''
     N = int(tf/dt+1e-6)
     d1as = []
@@ -476,7 +502,7 @@ class CIObject():
 ##########################################################################################################
 #### time propagation 
 
-def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_dot, kernel_mode = "plot", verbose = 0):
+def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, dot_i, t_hyb, verbose = 0):
     '''
     Time propagate an FCI gd state
     The physics of the FCI gd state is encoded in an scf instance
@@ -495,7 +521,7 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     assert( np.shape(h1e)[0] == np.shape(h2e)[0]);
     assert( type(mol) == type(gto.M() ) );
     assert( type(scf_inst) == type(scf.UHF(mol) ) );
-    assert(type(i_dot) == type([]) );
+    assert( isinstance(dot_i, list));
 
     # unpack
     norbs = np.shape(h1e)[0];
@@ -510,7 +536,7 @@ def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, i_dot, t_do
     ci = CIObject(fcivec, norbs, nelecs);
     
     # kernel does time prop, NB we assume a spin blind formalism
-    return kernel(kernel_mode, eris, ci, time_stop, time_step, i_dot = i_dot, t_dot = t_dot, spinblind = True, verbose = verbose);
+    return kernel(eris, ci, time_stop, time_step, dot_i, t_hyb, verbose = verbose);
 
 
 ###########################################################################################################

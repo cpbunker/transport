@@ -207,7 +207,9 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
         print("Loading data from "+dats[dati]);
-        t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        Jup = JupL + JupR;
+        Jdown = JdownL + JdownR;
         J = Jup + Jdown;
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
