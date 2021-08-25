@@ -18,7 +18,7 @@ import sys
 #### top level
 verbose = 3;
 nleads = (1,0);
-nelecs = (1,1);
+nelecs = (2,1);
 splots = ['J','Jup','Jdown','occ','delta_occ','Sz','Szleads','E']; # which subplots to make
 th = 1.0;
 Vb = -0.1;
@@ -57,7 +57,7 @@ if( int(sys.argv[2])): # plot
 #### sweep U vals with ASU formalism
 
 nleads_ASU = (1,1);
-nelecs_ASU = (2,0);
+nelecs_ASU = (3,0);
 Us = np.array([0.0, 10.0, 20.0, 50.0]);
 Us = [0.0];
 
@@ -66,13 +66,13 @@ if( int(sys.argv[3])): # command line tells whether to get data
     for U in Us: # sweep U vals
 
         params = 0.0, th, Vb, 0.0, Vg, U, B, theta, 0.0;
-        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/analyt/Vb1/", namevar = "Vg", verbose = verbose);
+        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/analyt/", namevar = "Vg", verbose = verbose);
 
 if( int(sys.argv[4])):
     datafs = [];
     labs = [];
     for i in range(len(Us)):
         U = Us[i];
-        datafs.append("dat/analyt/Vb1/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_Vg"+str(Vg)+".npy");
+        datafs.append("dat/analyt/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_Vg"+str(Vg)+".npy");
         labs.append("U = "+str(U));
     plot.CompObservables(datafs, nleads_ASU, "", labs,whichi = 0, mytitle = "U sweep",splots = splots);

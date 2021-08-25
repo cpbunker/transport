@@ -217,7 +217,7 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axcounter += 1
 
         if 'Jup' in splots:
-            axes[axcounter].plot(t, Jup, color=colors[dati]); # current
+            axes[axcounter].plot(t,Jup, color=colors[dati], label = labs[dati]);
             axes[axcounter].set_ylabel("$J_{up}$");          
             axcounter += 1;
 
@@ -234,7 +234,7 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axcounter += 1;
 
         if 'Jdown' in splots:
-            axes[axcounter].plot(t, Jdown, color=colors[dati], label = "$J_{down}$");
+            axes[axcounter].plot(t, Jdown, color=colors[dati],label=labs[dati]);
             axes[axcounter].set_ylabel("$J_{down}$");
             axcounter += 1;
 

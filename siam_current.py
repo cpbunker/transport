@@ -87,7 +87,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
         thyb_eq = 0.0; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = phys_params;
-        thyb_eq = 1e-5; # small but nonzero val is more robust
+        thyb_eq = 0.0; # small but nonzero val is more robust
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
