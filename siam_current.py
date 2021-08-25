@@ -32,7 +32,7 @@ import numpy as np
 #################################################
 #### get current data
 
-def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/", verbose = 0):
+def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/", namevar="Vg", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
     and td-FCI for nonequil dynamics. Impurity is a quantum dot w/ gate voltage and hubbard U
@@ -87,7 +87,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
         thyb_eq = 0.0; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = phys_params;
-        thyb_eq = 0.0; # small but nonzero val is more robust
+        thyb_eq = 1e-5; # small but nonzero val is more robust
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
@@ -115,7 +115,11 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
     init_str, observables = td_fci.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, verbose = verbose);
     
     # write results to external file
-    fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    if namevar == "Vg":
+        fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    elif namevar == "U":
+        fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
+    else: assert(False);
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
     hstring += "\nEquilibrium"+input_str; # write input vals to txt

@@ -194,15 +194,10 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
     # top level inputs
     colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan","black","navy","yellow"];
     if mytitle=="0.0": mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
-    mytitle = "Noninteracting impurity, $V_g$ sweep at $\mu=10$";
+    #mytitle = "Noninteracting impurity, $V_g$ sweep at $\mu=10$";
     numplots = len(splots);
-    if 'J' in splots: numplots += 1; # J prints 2 separate
-    if 'Freq' in splots:
-        fig, axes = plt.subplots(numplots); # dont share x axis
-        numplots += -1; # this should force xlabel to last vs t plot, instead of freq plot
-    else:
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots== 1: axes = [axes];
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots== 1: axes = [axes];
 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
@@ -216,22 +211,43 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
         axcounter = 0;
 
         # plot current vs time
-        if 'Jtot' in splots:
+        if 'J' in splots:
             axes[axcounter].plot(t,J,label = labs[dati]);
-            axes[axcounter].set_ylabel("Current");
+            axes[axcounter].set_ylabel("J");
             axcounter += 1
 
-        if 'J' in splots:
-            axes[axcounter].plot(t, Jup, color=colors[dati], linestyle = "dashed", label = "$J_{up}$"); # current
-            axes[axcounter].set_ylabel("Current");
-            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
-            axes[axcounter].legend(handles=[dashline],labels=['$J_{up}$']);           
+        if 'Jup' in splots:
+            axes[axcounter].plot(t, Jup, color=colors[dati]); # current
+            axes[axcounter].set_ylabel("$J_{up}$");          
             axcounter += 1;
-            axes[axcounter].plot(t, Jdown, color=colors[dati], linewidth = 3, linestyle = "dotted", label = "$J_{down}$");
-            axes[axcounter].set_ylabel("Current");
-            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-            axes[axcounter].legend(handles=[dotline],labels=['$J_{down}$']);
-            axes[axcounter-1].set_ylim(axes[axcounter].get_ylim() );
+
+        if 'JupLR' in splots:
+            if dati == whichi:
+                axes[axcounter].plot(t, JupL, color=colors[dati], linestyle = "dashed", label = "Left");
+                axes[axcounter].plot(t, JupR, color=colors[dati], linestyle = "dotted", label = "Right");
+                axes[axcounter].plot(t, Jup, color='gray', label = "Total");
+                axes[axcounter].set_ylabel("$J_{up}$");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                grayline = matplotlib.lines.Line2D([],[],color = 'gray');
+                axes[axcounter].legend(handles=[dashline, dotline, grayline],labels=["Left","Right","Total"]);           
+            axcounter += 1;
+
+        if 'Jdown' in splots:
+            axes[axcounter].plot(t, Jdown, color=colors[dati], label = "$J_{down}$");
+            axes[axcounter].set_ylabel("$J_{down}$");
+            axcounter += 1;
+
+        if 'JdownLR' in splots:
+            if dati == whichi:
+                axes[axcounter].plot(t, JdownL, color=colors[dati], linestyle = "dashed", label = "Left");
+                axes[axcounter].plot(t, JdownR, color=colors[dati], linestyle = "dotted", label = "Right");
+                axes[axcounter].plot(t, Jup, color='gray', label = "Total");
+                axes[axcounter].set_ylabel("$J_{down}$");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                grayline = matplotlib.lines.Line2D([],[],color = 'gray');
+                axes[axcounter].legend(handles=[dashline, dotline, grayline],labels=["Left","Right","Total"]);           
             axcounter += 1;
 
         # plot occupancy vs time

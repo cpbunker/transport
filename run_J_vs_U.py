@@ -25,21 +25,21 @@ th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 10.0
 Vg = mu
-Us = [0.0, 5.0,10.0, 15.0, 20.0]
+Us = [0.0,1.0, 2.0, 10.0]
 B = 5*tl;
 theta = 0.0;
 phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 5.0;
+tf = 10.0;
 
 if get_data: # must actually compute data
 
     for i in range(len(Us)): # iter over Vg vals;
         U = Us[i]
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/tuneU/", phys_params=params, verbose = verbose);
+        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/param_tuning/tuneU/", phys_params=params, namevar="U", verbose = verbose);
 
 else:
 
@@ -48,14 +48,15 @@ else:
     # plot results
     datafs = [];
     labs = [];
-    splots = ['Jtot','J']; # which subplots to plot
+    splots = ['J','Jup','Jdown','Sz']; # which subplots to plot
 
     for i in range(len(Us)):
         U = Us[i];
-        datafs.append("dat/tuneU/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy");
+        datafs.append("dat/param_tuning/tuneU/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy");
         labs.append("U = "+str(U) );
-    
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+
+    title = "Coulomb barrier for a down spin impurity, $V_g = \mu = 10.0$"
+    plot.CompObservables(datafs, nleads, Vg, labs, mytitle = title, whichi = 0, splots = splots);
 
     
 

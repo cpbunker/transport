@@ -19,7 +19,7 @@ import sys
 verbose = 3;
 nleads = (1,0);
 nelecs = (1,1);
-splots = ['Jtot','occ','Sz','Szleads']; # which subplots to make
+splots = ['J','Jup','Jdown','occ','Sz','Szleads']; # which subplots to make
 th = 1.0;
 Vb = -0.01;
 Vg = 0.0;
@@ -59,13 +59,14 @@ if( int(sys.argv[2])): # plot
 nleads_ASU = (1,1);
 nelecs_ASU = (2,0);
 Us = np.array([0.0, 10.0, 20.0, 50.0]);
+Us = [0.0];
 
 if( int(sys.argv[3])): # command line tells whether to get data
 
     for U in Us: # sweep U vals
 
         params = 0.0, th, Vb, 0.0, Vg, U, B, theta, 0.0;
-        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/param_tuning/Usweep/110_Vbias01", verbose = verbose);
+        siam_current.DotData(nleads_ASU, nelecs_ASU, tf, dt, phys_params = params, prefix = "dat/param_tuning/Usweep/110_Vbias01/", namevar = "U", verbose = verbose);
 
 if( int(sys.argv[4])):
     datafs = [];
@@ -74,4 +75,4 @@ if( int(sys.argv[4])):
         U = Us[i];
         datafs.append("dat/param_tuning/Usweep/110_Vbias01/fci_1_1_1_e"+str(sum(nelecs_ASU))+"_B"+str(B)+"_t"+str(theta)+"_U"+str(U)+".npy");
         labs.append("U = "+str(U));
-    plot.CompObservables(datafs, nleads_ASU, "", labs,whichi = 3, mytitle = "U sweep",splots = splots);
+    plot.CompObservables(datafs, nleads_ASU, "", labs,whichi = 0, mytitle = "U sweep",splots = splots);

@@ -15,18 +15,18 @@ import numpy as np
 #### prepare dot in diff spin states
 
 # top level
-verbose = 5;
-nleads = (2,2);
+verbose = 3;
+nleads = (4,4);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = False; # whether to run computations, if not data already exists
+get_data = True; # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 10.0*tl;
-Vgs = [7.5,9.0, 10.0, 11.0, 12.5]
-Vgs = [12.5];
+Vgs = [7.5,9.0, 10.0, 11.0, 12.5];
+Vgs = [10.0]
 U =  0.0 #100*tl;
 B = 5*tl;
 theta = 0.0;
@@ -34,7 +34,7 @@ phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 5.0;
+tf = 3*6.28;
 
 if get_data: # must actually compute data
 
@@ -50,14 +50,15 @@ else:
     # plot results
     datafs = [];
     labs = [];
-    splots = ['Jtot','J','occ','Sz','Szleads']; # which subplots to plot
+    splots = ['Jup','JupLR','Jdown','JdownLR']; # which subplots to plot
 
     for i in range(len(Vgs)):
         Vg = Vgs[i];
         datafs.append("dat/param_tuning/U0/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
         labs.append("Vg = "+str(Vg) );
-    
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, splots = splots);
+
+    title = "Current between impurity and left, right leads"
+    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, mytitle = title, splots = splots);
 
     
 
