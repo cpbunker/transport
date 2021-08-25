@@ -25,7 +25,7 @@ th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 10.0
 Vg = mu
-Us = [0.0,1.0, 2.0, 10.0]
+Us = [0.0,1.0, 10.0];
 B = 5*tl;
 theta = 0.0;
 phi = 0.0;
@@ -55,7 +55,7 @@ else:
         datafs.append("dat/param_tuning/tuneU/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy");
         labs.append("U = "+str(U) );
 
-    title = "Coulomb barrier for a down spin impurity, $V_g = \mu = 10.0$"
+    title = "Coulomb blockade for a down spin impurity, $V_g = \mu = 10.0$"
     plot.CompObservables(datafs, nleads, Vg, labs, mytitle = title, whichi = 0, splots = splots);
 
     
