@@ -236,10 +236,10 @@ def Jup(site_i, norbs):
     # even spin index is up spins
     upi = site_i[0];
     assert(upi % 2 == 0); # check even
-    JL[upi-2,upi] = -1/2;  # dot up spin to left up spin #left moving is negative current
-    JL[upi,upi-2] =  1/2; # left up spin to dot up spin # hc of above # right moving is +
-    JR[upi+2,upi] = 1/2;  # up spin to right up spin
-    JR[upi,upi+2] =  -1/2; # hc
+    JL[upi-2,upi] = -1;  # dot up spin to left up spin #left moving is negative current
+    JL[upi,upi-2] =  1; # left up spin to dot up spin # hc of above # right moving is +
+    JR[upi+2,upi] = 1;  # up spin to right up spin
+    JR[upi,upi+2] =  -1; # hc
 
     return JL, JR;
 
@@ -263,10 +263,10 @@ def Jdown(site_i, norbs):
     # odd spin index is down spins
     dwi = site_i[1];
     assert(dwi % 2 == 1); # check odd
-    JL[dwi-2,dwi] = -1/2;  # dot dw spin to left dw spin #left moving is negative current
-    JL[dwi,dwi-2] =  1/2; # left dw spin to dot dw spin # hc of above # right moving is +
-    JR[dwi+2,dwi] = 1/2;  # dot dw spin to right dw spin
-    JR[dwi,dwi+2] =  -1/2; # hc
+    JL[dwi-2,dwi] = -1;  # dot dw spin to left dw spin #left moving is negative current
+    JL[dwi,dwi-2] =  1; # left dw spin to dot dw spin # hc of above # right moving is +
+    JR[dwi+2,dwi] = 1;  # dot dw spin to right dw spin
+    JR[dwi,dwi+2] =  -1; # hc
 
     return JL, JR;
 

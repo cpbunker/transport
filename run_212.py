@@ -44,4 +44,4 @@ if( int(sys.argv[2])):
     labs = [];
     datafs.append("dat/analyt/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)+"_t"+str(theta)+"_Vg"+str(Vg)+".npy");
     labs.append("U = "+str(U));
-    plot.CompObservables(datafs, nleads, "", labs,whichi = 0, mytitle = "Featurless impurity",splots = splots);
+    plot.CompObservables(datafs, nleads, "", labs,whichi = 0, mytitle = "Featureless impurity",splots = splots);

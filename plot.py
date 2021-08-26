@@ -202,10 +202,13 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
         print("Loading data from "+dats[dati]);
-        t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-        Jup = JupL + JupR;
-        Jdown = JdownL + JdownR;
-        J = Jup + Jdown;
+        try:
+            t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+            Jup = JupL + JupR;
+            Jdown = JdownL + JdownR;
+        except:
+            t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);
+        J = (Jup + Jdown)/2; # average
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;
@@ -217,7 +220,7 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axcounter += 1
 
         if 'Jup' in splots:
-            axes[axcounter].plot(t,Jup, color=colors[dati], label = labs[dati]);
+            axes[axcounter].plot(t,Jup/np.max(abs(Jup)), color=colors[dati], label = labs[dati]);
             axes[axcounter].set_ylabel("$J_{up}$");          
             axcounter += 1;
 
@@ -234,7 +237,7 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axcounter += 1;
 
         if 'Jdown' in splots:
-            axes[axcounter].plot(t, Jdown, color=colors[dati],label=labs[dati]);
+            axes[axcounter].plot(t, Jdown/np.max(abs(Jdown)), color=colors[dati],label=labs[dati]);
             axes[axcounter].set_ylabel("$J_{down}$");
             axcounter += 1;
 
@@ -296,7 +299,6 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
         if 'E' in splots:
             axes[axcounter].plot(t, E);
             axes[axcounter].set_ylabel("Energy");
-            axes[axcounter].get_shared_x_axes().join(axes[0],axes[3]);
             axcounter += 1
 
         # plot freq modes of current
@@ -337,7 +339,7 @@ def CompConductances(datafs, thetas, times, Vb):
         observables = np.load(datafs[dati]);
         print("Loading data from "+datafs[dati]);
         t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);# scatter
-        J = [Jup, Jdown]
+        J = [Jup/np.max(abs(Jup)), Jdown/np.max(abs(Jdown))]; # normalize
 
         # get conductance for each spin
         for spini in range(2):
