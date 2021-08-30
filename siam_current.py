@@ -103,6 +103,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
 
     # remove spin prep terms
     h1e += ops.h_B(-B, theta, phi, imp_i, norbs, verbose = verbose);
+    h1e += ops.h_B(10.0, 0.0, 0.0, imp_i, norbs, verbose = verbose); #Zeeman
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
@@ -191,10 +192,10 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, bond_dims = [100, 200, 300, 4
         B = 0.0; # magnetic field strength
         theta = 0.0;
         phi = 0.0;
-        thyb_eq = 1e-5; # small but nonzero val is more robust
+        thyb_eq = 0.0; # small but nonzero val is more robust
     else: # customized
         V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta, phi = phys_params;
-        thyb_eq = 1e-5; # small but nonzero val is more robust
+        thyb_eq = 0.0; # small but nonzero val is more robust
 
 
     # get h1e and h2e for siam, h_imp = h_dot

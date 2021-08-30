@@ -42,16 +42,16 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/temp/", phys_params=params, verbose = verbose);
 
 else:
     import plot # do here for compatibility
 
     datafs = sys.argv[7:];
     labs = [];
-    splots = ['Jup','Jdown','E','delta_occ']; # which subplots 
+    splots = ['Jup','Jdown','E','delta_occ','Sz']; # which subplots 
     thetas = np.pi*np.array([0,1,2,3,4,5,6,7,8])/8
-    #thetas = np.array([0.0, 3.14]);
+    thetas = np.array([np.pi/2]);
     for i in range(len(thetas)):
         labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     plot.CompObservables(datafs, nleads, Vg, labs, splots = splots, mytitle = sys.argv[6]);

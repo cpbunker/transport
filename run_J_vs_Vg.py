@@ -34,7 +34,7 @@ phi = 0.0;
 
 #time info
 dt = 0.004;
-tf = 3*6.28;
+tf = 12.0;
 
 if get_data: # must actually compute data
 

@@ -1,4 +1,4 @@
-# Mon Aug 30 15:35:11 2021
+# Mon Aug 30 15:24:20 2021
 # ASU formalism, t_hyb noneq. term
 # Equilibrium
 # Inputs:
@@ -20,7 +20,7 @@
 # - nelecs = (5, 0)
 # - V_leads = 0.0
 # - V_imp_leads = 0.1
-# - V_bias = -0.01
+# - V_bias = -1.0
 # - mu = 0.0
 # - V_gate = 0.0
 # - Hubbard U = 0.0
