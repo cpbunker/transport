@@ -27,12 +27,12 @@ tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 2.0*tl;
-Vgmin, Vgmax
-Vgs = np.linspace(Vgmin,Vgmax,1+int(abs(Vgmin-Vgmax)/0.5);
-Vgs = [10.0]
-U =  10*tl;
-B = 5*tl;
+U =  10.0*tl;
+B = 5.0*tl;
 theta = 0.0;
+delta_Vg = 1.0
+Vgs = np.linspace(mu+B/2 - delta_Vg,mu+B/2 + delta_Vg,1+int(abs(2*delta_Vg)/0.2));
+Vgs = [10.0]
 
 #time info
 dt = 0.04;
@@ -50,17 +50,11 @@ else:
     import plot
 
     # plot results
-    datafs = [];
-    labs = [];
+    datafs = sys.argv[2:]
+    labs = Vgs # one label for each Vg
     splots = ['Jup','Jdown','occ','Sz']; # which subplots to plot
-
-    for i in range(len(Vgs)):
-        Vg = Vgs[i];
-        datafs.append("dat/zeeman/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
-        labs.append("Vg = "+str(Vg) );
-
     title = "Current between impurity and left, right leads"
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, mytitle = title, splots = splots);
+    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$");
 
     
 
