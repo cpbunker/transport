@@ -76,7 +76,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    eq_params = V_leads, 0.0, 0.0, mu, V_gate, U, B, theta, 0.0; # thyb, Vbias turned off, mag field in theta to prep spin
+    eq_params = V_leads, 0.0, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
     h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
@@ -93,7 +93,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    init_str, observables = td_fci.TimeProp(h1e_neq, g2e_neq, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, verbose = verbose);
+    init_str, observables = td_fci.TimeProp(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, verbose = verbose);
     
     # write results to external file
     if namevar == "Vg":

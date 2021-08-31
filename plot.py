@@ -214,7 +214,11 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
     assert(whichi >= 0 and whichi <= len(datafs));
 
     # top level inputs
-    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan","black","navy","yellow"];
+    colors = plt.cm.get_cmap('tab20').colors
+    print(colors[0]);
+    if (len(colors) < len(datafs) ): # need more colors
+        colors = plt.cm.get_cmap('seismic', len(datafs));
+        colors = colors(np.linspace(0,1, len(datafs) ) );
     numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots== 1: axes = [axes];
@@ -229,6 +233,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;
+        labs[dati] = datafs[dati][-7:-4]
 
         # plot current vs time
         if 'J' in splots:
@@ -292,13 +297,13 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
 
         # plot Sz of dot vs time
         if 'Sz' in splots:
-            axes[axcounter].plot(t, SzD);
+            axes[axcounter].plot(t, SzD, color = colors[dati]);
             axes[axcounter].set_ylabel("Dot $S_z$");
             axcounter += 1;
 
         # plot change in Sz of dot vs time
         if 'delta_Sz' in splots:
-            axes[axcounter].plot(t, SzD - SzD[0]);
+            axes[axcounter].plot(t, SzD - SzD[0], color = colors[dati]);
             axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
             axcounter += 1;
 

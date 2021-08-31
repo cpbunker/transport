@@ -20,7 +20,7 @@ import sys
 verbose = 3;
 nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = sys.argv[1]; # whether to run computations, if not data already exists
+get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
@@ -30,9 +30,9 @@ mu = 2.0*tl;
 U =  10.0*tl;
 B = 5.0*tl;
 theta = 0.0;
-delta_Vg = 1.0
-Vgs = np.linspace(mu+B/2 - delta_Vg,mu+B/2 + delta_Vg,1+int(abs(2*delta_Vg)/0.2));
-Vgs = [10.0]
+delta_Vg = 2.0;
+Vg_step = 0.2;
+Vgs = np.linspace(mu+B/2 - delta_Vg,mu+B/2 + delta_Vg,1+int(abs(2*delta_Vg)/Vg_step));
 
 #time info
 dt = 0.04;
@@ -42,7 +42,7 @@ if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, U, B, theta, phi;
+        params = tl, th, Vb, mu, Vg, U, B, theta;
         siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/zeeman/", verbose = verbose);
 
 else:
@@ -54,7 +54,7 @@ else:
     labs = Vgs # one label for each Vg
     splots = ['Jup','Jdown','occ','Sz']; # which subplots to plot
     title = "Current between impurity and left, right leads"
-    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$");
+    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 3);
 
     
 
