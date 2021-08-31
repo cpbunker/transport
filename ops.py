@@ -363,7 +363,7 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
             for i3 in range(n_imp_sos):
                 for i4 in range(n_imp_sos):
                     h[i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4] = h_imp[i1,i2,i3,i4];
-                    if(verbose > 1): # check 4D tensor by printing nonzero elems
+                    if(verbose > 2): # check 4D tensor by printing nonzero elems
                         if(h_imp[i1,i2,i3,i4] != 0):
                             print("  h_imp[",i1,i2,i3,i4,"] = ",h_imp[i1,i2,i3,i4]," --> h2e[",i_imp+i1,i_imp+i2,i_imp+i3,i_imp+i4,"]");
                         
@@ -398,7 +398,7 @@ def h_bias(V, dot_is, norbs, verbose = 0):
         elif i > dot_is[-1]: # right leads
             hb[i,i] = -V/2;
 
-    if(verbose > 3): print("h_bias:\n", hb)
+    if(verbose > 4): print("h_bias:\n", hb)
     return hb;
 
 
@@ -426,7 +426,7 @@ def h_B(B, theta, phi, site_i, norbs, verbose=0):
         hB[i,i] = B*np.cos(theta)/2;    # z part
         hB[i+1,i+1] = -B*np.cos(theta)/2;
         
-    if (verbose > 3): print("h_B:\n", hB);
+    if (verbose > 4): print("h_B:\n", hB);
     return hB;
 
 
@@ -464,16 +464,16 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
 
     # make, combine all 1e hamiltonians
     hl = h_leads(V_leads, nleads); # leads only
-    hc = h_chem(mu, nleads);   # can addjust lead chemical potential
+    hc = h_chem(mu, nleads);   # can adjust lead chemical potential
     hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
     hd = h_dot_1e(V_gate, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
-    h1e += h_B(B, theta, phi, dot_i, norbs, verbose = verbose); # prep dot state w/ magntic field in direction nhat (theta, phi=0)
-    if(verbose > 3): print("\n- Full one electron hamiltonian = \n",h1e);
+    h1e += h_B(B, theta, phi, dot_i, norbs, verbose = verbose); # prep dot state w/ magnetic field in direction nhat (theta, phi=0)
+    if(verbose > 2): print("\n- Full one electron hamiltonian = \n",h1e);
         
     # 2e hamiltonian only comes from impurity
-    if(verbose > 1):
+    if(verbose > 2):
         print("\n- Nonzero h2e elements = ");
     hd2e = h_dot_2e(U,nsites);
     h2e = stitch_h2e(hd2e, nleads, verbose = verbose);

@@ -193,8 +193,6 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
 
     # top level inputs
     colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan","black","navy","yellow"];
-    if mytitle=="0.0": mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
-    #mytitle = "Noninteracting impurity, $V_g$ sweep at $\mu=10$";
     numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots== 1: axes = [axes];
@@ -202,12 +200,9 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
     for dati in range(len(dats)): # iter over data sets
         observables = np.load(dats[dati]);
         print("Loading data from "+dats[dati]);
-        try:
-            t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-            Jup = (JupL + JupR)/2;
-            Jdown = (JdownL + JdownR)/2;
-        except:
-            t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);
+        t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        Jup = (JupL + JupR)/2;
+        Jdown = (JdownL + JdownR)/2;
         J = Jup + Jdown; 
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
@@ -300,15 +295,6 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axes[axcounter].plot(t, E);
             axes[axcounter].set_ylabel("Energy");
             axcounter += 1
-
-        # plot freq modes of current
-        if 'Freq' in splots:
-            Fnorm, freq = siam_current.Fourier(np.real(J), np.real(1/dt), angular = True);
-            axes[axcounter].plot(freq, Fnorm);
-            axes[axcounter].set_ylabel("Amplitude");
-            axes[axcounter].set_xlabel(r"$\omega$");
-            axes[axcounter].set_xlim(0,3);
-            axcounter += 1;
 
     # format and show
     axes[0].legend(ncol=1);
