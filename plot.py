@@ -204,11 +204,11 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
         print("Loading data from "+dats[dati]);
         try:
             t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-            Jup = JupL + JupR;
-            Jdown = JdownL + JdownR;
+            Jup = (JupL + JupR)/2;
+            Jdown = (JdownL + JdownR)/2;
         except:
             t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);
-        J = (Jup + Jdown)/2; # average
+        J = Jup + Jdown; 
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;

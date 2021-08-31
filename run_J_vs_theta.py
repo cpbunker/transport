@@ -32,7 +32,7 @@ th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl
 mu = 10.0*tl
 Vg = mu;
-U = 100*tl;
+U = 100.0*tl;
 thetas = np.array([float(sys.argv[6])] ); # take theta vals from command line one at time for parallelization
 Bs = [tl*5];
 phi = 0.0;
@@ -42,20 +42,19 @@ if get_data: # must actually compute data
     for i in range(len(Bs)): # iter over B, theta inputs
         B, theta = Bs[i], thetas[i];
         params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/temp/", phys_params=params, verbose = verbose);
+        fname = siam_current.DotData(nleads, nelecs, tf, dt, prefix = "", phys_params=params, verbose = verbose);
 
 else:
     import plot # do here for compatibility
 
     datafs = sys.argv[7:];
     labs = [];
-    splots = ['Jup','Jdown','E','delta_occ','Sz']; # which subplots 
+    splots = ['Jup','Jdown','delta_occ']; # which subplots 
     thetas = np.pi*np.array([0,1,2,3,4,5,6,7,8])/8
-    thetas = np.array([np.pi/2]);
     for i in range(len(thetas)):
         labs.append("$\\theta$ = "+str(thetas[i])[:3] );
     plot.CompObservables(datafs, nleads, Vg, labs, splots = splots, mytitle = sys.argv[6]);
-    plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
+    #plot.CompConductances(datafs, thetas, (2.0, 4.0), Vb);
 
 
     

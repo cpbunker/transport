@@ -103,7 +103,6 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
 
     # remove spin prep terms
     h1e += ops.h_B(-B, theta, phi, imp_i, norbs, verbose = verbose);
-    h1e += ops.h_B(10.0, 0.0, 0.0, imp_i, norbs, verbose = verbose); #Zeeman
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
@@ -113,6 +112,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params=None, prefix = "dat/"
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
+    if verbose > 4: print(h1e);
     init_str, observables = td_fci.TimeProp(h1e, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, verbose = verbose);
     
     # write results to external file
