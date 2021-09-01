@@ -27,7 +27,7 @@ tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 2.0*tl;
-U =  10.0*tl;
+U =  0.0
 B = 5.0*tl;
 theta = 0.0;
 delta_Vg = 2.0;
@@ -43,7 +43,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/zeeman/", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/zeeman/U0/", verbose = verbose);
 
 else:
 

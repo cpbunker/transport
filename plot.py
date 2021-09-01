@@ -215,7 +215,6 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
 
     # top level inputs
     colors = plt.cm.get_cmap('tab20').colors
-    print(colors[0]);
     if (len(colors) < len(datafs) ): # need more colors
         colors = plt.cm.get_cmap('seismic', len(datafs));
         colors = colors(np.linspace(0,1, len(datafs) ) );
@@ -233,7 +232,9 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;
-        labs[dati] = datafs[dati][-7:-4]
+        if True:
+            labs = np.full(len(datafs), 'dummy');
+            labs[dati] = datafs[dati][-9:-4]
 
         # plot current vs time
         if 'J' in splots:
