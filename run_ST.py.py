@@ -1,10 +1,10 @@
 '''
 Christian Bunker
 M^2QM at UF
-August 2021
+September 2021
 
-Runner file for prepping dot spin state with B field, getting current output
-Now assuming polarizer btwn Rlead, dot
+Recreate sequential tunneling (ST) results in Recher's "quantum dot paper as spin filter" paper
+Should see large current when energy of singlet state ~ mu
 '''
 
 import siam_current
@@ -14,7 +14,7 @@ import numpy as np
 import sys
 
 ##################################################################################
-#### 
+#### set up physics of dot
 
 # top level
 verbose = 3;
@@ -27,12 +27,10 @@ tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
 mu = 2.0*tl;
-U =  0.0
-B = 5.0*tl;
+Vgs = [-11.0, -10.0, -9.0,-8.0]
+U =  20.0*tl;
+B = 1.0*tl;
 theta = 0.0;
-delta_Vg = 2.0;
-Vg_step = 0.2;
-Vgs = np.linspace(mu+B/2 - delta_Vg,mu+B/2 + delta_Vg,1+int(abs(2*delta_Vg)/Vg_step));
 
 #time info
 dt = 0.04;
@@ -43,7 +41,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/zeeman/U0/", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/ST/", verbose = verbose);
 
 else:
 
