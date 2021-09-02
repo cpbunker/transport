@@ -185,37 +185,60 @@ def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','o
     return; # end plot observables
 
 
-def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = ['Jtot'] ):
+def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg_title="", leg_ncol = 1 ):
     '''
-    Compare current etc for different init spin states of dot
-    due to different B fields
+    Compare current etc for different physical inputs
+    What input we sweep across is totally arbitrary, use labs and mytitle to specify in plot
+
+    Args:
+    - datafs, list of strs, filenames to load observables from
+    - labs, arr of strs, legend label for each separate data file
+    - splots, list of which observables to plot against time as subplot. Options:
+        total current J,
+        spin pol current Jup and Jdown
+        left and right components of spin pol current JupLR and JdownLR
+        occupancy of leads, dot in data file spec'd by whichi, occ
+        change in above occ, delta_occ
+        spin on dot, Sz
+        change in spin on dot, delta_Sz
+        spin on leads, Sz_leads
+        energy of whole system, E (should stay constant, order(delta E) ~ error)
+    - mytitle, str, title of plot
+    - whichi, int, index of dataf to select for single file plots
+    legend_col, int, how many columns in legend
+
     '''
 
+    # check args
+    assert( len(labs) >= len(datafs));
+    assert(whichi >= 0 and whichi <= len(datafs));
+
     # top level inputs
-    colors = ["tab:blue","tab:orange","tab:green","tab:red","tab:purple","tab:brown","tab:pink","tab:gray","tab:olive","tab:cyan","black","navy","yellow"];
-    if mytitle=="0.0": mytitle = "Initial spin state comparison, $V_{g} =$"+str(Vg)+":\n"+str(nleads[0])+" left lead sites, "+str(nleads[1])+" right lead sites."
-    #mytitle = "Noninteracting impurity, $V_g$ sweep at $\mu=10$";
+    colors = plt.cm.get_cmap('tab20').colors
+    if (len(colors) < len(datafs) ): # need more colors
+        colors = plt.cm.get_cmap('seismic', len(datafs));
+        colors = colors(np.linspace(0,1, len(datafs) ) );
     numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots== 1: axes = [axes];
 
-    for dati in range(len(dats)): # iter over data sets
-        observables = np.load(dats[dati]);
-        print("Loading data from "+dats[dati]);
-        try:
-            t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-            Jup = (JupL + JupR)/2;
-            Jdown = (JdownL + JdownR)/2;
-        except:
-            t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables);
+    for dati in range(len(datafs)): # iter over data sets
+        observables = np.load(datafs[dati]);
+        print("Loading data from "+datafs[dati]);
+        t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+        Jup = (JupL + JupR)/2;
+        Jdown = (JdownL + JdownR)/2;
         J = Jup + Jdown; 
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;
+        if True:
+            labs = np.full(len(datafs), 'dummy');
+            labs[dati] = datafs[dati][-9:-4]
 
         # plot current vs time
         if 'J' in splots:
-            axes[axcounter].plot(t,J,label = labs[dati]);
+            axes[axcounter].plot(t,J,label = labs[dati], color = colors[dati]);
             axes[axcounter].set_ylabel("J");
             axcounter += 1
 
@@ -275,13 +298,13 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
 
         # plot Sz of dot vs time
         if 'Sz' in splots:
-            axes[axcounter].plot(t, SzD);
+            axes[axcounter].plot(t, SzD, color = colors[dati]);
             axes[axcounter].set_ylabel("Dot $S_z$");
             axcounter += 1;
 
         # plot change in Sz of dot vs time
         if 'delta_Sz' in splots:
-            axes[axcounter].plot(t, SzD - SzD[0]);
+            axes[axcounter].plot(t, SzD - SzD[0], color = colors[dati]);
             axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
             axcounter += 1;
 
@@ -301,17 +324,8 @@ def CompObservables(dats, nleads, Vg, labs, mytitle = "",  whichi = 0, splots = 
             axes[axcounter].set_ylabel("Energy");
             axcounter += 1
 
-        # plot freq modes of current
-        if 'Freq' in splots:
-            Fnorm, freq = siam_current.Fourier(np.real(J), np.real(1/dt), angular = True);
-            axes[axcounter].plot(freq, Fnorm);
-            axes[axcounter].set_ylabel("Amplitude");
-            axes[axcounter].set_xlabel(r"$\omega$");
-            axes[axcounter].set_xlim(0,3);
-            axcounter += 1;
-
     # format and show
-    axes[0].legend(ncol=1);
+    axes[0].legend(title = leg_title, ncol=leg_ncol);
     for axi in range(len(axes) ): # customize axes
         if axi == 0: axes[axi].set_title(mytitle);
         if axi == numplots-1: axes[axi].set_xlabel(myxlabel);

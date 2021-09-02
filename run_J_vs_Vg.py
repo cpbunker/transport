@@ -11,54 +11,50 @@ import siam_current
 
 import numpy as np
 
+import sys
+
 ##################################################################################
-#### prepare dot in diff spin states
+#### 
 
 # top level
 verbose = 3;
-nleads = (4,4);
+nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
-get_data = True; # whether to run computations, if not data already exists
+get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
 th = tl/10; # can scale down and same effects are seen. Make sure to do later
 Vb = -1/100*tl;
-mu = 10.0*tl;
-Vgs = [7.5,9.0, 10.0, 11.0, 12.5];
-Vgs = [10.0]
-U =  0.0 #100*tl;
-B = 5*tl;
+mu = 2.0*tl;
+U =  0.0
+B = 5.0*tl;
 theta = 0.0;
-phi = 0.0;
+delta_Vg = 2.0;
+Vg_step = 0.2;
+Vgs = np.linspace(mu+B/2 - delta_Vg,mu+B/2 + delta_Vg,1+int(abs(2*delta_Vg)/Vg_step));
 
 #time info
-dt = 0.004;
-tf = 12.0;
+dt = 0.04;
+tf = 5.0;
 
 if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, U, B, theta, phi;
-        siam_current.DotData(nleads, nelecs, tf, dt, prefix = "dat/param_tuning/U0/", phys_params=params, verbose = verbose);
+        params = tl, th, Vb, mu, Vg, U, B, theta;
+        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/zeeman/U0/", verbose = verbose);
 
 else:
 
     import plot
 
     # plot results
-    datafs = [];
-    labs = [];
-    splots = ['Jup','JupLR','Jdown','JdownLR']; # which subplots to plot
-
-    for i in range(len(Vgs)):
-        Vg = Vgs[i];
-        datafs.append("dat/param_tuning/U0/fci_"+str(nleads[0])+"_1_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(Vg)+".npy");
-        labs.append("Vg = "+str(Vg) );
-
+    datafs = sys.argv[2:]
+    labs = Vgs # one label for each Vg
+    splots = ['Jup','Jdown','occ','Sz']; # which subplots to plot
     title = "Current between impurity and left, right leads"
-    plot.CompObservables(datafs, nleads, Vg, labs, whichi = 0, mytitle = title, splots = splots);
+    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 3);
 
     
 

@@ -52,14 +52,16 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
     # return vals
     timevals = np.zeros(N+1);
     energyvals = np.zeros(N+1);
-    currentvals = np.zeros((2, N+1));
+    currentvals = np.zeros((4, N+1));
     occvals = np.zeros( (3,N+1), dtype = complex );
     Szvals = np.zeros( (3,N+1), dtype = complex );
 
     # create observable MPOs outside loop to save time
     norbs = mps.n_sites
-    current_mpo_up = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs) );
-    current_mpo_down = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs) );
+    current_mpo_upL = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[0] );
+    current_mpo_upR = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[1] );
+    current_mpo_downL = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[0] );
+    current_mpo_downR = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[1] );
     occ_mpo_L = h_obj.build_mpo(ops_dmrg.occ(i_left, norbs) );
     occ_mpo_D = h_obj.build_mpo(ops_dmrg.occ(i_dot, norbs) );
     occ_mpo_R = h_obj.build_mpo(ops_dmrg.occ(i_right, norbs) );
@@ -96,8 +98,10 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
         # compute observables
         timevals[i] = i*dt;
         energyvals[i] = energies[-1];
-        currentvals[0][i] = -np.imag(compute_obs(current_mpo_up, mpst) );
-        currentvals[1][i] = -np.imag(compute_obs(current_mpo_down, mpst) );
+        currentvals[0][i] = -np.imag(compute_obs(current_mpo_upL, mpst) );
+        currentvals[1][i] = -np.imag(compute_obs(current_mpo_upR, mpst) );
+        currentvals[2][i] = -np.imag(compute_obs(current_mpo_downL, mpst) );
+        currentvals[3][i] = -np.imag(compute_obs(current_mpo_downR, mpst) );
         occvals[0][i] = compute_obs(occ_mpo_L, mpst);
         occvals[1][i] = compute_obs(occ_mpo_D, mpst);
         occvals[2][i] = compute_obs(occ_mpo_R, mpst);
@@ -109,7 +113,7 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
         if(verbose>2): print("    time: ", i*dt);
 
     # return time and tuple of observables as functions of time, 1d arrays
-    observables = [timevals, energyvals, thyb*currentvals[0], thyb*currentvals[1], occvals[0], occvals[1], occvals[2], Szvals[0], Szvals[1], Szvals[2]];
+    observables = [timevals, energyvals, thyb*currentvals[0], thyb*currentvals[1], thyb*currentvals[2], thyb*currentvals[3], occvals[0], occvals[1], occvals[2], Szvals[0], Szvals[1], Szvals[2]];
     return initstatestr, np.array(observables);
 
 
