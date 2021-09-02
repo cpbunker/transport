@@ -34,7 +34,7 @@ theta = 0.0;
 
 #time info
 dt = 0.04;
-tf = 1.0;
+tf = 0.08;
 
 # dmrg
 bdims = [300, 400, 500];

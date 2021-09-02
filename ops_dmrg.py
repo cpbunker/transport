@@ -91,18 +91,24 @@ def Jup(site_i, norbs):
     # check inputs
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
-    def J_yield(norbs, adag, a):
+    def JL_yield(norbs, adag, a):
 
         # even spin index is up spins
         upi = site_i[0];
         spin = 0; # ASU formalism
         assert(upi % 2 == 0); # check even
-        yield (-1/2)*adag[upi-2,spin]*a[upi,spin] # dot up spin to left up spin #left moving is negative current
-        yield (1/2)*adag[upi,spin]*a[upi-2,spin]# left up spin to dot up spin # hc of above # right moving is +
-        yield (1/2)*adag[upi+2,spin]*a[upi,spin]  # up spin to right up spin
-        yield (-1/2)*adag[upi,spin]*a[upi+2,spin] # hc
+        yield -adag[upi-2,spin]*a[upi,spin] # dot up spin to left up spin #left moving is negative current
+        yield adag[upi,spin]*a[upi-2,spin]# left up spin to dot up spin # hc of above # right moving is +
 
-    return J_yield;
+    def JR_yield(norbs, adag, a):
+
+        # even spin index is up spins
+        upi = site_i[0];
+        spin = 0; # ASU formalism
+        yield adag[upi+2,spin]*a[upi,spin]  # up spin to right up spin
+        yield -adag[upi,spin]*a[upi+2,spin] # hc
+
+    return JL_yield, JR_yield;
 
 
 def Jdown(site_i, norbs):
@@ -117,7 +123,7 @@ def Jdown(site_i, norbs):
     # check inputs
     assert( len(site_i) == 2); # should be only 1 site ie 2 spatial orbs
 
-    def J_yield(norbs, adag, a):
+    def JL_yield(norbs, adag, a):
 
         # odd spin index is down spins
         dwi = site_i[1];
@@ -125,10 +131,16 @@ def Jdown(site_i, norbs):
         assert(dwi % 2 == 1); # check odd
         yield (-1/2)*adag[dwi-2,spin]*a[dwi,spin] # dot dw spin to left dw spin #left moving is negative current
         yield (1/2)*adag[dwi,spin]*a[dwi-2,spin]  # left dw spin to dot dw spin # hc of above # right moving is +
+
+    def JR_yield(norbs, adag, a):
+
+        # odd spin index is down spins
+        dwi = site_i[1];
+        spin = 0; # ASU formalism
         yield (1/2)*adag[dwi+2,spin]*a[dwi,spin]  # dot dw spin to right dw spin
         yield (-1/2)*adag[dwi,spin]*a[dwi+2,spin]
 
-    return J_yield;
+    return JL_yield, JR_yield;
 
 
 def h_B(B, theta, site_i, norbs, verbose=0):
