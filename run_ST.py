@@ -27,8 +27,8 @@ tl = 1.0;
 th = 0.1; # can scale down and same effects are seen. Make sure to do later
 Vb = 10.0;
 mu = 0.0;
-Vgs = [-9.0,-8.0,-7.0]
-U =  16.0;
+Vgs = [-9.0,-10.0];
+U =  20.0;
 B = 0.0*tl;
 theta = 0.0;
 

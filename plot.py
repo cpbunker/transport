@@ -238,7 +238,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
 
         # plot current vs time
         if 'J' in splots:
-            axes[axcounter].plot(t,J,label = labs[dati]);
+            axes[axcounter].plot(t,J,label = labs[dati], color = colors[dati]);
             axes[axcounter].set_ylabel("J");
             axcounter += 1
 
