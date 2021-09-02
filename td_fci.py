@@ -249,45 +249,6 @@ def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
 ################################################################
 #### kernel
 
-def kernel_bleh(mode, eris, ci, tf, dt, RK=4, i_dot = None, t_dot = None, spinblind = False, verbose = 0):
-    '''
-    Wrapper for the different kernel implementations
-    Lots of assertions to prevent confusion
-    
-    Kernel implementations:
-    - std, taken from ruojing, outputs density matrices
-    - plot, outputs values of obervables vs time for plotting
-    
-    All kernel funcs drive time propagation
-    Args:
-    - eris is an instance of ERIs (see below)
-    - ci is an instance of CIObject (see below)
-    - tf, dt, floats are final time and time step
-    - RK is order of runge kutta, default 4th
-    - dot_i is site (MO) index of the dot, not needed if not doing plot, hence defaults to None
-    - t_dot is hopping strength between dot, leads, likewise defaults to None
-    - verbose prints helpful debugging stuff
-
-    Returns whatever kernel_std or kernel_plot returns
-    '''
-
-    
-    # select specific kernel implementation from mode input
-    modes = ["std","plot"];
-    assert(mode in modes); # make sure mode input is supported
-    
-    if(mode == "std"):
-    
-        return kernel_std(eris,ci,tf,dt,RK);
-        
-    if(mode == "plot"):
-    
-        # check inputs
-        assert(i_dot != None);
-        assert(t_dot != None);
-    
-        return kernel_plot(eris, ci, tf, dt, i_dot, t_dot, RK, spinblind, verbose);
-
 def kernel(eris, ci, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
     '''
     Kernel for getting observables at each time step, for plotting
