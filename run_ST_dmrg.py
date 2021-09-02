@@ -18,7 +18,7 @@ import sys
 
 # top level
 verbose = 3;
-nleads = (4,4);
+nleads = (6,6);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
@@ -34,11 +34,11 @@ theta = 0.0;
 
 #time info
 dt = 0.04;
-tf = 0.08;
+tf = 1.0;
 
 # dmrg
-bdims = [300, 400, 500];
-noises = [1e-3, 1e-4, 0];
+bdims = [700, 800, 900, 1000];
+noises = [1e-3, 1e-4, 1e-5,1e-6];
 
 if get_data: # must actually compute data
 
@@ -54,7 +54,7 @@ else:
     # plot results
     datafs = sys.argv[2:]
     labs = Vgs # one label for each Vg
-    splots = ['Jup','Jdown','occ','delta_occ','Sz','Szleads']; # which subplots to plot
+    splots = ['Jup','Jdown','delta_occ','Sz','Szleads','E']; # which subplots to plot
     title = "Current between impurity and left, right leads"
     plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 1, whichi = 0);
 
