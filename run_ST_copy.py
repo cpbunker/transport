@@ -18,22 +18,22 @@ import sys
 
 # top level
 verbose = 3;
-nleads = (4,4);
+nleads = (2,2);
 nelecs = (sum(nleads)+1,0); # half filling
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
-th = 0.1; # can scale down and same effects are seen. Make sure to do later
-Vb = 10.0;
+th = 0.1;
+Vb = 20.0;
 mu = 1.0;
-Vgs = [-10.0];
-U =  20.0;
+Vgs = [-40.0];
+U =  80.0;
 B = 0.0*tl;
 theta = 0.0;
 
 #time info
-dt = 0.04;
+dt = 0.004;
 tf = 1.0;
 
 if get_data: # must actually compute data
@@ -41,7 +41,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "dat/ST/", verbose = verbose);
 
 else:
 

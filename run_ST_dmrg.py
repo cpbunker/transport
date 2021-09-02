@@ -36,12 +36,16 @@ theta = 0.0;
 dt = 0.04;
 tf = 1.0;
 
+# dmrg
+bdims = [300, 400, 500];
+noises = [1e-3, 1e-4, 0];
+
 if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "", verbose = verbose);
+        siam_current.DotDataDmrg(nleads, nelecs, tf, dt, params, bdims, noises, prefix = "", verbose = verbose);
 
 else:
 

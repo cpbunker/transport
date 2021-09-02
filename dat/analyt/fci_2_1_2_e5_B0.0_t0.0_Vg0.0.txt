@@ -1,4 +1,4 @@
-# Thu Sep  2 07:30:14 2021
+# Wed Sep  1 20:31:55 2021
 # ASU formalism, t_hyb noneq. term
 # Equilibrium
 # Inputs:
@@ -8,9 +8,9 @@
 # - V_leads = 1.0
 # - V_imp_leads = 0.0
 # - V_bias = 0.0
-# - mu = 1.0
-# - V_gate = -10.0
-# - Hubbard U = 20.0
+# - mu = 0.0
+# - V_gate = 0.0
+# - Hubbard U = 0.0
 # - B = 0.0
 # - theta = 0.0
 # Nonequlibrium
@@ -19,11 +19,11 @@
 # - Num. impurity sites = 1
 # - nelecs = (5, 0)
 # - V_leads = 1.0
-# - V_imp_leads = 0.1
-# - V_bias = 10.0
-# - mu = 1.0
-# - V_gate = -10.0
-# - Hubbard U = 20.0
+# - V_imp_leads = 0.001
+# - V_bias = -0.1
+# - mu = 0.0
+# - V_gate = 0.0
+# - Hubbard U = 0.0
 # - B = 0.0
 # - theta = 0.0
 # Initial state:
