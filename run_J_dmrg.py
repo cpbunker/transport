@@ -54,7 +54,7 @@ else:
     # plot results
     datafs = sys.argv[2:]
     labs = Vgs # one label for each Vg
-    splots = ['Jup','Jdown','occ','Sz']; # which subplots to plot
+    splots = ['Jup','Jdown','occ','delta_occ','Szleads','Sz']; # which subplots to plot
     title = "Current between impurity and left, right leads"
     plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 3);
 
