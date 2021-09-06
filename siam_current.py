@@ -32,10 +32,10 @@ import numpy as np
 #################################################
 #### get current data
 
-def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", namevar="Vg", verbose = 0):
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/", namevar="Vg", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
-    and td-FCI for nonequil dynamics. Impurity is a quantum dot w/ gate voltage and hubbard U
+    and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
     - construct the eq hamiltonian, 1e and 2e parts, as np arrays
     - encode hamiltonians in an scf.UHF inst
     - do FCI on scf.UHF to get exact gd state
@@ -45,6 +45,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
     Args:
     nleads, tuple of ints of left lead sites, right lead sites
     nelecs, tuple of num up e's, 0 due to ASU formalism
+    ndots, int, number of dots in impurity
     timestop, float, how long to run for
     deltat, float, time step increment
     physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
@@ -61,23 +62,23 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
     import td_fci
 
     # check inputs
-    assert( isinstance(n_leads, tuple) );
+    assert( isinstance(nleads, tuple) );
     assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
 
     # set up the hamiltonian
-    n_imp_sites = 1 # dot
-    imp_i = [n_leads[0]*2, n_leads[0]*2 + 2*n_imp_sites - 1 ]; # imp sites, inclusive
-    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites, inclusive
+    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
     # nelecs left as tunable
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
 
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
-    eq_params = V_leads, 0.0, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
-    h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, eq_params, verbose = verbose);
+    eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
+    h1e, g2e, input_str = ops.dot_hams(nleads, ndots, nelecs, eq_params, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
@@ -88,18 +89,18 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    neq_params = V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, 0.0; # thyb, Vbias turned on, mag field only gives zeeman split
-    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(n_leads, n_imp_sites, nelecs, neq_params, verbose = verbose);
+    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no zeeman splitting
+    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, ndots, nelecs, neq_params, verbose = verbose);
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    init_str, observables = td_fci.TimeProp(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, V_imp_leads, verbose = verbose);
+    init_str, observables = td_fci.TimeProp(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, t_hyb, verbose = verbose);
     
     # write results to external file
     if namevar == "Vg":
-        fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     elif namevar == "U":
-        fname = prefix+"fci_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
     else: assert(False);
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
@@ -114,7 +115,7 @@ def DotData(n_leads, nelecs, timestop, deltat, phys_params, prefix = "dat/", nam
     return fname; # end dot data
 
 
-def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noises, prefix = "dat/", verbose = 0):
+def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, prefix = "dat/", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
     and td-DMRG for nonequilibirum dynamics. Impurity is a quantum dot w/ gate voltage, hubbard U
@@ -130,6 +131,7 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noise
     Args:
     nleads, tuple of ints of left lead sites, right lead sites
     nelecs, tuple of num up e's, 0 due to ASU formalism
+    ndots, int, number of dots in impurity
     timestop, float, how long to run for
     deltat, float, time step increment
     bond_dims, list of increasing bond dim over dmrg sweeps, optional
@@ -147,8 +149,9 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noise
     import td_dmrg
 
     # check inputs
-    assert( isinstance(n_leads, tuple) );
+    assert( isinstance(nleads, tuple) );
     assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
     assert( isinstance(timestop, float) );
     assert( isinstance(deltat, float) );
     assert( isinstance(phys_params, tuple) or phys_params == None);
@@ -156,17 +159,16 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noise
     assert( noises[0] >= noises[-1] ); # checks noises has decreasing behavior and is list
 
     # set up the hamiltonian
-    n_imp_sites = 1 # dot
-    imp_i = [n_leads[0]*2, n_leads[0]*2 + 2*n_imp_sites - 1 ]; # imp sites, inclusive
-    norbs = 2*(n_leads[0]+n_leads[1]+n_imp_sites); # num spin orbs
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites, inclusive
+    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
     # nelecs left as tunable
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = phys_params;
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
 
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    ham_params = V_leads, 0.0, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
-    h1e, g2e, input_str = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params, verbose = verbose);
+    ham_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
+    h1e, g2e, input_str = ops.dot_hams(nleads, ndots, nelecs, ham_params, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
@@ -197,8 +199,8 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noise
 
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    ham_params_neq = V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, 0.0; # thyb and Vbias on, zeeman splitting
-    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(n_leads, n_imp_sites, nelecs, ham_params_neq, verbose = verbose);
+    ham_params_neq = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb and Vbias on, no zeeman splitting
+    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(nleads, ndots, nelecs, ham_params_neq, verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
@@ -206,10 +208,10 @@ def DotDataDmrg(n_leads, nelecs, timestop, deltat, phys_params, bond_dims, noise
 
     # time propagate the noneq state
     # td dmrg uses highest bond dim
-    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, V_imp_leads, [bond_dims[-1]], verbose = verbose);
+    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, t_hyb, [bond_dims[-1]], verbose = verbose);
 
     # write results to external file
-    fname = prefix+"dmrg_"+str(n_leads[0])+"_"+str(n_imp_sites)+"_"+str(n_leads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    fname = prefix+"dmrg_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
     hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
     hstring += "\nEquilibrium"+input_str; # write input vals to txt

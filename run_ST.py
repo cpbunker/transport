@@ -4,7 +4,7 @@ M^2QM at UF
 September 2021
 
 Recreate sequential tunneling (ST) results in Recher's "quantum dot paper as spin filter" paper
-Should see large current when energy of singlet state ~ mu
+Should see large current when energy of singlet state = 2Vg+U \approx mu
 '''
 
 import siam_current
@@ -20,11 +20,13 @@ import sys
 verbose = 3;
 nleads = (4,4);
 nelecs = (sum(nleads)+1,0); # half filling
+ndots = 1;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
-th = 0.1; 
+th = 0.1;
+td = 0.0;
 Vb = 10.0;
 mu = 1.0;
 Vgs = [-10.0];
@@ -40,8 +42,8 @@ if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, tf, dt, params, prefix = "", verbose = verbose);
+        params = tl, th, td, Vb, mu, Vg, U, B, theta;
+        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, prefix = "", verbose = verbose);
 
 else:
 

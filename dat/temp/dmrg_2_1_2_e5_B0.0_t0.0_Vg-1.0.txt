@@ -1,0 +1,40 @@
+# Mon Sep  6 13:23:08 2021
+# ASU formalism, t_hyb noneq. term, td-DMRG,
+# bdims = [300, 400, 450, 500, 500, 500, 500, 500, 500, 500]
+#  noises = [0.001, 0.0001, 1e-05, 0, 0, 0, 0, 0, 0, 0]
+# Equilibrium
+# Inputs:
+# - Num. leads = (2, 2)
+# - Num. impurity sites = 1
+# - nelecs = (5, 0)
+# - t_leads = 1.0
+# - t_hyb = 0.0
+# - t_dots = 0.0
+# - V_bias = 0.0
+# - mu = 0.1
+# - V_gate = -1.0
+# - Hubbard U = 2.0
+# - B = 0.0
+# - theta = 0.0
+# Nonequlibrium
+# Inputs:
+# - Num. leads = (2, 2)
+# - Num. impurity sites = 1
+# - nelecs = (5, 0)
+# - t_leads = 1.0
+# - t_hyb = 0.1
+# - t_dots = 0.0
+# - V_bias = 0.01
+# - mu = 0.1
+# - V_gate = -1.0
+# - Hubbard U = 2.0
+# - B = 0.0
+# - theta = 0.0
+# Initial state:
+#     occ = [1. 0. 1. 0. 1. 0. 1. 0. 1. 0.]
+#     Sz = [ 7.21644966e-16  0.00000000e+00 -7.77156117e-16  0.00000000e+00
+#  -3.78154143e-01  0.00000000e+00 -1.22124533e-15  0.00000000e+00
+#   1.17961196e-15  0.00000000e+00]
+1.000000000000000000e+00
+2.000000000000000000e+00
+3.000000000000000000e+00

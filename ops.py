@@ -90,28 +90,28 @@ def h_imp_leads(V,N):
     '''
     
     h = np.zeros((2+2*N+2,2+2*N+2)); # 2N spin orbs on imp, 1st, last 2 are neighboring lead sites
-    Liup,Lidown, Riup, Ridown = 0,1,2+2*N, 2+2*N + 1;
-    
-    # iter over dot sites
-    for i in range(2,2+2*N,2): # i is spin up orb on imp, i+1 is spin down
-    
-        h[Liup,i] += -V;
-        h[i,Liup] += -V; # h.c.
-        h[Lidown,i+1] += -V;
-        h[i+1,Lidown] += -V;
-        h[Riup, i] += -V;
-        h[i, Riup] += -V;
-        h[Ridown,i+1] += -V;
-        h[i+1,Ridown] += -V;
+
+    # couple to left lead
+    h[0, 2] = -V; # up e's
+    h[2, 0] = -V; 
+    h[1, 3] = -V; # down e's
+    h[3, 1] = -V;
+
+    # couple to right lead
+    h[-2, -4] = -V; # up e's
+    h[-4, -2] = -V;
+    h[-1, -3] = -V; # down e's
+    h[-3, -1] = -V;
         
     return h; # end h imp leads
     
     
-def h_dot_1e(V,N):
+def h_dot_1e(V,t,N):
     '''
     create 1e part of dot hamiltonian
     dot is simple model of impurity
     V is gate voltage (ie onsite energy of dot sites)
+    t is hopping between the dots (N/A unless N > 1)
     N is number of dot sites
     '''
 
@@ -120,7 +120,10 @@ def h_dot_1e(V,N):
     
     # gate voltage for each dot site
     for i in range (2*N):
-        h[i,i] = V;
+        h[i,i] = V; # gate voltage
+        if i > 2: # more than one dot, so couple this dot to previous one
+            h[i, i-2] = t;
+            h[i-2, i] = t;
         
     return h; # end h dot 1e
 
@@ -436,16 +439,17 @@ def h_B(B, theta, phi, site_i, norbs, verbose=0):
 
 def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     '''
-    Converts physical params into 1e and 2e parts of siam model hamiltonian, with
-    Impurity hamiltonian:
+    Converts physical params into 1e and 2e parts of siam model hamiltonian
+    SIAM impurity hamiltonian:
     H_imp = H_dot = -V_g sum_i n_i + U n_{i uparrow} n_{i downarrow}
-    where i are impurity sites
+        where i are impurity sites
+        for nsites > 1 have linear chain of such dots forming impurity
     
     Args:
     - nleads, tuple of ints of lead sites on left, right
     - nsites, int, num impurity sites
     - nelecs, tuple of number es, 0 due to All spin up formalism
-    - physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta. if None gives defaults
     
     Returns:
     h1e, 2d np array, 1e part of siam ham
@@ -456,19 +460,18 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     # unpack inputs
     norbs = 2*(sum(nleads)+nsites);
     dot_i = [2*nleads[0], 2*nleads[0]+1];
-    print(physical_params)
-    V_leads, V_imp_leads, V_bias, mu, V_gate, U, B, theta = physical_params;
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = physical_params;
     
-    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- V_leads = "+str(V_leads)+"\n- V_imp_leads = "+str(V_imp_leads)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
+    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
     if verbose: print(input_str);
 
     #### make full system ham from inputs
 
     # make, combine all 1e hamiltonians
-    hl = h_leads(V_leads, nleads); # leads only
+    hl = h_leads(t_leads, nleads); # leads only
     hc = h_chem(mu, nleads);   # can adjust lead chemical potential
-    hdl = h_imp_leads(V_imp_leads, nsites); # leads talk to dot
-    hd = h_dot_1e(V_gate, nsites); # dot
+    hdl = h_imp_leads(t_hyb, nsites); # leads talk to dot
+    hd = h_dot_1e(V_gate, t_dots, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
     h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # prep dot state w/ magnetic field in direction nhat (theta, phi=0)
@@ -481,6 +484,9 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
 
     return h1e, h2e, input_str; #end dot hams
+
+
+
     
 #####################################
 #### exec code

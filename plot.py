@@ -232,7 +232,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         dt = np.real(t[1]);
         myxlabel = "time (dt = "+str(dt)+")"
         axcounter = 0;
-        if True:
+        if False:
             labs = np.full(len(datafs), 'dummy');
             labs[dati] = datafs[dati][-9:-4]
 

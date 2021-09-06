@@ -20,11 +20,13 @@ import sys
 verbose = 3;
 nleads = (4,4);
 nelecs = (sum(nleads)+1,0); # half filling
+ndots = 1;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 # phys params, must be floats
 tl = 1.0;
-th = 0.1; # can scale down and same effects are seen. Make sure to do later
+th = 0.1;
+td = 0.0;
 Vb = 10.0;
 mu = 1.0;
 Vgs = [-10.0];
@@ -53,8 +55,8 @@ if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, Vb, mu, Vg, U, B, theta;
-        siam_current.DotDataDmrg(nleads, nelecs, tf, dt, params, bdims, noises, prefix = "", verbose = verbose);
+        params = tl, th, td, Vb, mu, Vg, U, B, theta;
+        siam_current.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, prefix = "", verbose = verbose);
 
 else:
 
