@@ -30,8 +30,8 @@ get_data = int(sys.argv[1]); # whether to run computations, if not data already 
 
 # phys params, must be floats
 tl = 1.0;
-th = 2.0; # need strong coupling for transport
-td = 3.0; # "
+th = 1.0; # need strong coupling for transport
+td = 1.0; # "
 Vb = 10.0;
 mu = 1.0;
 Vgs = [-10.0];
@@ -48,7 +48,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, td, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, prefix = "dat/cicc/", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = "a00", prefix = "dat/cicc/", verbose = verbose);
 
 else:
 
@@ -59,7 +59,7 @@ else:
     labs = Vgs # one label for each Vg
     splots = ['occ','delta_occ','Sz','Szleads','E']; # which subplots to plot
     title = "Current between impurity and left, right leads"
-    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 1, whichi = 0);
+    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 2, whichi = 0);
 
     
 

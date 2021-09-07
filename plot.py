@@ -296,7 +296,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
                     axes[axcounter].plot(t, occLD, label = "LD");
                     axes[axcounter].plot(t, occRD, label = "RD");
                     axes[axcounter].plot(t, occRL, label = "RL");
-                axes[axcounter].set_ylabel("Occupancy")
+                axes[axcounter].set_ylabel("Occ.")
                 axes[axcounter].legend();
             axcounter += 1;
 
@@ -312,8 +312,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
                     axes[axcounter].plot(t, occLD - occLD[0], label = "LD");
                     axes[axcounter].plot(t, occRD - occRD[0], label = "RD");
                     axes[axcounter].plot(t, occRL - occRL[0], label = "RL");
-                axes[axcounter].set_ylabel(r"$\Delta$ Occupancy");
-                axes[axcounter].legend();
+                axes[axcounter].set_ylabel(r"$\Delta$ Occ.");
             axcounter += 1;
 
         # plot Sz of dot vs time

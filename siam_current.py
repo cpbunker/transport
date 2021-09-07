@@ -32,7 +32,7 @@ import numpy as np
 #################################################
 #### get current data
 
-def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/", namevar="Vg", verbose = 0):
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = "", prefix = "dat/", namevar="Vg", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
     and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
@@ -78,7 +78,7 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/
     # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
     if(verbose): print("1. Construct hamiltonian")
     eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
-    h1e, g2e, input_str = ops.dot_hams(nleads, ndots, nelecs, eq_params, verbose = verbose);
+    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
@@ -89,8 +89,8 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
-    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no zeeman splitting
-    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, ndots, nelecs, neq_params, verbose = verbose);
+    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
+    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
@@ -101,7 +101,7 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     elif namevar == "U":
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
-    else: assert(False);
+    else: assert(False); # invalid option
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"
     hstring += "\nEquilibrium"+input_str; # write input vals to txt

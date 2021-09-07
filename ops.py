@@ -288,7 +288,7 @@ def h_dot_2e(U,N):
     h = np.zeros((2*N,2*N,2*N,2*N));
     
     # hubbard repulsion when there are 2 e's on same MO
-    for i in range(0,N,2): # i is spin up orb, i+1 is spin down
+    for i in range(0,2*N,2): # i is spin up orb, i+1 is spin down
         h[i,i,i+1,i+1] = U;
         h[i+1,i+1,i,i] = U; # switch electron labels
         
@@ -439,7 +439,7 @@ def h_B(B, theta, phi, site_i, norbs, verbose=0):
 #####################################
 #### full system hamiltonians
 
-def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
+def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian
     SIAM impurity hamiltonian:
@@ -449,8 +449,8 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     
     Args:
     - nleads, tuple of ints of lead sites on left, right
-    - nsites, int, num impurity sites
     - nelecs, tuple of number es, 0 due to All spin up formalism
+    - ndots, int, num impurity sites
     - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta. if None gives defaults
     
     Returns:
@@ -459,12 +459,17 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     input_str, string with info on all the phy params
     '''
 
+    assert(isinstance(nleads, tuple) );
+    assert(isinstance(nelecs, tuple) );
+    assert(isinstance(ndots, int) );
+    assert( isinstance(physical_params, tuple) );
+
     # unpack inputs
-    norbs = 2*(sum(nleads)+nsites);
-    dot_i = [nleads[0]*2, nleads[0]*2 + 2*nsites - 1 ]; # imp sites start and end, inclusive
+    norbs = 2*(sum(nleads)+ndots);
+    dot_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
     t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = physical_params;
     
-    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
+    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(ndots)+"\n- nelecs = "+str(nelecs)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
     if verbose: print(input_str);
 
     #### make full system ham from inputs
@@ -472,17 +477,34 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     # make, combine all 1e hamiltonians
     hl = h_leads(t_leads, nleads); # leads only
     hc = h_chem(mu, nleads);   # can adjust lead chemical potential
-    hdl = h_imp_leads(t_hyb, nsites); # leads talk to dot
-    hd = h_dot_1e(V_gate, t_dots, nsites); # dot
+    hdl = h_imp_leads(t_hyb, ndots); # leads talk to dot
+    hd = h_dot_1e(V_gate, t_dots, ndots); # dot
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
-    h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # prep dot states w/ magnetic field in direction nhat=(theta, phi=0)
-    if(verbose > 2): print("\n- Full one electron hamiltonian = \n",h1e);
+
+    # prepare spin states
+    if( spinstate == ""): # default, single dot case
+        h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
+    elif( spinstate == "abb"): # itinerant up e, spin down e's on dots
+        assert(ndots == 2 and theta == 0.0);
+        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+        h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
+    elif( spinstate == "a00"): # itinerant up e, singlet on dots
+        assert(ndots == 2 and theta == 0.0);
+        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+    else: assert(False); # invalid option
+        
+    # 1e ham finished now
+    if(verbose > 2):
+        np.set_printoptions(precision = 4, suppress = True);
+        print("\n- Full one electron hamiltonian = \n",h1e);
+        np.set_printoptions();
         
     # 2e hamiltonian only comes from impurity
     if(verbose > 2):
+        np.set_printoptions(precision = 4, suppress = True);
         print("\n- Nonzero h2e elements = ");
-    hd2e = h_dot_2e(U,nsites);
+    hd2e = h_dot_2e(U,ndots);
     h2e = stitch_h2e(hd2e, nleads, verbose = verbose);
 
     return h1e, h2e, input_str; #end dot hams
