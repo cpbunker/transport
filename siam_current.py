@@ -70,7 +70,7 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/
     assert( isinstance(phys_params, tuple) or phys_params == None);
 
     # set up the hamiltonian
-    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites, inclusive
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
     norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
     # nelecs left as tunable
     t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
@@ -94,7 +94,7 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, prefix = "dat/
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    init_str, observables = td_fci.TimeProp(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, t_hyb, verbose = verbose);
+    init_str, observables = td_fci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, t_hyb, verbose = verbose);
     
     # write results to external file
     if namevar == "Vg":

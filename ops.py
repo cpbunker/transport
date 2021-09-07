@@ -121,9 +121,9 @@ def h_dot_1e(V,t,N):
     # gate voltage for each dot site
     for i in range (2*N):
         h[i,i] = V; # gate voltage
-        if i > 2: # more than one dot, so couple this dot to previous one
-            h[i, i-2] = t;
-            h[i-2, i] = t;
+        if i >= 2: # more than one dot, so couple this dot to previous one
+            h[i, i-2] = -t;
+            h[i-2, i] = -t;
         
     return h; # end h dot 1e
 
@@ -237,12 +237,13 @@ def Jup(site_i, norbs):
     JR = np.zeros((norbs, norbs)); # rightwards
 
     # even spin index is up spins
-    upi = site_i[0];
-    assert(upi % 2 == 0); # check even
-    JL[upi-2,upi] = -1;  # dot up spin to left up spin #left moving is negative current
-    JL[upi,upi-2] =  1; # left up spin to dot up spin # hc of above # right moving is +
-    JR[upi+2,upi] = 1;  # up spin to right up spin
-    JR[upi,upi+2] =  -1; # hc
+    upiL = site_i[0];
+    upiR = site_i[-1] - 1;
+    assert(upiL % 2 == 0 and upiR % 2 == 0); # check even
+    JL[upiL-2,upiL] = -1;  # dot up spin to left up spin #left moving is negative current
+    JL[upiL,upiL-2] =  1; # left up spin to dot up spin # hc of above # right moving is +
+    JR[upiR+2,upiR] = 1;  # up spin to right up spin
+    JR[upiR,upiR+2] =  -1; # hc
 
     return JL, JR;
 
@@ -264,12 +265,13 @@ def Jdown(site_i, norbs):
     JR = np.zeros((norbs, norbs)); # rightwards
 
     # odd spin index is down spins
-    dwi = site_i[1];
-    assert(dwi % 2 == 1); # check odd
-    JL[dwi-2,dwi] = -1;  # dot dw spin to left dw spin #left moving is negative current
-    JL[dwi,dwi-2] =  1; # left dw spin to dot dw spin # hc of above # right moving is +
-    JR[dwi+2,dwi] = 1;  # dot dw spin to right dw spin
-    JR[dwi,dwi+2] =  -1; # hc
+    dwiL = site_i[0] + 1;
+    dwiR = site_i[-1];
+    assert(dwiL % 2 == 1 and dwiR % 2 == 1); # check odd
+    JL[dwiL-2,dwiL] = -1;  # dot dw spin to left dw spin #left moving is negative current
+    JL[dwiL,dwiL-2] =  1; # left dw spin to dot dw spin # hc of above # right moving is +
+    JR[dwiR+2,dwiR] = 1;  # dot dw spin to right dw spin
+    JR[dwiR,dwiR+2] =  -1; # hc
 
     return JL, JR;
 
@@ -384,7 +386,7 @@ def h_bias(V, dot_is, norbs, verbose = 0):
 
     Args:
     - V is bias voltage
-    - dot_is is list of spin orb indices which are part of dot
+    - dot_is is list of first and last spin orb indices which are part of dot
     - norbs, int, num spin orbs in whole system
 
     Returns 2d np array repping bias voltage term of h1e
@@ -415,7 +417,7 @@ def h_B(B, theta, phi, site_i, norbs, verbose=0):
     - B, float, mag field strength
     - theta, float, mag field direction
     - norbs, int, num spin orbs in whole system
-    - site_i, list, spin indices (even up, odd down) of site that feels mag field
+    - site_i, list, first and last spin indices that feel mag field
 
     Returns 2d np array repping magnetic field on given sites
     '''
@@ -459,7 +461,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
 
     # unpack inputs
     norbs = 2*(sum(nleads)+nsites);
-    dot_i = [2*nleads[0], 2*nleads[0]+1];
+    dot_i = [nleads[0]*2, nleads[0]*2 + 2*nsites - 1 ]; # imp sites start and end, inclusive
     t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = physical_params;
     
     input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(nsites)+"\n- nelecs = "+str(nelecs)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
@@ -474,7 +476,7 @@ def dot_hams(nleads, nsites, nelecs, physical_params, verbose = 0):
     hd = h_dot_1e(V_gate, t_dots, nsites); # dot
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
-    h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # prep dot state w/ magnetic field in direction nhat (theta, phi=0)
+    h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # prep dot states w/ magnetic field in direction nhat=(theta, phi=0)
     if(verbose > 2): print("\n- Full one electron hamiltonian = \n",h1e);
         
     # 2e hamiltonian only comes from impurity

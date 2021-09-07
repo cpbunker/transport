@@ -80,7 +80,7 @@ def compute_energy(d1, d2, eris, time=None):
     Args:
     d1, d2, 1 and 2 particle density matrices
     eris, object which contains hamiltonians
-    '''
+    ''' 
 
     h1e_a, h1e_b = eris.h1e
     g2e_aa, g2e_ab, g2e_bb = eris.g2e
@@ -249,48 +249,72 @@ def compute_current_ASU(site_i,d1,d2,mocoeffs,norbs):
 ################################################################
 #### kernel
 
-def kernel(eris, ci, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
+def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
     '''
     Kernel for getting observables at each time step, for plotting
-    Outputs 1d arrays of time, energy, dot occupancy, current
-    Access thru calling kernel (see above) with mode=plot
+    Outputs 1d arrays of time, energy, current, occupancy, Sz
 
     Returns
     timevals, 1d arr of time steps
     observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
     '''
 
-    N = int(tf/dt+1e-6)
-    all_i = np.arange(0,ci.norb, 1, dtype = int);
-    left_i = all_i[:dot_i[0] ];
-    right_i = all_i[dot_i[-1]+1:];
-    norbs = ci.norb;
+    # assertion statements to check inputs
+    assert( np.shape(h1e)[0] == np.shape(g2e)[0]);
+    assert( type(mol) == type(gto.M() ) );
+    assert( type(scf_inst) == type(scf.UHF(mol) ) );
+    assert( isinstance(dot_i, list));
 
+    # unpack
+    norbs = np.shape(h1e)[0];
+    nelecs = (mol.nelectron,0);
+    ndots = int( (dot_i[-1] - dot_i[0] + 1)/2 );
+    print(ndots);
+    N = int(tf/dt+1e-6); # number of time steps
+    if(verbose > 1):
+        print("\n- Time Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
+
+    # time propagation requires
+    # - ERIS object to encode hamiltonians
+    # - CI object to encode ci states
+    eris = ERIs(h1e, g2e, scf_inst.mo_coeff);
+    ci = CIObject(fcivec, norbs, nelecs);
+
+    # indices for different subsystems
+    all_i = np.arange(0,norbs, 1, dtype = int); # all indices
+    left_i = all_i[:dot_i[0] ]; # LL indices
+    right_i = all_i[dot_i[-1]+1:]; # RL indices
+    subsystems = [left_i];
+    for idot in range(ndots): # each dot is own subsystem
+        subsystems.append(all_i[dot_i[0]+2*idot:dot_i[0]+2*idot+2] );
+    subsystems.append(right_i); # now have a list of indices of all subsystems
 
     # operators for observables
     JupL, JupR = ops.Jup(dot_i, norbs); # up e current
     JdownL, JdownR = ops.Jdown(dot_i, norbs); # down e current
-    occL, occD, occR = ops.occ(left_i, norbs), ops.occ(dot_i, norbs), ops.occ(right_i, norbs);
-    SzL, SzD, SzR = ops.Sz(left_i, norbs), ops.Sz(dot_i, norbs), ops.Sz(right_i, norbs);
+    occ_ops = [];
+    Sz_ops = [];
+    for subs in subsystems: # subsystem specific observables
+        occ_ops.append(ops.occ(subs, norbs) );
+        Sz_ops.append(ops.Sz(subs, norbs) );
 
     # eris for observables
     JupL_eris = ERIs(JupL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
     JupR_eris = ERIs(JupR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
     JdownL_eris = ERIs(JdownL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
     JdownR_eris = ERIs(JdownR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    occL_eris = ERIs(occL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    occD_eris = ERIs(occD, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    occR_eris = ERIs(occR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    SzL_eris = ERIs(SzL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    SzD_eris = ERIs(SzD, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    SzR_eris = ERIs(SzR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
+    occ_eris = [];
+    Sz_eris = [];
+    for subi in range(len(subsystems)): # eris for subsystem specific observables
+        occ_eris.append(ERIs(occ_ops[subi],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
+        Sz_eris.append(ERIs(Sz_ops[subi],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
     
     #  observable return vals
     t_vals = np.zeros(N+1);
     energy_vals = np.zeros(N+1);
     current_vals = np.zeros((4,N+1)); # up and down e current separate
-    occ_vals = np.zeros( (3,N+1), dtype = complex ); # occ list has [left lead occ, dot occ, right lead occ]
-    Sz_vals = np.zeros( (3,N+1), dtype = complex ); # see below
+    occ_vals = np.zeros( (len(occ_eris),N+1), dtype = complex ); # occ for each subsystem
+    Sz_vals = np.zeros( (len(occ_eris),N+1), dtype = complex ); # Sz for each subsystem
     
     # time step loop
     for i in range(N+1):
@@ -342,20 +366,17 @@ def kernel(eris, ci, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
         current_vals[3][i] = t_hyb*JdownR_val; # add in hopping strength
         
         # occupancy of left lead, dot, right lead
-        occ_vals[0][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occL_eris);
-        occ_vals[1][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occD_eris);
-        occ_vals[2][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occR_eris);
-
-        # total z spin of left lead, dot, right lead
-        Sz_vals[0][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzL_eris);
-        Sz_vals[1][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzD_eris);      
-        Sz_vals[2][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), SzR_eris);
+        for subi in range(len(subsystems)):
+            occ_vals[subi][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occ_eris[subi]);
+            Sz_vals[subi][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), Sz_eris[subi]);
 
         if(verbose > 2): print("    time: ", i*dt);
 
     # return val is array of observables
     # ordering is always t, E, JupL, JupR, JdownL, JdownR, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
-    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], current_vals[2], current_vals[3], occ_vals[0], occ_vals[1], occ_vals[2], Sz_vals[0], Sz_vals[1], Sz_vals[2]]
+    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], current_vals[2], current_vals[3] ];
+    for subi in range(len(subsystems)): observables.append(occ_vals[subi]);
+    for subi in range(len(subsystems)): observables.append(Sz_vals[subi]);
     return initstatestr, np.array(observables)
     
 def kernel_old(eris, ci, tf, dt, RK):

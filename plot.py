@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines
 
 # format matplotlib globally
+#plt.style.use('seaborn')
 
 ###############################################################################
 #### plotting from txt file
@@ -225,7 +226,14 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
     for dati in range(len(datafs)): # iter over data sets
         observables = np.load(datafs[dati]);
         print("Loading data from "+datafs[dati]);
-        t, E, JupL, JupR, JdownL, JdownR, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
+
+        # unpack data depending on how many dots
+        try: # one dot
+            t, E, JupL, JupR, JdownL, JdownR, occLL, occD, occRL, SzLL, SzD, SzRL = tuple(observables); # scatter
+            ndots = 1;
+        except:
+            t, E, JupL, JupR, JdownL, JdownR, occLL, occLD, occRD, occRL, SzLL, SzLD, SzRD, SzRL = tuple(observables);
+            ndots = 2;
         Jup = (JupL + JupR)/2;
         Jdown = (JdownL + JdownR)/2;
         J = Jup + Jdown; 
@@ -278,40 +286,66 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
 
         # plot occupancy vs time
         if 'occ' in splots:
-            if dati == whichi:
-                axes[axcounter].plot(t, occL, label = "Left lead"); # occupancy
-                axes[axcounter].plot(t, occD, label = "dot");
-                axes[axcounter].plot(t, occR, label = "Right lead");
+            if( dati == whichi):
+                if( ndots == 1):
+                    axes[axcounter].plot(t, occLL, label = "LL");
+                    axes[axcounter].plot(t, occD, label = "D");
+                    axes[axcounter].plot(t, occRL, label = "RL");
+                elif( ndots == 2):
+                    axes[axcounter].plot(t, occLL, label = "LL");
+                    axes[axcounter].plot(t, occLD, label = "LD");
+                    axes[axcounter].plot(t, occRD, label = "RD");
+                    axes[axcounter].plot(t, occRL, label = "RL");
                 axes[axcounter].set_ylabel("Occupancy")
                 axes[axcounter].legend();
             axcounter += 1;
 
         # change in occupancy vs time
         if 'delta_occ' in splots:
-            if dati == whichi:
-                axes[axcounter].plot(t, occL - occL[0], label = "Left lead");
-                axes[axcounter].plot(t, occD - occD[0], label = "dot");
-                axes[axcounter].plot(t, occR - occR[0], label = "Right lead");
+            if( dati == whichi):
+                if( ndots == 1):
+                    axes[axcounter].plot(t, occLL - occLL[0], label = "LL");
+                    axes[axcounter].plot(t, occD - occD[0], label = "D");
+                    axes[axcounter].plot(t, occRL - occRL[0], label = "RL");
+                elif( ndots == 2):
+                    axes[axcounter].plot(t, occLL - occLL[0], label = "LL");
+                    axes[axcounter].plot(t, occLD - occLD[0], label = "LD");
+                    axes[axcounter].plot(t, occRD - occRD[0], label = "RD");
+                    axes[axcounter].plot(t, occRL - occRL[0], label = "RL");
                 axes[axcounter].set_ylabel(r"$\Delta$ Occupancy");
                 axes[axcounter].legend();
             axcounter += 1;
 
         # plot Sz of dot vs time
         if 'Sz' in splots:
-            axes[axcounter].plot(t, SzD, color = colors[dati]);
+            if( ndots == 1):
+                axes[axcounter].plot(t, SzD, color = colors[dati]);
+            elif( ndots == 2):
+                axes[axcounter].plot(t, SzLD, color = colors[dati], linestyle = "dashed");
+                axes[axcounter].plot(t, SzRD, color = colors[dati], linestyle = "dotted");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD']);
             axes[axcounter].set_ylabel("Dot $S_z$");
             axcounter += 1;
 
         # plot change in Sz of dot vs time
         if 'delta_Sz' in splots:
-            axes[axcounter].plot(t, SzD - SzD[0], color = colors[dati]);
+            if( ndots == 1):
+                axes[axcounter].plot(t, SzD - SzD[0], color = colors[dati]);
+            elif( ndots == 2):
+                axes[axcounter].plot(t, SzLD - SzLD[0], color = colors[dati], linestyle = "dashed");
+                axes[axcounter].plot(t, SzRD - SzRD[0], color = colors[dati], linestyle = "dotted");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD']);
             axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
             axcounter += 1;
 
         # plot Sz of leads vs time
         if 'Szleads' in splots:
-            axes[axcounter].plot(t, SzL, color = colors[dati], linestyle='dashed', label = "left")
-            axes[axcounter].plot(t, SzR, color = colors[dati], linestyle = "dotted", label = "right")
+            axes[axcounter].plot(t, SzLL, color = colors[dati], linestyle='dashed', label = "left")
+            axes[axcounter].plot(t, SzRL, color = colors[dati], linestyle = "dotted", label = "right")
             axes[axcounter].set_ylabel("Lead $S_z$");
             dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
             dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
