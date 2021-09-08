@@ -297,7 +297,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
                     axes[axcounter].plot(t, occRD, label = "RD");
                     axes[axcounter].plot(t, occRL, label = "RL");
                 axes[axcounter].set_ylabel("Occ.")
-                axes[axcounter].legend();
+                axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
             axcounter += 1;
 
         # change in occupancy vs time
@@ -324,7 +324,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
                 axes[axcounter].plot(t, SzRD, color = colors[dati], linestyle = "dotted");
                 dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
                 dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD']);
+                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
             axes[axcounter].set_ylabel("Dot $S_z$");
             axcounter += 1;
 
@@ -337,7 +337,7 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
                 axes[axcounter].plot(t, SzRD - SzRD[0], color = colors[dati], linestyle = "dotted");
                 dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
                 dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD']);
+                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
             axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
             axcounter += 1;
 
@@ -358,13 +358,155 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
             axcounter += 1
 
     # format and show
-    axes[0].legend(title = leg_title, ncol=leg_ncol);
+    axes[0].legend(title = leg_title, ncol=leg_ncol, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
     for axi in range(len(axes) ): # customize axes
         if axi == 0: axes[axi].set_title(mytitle);
         if axi == numplots-1: axes[axi].set_xlabel(myxlabel);
         axes[axi].minorticks_on();
         axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
         axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
+
+    return;
+
+
+def CompOnly(datafs, labs, obs, mytitle = "", leg_title="", leg_ncol = 1 ):
+    '''
+
+    '''
+
+    # check args
+    assert( len(labs) >= len(datafs));
+
+    # top level inputs
+    fig, ax = plt.subplots();
+    colors = plt.cm.get_cmap('tab20').colors
+    if (len(colors) < len(datafs) ): # need more colors
+        colors = plt.cm.get_cmap('seismic', len(datafs));
+        colors = colors(np.linspace(0,1, len(datafs) ) );
+
+    for dati in range(len(datafs)): # iter over data sets
+        observables = np.load(datafs[dati]);
+        print("Loading data from "+datafs[dati]);
+
+        # unpack data depending on how many dots
+        try: # one dot
+            t, E, JupL, JupR, JdownL, JdownR, occLL, occD, occRL, SzLL, SzD, SzRL = tuple(observables); # scatter
+            ndots = 1;
+        except:
+            t, E, JupL, JupR, JdownL, JdownR, occLL, occLD, occRD, occRL, SzLL, SzLD, SzRD, SzRL = tuple(observables);
+            ndots = 2;
+        Jup = (JupL + JupR)/2;
+        Jdown = (JdownL + JdownR)/2;
+        J = Jup + Jdown; 
+        dt = np.real(t[1]);
+        myxlabel = "time (dt = "+str(dt)+")"
+        if False:
+            labs = np.full(len(datafs), 'dummy');
+            labs[dati] = datafs[dati][-9:-4]
+
+        # plot current vs time
+        if obs == 'J':
+            ax.plot(t,J,label = labs[dati], color = colors[dati]);
+            ax.set_ylabel("J");
+
+        elif obs == 'Jup':
+            ax.plot(t,Jup, color=colors[dati], label = labs[dati]);
+            ax.set_ylabel("$J_{up}$");          
+
+        elif obs == 'JupLR':
+            if dati == whichi:
+                ax.plot(t, JupL, color=colors[dati], linestyle = "dashed", label = "Left");
+                ax.plot(t, JupR, color=colors[dati], linestyle = "dotted", label = "Right");
+                ax.plot(t, Jup, color='gray', label = "Total");
+                ax.set_ylabel("$J_{up}$");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                grayline = matplotlib.lines.Line2D([],[],color = 'gray');
+                ax.legend(handles=[dashline, dotline, grayline],labels=["Left","Right","Total"]);           
+
+        elif obs == 'Jdown':
+            ax.plot(t, Jdown, color=colors[dati],label=labs[dati]);
+            ax.set_ylabel("$J_{down}$");
+
+        elif obs == 'JdownLR':
+            ax.plot(t, JdownL, color=colors[dati], linestyle = "dashed", label = "Left");
+            ax.plot(t, JdownR, color=colors[dati], linestyle = "dotted", label = "Right");
+            ax.plot(t, Jup, color='gray', label = "Total");
+            ax.set_ylabel("$J_{down}$");
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            grayline = matplotlib.lines.Line2D([],[],color = 'gray');
+            ax.legend(handles=[dashline, dotline, grayline],labels=["Left","Right","Total"]);           
+
+        # plot occupancy vs time
+        elif obs == 'occ':
+            if( ndots == 1):
+                ax.plot(t, occLL, label = "LL");
+                ax.plot(t, occD, label = "D");
+                ax.plot(t, occRL, label = "RL");
+            elif( ndots == 2):
+                ax.plot(t, occLL, label = "LL");
+                ax.plot(t, occLD, label = "LD");
+                ax.plot(t, occRD, label = "RD");
+                ax.plot(t, occRL, label = "RL");
+                ax.set_ylabel("Occ.")
+                ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+
+        # change in occupancy vs time
+        elif obs == 'delta_occ':
+            if( ndots == 1):
+                ax.plot(t, occLL - occLL[0], label = "LL");
+                ax.plot(t, occD - occD[0], label = "D");
+                ax.plot(t, occRL - occRL[0], label = "RL");
+            elif( ndots == 2):
+                ax.plot(t, occLL - occLL[0], label = "LL");
+                ax.plot(t, occLD - occLD[0], label = "LD");
+                ax.plot(t, occRD - occRD[0], label = "RD");
+                ax.plot(t, occRL - occRL[0], label = "RL");
+            ax.set_ylabel(r"$\Delta$ Occ.");
+
+        # plot Sz of dot vs time
+        elif obs == 'Sz':
+            if( ndots == 1):
+                ax.plot(t, SzD, color = colors[dati], label = labs[dati]);
+            elif( ndots == 2):
+                ax.plot(t, SzLD, color = colors[dati], linestyle = "dashed");
+                ax.plot(t, SzRD, color = colors[dati], linestyle = "dotted");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                ax.legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+            ax.set_ylabel("Dot $S_z$");
+
+        # plot change in Sz of dot vs time
+        elif obs == 'delta_Sz':
+            if( ndots == 1):
+                ax.plot(t, SzD - SzD[0], color = colors[dati]);
+            elif( ndots == 2):
+                ax.plot(t, SzLD - SzLD[0], color = colors[dati], linestyle = "dashed");
+                ax.plot(t, SzRD - SzRD[0], color = colors[dati], linestyle = "dotted");
+                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+                ax.legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+            ax.set_ylabel("$\Delta$ Dot $S_z$");
+
+        # plot Sz of leads vs time
+        elif obs == 'Szleads':
+            ax.plot(t, SzLL, color = colors[dati], linestyle='dashed', label = "left")
+            ax.plot(t, SzRL, color = colors[dati], linestyle = "dotted", label = "right")
+            ax.set_ylabel("Lead $S_z$");
+            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
+            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
+            ax.legend(handles=[dashline, dotline],labels=['Left lead','Right lead']);  
+
+    # format and show
+    ax.set_title(mytitle);
+    ax.set_xlabel(myxlabel);
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    ax.legend(title = leg_title, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+
     plt.show();
 
     return;

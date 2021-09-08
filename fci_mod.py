@@ -59,7 +59,10 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
     scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
     scf_inst._eri = g2e # put h2e into scf solver
-    scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
+    if( nelecs == (1,0) ):
+        scf_inst.kernel(); # no dm
+    else:
+        scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
                                    # what matter is h1e, h2e are now encoded in this scf instance
 
     return mol, scf_inst;
