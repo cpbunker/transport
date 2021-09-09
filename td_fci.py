@@ -281,22 +281,16 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
     ci = CIObject(fcivec, norbs, nelecs);
 
     # indices for different subsystems
-    all_i = np.arange(0,norbs, 1, dtype = int); # all indices
-    left_i = all_i[:dot_i[0] ]; # LL indices
-    right_i = all_i[dot_i[-1]+1:]; # RL indices
-    subsystems = [left_i];
-    for idot in range(ndots): # each dot is own subsystem
-        subsystems.append(all_i[dot_i[0]+2*idot:dot_i[0]+2*idot+2] );
-    subsystems.append(right_i); # now have a list of indices of all subsystems
-
+    sites = np.array(range(norbs)).reshape(int(norbs/2),2); # all indices, sep'd by site
+    
     # operators for observables
     JupL, JupR = ops.Jup(dot_i, norbs); # up e current
     JdownL, JdownR = ops.Jdown(dot_i, norbs); # down e current
     occ_ops = [];
     Sz_ops = [];
-    for subs in subsystems: # subsystem specific observables
-        occ_ops.append(ops.occ(subs, norbs) );
-        Sz_ops.append(ops.Sz(subs, norbs) );
+    for site in sites: # site specific observables
+        occ_ops.append(ops.occ(site, norbs) );
+        Sz_ops.append(ops.Sz(site, norbs) );
 
     # eris for observables
     JupL_eris = ERIs(JupL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
@@ -305,9 +299,9 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
     JdownR_eris = ERIs(JdownR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
     occ_eris = [];
     Sz_eris = [];
-    for subi in range(len(subsystems)): # eris for subsystem specific observables
-        occ_eris.append(ERIs(occ_ops[subi],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
-        Sz_eris.append(ERIs(Sz_ops[subi],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
+    for sitei in range(len(sites)): # eris for subsystem specific observables
+        occ_eris.append(ERIs(occ_ops[sitei],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
+        Sz_eris.append(ERIs(Sz_ops[sitei],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
     
     #  observable return vals
     t_vals = np.zeros(N+1);
@@ -324,26 +318,7 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
 
         # before any time stepping, get initial state
         if(i==0):
-            occ_init = np.zeros(len(all_i), dtype = complex);
-            Sz_init = np.zeros(len(all_i), dtype = complex);
-            Sx_init = np.zeros(len(all_i), dtype = complex);
-            Sy_init = np.zeros(len(all_i), dtype = complex);
-            for sitej in all_i:# iter over sites
-                if ASU: # sites are pairs of spin orbs
-                    if sitej % 2 == 0: # do up and down together
-                        sitejlist = [sitej, sitej+1];
-                        occ_init[sitej] = compute_occ(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
-                        Sz_init[sitej] = compute_Sz(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
-                        Sx_init[sitej] = compute_Sx(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
-                        Sy_init[sitej] = compute_Sy(sitejlist,(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU); 
-                else: # sites are just sites
-                    occ_init[sitej] = compute_occ([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
-                    Sz_init[sitej] = compute_Sz([sitej],(d1a,d1b),(d2aa,d2ab,d2bb),eris.mo_coeff, norbs, ASU = ASU);
             initstatestr = "\nInitial state:"
-            initstatestr += "\n    occ = "+str(np.real(occ_init));
-            initstatestr += "\n    Sz = "+str(Sz_init);
-            initstatestr += "\n    Sx = "+str(Sx_init);
-            initstatestr += "\n    Sy = "+str(Sy_init);
         
         # time step
         dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
@@ -366,17 +341,17 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
         current_vals[3][i] = t_hyb*JdownR_val; # add in hopping strength
         
         # occupancy of left lead, dot, right lead
-        for subi in range(len(subsystems)):
-            occ_vals[subi][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occ_eris[subi]);
-            Sz_vals[subi][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), Sz_eris[subi]);
+        for sitei in range(len(sites)):
+            occ_vals[sitei][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occ_eris[sitei]);
+            Sz_vals[sitei][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), Sz_eris[sitei]);
 
         if(verbose > 2): print("    time: ", i*dt);
 
     # return val is array of observables
     # ordering is always t, E, JupL, JupR, JdownL, JdownR, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
     observables = [t_vals, energy_vals, current_vals[0], current_vals[1], current_vals[2], current_vals[3] ];
-    for subi in range(len(subsystems)): observables.append(occ_vals[subi]);
-    for subi in range(len(subsystems)): observables.append(Sz_vals[subi]);
+    for sitei in range(len(sites)): observables.append(occ_vals[sitei]);
+    for sitei in range(len(sites)): observables.append(Sz_vals[sitei]);
     return initstatestr, np.array(observables)
     
 def kernel_old(eris, ci, tf, dt, RK):

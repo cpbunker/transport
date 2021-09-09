@@ -100,93 +100,43 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(dataf, nleads = (0,0), thyb = (0.0,0.1), splots = ['Jtot','occ','Sz']):
+def PlotObservables(dataf, nsites, splots = ['Jtot','occ','Sz'], mytitle = ""):
     '''
     plot observables from td fci run
     Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
     occ, Sz, energy
 
     Args:
-    - nleads, tuple of left lead sites, right lead sites
     - dataf, string of .npy filename where data array is stored
     - splots, list of strings which tell which subplots to make
-
-    TODO: get nleads and thyb from input txt file
     '''
 
     # top level inputs
-    numplots = len(splots);
+    numplots = 0;
+    if 'J' in splots: numplots += 2;
+    if 'occ' in splots: numplots += nsites;
+    if 'Sz' in splots: numplots += nsites
     fig, axes = plt.subplots(numplots, sharex = True);
     ax_counter = 0; # update every time an ax is plotted
 
     # unpack
     print("Loading data from ",dataf);
     observables = np.load(dataf);
-    t, E, Jup, Jdown, occL, occD, occR, SzL, SzD, SzR = tuple(observables); # scatter
-    J = Jup + Jdown;
+    t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
+    occs, Szs = [], []; # variable number of occs, Szs
+    for obsi in range(nsites): # observables has an occ and Sz for every site
+        occs.append(observables[obsi+5]);
+        Szs.append(observables[obsi+nsites+5]);
+    Jup = (JupL + JupR)/2;
+    Jdown = (JdownL + JdownR)/2;
+    J = Jup + Jdown; 
     mytitle = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb[0])+" -> "+str(thyb[1]);
     myxlabel = "time (dt = "+str(np.real(t[1]))+")"
 
-    # plot current vs time, total and spin pol versions
-    if 'J' in splots:
-        axes[ax_counter].plot(t, J, color="black", linestyle = "dashed", label = "J"); # current
-        axes[ax_counter].plot(t, Jup, color="red", label = "$J_{up}$");
-        axes[ax_counter].plot(t, Jdown, color="yellow", label = "$J_{down}$");
-        axes[ax_counter].set_ylabel("Current");
-        axes[ax_counter].legend();
-        ax_counter += 1;
-
-    # just total current vs time
-    if 'Jtot' in splots:
-        axes[ax_counter].plot(t, J, color="black", linestyle = "dashed", label = "J"); # current
-        axes[ax_counter].set_ylabel("Current");
-        axes[ax_counter].set_title("Dot impurity, "+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites");
-        ax_counter += 1;
-        
-    # plot occupancy vs time
-    if 'occ' in splots:
-        axes[ax_counter].plot(t, occL, label = "Left lead"); # occupancy
-        axes[ax_counter].plot(t, occD, label = "dot");
-        axes[ax_counter].plot(t, occR, label = "Right lead");
-        axes[ax_counter].set_ylabel("Occupancy")
-        axes[ax_counter].legend();
-        ax_counter += 1;
-
-    # change in occupancy vs time
-    if 'delta_occ' in splots:
-        axes[ax_counter].plot(t, occL - occL[0], label = "Left lead");
-        axes[ax_counter].plot(t, occD - occD[0], label = "dot");
-        axes[ax_counter].plot(t, occR - occR[0], label = "Right lead");
-        axes[ax_counter].set_ylabel(r"$\Delta$ Occupancy");
-        ax_counter += 1;
-
-    # z spin vs time
-    if 'Sz' in splots: 
-        axes[ax_counter].plot(t,SzL); 
-        axes[ax_counter].plot(t,SzD);
-        axes[ax_counter].plot(t,SzR);
-        axes[ax_counter].set_ylabel("$<S_z>$");
-        axes[ax_counter].ticklabel_format(style='sci', axis='y', scilimits=(0,0), useOffset=False)
-        ax_counter += 1;
-
-    # energy vs time
-    if 'E' in splots: # energy
-        axes[ax_counter].plot(t, E); # energy
-        axes[ax_counter].set_ylabel("E");
-        ax_counter += 1;
-
-    # configure all axes, show
-    for axi in range(len(axes) ): # customize axes
-        if axi == 0: axes[axi].set_title(mytitle);
-        if axi == len(axes)-1: axes[axi].set_xlabel(myxlabel);
-        axes[axi].minorticks_on();
-        axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
-        axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.show();
-    return; # end plot observables
 
 
-def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg_title="", leg_ncol = 1 ):
+
+def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytitle = "",  whichi = 0, leg_title="", leg_ncol = 1 ):
     '''
     Compare current etc for different physical inputs
     What input we sweep across is totally arbitrary, use labs and mytitle to specify in plot
@@ -228,12 +178,11 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         print("Loading data from "+datafs[dati]);
 
         # unpack data depending on how many dots
-        try: # one dot
-            t, E, JupL, JupR, JdownL, JdownR, occLL, occD, occRL, SzLL, SzD, SzRL = tuple(observables); # scatter
-            ndots = 1;
-        except:
-            t, E, JupL, JupR, JdownL, JdownR, occLL, occLD, occRD, occRL, SzLL, SzLD, SzRD, SzRL = tuple(observables);
-            ndots = 2;
+        t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
+        occs, Szs = [], []; # variable number of occs, Szs
+        for obsi in range(len(sites)): # observables has an occ and Sz for every site
+            occs.append(observables[obsi+6]);
+            Szs.append(observables[obsi+len(sites)+6]);
         Jup = (JupL + JupR)/2;
         Jdown = (JdownL + JdownR)/2;
         J = Jup + Jdown; 
@@ -287,15 +236,8 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         # plot occupancy vs time
         if 'occ' in splots:
             if( dati == whichi):
-                if( ndots == 1):
-                    axes[axcounter].plot(t, occLL, label = "LL");
-                    axes[axcounter].plot(t, occD, label = "D");
-                    axes[axcounter].plot(t, occRL, label = "RL");
-                elif( ndots == 2):
-                    axes[axcounter].plot(t, occLL, label = "LL");
-                    axes[axcounter].plot(t, occLD, label = "LD");
-                    axes[axcounter].plot(t, occRD, label = "RD");
-                    axes[axcounter].plot(t, occRL, label = "RL");
+                for sitei in range(len(sites)): # iter over sites
+                    axes[axcounter].plot(t, occs[sitei], label = sites[sitei]);
                 axes[axcounter].set_ylabel("Occ.")
                 axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
             axcounter += 1;
@@ -303,52 +245,19 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
         # change in occupancy vs time
         if 'delta_occ' in splots:
             if( dati == whichi):
-                if( ndots == 1):
-                    axes[axcounter].plot(t, occLL - occLL[0], label = "LL");
-                    axes[axcounter].plot(t, occD - occD[0], label = "D");
-                    axes[axcounter].plot(t, occRL - occRL[0], label = "RL");
-                elif( ndots == 2):
-                    axes[axcounter].plot(t, occLL - occLL[0], label = "LL");
-                    axes[axcounter].plot(t, occLD - occLD[0], label = "LD");
-                    axes[axcounter].plot(t, occRD - occRD[0], label = "RD");
-                    axes[axcounter].plot(t, occRL - occRL[0], label = "RL");
+                for sitei in range(len(sites)): # iter over sites
+                    axes[axcounter].plot(t, occs[sitei] - occs[sitei][0], label = sites[sitei]);
+                axes[axcounter].legend(title = leg_title, ncol = leg_ncol, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
                 axes[axcounter].set_ylabel(r"$\Delta$ Occ.");
             axcounter += 1;
 
         # plot Sz of dot vs time
         if 'Sz' in splots:
-            if( ndots == 1):
-                axes[axcounter].plot(t, SzD, color = colors[dati]);
-            elif( ndots == 2):
-                axes[axcounter].plot(t, SzLD, color = colors[dati], linestyle = "dashed");
-                axes[axcounter].plot(t, SzRD, color = colors[dati], linestyle = "dotted");
-                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
-                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
-            axes[axcounter].set_ylabel("Dot $S_z$");
-            axcounter += 1;
-
-        # plot change in Sz of dot vs time
-        if 'delta_Sz' in splots:
-            if( ndots == 1):
-                axes[axcounter].plot(t, SzD - SzD[0], color = colors[dati]);
-            elif( ndots == 2):
-                axes[axcounter].plot(t, SzLD - SzLD[0], color = colors[dati], linestyle = "dashed");
-                axes[axcounter].plot(t, SzRD - SzRD[0], color = colors[dati], linestyle = "dotted");
-                dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
-                dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-                axes[axcounter].legend(handles=[dashline, dotline],labels=['LD','RD'], bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
-            axes[axcounter].set_ylabel("$\Delta$ Dot $S_z$");
-            axcounter += 1;
-
-        # plot Sz of leads vs time
-        if 'Szleads' in splots:
-            axes[axcounter].plot(t, SzLL, color = colors[dati], linestyle='dashed', label = "left")
-            axes[axcounter].plot(t, SzRL, color = colors[dati], linestyle = "dotted", label = "right")
-            axes[axcounter].set_ylabel("Lead $S_z$");
-            dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
-            dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
-            axes[axcounter].legend(handles=[dashline, dotline],labels=['Left lead','Right lead']);  
+            if( dati == whichi):
+                for sitei in range(len(sites)): # iter over sites
+                    axes[axcounter].plot(t, Szs[sitei], label = sites[sitei]);
+                axes[axcounter].set_ylabel("Sz")
+                axes[axcounter].legend(title = leg_title, ncol = leg_ncol, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
             axcounter += 1;
 
         # plot energy vs time
@@ -358,7 +267,6 @@ def CompObservables(datafs, labs, splots = ['J'], mytitle = "",  whichi = 0, leg
             axcounter += 1
 
     # format and show
-    axes[0].legend(title = leg_title, ncol=leg_ncol, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
     for axi in range(len(axes) ): # customize axes
         if axi == 0: axes[axi].set_title(mytitle);
         if axi == numplots-1: axes[axi].set_xlabel(myxlabel);

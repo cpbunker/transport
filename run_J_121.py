@@ -36,7 +36,7 @@ td = 1.0;
 Vb = 0.01;
 mu = 0.0;
 Vgs = [-5.0];
-# U fixed to 6*abs(Vg)
+# U fixed to 4*abs(Vg)
 B = 10.0*tl;
 theta = 0.0;
 
@@ -48,7 +48,7 @@ if get_data: # must actually compute data
 
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
-        params = tl, th, td, Vb, mu, Vg, abs(6*Vg), B, theta;
+        params = tl, th, td, Vb, mu, Vg, abs(4*Vg), B, theta;
         siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = "abb", prefix = "dat/cicc/", verbose = verbose);
 
 else:
@@ -58,9 +58,9 @@ else:
     # plot results
     datafs = sys.argv[2:]
     labs = Vgs # one label for each Vg
-    splots = ['Jup','Jdown','occ','delta_occ','Sz','Szleads','E']; # which subplots to plot
-    title = "Current between impurity and left, right leads"
-    plot.CompObservables(datafs, labs, splots = splots, mytitle = title, leg_title = "$V_g$", leg_ncol = 2, whichi = 0);
+    splots = ['occ','Sz','E']; # which subplots to plot
+    title = "1 LL site, 2 dots, 1 RL site, $V_g = -5$, U=20"
+    plot.CompObservables(datafs, labs, sites = ['LL','LD','RD','RL'], splots = splots, mytitle = title, leg_title = "", leg_ncol = 1, whichi = 0);
 
     
 
