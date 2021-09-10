@@ -101,6 +101,8 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
     elif namevar == "U":
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
+    elif namevar == "Vb":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vb"+str(V_bias)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"

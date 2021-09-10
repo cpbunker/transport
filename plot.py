@@ -100,7 +100,7 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 #### very specific plot functions
 
 
-def PlotObservables(dataf, nsites, splots = ['Jtot','occ','Sz'], mytitle = ""):
+def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", paramstr = ""):
     '''
     plot observables from td fci run
     Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
@@ -112,28 +112,69 @@ def PlotObservables(dataf, nsites, splots = ['Jtot','occ','Sz'], mytitle = ""):
     '''
 
     # top level inputs
-    numplots = 0;
-    if 'J' in splots: numplots += 2;
-    if 'occ' in splots: numplots += nsites;
-    if 'Sz' in splots: numplots += nsites
+    numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex = True);
-    ax_counter = 0; # update every time an ax is plotted
+    axcounter = 0; # update every time an ax is plotted
 
     # unpack
     print("Loading data from ",dataf);
     observables = np.load(dataf);
     t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
     occs, Szs = [], []; # variable number of occs, Szs
-    for obsi in range(nsites): # observables has an occ and Sz for every site
-        occs.append(observables[obsi+5]);
-        Szs.append(observables[obsi+nsites+5]);
+    for obsi in range(len(sites)): # observables has an occ and Sz for every site
+        occs.append(observables[obsi+6]);
+        Szs.append(observables[obsi+len(sites)+6]);
     Jup = (JupL + JupR)/2;
     Jdown = (JdownL + JdownR)/2;
-    J = Jup + Jdown; 
-    mytitle = "Dot impurity:\n"+str(nleads[0])+" left sites, "+str(nleads[1])+" right sites, $t_{hyb}$ = "+str(thyb[0])+" -> "+str(thyb[1]);
+    J = Jup + Jdown;
+
+    # plot current vs time
+    if 'J' in splots:
+        axes[axcounter].plot(t,J);
+        axes[axcounter].set_ylabel("J");
+        axcounter += 1;
+
+    # plot occupancy vs time
+    if 'occ' in splots:
+        for sitei in range(len(sites)): # iter over sites
+            axes[axcounter].plot(t, occs[sitei], label = sites[sitei]);
+        axes[axcounter].set_ylabel("Occ.")
+        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axcounter += 1;
+
+    # change in occupancy vs time
+    if 'delta_occ' in splots:
+        for sitei in range(len(sites)): # iter over sites
+            axes[axcounter].plot(t, occs[sitei] - occs[sitei][0], label = sites[sitei]);
+        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axes[axcounter].set_ylabel(r"$\Delta$ Occ.");
+        axcounter += 1;
+
+    # plot Sz of dot vs time
+    if 'Sz' in splots:
+        for sitei in range(len(sites)): # iter over sites
+            axes[axcounter].plot(t, Szs[sitei], label = sites[sitei]);
+        axes[axcounter].set_ylabel("Sz")
+        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axcounter += 1;
+
+    # plot energy vs time
+    if 'E' in splots:
+        axes[axcounter].plot(t, E);
+        axes[axcounter].set_ylabel("Energy");
+        axcounter += 1;
+
+    # format and show
+    axes[0].set_title(mytitle);
     myxlabel = "time (dt = "+str(np.real(t[1]))+")"
-
-
+    axes[-1].set_xlabel(myxlabel);
+    # last legend tells params
+    axes[-1].legend(title = paramstr, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+    for axi in range(len(axes) ): # customize axes
+        axes[axi].minorticks_on();
+        axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
+        axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
 
 
 def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytitle = "",  whichi = 0, leg_title="", leg_ncol = 1 ):

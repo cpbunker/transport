@@ -489,6 +489,10 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
         assert( ndots == 1);
         h1e += h_B(-B, theta, 0.0, [0,1], norbs, verbose = verbose);
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose);
+    elif( spinstate == "aaa"):
+        assert(ndots == 2 and theta == 0.0);
+        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+        h1e += h_B(-B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
     elif( spinstate == "abb"): # itinerant up e, spin down e's on dots
         assert(ndots == 2 and theta == 0.0);
         h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
