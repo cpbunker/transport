@@ -26,11 +26,11 @@ spinstate = "aaa";
 
 # phys params, must be floats
 tl = 1.0;
-th = 1.0;
+th = 0.5;
 td = 1.0; 
 Vb = 0.0;
 mu = 0.0;
-Vgs = [-5.0, -8.0, -10.0];
+Vgs = [-5.0];
 U =  0.0;
 B = 1000.0;
 theta = 0.0;
@@ -44,7 +44,7 @@ if get_data: # must actually compute data
     for i in range(len(Vgs)): # iter over Vg vals;
         Vg = Vgs[i];
         params = tl, th, td, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/param_tuning/Vg/", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/param_tuning/th/", verbose = verbose);
 
 else:
 
@@ -52,11 +52,10 @@ else:
 
     # plot results
     datafs = sys.argv[2:]
-    labs = Vgs # one label for each Vg
+    labs = ["$V_g$ = -5.0", "$V_g$ = -8.0", "$V_g $= -10.0", "$V_g $= -5.0, $t_h$ = 0.5"];
     splots = ['occRL']; # which subplots to plot
     title = "Itinerant electron and two dots, |"+spinstate+"$\\rangle$";
-    for wi in range(len(datafs)):
-        plot.CompObservables(datafs, labs, whichi=wi, splots = splots, sites = ['LL','LD','RD','RL'], mytitle = title, leg_title = "$V_g$");
+    plot.CompObservables(datafs, labs, splots = splots, sites = ['LL','LD','RD','RL'], mytitle = title);
 
     
 

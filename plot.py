@@ -7,9 +7,10 @@ import siam_current
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines
+import seaborn
 
 # format matplotlib globally
-#plt.style.use('seaborn')
+plt.style.use('seaborn-colorblind')
 
 ###############################################################################
 #### plotting from txt file
@@ -207,7 +208,7 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
     assert(whichi >= 0 and whichi <= len(datafs));
 
     # top level inputs
-    colors = plt.cm.get_cmap('tab20').colors
+    colors = seaborn.color_palette("colorblind");
     if (len(colors) < len(datafs) ): # need more colors
         colors = plt.cm.get_cmap('seismic', len(datafs));
         colors = colors(np.linspace(0,1, len(datafs) ) );
