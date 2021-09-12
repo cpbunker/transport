@@ -114,6 +114,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     # top level inputs
     numplots = len(splots);
     fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
 
     # unpack
@@ -211,6 +212,8 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
         colors = plt.cm.get_cmap('seismic', len(datafs));
         colors = colors(np.linspace(0,1, len(datafs) ) );
     numplots = len(splots);
+    focus = splots[0];
+    splots = splots [1:];
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots== 1: axes = [axes];
 
@@ -227,12 +230,18 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
         Jup = (JupL + JupR)/2;
         Jdown = (JdownL + JdownR)/2;
         J = Jup + Jdown; 
-        dt = np.real(t[1]);
-        myxlabel = "time (dt = "+str(dt)+")"
-        axcounter = 0;
-        if False:
-            labs = np.full(len(datafs), 'dummy');
-            labs[dati] = datafs[dati][-9:-4]
+        axcounter = 1; # ax 0 is focus
+
+        # first splot is focus splot
+        if focus == 'J':
+            axes[0].plot(t,J, label = labs[dati], color = colors[dati]);
+            axes[0].set_ylabel("J");
+        elif focus == 'occD':
+            axes[0].plot(t, occs[1], label = labs[dati], color = colors[dati]);
+            axes[0].set_ylabel("RL occ.");
+        elif focus == 'occRL':
+            axes[0].plot(t, occs[-1], label = labs[dati], color = colors[dati]);
+            axes[0].set_ylabel("RL occ.");
 
         # plot current vs time
         if 'J' in splots:
@@ -308,9 +317,16 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
             axcounter += 1
 
     # format and show
+
+    # format focus
+    axes[0].legend(title = leg_title, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+    axes[0].set_title(mytitle);
+
+    # format others
+    dt = np.real(t[1]);
+    myxlabel = "time (dt = "+str(dt)+")"
+    axes[-1].set_xlabel(myxlabel);
     for axi in range(len(axes) ): # customize axes
-        if axi == 0: axes[axi].set_title(mytitle);
-        if axi == numplots-1: axes[axi].set_xlabel(myxlabel);
         axes[axi].minorticks_on();
         axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
         axes[axi].grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);

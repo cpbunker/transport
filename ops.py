@@ -98,6 +98,7 @@ def h_imp_leads(V,N):
     h[3, 1] = -V;
 
     # couple to right lead
+
     h[-2, -4] = -V; # up e's
     h[-4, -2] = -V;
     h[-1, -3] = -V; # down e's
@@ -485,6 +486,11 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     # prepare spin states
     if( spinstate == ""): # default, single dot case
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
+    elif( spinstate == "a"): # up on LL only
+        h1e += h_B(-B, 0.0, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);
+    elif( spinstate == "1a"): # up on LL only
+        assert( ndots == 1);
+        h1e += h_B(-B, 0.0, 0.0, [0,1], norbs, verbose = verbose);
     elif( spinstate == "ab" ): # up on LL, down on dot
         assert( ndots == 1);
         h1e += h_B(-B, theta, 0.0, [0,1], norbs, verbose = verbose);

@@ -18,33 +18,34 @@ import sys
 
 # top level
 verbose = 3;
-nleads = (1,1);
-nelecs = (3,0); # half filling
-ndots = 2;
+nleads = (3,3);
+nelecs = (1,0); 
+ndots = 1;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
-spinstate = "aaa";
+spinstate = "1a"
 
 # phys params, must be floats
 tl = 1.0;
 th = 1.0;
-td = 1.0; 
-Vb = 0.0;
+td = 0.0; # only one dot
+Vbs = [0.01, 0.05, 0.1, 0.5, 1.0]
+Vbs = [0.5];
 mu = 0.0;
-Vgs = [-5.0, -8.0, -10.0];
-U =  0.0;
-B = 1000.0;
+Vg = 0.0
+U =  abs(4*Vg)
+B = 100.0;
 theta = 0.0;
 
 #time info
 dt = 0.01
-tf = 150.0;
+tf = 10.0;
 
 if get_data: # must actually compute data
 
-    for i in range(len(Vgs)): # iter over Vg vals;
-        Vg = Vgs[i];
+    for i in range(len(Vbs)): # iter over Vg vals;
+        Vb = Vbs[i];
         params = tl, th, td, Vb, mu, Vg, U, B, theta;
-        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/param_tuning/Vg/", verbose = verbose);
+        siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, prefix = "dat/param_tuning/Vb/", spinstate = spinstate, namevar = "Vb", verbose = verbose);
 
 else:
 
@@ -52,11 +53,11 @@ else:
 
     # plot results
     datafs = sys.argv[2:]
-    labs = Vgs # one label for each Vg
-    splots = ['occRL']; # which subplots to plot
-    title = "Itinerant electron and two dots, |"+spinstate+"$\\rangle$";
-    for wi in range(len(datafs)):
-        plot.CompObservables(datafs, labs, whichi=wi, splots = splots, sites = ['LL','LD','RD','RL'], mytitle = title, leg_title = "$V_g$");
+    labs = Vbs # one label for each Vg
+    splots = ['J','occ','Sz']; # which subplots to plot
+    title = "Itinerant electron with diffuseness 2"
+    for wi in range(1):
+        plot.CompObservables(datafs, labs, splots = splots, whichi = wi, mytitle = title, leg_title = "$V_b$", leg_ncol = 1);
 
     
 
