@@ -24,7 +24,7 @@ import sys
 
 # top level
 verbose = 3;
-nleads = (1,1);
+nleads = (2,2);
 nelecs = (3,0); # one electron on each dot and one itinerant
 ndots = 2;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
@@ -59,7 +59,7 @@ else:
     splots = ['occ','Sz','concur']; # which subplots to plot
     title = "1 LL site, 2 dots, 1 RL site, initial state |"+spinstate+" $\\rangle$";
     paramstr = "$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
-    plot.PlotObservables(datafs, sites = ['L1','LD','RD','R1'], splots = splots, mytitle = title, paramstr = paramstr);
+    plot.PlotObservables(datafs, sites = ['L1','L2','LD','RD','R1','R2'], splots = splots, mytitle = title, paramstr = paramstr);
 
     
 

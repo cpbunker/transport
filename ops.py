@@ -129,6 +129,21 @@ def h_dot_1e(V,t,N):
     return h; # end h dot 1e
 
 
+def h_cicc_1e(V,t,N):
+
+    # create h array
+    h = np.zeros((2*N,2*N));
+    
+    for i in range (2*N):
+        if i in [0, 1, 2*N - 2, 2*N - 1]: # cicc has gate voltage only on first and last
+            h[i,i] = V; # gate voltage
+        if i >= 2: # more than one dot, so couple this dot to previous one
+            h[i, i-2] = -t;
+            h[i-2, i] = -t;
+        
+    return h; # end h dot 1e
+
+
 #### other 1 e operators
 
 def occ(site_i, norbs):
@@ -290,6 +305,17 @@ def h_dot_2e(U,N):
     
     # hubbard repulsion when there are 2 e's on same MO
     for i in range(0,2*N,2): # i is spin up orb, i+1 is spin down
+        h[i,i,i+1,i+1] = U;
+        h[i+1,i+1,i,i] = U; # switch electron labels
+        
+    return h; # end h dot 2e
+
+def h_cicc_2e(U,N):
+
+    h = np.zeros((2*N,2*N,2*N,2*N));
+    
+    # cicc has hubbard only for first and last
+    for i in [0, 2*N - 2]: # i is spin up orb, i+1 is spin down
         h[i,i,i+1,i+1] = U;
         h[i+1,i+1,i,i] = U; # switch electron labels
         
@@ -527,15 +553,15 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose);
     elif( spinstate == "aaa"):
         assert(ndots == 2 and theta == 0.0);
-        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+        h1e += h_B(B, np.pi, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose); # spin up on first lead
         h1e += h_B(-B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
     elif( spinstate == "abb"): # itinerant up e, spin down e's on dots
         assert(ndots == 2 and theta == 0.0);
-        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+        h1e += h_B(B, np.pi, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose); # spin up on first lead
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
     elif( spinstate == "a00"): # itinerant up e, singlet on dots
         assert(ndots == 2 and theta == 0.0);
-        h1e += h_B(B, np.pi, 0.0, [0,1], norbs, verbose = verbose); # spin up on first lead
+        h1e += h_B(B, np.pi, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose); # spin up on first lead
     else: assert(False); # invalid option
         
     # 1e ham finished now

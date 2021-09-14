@@ -126,6 +126,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     for obsi in range(len(sites)): # observables has an occ and Sz for every site
         occs.append(observables[obsi+6]);
         Szs.append(observables[obsi+len(sites)+6]);
+    concur = observables[-1];
     Jup = (JupL + JupR)/2;
     Jdown = (JdownL + JdownR)/2;
     J = Jup + Jdown;
@@ -164,6 +165,11 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
             axes[axcounter].plot(t, Szs[sitei], label = sites[sitei]);
         axes[axcounter].set_ylabel("$S_z$")
         axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axcounter += 1;
+
+    if 'concur' in splots:
+        axes[axcounter].plot(t, concur);
+        axes[axcounter].set_ylabel("Concur.");
         axcounter += 1;
 
     # plot energy vs time
