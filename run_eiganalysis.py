@@ -22,7 +22,7 @@ nleads = (2,2);
 nelecs = (2,0); # one electron on dot and one itinerant
 ndots = 1; 
 spinstate = "ab";
-coef_cutoff = 0.5
+coef_cutoff = 0.1
 
 # phys params, must be floats
 tl = 1.0;
@@ -40,11 +40,12 @@ theta = 0.0;
 # get eq initial state
 eq_params = tl, 0.0, td, 0.0, mu, Vg, U, B, 0.0;
 h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
-psi_i, observables = fci_mod.arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = verbose);
-print("\nInitial state:-\n-Occ = "+str(observables[6:6+sum(nleads)+ndots].T)+"\n-Sz = "+str(observables[6+sum(nleads)+ndots:-1].T));
-print("\n- Concur = "+str(observables[-1]) );
+E_i, psi_i = fci_mod.arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = verbose);
+obs_i, obs_str_i = fci_mod.vec_to_obs(psi_i, h1e, g2e, nleads, nelecs, ndots);
+if verbose: print("\n1. Initial state:\n \t E = "+str(E_i)+obs_str_i);
 
 # get neq eigstates
+if verbose: print("\n2. Nonequilibrium Eigenstates");
 neq_params = tl, th, td, Vb, mu, Vg, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
 neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
 E_neq, v_neq = fci_mod.arr_to_eigen(neq_h1e, neq_g2e, nelecs, verbose = verbose);
@@ -55,10 +56,28 @@ for vi in range(len(v_neq) ):
     coefs[vi] = np.dot(psi_i.T, v_neq[vi]);
 
 # look at weighted eigenstates
-print("\nEigenstates");
 for ci in range(len(coefs)):
     if(abs(coefs[ci]) > coef_cutoff):
-        print("- |E = "+str(E_neq[ci])+"> : \n\t Occ = "
+
+        # analyze this state
+        v_obs, v_obs_str = fci_mod.vec_to_obs(v_neq[ci], neq_h1e, neq_g2e, nleads, nelecs, ndots, verbose = verbose);
+
+        # print info about this state
+        if verbose:
+            print("- |E = "+str(E_neq[ci])+"> :");
+            print("\n \t Coef = ",coefs[ci], v_obs_str);
+
+        # project onto states of interest
+        dotup_tup = fci_mod.kw_to_state("dota", nleads, nelecs, ndots, verbose = 0)
+        dotup_v_obs, dotup_v_str = fci_mod.vec_to_obs(*dotup_tup, nleads, nelecs, ndots);
+        print("|dot up>",dotup_v_str);
+        print(np.dot(dotup_tup[0].T, v_neq[ci] ) );
+
+        dotdw_tup = fci_mod.kw_to_state("dotb", nleads, nelecs, ndots, verbose = 0)
+        dotdw_v_obs, dotdw_v_str = fci_mod.vec_to_obs(*dotdw_tup, nleads, nelecs, ndots);
+        print("|dot_down>",dotdw_v_str);
+        print(np.dot(dotdw_tup[0].T, v_neq[ci] ) );
+        
         
     
 

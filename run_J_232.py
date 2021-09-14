@@ -26,7 +26,7 @@ import sys
 verbose = 3;
 nleads = (2,2);
 nelecs = (3,0); # one electron on each dot and one itinerant
-ndots = 2;
+ndots = 3;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 spinstate = "a00";
 

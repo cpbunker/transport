@@ -133,7 +133,6 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
     norbs = np.shape(h1e)[0];
     nelecs = (mol.nelectron,0);
     ndots = int( (dot_i[-1] - dot_i[0] + 1)/2 );
-    print(ndots);
     N = int(tf/dt+1e-6); # number of time steps
     if(verbose > 1):
         print("\n- Time Propagation, norbs = ", norbs, ", nelecs = ", nelecs);

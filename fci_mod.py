@@ -263,11 +263,74 @@ def arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = 0):
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
 
-    # do trivial time propagation
-    init_str, observables = td_fci.kernel(h1e, g2e, v_fci, mol, dotscf, 0.0, 1.0, imp_i, 1.0, verbose = verbose);
+    return E_fci, v_fci;
 
-    return v_fci, observables;
+
+def kw_to_state(kw, nleads, nelecs, ndots, tl = 1.0, verbose = 0):
+    '''
+    Given a system setup defd by nleads, nelecs, ndots
+
+    Generate a desired state as gd state of certain ham for system
+    '''
+
+    norbs = 2*(sum(nleads)+ndots);
+
+    if( kw == "dota" ):
+        # dot has up electron
+        # down spread over rest of system
+
+        # params
+        assert(ndots == 1);
+        B = 100*tl;
+        params = tl, tl, tl, 0.0, 0.0, 0.0, 0.0, -B, 0.0;
+
+        # create system from params
+        h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params,"", verbose = verbose);
+        mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+
+        # desired state is gd state of system
+        E0, v0 = scf_FCI(mol, dotscf, verbose = verbose);
+
+        return v0, h1e, g2e;
+
+    elif( kw == "dotb" ):
+        # dot has down electron
+        # up spread over rest of system
+
+        # params
+        assert(ndots == 1);
+        B = 100*tl;
+        params = tl, tl, tl, 0.0, 0.0, 0.0, 0.0, B, 0.0;
+
+        # create system from params
+        h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params,"", verbose = verbose);
+        mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+
+        # desired state is gd state of system
+        E0, v0 = scf_FCI(mol, dotscf, verbose = verbose);
+
+        return v0, h1e, g2e;
+
+    else: assert(False);
+        
+
+def vec_to_obs(vec, h1e, g2e, nleads, nelecs, ndots, verbose = 0):
     
+    norbs = np.shape(h1e)[0];
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ];
+
+    # get scf 
+    mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+
+    # do trivial time propagation
+    init_str, obs = td_fci.kernel(h1e, g2e, vec, mol, dotscf, 0.0, 1.0, imp_i, 1.0, verbose = verbose);
+
+    # put observables in str form for easy printing
+    obs_str = "\n \t Occ = "+str(np.real(obs[6:6+sum(nleads)+ndots].T) );
+    obs_str += "\n \t Sz = "+str(np.real(obs[6+sum(nleads)+ndots:-1].T) );
+    obs_str += "\n \t Concur = "+str(np.real(obs[-1]));
+    
+    return obs, obs_str;
 
 
 ##########################################################################################################

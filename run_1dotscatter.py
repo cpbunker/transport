@@ -59,8 +59,9 @@ else:
     # find T, R
     Ts, Rs = plot.TandR(datafs, nleads, mysites);
     thybs = [1.0, 0.9, 0.8,0.7,0.6,0.5];
-    plt.plot(thybs, Ts);
-    plt.plot(thybs, Rs);
+    plt.plot(thybs, Ts, label = "T");
+    plt.plot(thybs, Rs, label = "R");
+    plt.legend();
     plt.show();
 
     

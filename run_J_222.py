@@ -55,9 +55,9 @@ else:
     import plot
 
     # plot results
-    datafs = sys.argv[2]
+    datafs = sys.argv[3]
     splots = ['occ','Sz','concur']; # which subplots to plot
-    title = "1 LL site, 2 dots, 1 RL site, initial state |"+spinstate+" $\\rangle$";
+    title = str(nleads[0])+" LL sites, "+str(ndots)+" dots, "+str(nleads[1])+" RL sites, initial state |"+spinstate+" $\\rangle$";
     paramstr = "$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
     plot.PlotObservables(datafs, sites = ['L1','L2','LD','RD','R1','R2'], splots = splots, mytitle = title, paramstr = paramstr);
 
