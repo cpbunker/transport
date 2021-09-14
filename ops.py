@@ -491,6 +491,10 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     elif( spinstate == "1a"): # up on LL only
         assert( ndots == 1);
         h1e += h_B(-B, 0.0, 0.0, [0,1], norbs, verbose = verbose);
+    elif( spinstate == "aa" ): # up on LL, up on dot
+        assert( ndots == 1);
+        h1e += h_B(-B, theta, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);
+        h1e += h_B(-B, theta, 0.0, dot_i, norbs, verbose = verbose);
     elif( spinstate == "ab" ): # up on LL, down on dot
         assert( ndots == 1);
         h1e += h_B(-B, theta, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);

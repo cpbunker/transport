@@ -131,9 +131,15 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     J = Jup + Jdown;
 
     # plot current vs time
-    if 'J' in splots:
-        axes[axcounter].plot(t,J);
-        axes[axcounter].set_ylabel("J");
+    if 'Jup' in splots:
+        axes[axcounter].plot(t,Jup);
+        axes[axcounter].set_ylabel("Jup");
+        axcounter += 1;
+
+    # plot current vs time
+    if 'Jdown' in splots:
+        axes[axcounter].plot(t,Jdown);
+        axes[axcounter].set_ylabel("Jdown");
         axcounter += 1;
 
     # plot occupancy vs time
@@ -156,7 +162,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     if 'Sz' in splots:
         for sitei in range(len(sites)): # iter over sites
             axes[axcounter].plot(t, Szs[sitei], label = sites[sitei]);
-        axes[axcounter].set_ylabel("Sz")
+        axes[axcounter].set_ylabel("$S_z$")
         axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
 
@@ -476,6 +482,46 @@ def CompOnly(datafs, labs, obs, mytitle = "", leg_title="", leg_ncol = 1 ):
     plt.show();
 
     return;
+
+
+def TandR(datafs, nleads, sites):
+
+    Ts = [];
+    Rs = [];
+
+    # iter over datafs
+    for dati in range(len(datafs)):
+        
+        observables = np.load(datafs[dati]);
+        print("Loading data from "+datafs[dati]);
+
+        # unpack data depending on how many dots
+        t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
+        RLSz = np.zeros_like(t);
+        LLSz = np.zeros_like(t);
+        for obsi in range(len(sites)): # observables has an occ and Sz for every site
+            if sites[obsi][0] == 'L':
+                LLSz += observables[obsi+len(sites)+6];
+            elif sites[obsi][0] == 'R':
+                RLSz += observables[obsi+len(sites)+6];
+
+        plt.plot(t, RLSz);
+        plt.plot(t, LLSz);
+
+        # smooth
+        NewRL = np.zeros_like(RLSz);
+        for i in range(len(RLSz)):
+            NewRL[i] = sum(RLSz[i-60:i+60])/120;
+        plt.plot(t,NewRL);
+        plt.show();
+
+        # max of RLSz, LLSz -> T, R
+        maxi = np.argmax(NewRL);
+        print(t[maxi]);
+        Ts.append(NewRL[maxi]);
+        Rs.append(LLSz[maxi]);
+
+    return Ts, Rs;       
 
 
 def CompConductances(datafs, thetas, times, Vb):

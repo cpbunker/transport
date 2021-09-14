@@ -86,11 +86,18 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
     
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
-    if(verbose > 2 ): print("- Add nonequilibrium terms");
+    if(verbose > 3 ): print("- Add nonequilibrium terms");
     neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
     neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
+
+    # get eigenstates of neq if asked
+    if(verbose > 3):
+        E_neq, v_neq = fci_mod.arr_to_eigen(neq_h1e, neq_g2e, nelecs, verbose = verbose);
+        for vi in range(len(v_neq)):
+            print("- ",vi, v_neq[vi].T, len(v_neq[vi]));
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
@@ -98,11 +105,13 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     
     # write results to external file
     if namevar == "Vg":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
     elif namevar == "U":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_U"+str(U)+".npy";
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
     elif namevar == "Vb":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vb"+str(V_bias)+".npy";
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+    elif namevar == "th":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime();
     hstring += "\nASU formalism, t_hyb noneq. term"

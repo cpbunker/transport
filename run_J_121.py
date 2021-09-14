@@ -23,7 +23,7 @@ import sys
 #### set up physics of dot
 
 # top level
-verbose = 3;
+verbose = 4;
 nleads = (1,1);
 nelecs = (3,0); # one electron on each dot and one itinerant
 ndots = 2;
@@ -43,12 +43,12 @@ theta = 0.0;
 
 #time info
 dt = 0.01;
-tf = 150.0;
+tf = 1.0;
 
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/cicc/"+spinstate+"/", verbose = verbose);
+    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/temp/", verbose = verbose);
 
 else:
 

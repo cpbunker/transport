@@ -238,6 +238,19 @@ def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     return E_fci, v_fci;
 
 
+def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
+
+    norbs = np.shape(h1e)[0];
+
+    # to scf
+    mol, scfo = arr_to_scf(h1e, g2e, norbs, nelecs);
+
+    # to eigenstates
+    e, v = scf_FCI(mol, scfo, nroots = norbs, verbose = verbose);
+
+    return e,v;
+
+
 ##########################################################################################################
 #### exec code
 
