@@ -17,6 +17,7 @@ pyscf/fci module:
 '''
 
 import ops
+import td_fci
 
 import numpy as np
 import functools
@@ -249,6 +250,24 @@ def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
     e, v = scf_FCI(mol, scfo, nroots = norbs, verbose = verbose);
 
     return e,v;
+
+
+def arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = 0):
+
+    norbs = np.shape(h1e)[0];
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ];
+    
+    # get scf 
+    mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
+
+    # do trivial time propagation
+    init_str, observables = td_fci.kernel(h1e, g2e, v_fci, mol, dotscf, 0.0, 1.0, imp_i, 1.0, verbose = verbose);
+
+    return v_fci, observables;
+    
 
 
 ##########################################################################################################

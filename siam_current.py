@@ -93,12 +93,6 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
     neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
 
-    # get eigenstates of neq if asked
-    if(verbose > 3):
-        E_neq, v_neq = fci_mod.arr_to_eigen(neq_h1e, neq_g2e, nelecs, verbose = verbose);
-        for vi in range(len(v_neq)):
-            print("- ",vi, v_neq[vi].T, len(v_neq[vi]));
-
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
     init_str, observables = td_fci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, t_hyb, verbose = verbose);

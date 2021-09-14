@@ -296,6 +296,32 @@ def h_dot_2e(U,N):
     return h; # end h dot 2e
 
 
+def spinflip(site_i, norbs):
+    '''
+    define the "spin flip operator \sigma_y x \sigma_y for two qubits
+    abs val of exp of spin flip operator gives concurrence
+    '''
+
+    # check inputs
+    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    #assert( len(site_i) == 4); # concurrence def'd for 2 qubits
+
+    # create op array (2 body!)
+    sf = np.zeros((norbs,norbs, norbs, norbs));
+    sf[site_i[0],site_i[0]+3,site_i[0]+2,site_i[0]+1] += -1;
+    sf[site_i[0],site_i[0]+2,site_i[0]+1,site_i[0]+3] += 1;
+    sf[site_i[0]+1,site_i[0]+3,site_i[0]+2,site_i[0]] += 1;
+    sf[site_i[0]+1,site_i[0]+2,site_i[0]+3,site_i[0]] += -1;
+
+    # (pq|rs) = (qp|sr) switch particle labels
+    sf[site_i[0]+3,site_i[0],site_i[0]+1,site_i[0]+2] += -1;
+    sf[site_i[0]+2,site_i[0],site_i[0]+3,site_i[0]+1,] += 1;
+    sf[site_i[0]+3,site_i[0]+1,site_i[0],site_i[0]+2] += 1;
+    sf[site_i[0]+2,site_i[0]+1,site_i[0],site_i[0]+3,] += -1;
+
+    return sf;
+
+
 
 #######################################################
 #### 2nd part of siam hamiltonian array creation:
