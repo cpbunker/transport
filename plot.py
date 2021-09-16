@@ -161,15 +161,23 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
 
         # format
         axes[axcounter].set_ylabel("Occ.")
-        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        #axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
 
-    # change in occupancy vs time
-    if 'delta_occ' in splots:
+    # total lead occupancy
+    if 'lead_occ' in splots:
+        LLocc, Docc, RLocc = np.zeros_like(occs[0]), np.zeros_like(occs[0]), np.zeros_like(occs[0]);
         for sitei in range(len(sites)): # iter over sites
-            axes[axcounter].plot(t, occs[sitei] - occs[sitei][0], label = sites[sitei], color = colors[sitei]);
-        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
-        axes[axcounter].set_ylabel(r"$\Delta$ Occ.");
+            if 'L' in sites[sitei]:
+                LLocc += occs[sitei];
+            elif 'D' in sites[sitei]:
+                Docc += occs[sitei];
+            elif 'R' in sites[sitei]:
+                RLocc += occs[sitei];
+        axes[axcounter].plot(t, LLocc, label = "LL");
+        axes[axcounter].plot(t, Docc, label = "D");
+        axes[axcounter].plot(t, RLocc, label = "RL");
+        axes[axcounter].set_ylabel("Occ.");
         axcounter += 1;
 
     # plot Sz of dot vs time
@@ -177,7 +185,23 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
         for sitei in range(len(sites)): # iter over sites
             axes[axcounter].plot(t, Szs[sitei], label = sites[sitei], color = colors[sitei]);
         axes[axcounter].set_ylabel("$S_z$")
-        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        #axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axcounter += 1;
+
+    # ctotal lead Sz
+    if 'lead_Sz' in splots:
+        LLS, DS, RLS = np.zeros_like(occs[0]), np.zeros_like(occs[0]), np.zeros_like(occs[0]);
+        for sitei in range(len(sites)): # iter over sites
+            if 'L' in sites[sitei]:
+                LLS += Szs[sitei];
+            elif 'D' in sites[sitei]:
+                DS += Szs[sitei];
+            elif 'R' in sites[sitei]:
+                RLS += Szs[sitei];
+        axes[axcounter].plot(t, LLS, label = "LL");
+        axes[axcounter].plot(t, DS, label = "D");
+        axes[axcounter].plot(t, RLS, label = "RL");
+        axes[axcounter].set_ylabel("Sz");
         axcounter += 1;
 
     if 'concur' in splots:
@@ -195,8 +219,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     axes[0].set_title(mytitle);
     myxlabel = "time (dt = "+str(np.real(t[1]))+")"
     axes[-1].set_xlabel(myxlabel);
-    # last legend tells params
-    axes[-1].legend(title = paramstr, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+    axes[0].legend(title = paramstr, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
     for axi in range(len(axes) ): # customize axes
         axes[axi].minorticks_on();
         axes[axi].grid(which='major', color='#DDDDDD', linewidth=0.8);
