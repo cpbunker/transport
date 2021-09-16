@@ -44,7 +44,7 @@ tf = 50.0;
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/1dotscatter/", namevar = "Vg", verbose = verbose);
+    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
 
 else:
 
