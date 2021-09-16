@@ -8,9 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines
 import seaborn
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # format matplotlib globally
-plt.style.use('seaborn-colorblind')
 
 ###############################################################################
 #### plotting from txt file
@@ -117,6 +117,10 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
+    colors = seaborn.color_palette("colorblind");
+    if (len(colors) < len(sites) ): # need more colors
+        colors = plt.cm.get_cmap('seismic', len(datafs));
+        colors = colors(np.linspace(0,1, len(datafs) ) );
 
     # unpack
     print("Loading data from ",dataf);
@@ -145,8 +149,17 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
 
     # plot occupancy vs time
     if 'occ' in splots:
-        for sitei in range(len(sites)): # iter over sites
-            axes[axcounter].plot(t, occs[sitei], label = sites[sitei]);
+        for sitei in range(len(sites)): # occ of each site on same ax
+            axes[axcounter].plot(t, occs[sitei], label = sites[sitei], color = colors[sitei]);
+            
+            # inset for dot occ
+            if(sites[sitei] == 'D'):
+                # Create inset of width 1.3 inches and height 0.9 inches
+                # at the default upper right location
+                axins = inset_axes(axes[axcounter], width="30%", height="30%");
+                axins.plot(t[:int(2/np.real(t[1]) ) ], occs[sitei][:int(2/np.real(t[1]) ) ], color = colors[sitei] );
+
+        # format
         axes[axcounter].set_ylabel("Occ.")
         axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
@@ -154,7 +167,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     # change in occupancy vs time
     if 'delta_occ' in splots:
         for sitei in range(len(sites)): # iter over sites
-            axes[axcounter].plot(t, occs[sitei] - occs[sitei][0], label = sites[sitei]);
+            axes[axcounter].plot(t, occs[sitei] - occs[sitei][0], label = sites[sitei], color = colors[sitei]);
         axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axes[axcounter].set_ylabel(r"$\Delta$ Occ.");
         axcounter += 1;
@@ -162,7 +175,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     # plot Sz of dot vs time
     if 'Sz' in splots:
         for sitei in range(len(sites)): # iter over sites
-            axes[axcounter].plot(t, Szs[sitei], label = sites[sitei]);
+            axes[axcounter].plot(t, Szs[sitei], label = sites[sitei], color = colors[sitei]);
         axes[axcounter].set_ylabel("$S_z$")
         axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
@@ -524,8 +537,8 @@ def TandR(datafs, nleads, sites):
         # max of RLSz, LLSz -> T, R
         maxi = np.argmax(NewRL);
         print(t[maxi]);
-        Ts.append(NewRL[maxi]);
-        Rs.append(LLSz[maxi]);
+        Ts.append(NewRL[maxi]/0.5);
+        Rs.append(LLSz[maxi]/0.5);
 
     return Ts, Rs;       
 

@@ -55,6 +55,10 @@ def h_leads(V, N):
         
         h[n_lead_sos-1-i,n_lead_sos-1-(i+2)] += -V; # right side
         h[n_lead_sos-1-(i+2),n_lead_sos-1-i] += -V; # h.c.
+
+    if False:
+        h[0,2] = 0.0;
+        h[2,0] = 0.0;
         
     return h; # end h_leads;
 
@@ -538,18 +542,21 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     # prepare spin states
     if( spinstate == ""): # default, single dot case
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose); # spin(theta) on dot(s)
-    elif( spinstate == "a"): # up on LL only
-        h1e += h_B(-B, 0.0, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);
-    elif( spinstate == "1a"): # up on LL only
-        assert( ndots == 1);
-        h1e += h_B(-B, 0.0, 0.0, [0,1], norbs, verbose = verbose);
     elif( spinstate == "aa" ): # up on LL, up on dot
         assert( ndots == 1);
         h1e += h_B(-B, theta, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);
         h1e += h_B(-B, theta, 0.0, dot_i, norbs, verbose = verbose);
-    elif( spinstate == "ab" ): # up on LL, down on dot
+    elif( spinstate == "ab" ): # up on entire LL, down on dot
         assert( ndots == 1);
         h1e += h_B(-B, theta, 0.0, np.array(range(dot_i[0]) ), norbs, verbose = verbose);
+        h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose);
+    elif( spinstate == "ab1"): # up on LL first site, down on dot
+        assert( ndots == 1);
+        h1e += h_B(-B, theta, 0.0, [0,1], norbs, verbose = verbose);
+        h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose);
+    elif( spinstate == "ab-1"): # up on LL last site, down on dot
+        assert( ndots == 1);
+        h1e += h_B(-B, theta, 0.0, [dot_i[0]-2,dot_i[0]-1], norbs, verbose = verbose);
         h1e += h_B(B, theta, 0.0, dot_i, norbs, verbose = verbose);
     elif( spinstate == "aaa"):
         assert(ndots == 2 and theta == 0.0);

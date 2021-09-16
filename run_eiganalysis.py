@@ -22,7 +22,7 @@ nleads = (2,2);
 nelecs = (2,0); # one electron on dot and one itinerant
 ndots = 1; 
 spinstate = "ab";
-coef_cutoff = 0.1
+coef_cutoff = 0.0
 
 # phys params, must be floats
 tl = 1.0;
@@ -61,22 +61,23 @@ for ci in range(len(coefs)):
 
         # analyze this state
         v_obs, v_obs_str = fci_mod.vec_to_obs(v_neq[ci], neq_h1e, neq_g2e, nleads, nelecs, ndots, verbose = verbose);
-
+    
         # print info about this state
         if verbose:
             print("- |E = "+str(E_neq[ci])+"> :");
             print("\n \t Coef = ",coefs[ci], v_obs_str);
+            
 
         # project onto states of interest
         dotup_tup = fci_mod.kw_to_state("dota", nleads, nelecs, ndots, verbose = 0)
         dotup_v_obs, dotup_v_str = fci_mod.vec_to_obs(*dotup_tup, nleads, nelecs, ndots);
-        print("|dot up>",dotup_v_str);
-        print(np.dot(dotup_tup[0].T, v_neq[ci] ) );
+        #print("|dot up>",dotup_v_str);
+        #print(np.dot(dotup_tup[0].T, v_neq[ci] ) );
 
         dotdw_tup = fci_mod.kw_to_state("dotb", nleads, nelecs, ndots, verbose = 0)
         dotdw_v_obs, dotdw_v_str = fci_mod.vec_to_obs(*dotdw_tup, nleads, nelecs, ndots);
-        print("|dot_down>",dotdw_v_str);
-        print(np.dot(dotdw_tup[0].T, v_neq[ci] ) );
+        #print("|dot_down>",dotdw_v_str);
+        #print(np.dot(dotdw_tup[0].T, v_neq[ci] ) );
         
         
     
