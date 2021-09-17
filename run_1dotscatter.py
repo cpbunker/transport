@@ -33,18 +33,18 @@ td = 1.0;
 Vb = 0.0;
 mu = 0.0;
 Vg = -60.0;
-U = 180.0
+U = 200.0
 B = 1000;
 theta = 0.0;
 
 #time info
 dt = 0.001;
-tf = 70.0;
+tf = 150.0;
 
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "dat/1dotscatter/Vg/", namevar = "Vg", verbose = verbose);
+    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
 
 else:
 
