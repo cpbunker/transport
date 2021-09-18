@@ -265,7 +265,7 @@ def Jup(site_i, norbs):
     JR[upiR+2,upiR] = 1;  # up spin to right up spin
     JR[upiR,upiR+2] =  -1; # hc
 
-    return JL, JR;
+    return [JL, JR];
 
 
 def Jdown(site_i, norbs):
@@ -293,7 +293,7 @@ def Jdown(site_i, norbs):
     JR[dwiR+2,dwiR] = 1;  # dot dw spin to right dw spin
     JR[dwiR,dwiR+2] =  -1; # hc
 
-    return JL, JR;
+    return [JL, JR];
 
 #### 2 e ham operators
     

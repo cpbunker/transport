@@ -20,7 +20,7 @@ import sys
 
 # top level
 verbose = 3;
-nleads = (2,2);
+nleads = (4,4);
 nelecs = (2,0); # one electron on dot and one itinerant
 ndots = 1;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
@@ -32,13 +32,13 @@ th = 1.0;
 td = 1.0; 
 Vb = 0.0;
 mu = 0.0;
-Vg = -60.0;
-U = 200.0
+Vg = -40.0;
+U = 80.0
 B = 1000;
 theta = 0.0;
 
 #time info
-dt = 0.001;
+dt = 0.005;
 tf = 150.0;
 
 if get_data: # must actually compute data
@@ -53,7 +53,7 @@ else:
 
     # plot results
     datafs = sys.argv[2:]
-    splots = ['lead_occ','lead_Sz','E']; # which subplots to plot
+    splots = ['Jup','lead_occ','lead_Sz','E']; # which subplots to plot
     mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
     mysites = ['L1','L2','D','R1','R2'];
     title = "Itinerant electron scatters from spin impurity";

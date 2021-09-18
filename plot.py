@@ -13,46 +13,6 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 # format matplotlib globally
 
 ###############################################################################
-#### plotting from txt file
-
-def PlotTxt2D(fname, show = False, handles=[""], styles = [""], labels=["x","y",""]):
-    '''
-    Take 2D np array stored in txt file and plot x v y
-    '''
-
-    # for debugging
-    cfname = "PlotTxt2D";
-
-    # unpack data
-    dat = np.loadtxt(fname);
-    x, y = dat[0], dat[1];
-
-    # check inputs
-    if( type(x) != type(np.zeros(1) ) ): # check that x is an np array
-        raise PlotTypeError(cfname+" 1st arg must be np array.\n");
-    legend=True; # decide whether to implement legend
-    if(handles==[""]): # no handles for legend provided
-        legend = False;
-    if(styles==[]): # no plot style kwargs provided
-        pass;
-        
-    # construct axes
-    fig, ax = plt.subplots();
-    
-    plt.plot(x, y, styles[0], label = handles[0]);
-
-    # format and show
-    ax.set(xlabel = labels[0], ylabel = labels[1], title=labels[2]);
-    if(legend):
-        ax.legend();
-        
-    if show: plt.show();
-
-    return x, y; # end plot text 2d
-
-
-
-###############################################################################
 #### plotting directly
 
 def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
@@ -98,22 +58,25 @@ def GenericPlot(x,y, handles=[], styles = [], labels=["x","y",""]):
 
 
 ###############################################################################
-#### very specific plot functions
+#### plotting from .npy which contains observables array
+#### observables array structure: rows = time, columns = features
 
 
 def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", paramstr = ""):
     '''
-    plot observables from td fci run
-    Supported observables: J(up, down sep) Jtot(=Jup+Jdown), occ, change in
-    occ, Sz, energy
+    plot observables from .npy gen'd by td fci or td dmrg run
+    observables array structure: rows = time, columns = features
+    features = energy, J up left, right, J down left, right, concurrence, occ, Sx, Sy, Sz for each site
 
     Args:
     - dataf, string of .npy filename where data array is stored
+    - sites, name of each site classifying by whether left lead (L), dot (D) or right lead (R)
     - splots, list of strings which tell which subplots to make
     '''
 
     # top level inputs
     numplots = len(splots);
+    n_generic_obs = 7;
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
@@ -125,26 +88,29 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     # unpack
     print("Loading data from ",dataf);
     observables = np.load(dataf);
-    t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
-    occs, Szs = [], []; # variable number of occs, Szs
-    for obsi in range(len(sites)): # observables has an occ and Sz for every site
-        occs.append(observables[obsi+6]);
-        Szs.append(observables[obsi+len(sites)+6]);
-    concur = observables[-1];
+    observables = observables.T; # so that features can now be easily grabbed as rows
+    t, E, JupL, JupR, JdownL, JdownR, concur = observables[0], observables[1], -np.imag(observables[2]), -np.imag(observables[3]), -np.imag(observables[4]), -np.imag(observables[5]), observables[6]
     Jup = (JupL + JupR)/2;
     Jdown = (JdownL + JdownR)/2;
     J = Jup + Jdown;
 
+    # site specific observables
+    occs, Szs = [], [];
+    for sitei in range(len(sites)): # observables has an occ and Sz for every site
+        obsi = n_generic_obs + sitei*4; # 4 total obs per site
+        occs.append(observables[obsi]);
+        Szs.append(observables[obsi+3]);
+
     # plot current vs time
     if 'Jup' in splots:
         axes[axcounter].plot(t,Jup);
-        axes[axcounter].set_ylabel("Jup");
+        axes[axcounter].set_ylabel("$J_{up}/t_{h}$");
         axcounter += 1;
 
     # plot current vs time
     if 'Jdown' in splots:
         axes[axcounter].plot(t,Jdown);
-        axes[axcounter].set_ylabel("Jdown");
+        axes[axcounter].set_ylabel("$J_{down}/t_{h}$");
         axcounter += 1;
 
     # plot occupancy vs time
@@ -261,24 +227,23 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
         colors = plt.cm.get_cmap('seismic', len(datafs));
         colors = colors(np.linspace(0,1, len(datafs) ) );
     numplots = len(splots);
+    n_generic_obs = 7;
     focus = splots[0];
     splots = splots [1:];
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots== 1: axes = [axes];
 
     for dati in range(len(datafs)): # iter over data sets
-        observables = np.load(datafs[dati]);
-        print("Loading data from "+datafs[dati]);
 
-        # unpack data depending on how many dots
-        t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
-        occs, Szs = [], []; # variable number of occs, Szs
-        for obsi in range(len(sites)): # observables has an occ and Sz for every site
-            occs.append(observables[obsi+6]);
-            Szs.append(observables[obsi+len(sites)+6]);
+        # unpack
+        print("Loading data from ",datafs[dati]);
+        observables = np.load(datafs[dati]);
+        observables = observables.T; # so that features can now be easily grabbed as rows
+        t, E, JupL, JupR, JdownL, JdownR, concur = observables[0], observables[1], -np.imag(observables[2]), -np.imag(observables[3]), -np.imag(observables[4]), -np.imag(observables[5]), observables[6];
         Jup = (JupL + JupR)/2;
         Jdown = (JdownL + JdownR)/2;
-        J = Jup + Jdown; 
+        J = Jup + Jdown;
+        
         axcounter = 1; # ax 0 is focus
 
         # first splot is focus splot
@@ -300,7 +265,7 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
 
         if 'Jup' in splots:
             axes[axcounter].plot(t,Jup, color=colors[dati], label = labs[dati]);
-            axes[axcounter].set_ylabel("$J_{up}$");          
+            axes[axcounter].set_ylabel("$$J_{up}/t_{h}$$");          
             axcounter += 1;
 
         if 'JupLR' in splots:
@@ -308,7 +273,7 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
                 axes[axcounter].plot(t, JupL, color=colors[dati], linestyle = "dashed", label = "Left");
                 axes[axcounter].plot(t, JupR, color=colors[dati], linestyle = "dotted", label = "Right");
                 axes[axcounter].plot(t, Jup, color='gray', label = "Total");
-                axes[axcounter].set_ylabel("$J_{up}$");
+                axes[axcounter].set_ylabel("$$J_{up}/t_{h}$$");
                 dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
                 dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
                 grayline = matplotlib.lines.Line2D([],[],color = 'gray');
@@ -317,7 +282,7 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
 
         if 'Jdown' in splots:
             axes[axcounter].plot(t, Jdown, color=colors[dati],label=labs[dati]);
-            axes[axcounter].set_ylabel("$J_{down}$");
+            axes[axcounter].set_ylabel("$J_{down}/t_{h}$");
             axcounter += 1;
 
         if 'JdownLR' in splots:
@@ -325,7 +290,7 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
                 axes[axcounter].plot(t, JdownL, color=colors[dati], linestyle = "dashed", label = "Left");
                 axes[axcounter].plot(t, JdownR, color=colors[dati], linestyle = "dotted", label = "Right");
                 axes[axcounter].plot(t, Jup, color='gray', label = "Total");
-                axes[axcounter].set_ylabel("$J_{down}$");
+                axes[axcounter].set_ylabel("$J_{down}/t_{h}$");
                 dashline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dashed');
                 dotline = matplotlib.lines.Line2D([],[],color = 'black', linestyle = 'dotted');
                 grayline = matplotlib.lines.Line2D([],[],color = 'gray');

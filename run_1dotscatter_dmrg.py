@@ -32,19 +32,23 @@ th = 1.0;
 td = 1.0; 
 Vb = 0.0;
 mu = 0.0;
-Vg = -10.0;
-U = 40.0
+Vg = -40.0;
+U = 80.0
 B = 1000;
 theta = 0.0;
 
 #time info
-dt = 0.01;
-tf = 50.0;
+dt = 0.005;
+tf = 150.0;
+
+# dmrg info
+bdims = [700, 800, 900, 1000];
+noises = [1e-4, 1e-5, 1e-6, 0.0];
 
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    siam_current.DotData(nleads, nelecs, ndots, tf, dt, params, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
+    siam_current.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
 
 else:
 
@@ -58,39 +62,6 @@ else:
     title = "Itinerant electron scatters from spin impurity";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
     plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
-
-    # find T, R against th
-    if False:
-        Ts, Rs = plot.TandR(datafs, nleads, mysites);
-        thybs = [0.4,0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2];
-        Us = [20, 40, 60, 80];
-        plt.plot(thybs, Ts, label = "T");
-        plt.plot(thybs, Rs, label = "R");
-
-        # fit R to x^4
-        def func(x,a,b):
-            return a*np.power(x,b) + 0.1;
-        fit, _ = scipy.optimize.curve_fit(func, thybs, Rs);
-        print(fit);
-        plt.plot(thybs, func(thybs, *fit), color = 'black', linestyle = 'dashed' );
-        plt.legend();
-        plt.xlabel("$U$");
-        plt.show();
-
-    # find T, R against U
-    if False:
-        Ts, Rs = plot.TandR(datafs, nleads, mysites);
-        Us = [20, 40, 60, 80];
-        plt.plot(Us, Ts, label = "T");
-        plt.plot(Us, Rs, label = "R");
-
-        # fit R to x^4
-        def func(x,a,b):
-            return a*np.power(x,4) + b;
-
-        plt.legend();
-        plt.xlabel("$U$");
-        plt.show();
 
     
 

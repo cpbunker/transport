@@ -31,7 +31,7 @@ def compute_obs(op,mps):
 ##########################################################################################################
 #### time propagation
 
-def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
+def kernel(mpo, h_obj, mps, tf, dt, i_dot, bdims, verbose = 0):
     '''
     Drive time prop for dmrg
     Use real time time dependent dmrg method outlined here:
@@ -42,79 +42,54 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, thyb, bdims, verbose = 0):
     - h_obj, a pyblock3.hamiltonian.Hamiltonian form of the hailtonian
     '''
 
+    # check inputs
     assert(isinstance(bdims, list));
 
-    N = int(tf/dt+1e-6); # num steps
-    i_all = np.arange(0,h_obj.n_sites, 1, dtype = int);
-    i_left = i_all[:i_dot[0] ];
-    i_right = i_all[i_dot[-1]+1:];
-    
-    # return vals
-    timevals = np.zeros(N+1);
-    energyvals = np.zeros(N+1);
-    currentvals = np.zeros((4, N+1));
-    occvals = np.zeros( (3,N+1), dtype = complex );
-    Szvals = np.zeros( (3,N+1), dtype = complex );
-
-    # create observable MPOs outside loop to save time
+    # unpack
     norbs = mps.n_sites
-    current_mpo_upL = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[0] );
-    current_mpo_upR = h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[1] );
-    current_mpo_downL = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[0] );
-    current_mpo_downR = h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[1] );
-    occ_mpo_L = h_obj.build_mpo(ops_dmrg.occ(i_left, norbs) );
-    occ_mpo_D = h_obj.build_mpo(ops_dmrg.occ(i_dot, norbs) );
-    occ_mpo_R = h_obj.build_mpo(ops_dmrg.occ(i_right, norbs) );
-    Sz_mpo_L = h_obj.build_mpo(ops_dmrg.Sz(i_left, norbs) );
-    Sz_mpo_D = h_obj.build_mpo(ops_dmrg.Sz(i_dot, norbs) );
-    Sz_mpo_R = h_obj.build_mpo(ops_dmrg.Sz(i_right, norbs) );
+    N = int(tf/dt+1e-6); # num steps
+    n_generic_obs = 7; # 7 are time, E, 4 J's, concurrence
+    sites = np.array(range(norbs)).reshape(int(norbs/2),2); # all indices, sep'd by site
+    mpe_obj = MPE(mps, mpo, mps); # init mpe obj
+    # return vals
+    observables = np.zeros((N+1, n_generic_obs+4*len(sites) ), dtype = complex ); # generic plus occ, Sx, Sy, Sz per site
 
-    # init mpe
-    mpe_obj = MPE(mps, mpo, mps);
+    # mpos for observables
+    obs_mpos = [];
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[0] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[1] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[0] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[1] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.spinflip(i_dot, norbs) ) );
+    for site in sites: # site specific observables
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.occ(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sx(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sy(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sz(site, norbs) ) );
 
     # loop over time
     for i in range(N+1):
 
-        # before any time stepping, get initial state
-        if(i==0):
-            occ_init, Sz_init = np.zeros(len(i_all), dtype = complex), np.zeros(len(i_all), dtype = complex);
-            for sitej in i_all: # iter over sites
-                
-                if(sitej % 2 == 0): # spin up sites
-                    occ_init[sitej] = compute_obs(h_obj.build_mpo(ops_dmrg.occ([sitej,sitej+1], norbs) ), mps);
-                    Sz_init[sitej] = compute_obs(h_obj.build_mpo(ops_dmrg.Sz([sitej,sitej+1], norbs) ), mps);
-                else: # spin down sites
-                    occ_init[sitej] = 0.0
-                    Sz_init[sitej] = 0.0;
-
-            initstatestr = "\nInitial state:"
-            initstatestr += "\n    occ = "+str(np.real(occ_init));
-            initstatestr += "\n    Sz = "+str(np.real(Sz_init));
+        if(verbose>2): print("    time: ", i*dt);
 
         # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
         energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
         mpst = mpe_obj.ket; # update wf
 
         # compute observables
-        timevals[i] = i*dt;
-        energyvals[i] = energies[-1];
-        currentvals[0][i] = -np.imag(compute_obs(current_mpo_upL, mpst) );
-        currentvals[1][i] = -np.imag(compute_obs(current_mpo_upR, mpst) );
-        currentvals[2][i] = -np.imag(compute_obs(current_mpo_downL, mpst) );
-        currentvals[3][i] = -np.imag(compute_obs(current_mpo_downR, mpst) );
-        occvals[0][i] = compute_obs(occ_mpo_L, mpst);
-        occvals[1][i] = compute_obs(occ_mpo_D, mpst);
-        occvals[2][i] = compute_obs(occ_mpo_R, mpst);
-        Szvals[0][i] = compute_obs(Sz_mpo_L, mpst);
-        Szvals[1][i] = compute_obs(Sz_mpo_D, mpst);
-        Szvals[2][i] = compute_obs(Sz_mpo_R, mpst);
+        observables[i,0] = i*dt; # time
+        observables[i,1] = energies[-1]; # energy
+        for mi in range(len(obs_mpos)): # iter over mpos
+            print(mi);
+            observables[i,mi+2] = compute_obs(obs_mpos[mi], mpst);
         
-        # update stdout        
-        if(verbose>2): print("    time: ", i*dt);
+        # before any time stepping, get initial state
+        if(i==0):
+            # get site specific observables at t=0 in array where rows are sites
+            initobs = np.real(np.reshape(observables[i,n_generic_obs:],(len(sites), 4) ) );
 
     # return time and tuple of observables as functions of time, 1d arrays
-    observables = [timevals, energyvals, thyb*currentvals[0], thyb*currentvals[1], thyb*currentvals[2], thyb*currentvals[3], occvals[0], occvals[1], occvals[2], Szvals[0], Szvals[1], Szvals[2]];
-    return initstatestr, np.array(observables);
+    return initobs, observables;
 
 
 ##########################################################################################################

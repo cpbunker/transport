@@ -26,8 +26,8 @@ pyscf fci module:
 
 import ops
 
-import time
 import numpy as np
+import time
 
 #################################################
 #### get current data
@@ -95,7 +95,7 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
 
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
-    init_str, observables = td_fci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, t_hyb, verbose = verbose);
+    init, observables = td_fci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
     
     # write results to external file
     if namevar == "Vg":
@@ -108,19 +108,18 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime();
+    hstring += "tf = "+str(timestop)+"\ndt = "+str(deltat);
     hstring += "\nASU formalism, t_hyb noneq. term"
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_noneq;
-    hstring += init_str; # write initial state to txt
-    print(fname[:-4]+".txt");
-    np.savetxt(fname[:-4]+".txt", np.array([1,2,3]), header = hstring); # saves info to txt
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
     np.save(fname, observables);
-    print("4. Saved data to "+fname);
+    if (verbose): print("4. Saved data to "+fname);
     
     return fname; # end dot data
 
 
-def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, prefix = "dat/", verbose = 0):
+def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, spinstate = "", prefix = "dat/", namevar = "Vg", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
     and td-DMRG for nonequilibirum dynamics. Impurity is a quantum dot w/ gate voltage, hubbard U
@@ -172,8 +171,8 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
 
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
-    ham_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
-    h1e, g2e, input_str = ops.dot_hams(nleads, ndots, nelecs, ham_params, verbose = verbose);
+    ham_params = t_leads, 1e-5, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
+    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, ham_params, spinstate, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
@@ -205,27 +204,40 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     ham_params_neq = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb and Vbias on, no zeeman splitting
-    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(nleads, ndots, nelecs, ham_params_neq, verbose = verbose);
+    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(nleads,nelecs, ndots, ham_params_neq, "", verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
-    h_obj_neq = hamiltonian.Hamiltonian(hdump_neq,True);
+    h_obj_neq = hamiltonian.Hamiltonian(hdump_neq, flat=True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
     h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
 
+    from pyblock3.algebra import flat
+    #assert( isinstance(h_obj_neq.FT, flat.FlatFermionTensor) );
+    #assert( isinstance(h_mpo_neq, flat.FlatFermionTensor) );
+    #assert(False);
+
     # time propagate the noneq state
     # td dmrg uses highest bond dim
-    init_str, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, t_hyb, [bond_dims[-1]], verbose = verbose);
+    if(verbose): print("3. Time propagation");
+    init, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, [bond_dims[-1]], verbose = verbose);
 
     # write results to external file
-    fname = prefix+"dmrg_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_B"+str(B)[:3]+"_t"+str(theta)[:3]+"_Vg"+str(V_gate)+".npy";
+    if namevar == "Vg":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
+    elif namevar == "U":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
+    elif namevar == "Vb":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+    elif namevar == "th":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
+    else: assert(False); # invalid option
     hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
+    hstring += "tf = "+str(timestop)+"\ndt = "+str(deltat);
     hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_neq;
-    hstring += init_str; # write initial state to txt
-    print(fname[:-4]+".txt");
-    np.savetxt(fname[:-4]+".txt", np.array([1,2,3]), header = hstring); # saves info to txt
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
     np.save(fname, observables);
-    print("4. Saved data to "+fname);
+    if(verbose): print("4. Saved data to "+fname);
     
     return fname; # end dot data dmrg
 

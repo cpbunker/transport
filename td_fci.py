@@ -113,14 +113,14 @@ def compute_energy(d1, d2, eris, time=None):
 ################################################################
 #### kernel
 
-def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK = 4, verbose= 0):
+def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, ASU = True, RK = 4, verbose= 0):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, current, occupancy, Sz
 
     Returns
-    timevals, 1d arr of time steps
-    observables, tuple of arrs of observable values at each time: E(t), J(t), Occ(t), Sz(t)
+    init_obs, 2d arr, rows are sites and columns are occ, Sx, Sy, Sz at t=0
+    observables, 2d arr, rows are time and columns are all observables
     '''
 
     # assertion statements to check inputs
@@ -134,59 +134,50 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
     nelecs = (mol.nelectron,0);
     ndots = int( (dot_i[-1] - dot_i[0] + 1)/2 );
     N = int(tf/dt+1e-6); # number of time steps
-    if(verbose > 1):
-        print("\n- Time Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
+    n_generic_obs = 7; # 7 are time, E, 4 J's, concurrence
+    sites = np.array(range(norbs)).reshape(int(norbs/2),2); # all indices, sep'd by site
 
     # time propagation requires
     # - ERIS object to encode hamiltonians
     # - CI object to encode ci states
-    eris = ERIs(h1e, g2e, scf_inst.mo_coeff);
-    ci = CIObject(fcivec, norbs, nelecs);
-
-    # indices for different subsystems
-    sites = np.array(range(norbs)).reshape(int(norbs/2),2); # all indices, sep'd by site
+    # - observables array to observables (columns) vs time (rows)
+    Eeris = ERIs(h1e, g2e, scf_inst.mo_coeff); # hamiltonian info
+    ci = CIObject(fcivec, norbs, nelecs); # wf info
+    observables = np.zeros((N+1, n_generic_obs+4*len(sites) ), dtype = complex ); # generic plus occ, Sx, Sy, Sz per site
     
     # operators for observables
-    JupL, JupR = ops.Jup(dot_i, norbs); # up e current
-    JdownL, JdownR = ops.Jdown(dot_i, norbs); # down e current
-    occ_ops = [];
-    Sz_ops = [];
+    obs_ops = [];
+    obs_ops.extend(ops.Jup(dot_i, norbs) ); # up e current
+    obs_ops.extend(ops.Jdown(dot_i, norbs) ); # down e current
+    obs_ops.append(ops.spinflip(dot_i,norbs) ); # concurrence btwn dots or dot and RL
     for site in sites: # site specific observables
-        occ_ops.append(ops.occ(site, norbs) );
-        Sz_ops.append(ops.Sz(site, norbs) );
+        obs_ops.append(ops.occ(site, norbs) );
+        obs_ops.append(ops.Sx(site, norbs) );
+        obs_ops.append(ops.Sy(site, norbs) );
+        obs_ops.append(ops.Sz(site, norbs) );
+    assert( 2+len(obs_ops) == np.shape(observables)[1] ); # 2 is time and energy
 
-    # eris for observables
-    JupL_eris = ERIs(JupL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    JupR_eris = ERIs(JupR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    JdownL_eris = ERIs(JdownL, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    JdownR_eris = ERIs(JdownR, np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff);
-    concur_eris = ERIs(np.zeros((norbs, norbs)), ops.spinflip(dot_i,norbs), eris.mo_coeff);
-    occ_eris = [];
-    Sz_eris = [];
-    for sitei in range(len(sites)): # eris for subsystem specific observables
-        occ_eris.append(ERIs(occ_ops[sitei],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
-        Sz_eris.append(ERIs(Sz_ops[sitei],np.zeros((norbs,norbs,norbs,norbs)), eris.mo_coeff) );
-    
-    #  observable return vals
-    t_vals = np.zeros(N+1);
-    energy_vals = np.zeros(N+1);
-    current_vals = np.zeros((4,N+1)); # up and down e current separate
-    concur_vals = np.zeros(N+1);
-    occ_vals = np.zeros( (len(occ_eris),N+1), dtype = complex ); # occ for each subsystem
-    Sz_vals = np.zeros( (len(occ_eris),N+1), dtype = complex ); # Sz for each subsystem
+    # convert ops (which are ndarrays) to ERIs objects
+    obs_eris = [Eeris];
+    for op in obs_ops:
+
+        # depends on if a 1e or 2e operator
+        if(len(np.shape(op)) == 2): # 1e op
+            obs_eris.append(ERIs(op, np.zeros((norbs,norbs,norbs,norbs)), Eeris.mo_coeff) );
+        elif(len(np.shape(op)) == 4): # 2e op
+            obs_eris.append(ERIs(np.zeros((norbs, norbs)), op, Eeris.mo_coeff) );
+        else: assert(False);
     
     # time step loop
     for i in range(N+1):
+
+        if(verbose > 2): print("    time: ", i*dt);
     
         # density matrices
         (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12();
-
-        # before any time stepping, get initial state
-        if(i==0):
-            initstatestr = "\nInitial state:"
         
         # time step
-        dr, dr_imag = compute_update(ci, eris, dt, RK) # update state (r, an fcivec) at each time step
+        dr, dr_imag = compute_update(ci, Eeris, dt, RK) # update state (r, an fcivec) at each time step
         r = ci.r + dt*dr
         r_imag = ci.i + dt*dr_imag # imag part of fcivec
         norm = np.linalg.norm(r + 1j*r_imag) # normalize complex vector
@@ -194,32 +185,18 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, t_hyb, ASU = True, RK
         ci.i = r_imag/norm
         
         # compute observables
-        t_vals[i] = i*dt;
-        energy_vals[i]  = np.real(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb),eris));
-        JupL_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JupL_eris));
-        JupR_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JupR_eris));
-        JdownL_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JdownL_eris));
-        JdownR_val = -np.imag(compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), JdownR_eris));
-        current_vals[0][i] = t_hyb*JupL_val;
-        current_vals[1][i] = t_hyb*JupR_val;
-        current_vals[2][i] = t_hyb*JdownL_val;
-        current_vals[3][i] = t_hyb*JdownR_val; # add in hopping strength
-        concur_vals[i] = abs(2*compute_energy((d1a,d1b),(d2aa, d2ab, d2bb), concur_eris ) );
-        
-        # occupancy of left lead, dot, right lead
-        for sitei in range(len(sites)):
-            occ_vals[sitei][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), occ_eris[sitei]);
-            Sz_vals[sitei][i] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), Sz_eris[sitei]);
+        observables[i,0] = i*dt; # time
+        for ei in range(len(obs_eris)): # iter over eris list
+            observables[i, ei+1] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), obs_eris[ei] );
 
-        if(verbose > 2): print("    time: ", i*dt);
+        # before any time stepping, get initial state
+        if(i==0):
+            # get site specific observables at t=0 in array where rows are sites
+            initobs = np.real(np.reshape(observables[i,n_generic_obs:],(len(sites), 4) ) );
 
     # return val is array of observables
-    # ordering is always t, E, JupL, JupR, JdownL, JdownR, occ left, occ dot, occ right, Sz left, Sz dot, Sz right
-    observables = [t_vals, energy_vals, current_vals[0], current_vals[1], current_vals[2], current_vals[3] ];
-    for sitei in range(len(sites)): observables.append(occ_vals[sitei]);
-    for sitei in range(len(sites)): observables.append(Sz_vals[sitei]);
-    observables.append(concur_vals);
-    return initstatestr, np.array(observables)
+    # column ordering is always t, E, JupL, JupR, JdownL, JdownR, concurrence, (occ, Sx, Sy, Sz for each site)
+    return initobs, observables;
     
 def kernel_old(eris, ci, tf, dt, RK):
     '''
