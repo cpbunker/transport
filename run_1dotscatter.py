@@ -53,10 +53,10 @@ else:
 
     # plot results
     datafs = sys.argv[2:]
-    splots = ['Jup','lead_occ','lead_Sz','E']; # which subplots to plot
+    splots = ['lead_occ','lead_Sz']; # which subplots to plot
     mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
-    mysites = ['L1','L2','D','R1','R2'];
-    title = "Itinerant electron scatters from spin impurity";
+    #mysites = ['L1','L2','D','R1','R2'];
+    title = "Itinerant electron scatters from spin impurity, 4 site leads";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
     plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
 

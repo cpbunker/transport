@@ -80,7 +80,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
-    colors = seaborn.color_palette("colorblind");
+    colors = seaborn.color_palette("dark");
     if (len(colors) < len(sites) ): # need more colors
         colors = plt.cm.get_cmap('seismic', len(datafs));
         colors = colors(np.linspace(0,1, len(datafs) ) );
@@ -140,9 +140,14 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
                 Docc += occs[sitei];
             elif 'R' in sites[sitei]:
                 RLocc += occs[sitei];
-        axes[axcounter].plot(t, LLocc, label = "LL");
-        axes[axcounter].plot(t, Docc, label = "D");
-        axes[axcounter].plot(t, RLocc, label = "RL");
+
+        # inset
+        axins = inset_axes(axes[axcounter], width="20%", height="20%");
+        axins.plot(t[:int(2/np.real(t[1]) ) ], Docc[:int(2/np.real(t[1]) ) ], color = colors[1] );
+                
+        axes[axcounter].plot(t, LLocc, color = colors[0], label = "LL");
+        axes[axcounter].plot(t, Docc, color = colors[1], label = "D");
+        axes[axcounter].plot(t, RLocc, color = colors[2], label = "RL");
         axes[axcounter].set_ylabel("Occ.");
         axcounter += 1;
 
@@ -164,9 +169,15 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
                 DS += Szs[sitei];
             elif 'R' in sites[sitei]:
                 RLS += Szs[sitei];
-        axes[axcounter].plot(t, LLS, label = "LL");
-        axes[axcounter].plot(t, DS, label = "D");
-        axes[axcounter].plot(t, RLS, label = "RL");
+
+        # inset for min RL spin
+        axins = inset_axes(axes[axcounter], width="20%", height="20%");
+        minSi= np.argmin(RLS);
+        axins.plot(t[:minSi], RLS[:minSi], color = colors[2] );
+
+        axes[axcounter].plot(t, LLS, color = colors[0], label = "LL");
+        axes[axcounter].plot(t, DS, color = colors[1], label = "D");
+        axes[axcounter].plot(t, RLS, color = colors[2], label = "RL");
         axes[axcounter].set_ylabel("Sz");
         axcounter += 1;
 
