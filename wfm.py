@@ -4,6 +4,8 @@ M^2QM at UF
 September 2021
 
 Wave function matching (WFM) in 1D
+general formalism: all sites map to all the different
+degrees of freedom of the system
 '''
 
 import numpy as np
@@ -13,105 +15,160 @@ import sys
 ##################################################################################
 ####
 
-def Hmat(V, a, m, verbose = 0):
+def Hmat(h, t, verbose = 0):
     '''
     Make the hamiltonian H for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
 
-    V, 1d arr, length N+2, potential at each site
-    a, float, lattice spacing
-    m, float, mass of incident particle
+    h, 1d arr 
+    t, float, hopping
     '''
 
+    # check
+    assert(len(h) == len(t) + 1);
+
     # unpack
-    N = len(V) - 2;
-    H = np.zeros((N+2, N+2), dtype = complex);
+    N = len(h) - 2; # num scattering region sites, ie N+2 = num spatial dof
+    n_loc_dof = np.shape(h[0])[0]; # dofs that will be mapped onto row in H
+    H =  np.zeros((n_loc_dof*(N+2), n_loc_dof*(N+2) ), dtype = complex);
+    # outer shape: num sites x num sites (degree of freedom is loc of itinerant e)
+    # shape at each site: runs over all other degrees of freedom)
 
-    # construct matrix
-    for i in range(N+2):
-        for j in range(N+2):
-            if( i == j): # diags include V
-                H[i,j] += 1/(m*a*a) + V[i]; # V neg by convention
-            elif( (i==j+1) or (i+1==j) ): # just off main diag are finite diff terms
-                H[i, j] += -1/(2*m*a*a);
+    # first construct matrix of matrices
+    for sitei in range(0,N+2): # iter sites dof only
+        for sitej in range(0,N+2): # same
+                
+            for loci in range(np.shape(h[0])[0]): # iter over local dofs
+                for locj in range(np.shape(h[0])[0]):
+                    
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
 
-    if verbose > 3: print("\nH = \n",np.real(-H));
-    return H;
+                    if(sitei == sitej): # input from local h to main diag
+                        H[ovi, ovj] += h[sitei][loci, locj];
+
+                    elif(sitei == sitej+1): # input from T to lower diag
+                        H[ovi, ovj] += t[sitej][loci, locj];
+
+                    elif(sitei+1 == sitej): # input from T to upper diag
+                        H[ovi, ovj] += t[sitei][loci, locj];                
+
+    if verbose > 3: print("\nH_SR[0] = \n",np.real(H[n_loc_dof:2*n_loc_dof,n_loc_dof:2*n_loc_dof]));
+    return H; 
 
 
-def Hprime(V, a, m, E, verbose = 0):
+def Hprime(h, t, E, verbose = 0):
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
 
-    V, 1d arr, length N+2, potential everywhere
-        - V[0] = VL = left lead bias
-        - V[0<i<N+1] = SR potential
-        - V[N+1] = VR = right lead bias
-    a, float, lattice spacing
-    m, float, mass of incident particle
-    E, float, incident energy
+    h, 1d arr, length N+2, on site energies
+    t, float, hopping
     '''
 
     # unpack
-    N = len(V) - 2; # num scattering sites
-    kL = np.lib.scimath.sqrt(2*m*(E-V[0]) ); # incident wavevector
-    kR = np.lib.scimath.sqrt(2*m*(E-V[-1]) ); # transmitted wavevector
-    if False: # compare k vals to tight binding scheme
-        print("kL, kR = ", kL, kR);
-        kLp = np.lib.scimath.arccos( (E-2-V[0])/(2*t) )/a;
-        kRp = np.lib.scimath.arccos( (E-2-V[-1])/(2*t) )/a;
-        print("kL', kR' = ", kLp, kRp );
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+    tval = t[0][0,0];
 
-    # make H matric
-    Hp = Hmat(V, a, m, verbose = verbose);
+    # add self energies to hamiltonian
+    Hp = Hmat(h, t, verbose = verbose); # regular ham
 
-    # add self energies
-    Hp[0,0] += -np.exp(complex(0, kL*a))/(2*m*a*a); # LL self energy
-    Hp[N+1,N+1] += -np.exp(complex(0, kR*a))/(2*m*a*a);
-            
+    # self energies at LL
+    # need a self energy for each LL boundary condition
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[0][Vi,Vi];
+        lamL = (E-V)/(-2*tval);
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
+        SigmaL = -tval/LambdaLminus;
+        Hp[Vi,Vi] = SigmaL;
+
+    # self energies at RL
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[-1][Vi,Vi];     
+        lamR = (E-V)/(-2*tval);
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
+        SigmaR = -tval*LambdaRplus;
+        Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
+    
     if verbose > 3: print("\nH' = \n",Hp);
     return Hp;
 
 
-def Green(V, a, m, E, verbose = 0):
+def Green(h, t, E, qi, verbose = 0):
     '''
     Greens function for system described by
     - potential V[i] at site i
     - lattice spacing a
     - incident mass m
     -incident energy E
+
+    Assumes that incident flux is up spin only!!!!
     '''
 
     # check inputs
-    assert( isinstance(V, np.ndarray));
+    assert( isinstance(h, np.ndarray));
 
-    Hp = Hprime(V, a, m, E, verbose = verbose);
+    # unpack
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+    tval = t[0][0,0];
+
+    # get green's function matrix
+    Hp = Hprime(h, t, E, verbose = verbose);
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
-    if verbose > 3: print("\nG = ",G[0,-1],G.conj()[-1,0])
+    # of interest is the qith row which contracts with the source q
+    if verbose > 3: print("\nG[:,qi] = ",G[:,qi]);
     return G;
 
 
-def Tcoef(V, a, m, E, verbose = 0):
+def Tcoef(h, t, E, qi, verbose = 0):
+    '''
+    coefficient for a transmitted up and down electron
+    '''
 
     # check inputs
-    assert( isinstance(V, np.ndarray));
+    assert( isinstance(h, np.ndarray));
 
     # unpack
-    kL = np.lib.scimath.sqrt(2*m*(E-V[0]) );
-    kR = np.lib.scimath.sqrt(2*m*(E-V[-1]) );
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+    tval = t[0][0,0];
 
-    # compute self energies
-    SigmaL = -np.exp(complex(0, kL*a))/(2*m*a*a);
-    SigmaR = -np.exp(complex(0, kR*a))/(2*m*a*a);
+    # self energies at LL
+    # need a self energy for each LL boundary condition
+    SigmaL = [];
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[0][Vi,Vi];
+        lamL = (E-V)/(-2*tval);
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
+        SigmaL.append( -tval/LambdaLminus);
 
-    # get green's function
-    G = Green(V, a, m, E, verbose = verbose);
+    # self energies at RL
+    SigmaR = [];
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[-1][Vi,Vi];     
+        lamR = (E-V)/(-2*tval);
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
+        SigmaR.append( -tval*LambdaRplus);
 
-    T = 4*np.imag(SigmaR)*G[-1,0]*np.imag(SigmaL)*G.conj()[0,-1]; # Caroli expression
-    assert( abs(np.imag(T)) <= 1e-8 );
-    return T;
+    # check self energies
+    assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
+
+    # green's function
+    G = Green(h, t, E, qi, verbose = verbose);
+
+    # coefs
+    Ts = np.zeros(n_loc_dof, dtype = complex);
+    for Ti in range(n_loc_dof):
+        
+        # Caroli expression
+        Ts[Ti] = 4*np.imag(SigmaR[Ti])*G[Ti-n_loc_dof,qi]*np.imag(SigmaL[Ti])*G.conj()[qi,Ti-n_loc_dof];
+        assert( abs(np.imag(Ts[Ti])) <= 1e-8);
+
+    return tuple(Ts);
 
 
 if __name__ == "__main__": # test code
@@ -121,64 +178,36 @@ if __name__ == "__main__": # test code
     # top level
     plt.style.use('seaborn-dark-palette');
     np.set_printoptions(precision = 4, suppress = True);
-    verbose = 4;
+    verbose = 5;
 
-    # Siam like inputs
-    tl = 1.0; # hopping, defs energy scale
+    # Siam inputs
+    tl = 1.0;
     Vb = 1.5;
     Vg = 10;
-    myas = np.array([0.1,1.0]); # lattice spacing, defs length scale
+    a = 1.0; # lattice spacing, defs length scale
 
-    # WFM inouts
-    J = tl*tl/Vg; # Schreiffer Wolf result 
-    m = 1/(2*tl); # mass det'd by length and energy scales
+    # scattering off an up spin
+    J = -tl*tl/Vg
+    upimp = np.array([[0.1,0.0],[0.0,0.0]]);
+    h=[];
+    for i in range(3):
+        if(i==1):
+            h.append(upimp);
+        else:
+            h.append(np.zeros_like(upimp));
+    h = np.array(h);
+    print(h);
 
-    # plot at diff lattice spacings
-    fig, ax = plt.subplots();
-    for a in myas:
-
-        # finite potential barrier
-        # T as a function of energy
-        V = np.array([0,0,Vb,Vb]);
-
-        # test at max verbosity
-        if True:
-            Tcoef(V, a, m, 1.0, verbose = 5);
-            print("**********");
-
-        npts = 40
-        Es = np.linspace(1.0, 5.0, npts);
-        Ts = np.zeros_like(Es);
-        Gs = np.zeros_like(Es);
-        for Ei in range(len(Es)):
-            Gval = Green(V, a, m, Es[Ei])[-1,0];
-            Gs[Ei] = Gval*np.conj(Gval);
-            Ts[Ei] = Tcoef(V, a, m, Es[Ei]);
-
-        ax.scatter(Es, Ts, label = "discrete, $a = "+str(a)+"$", marker = 's');
-
-    # plot
+    # test at max verbosity
     if True:
+        myT = Tcoef(h, tl,1.0-2.0, verbose = verbose);
+        print("**********",myT);
 
-        # format
-        ax.set_xlabel("$E$");
-        ax.set_ylabel("$T$");
-        ax.set_ylim(0,1);
-        ax.axvline(Vb, color = "black", linestyle = "dashed", label = "$E = V_b$");
-        #ax.axvline(2.0+Vb/2, color = "grey", linestyle = "dashed", label="");
 
-        # prediction
-        prediction = 4*np.sqrt(Es*(Es-Vb) )/np.power(np.sqrt(Es) + np.sqrt(Es-Vb),2)
-        ax.plot(Es, prediction, label = "continuous" );
 
-        # show
-        ax.set_title("Scattering from a discretized potential barrier");
-        ax.legend();
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        plt.show();
     
+    
+
 
     
 
