@@ -24,6 +24,7 @@ plt.style.use('seaborn-dark-palette');
 colors = seaborn.color_palette("dark");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5
+get_data = int(sys.argv[1]);
 
 # dispersion relation for tight binding
 def E_disp(k,a,t):
@@ -52,23 +53,23 @@ def construct_h_cicc(J, t, i1, i2, Nsites):
     '''
     
     # heisenberg interaction matrices
-    Se_dot_S1 = (J/4.0)*np.array([ [2,0,0,0,0,0,0,0], # coupling to first spin impurity
-                        [0,2,0,0,0,0,0,0],
-                        [0,0,-2,0,4,0,0,0],
-                        [0,0,0,-2,0,4,0,0],
-                        [0,0,4,0,-2,0,0,0],
-                        [0,0,0,4,0,-2,0,0],
-                        [0,0,0,0,0,0,2,0],
-                        [0,0,0,0,0,0,0,2] ]);
+    Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
+                        [0,1,0,0,0,0,0,0],
+                        [0,0,-1,0,2,0,0,0],
+                        [0,0,0,-1,0,2,0,0],
+                        [0,0,2,0,-1,0,0,0],
+                        [0,0,0,2,0,-1,0,0],
+                        [0,0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,0,1] ]);
 
-    Se_dot_S2 = (J/4.0)*np.array([ [2,0,0,0,0,0,0,0], # coupling to second spin impurity
-                        [0,-2,4,0,0,0,0,0],
-                        [0,4,-2,0,0,0,0,0],
-                        [0,0,0,2,0,0,0,0],
-                        [0,0,0,0,2,0,0,0],
-                        [0,0,0,0,0,-2,4,0],
-                        [0,0,0,0,0,4,-2,0],
-                        [0,0,0,0,0,0,0,2] ]);
+    Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
+                        [0,-1,0,0,2,0,0,0],
+                        [0,0,1,0,0,0,0,0],
+                        [0,0,0,-1,0,0,2,0],
+                        [0,2,0,0,-1,0,0,0],
+                        [0,0,0,0,0,1,0,0],
+                        [0,0,0,2,0,0,-1,0],
+                        [0,0,0,0,0,0,0,1] ]);
 
     # insert these local interactions
     h_cicc =[];
@@ -156,7 +157,7 @@ if False:
         for si in range(np.shape(h_cicc[0])[0]): # iter over all transmitted total Sz states
             if( Sztot_by_sourcei[si] != Sztot): # ie a transmitted state that doesn't conserve Sz
                 for Ei in range(len(Tvals)):
-                    assert(abs(Tvals[Ei,si]) <= 1e-8 ); # should be zero   
+                    assert(abs(Tvals[Ei,si]) <= 1e-8 ); # should be zero
 
     # plot total T at each E, k, kx0
     fig, axes = plt.subplots(3);
@@ -182,17 +183,18 @@ if False:
 ##################################################################################
 #### data and plots for fixed E, k, but varying x0
     
-if True:
+if get_data:
 
     # siam inputs
     tl = 1.0;
-    Vg = 10;
-    Jeff = 2*tl*tl/Vg; # eff heisenberg # double check
+    Vg = 5;
+    Jeff = 2*tl*tl/Vg/2; # eff heisenberg
 
     # cicc inputs
     alat = 1.0; # should always cancel for E and kx0
-    rhoJ_int = 1; # integer that cicc param rho*J is set equal to
-    E_rho = Jeff*Jeff/(rhoJ_int*np.pi*np.pi*tl*tl); # fixed E that preserves rho_J_int
+    m = 1/(2*alat*alat*tl);
+    rhoJ_int = 10.0; # integer that cicc param rho*J is set equal to
+    E_rho = Jeff*Jeff/(rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
     assert(abs((E_rho - 2*tl) - E_disp(k_rho,alat, tl) ) <= 1e-8 ); # check by getting back energy measured from bottom of band
@@ -202,15 +204,18 @@ if True:
     E_rho = E_rho - 2*tl; # measure from mu
 
     # choose boundary condition
-    sourcei = 3; # incident up, imps + down, down
+    sourcei = 1; # incident up, imps + down, down
+    spinstate = "aab"
     
     # mesh of x0s (= N0s * alat)
-    kx0max = 2*np.pi
-    N0max = int(kx0max/(5*k_rho*alat));
+    kx0max = 1.1*np.pi;
+    N0max = int(kx0max/(k_rho*alat));
+    if verbose: print("N0max = ",N0max);
     N0vals = np.linspace(1, N0max, N0max, dtype = int); # always integer
+    kx0vals = k_rho*alat*N0vals;
 
     # iter over all the differen impurity spacings, get transmission
-    Tvals = [];
+    Tvals = []
     for N0i in range(len(N0vals)):
 
         # construct hams
@@ -223,30 +228,50 @@ if True:
         # get T from this setup
         Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , sourcei)) );
 
-        # debug
-        if(N0i == 1):
-            print("\nhmats:\n",hmats,"\ntmats:\n",tmats,"\nTvals: ",Tvals);
-            #assert False;
+    # package into one array
+    Tvals = np.array(Tvals);
+    info = np.zeros_like(kx0vals);
+    info[0], info[1], info[2], info[3], info[4] = tl, Jeff, rhoJ_int, E_rho, k_rho; # save info we need
+    data = [info, N0vals, kx0vals];
+    for Ti in range(np.shape(Tvals)[1]):
+        data.append(Tvals[:,Ti]); # data has columns of N0val, k0val, corresponding T vals
+    # save data
+    fname = "dat/cicc/eff/"+spinstate+"/"
+    fname +="gf_E"+str(E_rho)[:6]+"_k"+str(k_rho)[:4]+"_"+str(rhoJ_int)[:4]+".npy";
+    np.save(fname,np.array(data));
+    if verbose: print("Saved data to "+fname);
 
-    #plot T against kx0
-    kx0vals = k_rho*alat*N0vals;
+else: # plot
 
-    # convert T
-    Ttotals = np.sum(Tvals, axis = 1);
+    # plot each file given at command line
+    fig, axes = plt.subplots();
+    axes = [axes];
+    datafs = sys.argv[2:];
+    for fi in range(len(datafs)):
 
-    # plot
-    fig, axes = plt.subplots(2);
-    axes[0].scatter(kx0vals, Ttotals, marker = 's');
-    axes[1].scatter(N0vals, Ttotals, marker = 's');
+        # unpack
+        data = np.load(datafs[fi]);
+        tl, Jeff, rhoJ_int, E_rho, k_rho = data[0,0], data[0,1], data[0,2], data[0,3], data[0,4],
+        N0vals, kx0vals = data[1], data[2];
+        Tvals = data[3:];
+
+        # convert T
+        Ttotals = np.sum(Tvals, axis = 0);
+
+        # plot
+        axes[0].scatter(kx0vals, Ttotals, marker = 's', label = "$\\rho J = $"+str(np.real(rhoJ_int)));
 
     # format and show
+    axes[0].axvline(np.pi, color = "black", linestyle = "dashed");
+    axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
+    axes[0].set_ylim(0.0,1.05);
     axes[0].set_xlabel("$kx_{0}$");
-    axes[1].set_xlabel("$N_{0}$");
-    axes[0].set_title("Incident electron, |E="+str(E_rho+2*tl)[:5]+r">| up >");
+    axes[0].set_title("Up electron scattering from up, down impurities");
     axes[0].set_ylabel("$T$");
     for ax in axes:
         ax.minorticks_on();
         ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
         ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.legend();
     plt.show();
         

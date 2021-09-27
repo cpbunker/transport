@@ -31,54 +31,56 @@ verbose = 5
 tl = 1.0;
 Vg = 100;
 
-# convert to eff heisenberg interaction
-J = -2*tl*tl/Vg;
-Jmat = J*np.array([ [1,-1],[-1,1] ]);
+# plot at different J
+fig, axes = plt.subplots();
+axes = [axes];
+for J in [0.1,0.4]:
 
-# menezes just has single delta potential interaction
-h_menez = np.array([np.zeros_like(Jmat), Jmat, np.zeros_like(Jmat) ]);
+    Jmat = J*np.array([ [1/2,-1/2],[-1/2,1/2] ]);
 
-# construct hopping
-Tmat = -tl*np.array([ [1,0],[0,1] ]);
-tl_arr = np.array([ np.copy(Tmat), np.copy(Tmat) ]);
-print(h_menez, tl_arr);
+    # menezes just has single delta potential interaction
+    h_menez = np.array([np.zeros_like(Jmat), Jmat, np.zeros_like(Jmat) ]);
 
-# define source, ie what is incident at left bdy, in this case an up electron
-sourcei = 0; # up itinerant e is 0th basis slot
+    # construct hopping
+    Tmat = -tl*np.array([ [1,0],[0,1] ]);
+    tl_arr = np.array([ np.copy(Tmat), np.copy(Tmat) ]);
+    print(h_menez, tl_arr);
 
-if True: # test at max verbosity
-    myT = wfm.Tcoef(h_menez, tl_arr, -1.99, sourcei, verbose = 5);
-    print("******",myT);
+    # define source, ie what is incident at left bdy, in this case an up electron
+    sourcei = 0; # up itinerant e is 0th basis slot
 
-# sweep over range of energies
-# def range
-Emin, Emax = -2,-2+0.02
-N = 20;
-Evals = np.linspace(Emin, Emax, N, dtype = complex);
-Tupvals = np.zeros_like(Evals);
-Tdownvals = np.zeros_like(Evals);
+    if False: # test at max verbosity
+        myT = wfm.Tcoef(h_menez, tl_arr, -1.99, sourcei, verbose = 5);
+        print("******",myT);
 
-# sweep thru E
-for Ei in range(len(Evals) ):
-    Tupvals[Ei], Tdownvals[Ei] = wfm.Tcoef(h_menez, tl_arr, Evals[Ei], sourcei);
+    # sweep over range of energies
+    # def range
+    Emin, Emax = -2,-2+0.2
+    N = 10;
+    Evals = np.linspace(Emin, Emax, N, dtype = complex);
+    Tupvals = np.zeros_like(Evals);
+    Tdownvals = np.zeros_like(Evals);
 
-# plot
-fig, axes = plt.subplots(2, sharex = True);
-s1 = axes[0].scatter(Evals+2*tl, Tupvals, color = colors[0], marker = 's', label = "$T_{up}$");
-s2 = axes[1].scatter(Evals+2*tl, Tdownvals, color = colors[1], marker = 's', label = "$T_{down}$");
+    # sweep thru E
+    for Ei in range(len(Evals) ):
+        Tupvals[Ei], Tdownvals[Ei] = wfm.Tcoef(h_menez, tl_arr, Evals[Ei], sourcei);
 
-# menezes prediction in the continuous case
-# all the definitions, vectorized funcs of E
-newEvals = np.linspace(0.0,0.04,100);
-kappa = np.lib.scimath.sqrt(newEvals);
-jprime = J/(4*kappa);
-l1, = axes[1].plot(newEvals, J*J/(4*newEvals), color = colors[1], label = "Continuous");
+    # plot
+    s2 = axes[0].scatter(Evals+2*tl, Tdownvals, marker = 's', label = "$T_{down},\, J = $"+str(J));
+
+    # menezes prediction in the continuous case
+    # all the definitions, vectorized funcs of E
+    newEvals = np.linspace(0.0,0.2,100);
+    kappa = np.lib.scimath.sqrt(newEvals);
+    jprime = J/(4*kappa);
+    l1, = axes[0].plot(newEvals, J*J/(16*newEvals));
 
 # format
-axes[0].set_title("Incident up electron scattering from a spin impurity");
+axes[0].set_title("Up electron scattering from a down spin impurity");
 axes[0].set_ylabel("$T$");
-axes[1].set_xlabel("$E + 2t_l$");
-plt.legend([s1,s2,l1],['$T_{up}$','$T_{down}$','continuous'],title = "$J = $"+str(J)+"\n$t_l = $"+str(tl));
+axes[0].set_xlabel("$E + 2t_l$");
+axes[0].set_ylim(0.0,1.05);
+plt.legend();
 for ax in axes:
     #ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
