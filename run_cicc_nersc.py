@@ -27,7 +27,7 @@ verbose = 5
 #### effective ham, choose source for initial condition
 #### ie replicate Cicc figs 1, 5
     
-for rJ in [1.0,2.0,10.0]:
+for rJ in [1.0,2.0]:
 
     # siam inputs
     tl = 1.0;
