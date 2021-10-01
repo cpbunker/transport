@@ -136,6 +136,7 @@ def Tcoef(h, t, E, qi, verbose = 0):
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
     tval = t[0][0,0];
+    assert( qi < n_loc_dof);
 
     # self energies at LL
     # need a self energy for each LL boundary condition
