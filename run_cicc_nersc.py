@@ -48,7 +48,7 @@ for rJ in [1.0,2.0]:
     E_rho = E_rho - 2*tl; # measure from mu
 
     # choose boundary condition
-    source = np.array([0,1,-1,0,0,0,0,0])/np.sqrt(2);
+    source = np.array([0,1,1,0,0,0,0,0])/np.sqrt(2);
     #source = np.array([0,1,0,0,0,0,0,0]);
     #source = source/np.dot(source, source); # normalize
     
