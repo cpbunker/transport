@@ -129,40 +129,84 @@ if True: # plot
 
 if False:
 
-    datafs = sys.argv[2:];
-    for f in datafs:
-        data = np.load(f);
-        print(f)
-        print("- ",np.real(data[0,:5]));
-
-    assert False;
-
     # siam inputs
     tl = 1.0;
-    Vg = 5;
-    Jeff = 2*tl*tl/Vg/2; # eff heisenberg
+    Vg = 20;
+    Jeff = 2*tl*tl/Vg; # eff heisenberg strength fixed
+
+    # choose boundary condition
+    sourcei = 3; # incident up, imps = down, down
+    spinstate = "abb"
 
     # cicc inputs
     alat = 1.0; # should always cancel for E and kx0
     m = 1/(2*alat*alat*tl);
-    rhoJ_int = 1.0; # integer that cicc param rho*J is set equal to
-    E_rho = Jeff*Jeff/(rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
-                                            # this E is measured from bottom of band !!!
-    k_rho = wfm.k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
-    assert(abs((E_rho - 2*tl) - wfm.E_disp(k_rho,alat, tl) ) <= 1e-8 ); # check by getting back energy measured from bottom of band
-    print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
-    print("k*a = ",k_rho*alat);
-    print("rho*J = ",np.sqrt(2/(2*alat*alat*tl) *(1/E_rho) )*Jeff/np.pi );
-    E_rho = E_rho - 2*tl; # measure from mu
 
-    # choose boundary condition
-    sourcei = 2; # incident up, imps + down, down
-    spinstate = "aba"
+    # iter over rhoJ, getting T
+    Tvals = [];
+    rhoJvals = np.linspace(0.5,5.5,22)
+    for rhoJ_int in rhoJvals:
+
+        # energy and K fixed by J, rhoJ
+        E_rho = Jeff*Jeff/(rhoJ_int*rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+                                                # this E is measured from bottom of band !!!
+        k_rho = wfm.k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
+        assert(abs((E_rho - 2*tl) - wfm.E_disp(k_rho,alat, tl) ) <= 1e-8 ); # check by getting back energy measured from bottom of band
+        print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
+        print("k*a = ",k_rho*alat);
+        print("rho*J = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
+        E_rho = E_rho - 2*tl; # measure from mu
+        
+        # location of impurities, fixed by kx0 = pi
+        kx0 = np.pi;
+        N0 = int(kx0/(k_rho*alat));
+        if verbose: print("N0 = ",N0);
+
+        # construct hams
+        i1, i2 = 1, 1+N0;
+        Nsites = i2+2; # 1 lead site on each side
+        print("i1, i2, Nsites = ",i1, i2, Nsites)
+        hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
+
+        # get T from this setup
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , sourcei)) );
+
+    # save results
+    Tvals = np.array(Tvals); # rows are diff rhoJ vals
+    info = np.zeros_like(rhoJvals);
+    info[0], info[1], info[2], info[3] = tl, Jeff, N0, kx0; # save info we need
+    data = [info, rhoJvals]; # now want each column of data to be a rhoJ val
+    for Ti in range(np.shape(Tvals)[1]): # all dofs
+        data.append(Tvals[:,Ti]); # row of one dof, but each column is diff rhoJ
+    # save data
+    fname = "dat/cicc_eff/Fig6/"
+    fname +="gf_"+spinstate+"_kx0"+str(kx0)+".npy";
+    np.save(fname,np.array(data));
+    if verbose: print("Saved data to "+fname);
+
+if False: # plot above
+
+    # load data
+    fname = sys.argv[1]
+    if verbose: print("Loading data from "+fname);
+    data = np.load(fname);
+    info = data[0];
+    tl, Jeff, N0, kx0 = info[0], info[1], info[2], info[3];
+    rhoJvals = data[1];
+    Tvals = data[2:];
+    Tdown = Tvals[4] + Tvals[5] + Tvals[6] + Tvals[7];
+
+    # plot
+    fig, ax = plt.subplots();
+    ax.scatter(rhoJvals, Tdown, marker = 's');
+    ax.set_xlabel("$\\rho J$");
+    ax.set_ylabel("$T_{down}$");
+    ax.set_title("Fig. 6");
+    ax.set_ylim(0.0,0.25);
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
     
-    # mesh of x0s (= N0s * alat)
-    kx0max = 2.1*np.pi;
-    N0max = int(kx0max/(k_rho*alat));
-    if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(1, N0max, N0max, dtype = int); # always integer
-    kx0vals = k_rho*alat*N0vals;
+    
     
