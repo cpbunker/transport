@@ -108,7 +108,7 @@ if True: # plot
         Ttotals = np.sum(Tvals, axis = 0);
 
         # plot
-        axes[0].scatter(kx0vals, Ttotals, marker = 's', label = "$\\rho J = $"+str(np.real(rhoJ_int)));
+        axes[0].plot(kx0vals, Ttotals, label = "$\\rho J = $"+str(np.real(rhoJ_int)));
 
     # format and show
     axes[0].axvline(np.pi, color = "black", linestyle = "dashed");
