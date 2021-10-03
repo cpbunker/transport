@@ -27,7 +27,7 @@ verbose = 5
 #### effective ham, choose source for initial condition
 #### ie replicate Cicc figs 1, 5
     
-for rJ in [1.0,2.0]:
+for rJ in [10.0]:
 
     # siam inputs
     tl = 1.0;
@@ -51,11 +51,12 @@ for rJ in [1.0,2.0]:
     sourcei = int(sys.argv[1]);
     
     # mesh of x0s (= N0s * alat)
-    kx0max = 2.1*np.pi;
-    N0max = int(kx0max/(k_rho*alat));
-    if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(1, N0max, N0max, dtype = int); # always integer
-    N0vals = N0vals[ N0vals % 3 == 0]; # bool mask to get even
+    kx0min, kx0max = 3*np.pi/4, 1.1*np.pi;
+    N0min, N0max = int(kx0min/(k_rho*alat)), int(kx0max/(k_rho*alat));
+    if verbose: print("N0 min, max = ",N0min, N0max);
+    N0vals = np.linspace(N0min, N0max, int(N0max - N0min), dtype = int); # always integer
+    N0vals = N0vals[ N0vals % 2 == 0]; # boolean mask for even only
+    print(N0vals);
     kx0vals = k_rho*alat*N0vals;
 
     # iter over all the differen impurity spacings, get transmission
