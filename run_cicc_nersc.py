@@ -27,7 +27,7 @@ verbose = 5
 #### effective ham, choose source for initial condition
 #### ie replicate Cicc figs 1, 5
     
-for rJ in [10.0]:
+for rJ in [1.0,2.0]:
 
     # siam inputs
     tl = 1.0;
@@ -48,14 +48,18 @@ for rJ in [10.0]:
     E_rho = E_rho - 2*tl; # measure from mu
 
     # choose boundary condition
-    sourcei = int(sys.argv[1]);
+    source = np.array([0,1,-1,0,0,0,0,0])/np.sqrt(2);
+    #source = np.array([0,1,0,0,0,0,0,0]);
+    #source = source/np.dot(source, source); # normalize
+    
     
     # mesh of x0s (= N0s * alat)
     kx0min, kx0max = 3*np.pi/4, 1.1*np.pi;
+    kx0min, kx0max = 0.0, 2.1*np.pi
     N0min, N0max = int(kx0min/(k_rho*alat)), int(kx0max/(k_rho*alat));
     if verbose: print("N0 min, max = ",N0min, N0max);
     N0vals = np.linspace(N0min, N0max, int(N0max - N0min), dtype = int); # always integer
-    N0vals = N0vals[ N0vals % 2 == 0]; # boolean mask for even only
+    N0vals = N0vals[ N0vals % 3 == 0]; # boolean mask for even only
     print(N0vals);
     kx0vals = k_rho*alat*N0vals;
 
@@ -71,7 +75,7 @@ for rJ in [10.0]:
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , sourcei)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , source, verbose = 1)) );
 
     # package into one array
     Tvals = np.array(Tvals);
@@ -81,7 +85,7 @@ for rJ in [10.0]:
     for Ti in range(np.shape(Tvals)[1]):
         data.append(Tvals[:,Ti]); # data has columns of N0val, k0val, corresponding T vals
     # save data
-    fname = ""
+    fname = "";
     fname +="gf_E"+str(E_rho)[:6]+"_k"+str(k_rho)[:4]+"_"+str(rhoJ_int)[:4]+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);

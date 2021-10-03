@@ -96,7 +96,7 @@ def Hprime(h, t, E, verbose = 0):
     return Hp;
 
 
-def Green(h, t, E, qi, verbose = 0):
+def Green(h, t, E, verbose = 0):
     '''
     Greens function for system described by
     - potential V[i] at site i
@@ -120,23 +120,28 @@ def Green(h, t, E, qi, verbose = 0):
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
     # of interest is the qith row which contracts with the source q
-    if verbose > 3: print("\nG[:,qi] = ",G[:,qi]);
     return G;
 
 
 def Tcoef(h, t, E, qi, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
+    h, block diag hamiltonian matrices
+    t, off diag hopping matrix
+    E, energy of the incident electron
+    qi, source vector (loc dof only)
     '''
 
     # check inputs
     assert( isinstance(h, np.ndarray));
+    assert( isinstance(t, np.ndarray));
+    assert( isinstance(qi, np.ndarray));
+    assert( len(qi) == np.shape(h[0])[0] );
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
     tval = t[0][0,0];
-    assert( qi < n_loc_dof);
 
     # self energies at LL
     # need a self energy for each LL boundary condition
@@ -159,14 +164,19 @@ def Tcoef(h, t, E, qi, verbose = 0):
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function
-    G = Green(h, t, E, qi, verbose = verbose);
+    G = Green(h, t, E, verbose = verbose);
+    if verbose > 3: print("\nG[:,qi] = ",G[:,qi]);
 
     # coefs
+    qivector = np.zeros(np.shape(G)[0]);
+    for j in range(len(qi)):
+        qivector[j] = qi[j]; # fill
+    Gqi = np.dot(G, qivector);
     Ts = np.zeros(n_loc_dof, dtype = complex);
     for Ti in range(n_loc_dof):
         
-        # Caroli expression
-        Ts[Ti] = 4*np.imag(SigmaR[Ti])*G[Ti-n_loc_dof,qi]*np.imag(SigmaL[Ti])*G.conj()[qi,Ti-n_loc_dof];
+        # Caroli expression 
+        Ts[Ti] = 4*np.imag(SigmaR[Ti])*Gqi[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqi.conj()[Ti-n_loc_dof];
         assert( abs(np.imag(Ts[Ti])) <= 1e-8);
 
     return tuple(Ts);

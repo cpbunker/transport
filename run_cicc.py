@@ -41,7 +41,7 @@ if False:
     # cicc inputs
     alat = 1.0; # should always cancel for E and kx0
     m = 1/(2*alat*alat*tl);
-    rhoJ_int = 4.0; # integer that cicc param rho*J is set equal to
+    rhoJ_int = 1.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJ_int*rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = wfm.k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
@@ -52,8 +52,9 @@ if False:
     E_rho = E_rho - 2*tl; # measure from mu
 
     # choose boundary condition
-    sourcei = 2; # incident up, imps + down, down
-    spinstate = "aba"
+    source = np.zeros(8);
+    source[0] = 1;
+    spinstate = "aaa"
     
     # mesh of x0s (= N0s * alat)
     kx0max = 1.1*np.pi;
@@ -74,7 +75,7 @@ if False:
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , sourcei)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , source)) );
 
     # package into one array
     Tvals = np.array(Tvals);
@@ -84,7 +85,7 @@ if False:
     for Ti in range(np.shape(Tvals)[1]):
         data.append(Tvals[:,Ti]); # data has columns of N0val, k0val, corresponding T vals
     # save data
-    fname = "dat/cicc/eff/"+spinstate+"/"
+    fname = "dat/cicc/eff/"+spinstate+"/";
     fname +="gf_E"+str(E_rho)[:6]+"_k"+str(k_rho)[:4]+"_"+str(rhoJ_int)[:4]+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
@@ -114,7 +115,7 @@ if True: # plot
     axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
     axes[0].set_ylim(0.0,1.05);
     axes[0].set_xlabel("$kx_{0}$");
-    axes[0].set_title("Up electron scattering from down, up impurities, J = "+str(np.real(Jeff)) );
+    axes[0].set_title("Up electron scattering from down, down impurities, J = "+str(np.real(Jeff)) );
     axes[0].set_ylabel("$T$");
     for ax in axes:
         ax.minorticks_on();

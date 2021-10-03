@@ -96,7 +96,7 @@ if True: # use real ham instead of eff
     tl = 1.0;
     Vg = 20.0;
     U = 100.0;
-    Jeff = -2*tl*tl/Vg
+    Jeff = 2*tl*tl*U/(-Vg*(U-Vg));
 
     # diag ham = blocks for LL, SR, RL
     h_L1 = np.array([[0,0,0,0,0,0],
