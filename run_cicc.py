@@ -75,7 +75,7 @@ if False:
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , source)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , source)) );
 
     # package into one array
     Tvals = np.array(Tvals);
@@ -95,7 +95,7 @@ if True: # plot
     # plot each file given at command line
     fig, axes = plt.subplots();
     axes = [axes];
-    datafs = sys.argv[2:];
+    datafs = sys.argv[1:];
     for fi in range(len(datafs)):
 
         # unpack
@@ -115,7 +115,7 @@ if True: # plot
     axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
     axes[0].set_ylim(0.0,1.05);
     axes[0].set_xlabel("$kx_{0}$");
-    axes[0].set_title("Up electron scattering from down, down impurities, J = "+str(np.real(Jeff)) );
+    axes[0].set_title("Up electron scattering from $\Psi^+ $ impurities, J = "+str(np.real(Jeff)) );
     axes[0].set_ylabel("$T$");
     for ax in axes:
         ax.minorticks_on();
@@ -170,7 +170,7 @@ if False:
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , sourcei)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , sourcei)) );
 
     # save results
     Tvals = np.array(Tvals); # rows are diff rhoJ vals

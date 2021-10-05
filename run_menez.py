@@ -48,10 +48,11 @@ if False: # plot at different eff J
         if verbose: print(h_menez,"\n", tl_arr);
 
         # define source, ie what is incident at left bdy, in this case an up electron
-        sourcei = 1; # up e, down imp
+        source = np.zeros(np.shape(h_SR)[0]);
+        source[2] = 1;
 
         if False: # test at max verbosity
-            myT = wfm.Tcoef(h_menez, tl_arr, -1.99, sourcei, verbose = 5);
+            myT = wfm.Tcoef(h_menez, tl_arr, tl, -1.99, source, verbose = 5);
             if verbose: print("******",myT);
 
         # sweep over range of energies
@@ -64,7 +65,7 @@ if False: # plot at different eff J
 
         # sweep thru E
         for Ei in range(len(Evals) ):
-            dummyT1, Tupvals[Ei], Tdownvals[Ei], dummyT2 = wfm.Tcoef(h_menez, tl_arr, Evals[Ei], sourcei);
+            dummyT1, Tupvals[Ei], Tdownvals[Ei], dummyT2 = wfm.Tcoef(h_menez, tl_arr, tl, Evals[Ei], source);
             assert(dummyT1 == 0 and dummyT2 == 0);
 
         # plot
@@ -129,10 +130,11 @@ if True: # use real ham instead of eff
     if verbose: print(h_menez,"\n", tl_arr);
 
     # define source, ie what is incident at left bdy, in this case an up electron
-    sourcei = 2;
+    source = np.zeros(np.shape(h_SR)[0]);
+    source[2] = 1;
 
     if False: # test at max verbosity
-        myT = wfm.Tcoef(h_menez, tl_arr, -1.99, sourcei, verbose = 5);
+        myT = wfm.Tcoef(h_menez, tl_arr, tl, -1.99, source, verbose = 5);
         if verbose: print("******",myT);
 
     # sweep over range of energies
@@ -142,12 +144,12 @@ if True: # use real ham instead of eff
     Evals = np.linspace(Emin, Emax, N, dtype = complex);
     Tvals = [];
     for Ei in range(len(Evals) ):
-        Tvals.append(wfm.Tcoef(h_menez, tl_arr, Evals[Ei], sourcei));
+        Tvals.append(wfm.Tcoef(h_menez, tl_arr, tl, Evals[Ei], source));
 
     # plot Tvals vs E
     Tvals = np.array(Tvals);
     fig, ax = plt.subplots();
-    ax.scatter(Evals + 2*tl,Tvals[:,sourcei+1], marker = 's',label = "$T_{down}$");
+    ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's',label = "$T_{down}$");
 
     # menezes prediction in the continuous case
     # all the definitions, vectorized funcs of E

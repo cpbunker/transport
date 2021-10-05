@@ -27,7 +27,7 @@ verbose = 5
 #### effective ham, choose source for initial condition
 #### ie replicate Cicc figs 1, 5
     
-for rJ in [10.0]:
+for rJ in [1.0]:
 
     # siam inputs
     tl = 1.0;
@@ -48,13 +48,13 @@ for rJ in [10.0]:
     E_rho = E_rho - 2*tl; # measure from mu
 
     # choose boundary condition
-    source = np.array([0,1,1,0,0,0,0,0])/np.sqrt(2);
+    source = np.array([0,1,-1,0,0,0,0,0])/np.sqrt(2);
     #source = source/np.dot(source, source); # normalize
     
     
     # mesh of x0s (= N0s * alat)
     kx0min, kx0max = 3*np.pi/4, 1.1*np.pi;
-    #kx0min, kx0max = 0.0, 2.1*np.pi;
+    kx0min, kx0max = 0.0, 1.1*np.pi;
     N0min, N0max = int(kx0min/(k_rho*alat)), int(kx0max/(k_rho*alat));
     if verbose: print("N0 min, max = ",N0min, N0max);
     N0vals = np.linspace(N0min, N0max, int(N0max - N0min), dtype = int); # always integer
@@ -72,9 +72,10 @@ for rJ in [10.0]:
         Nsites = i2+2; # 1 lead site on each side
         print("i1, i2, Nsites = ",i1, i2, Nsites)
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
+        if(N0i == 1): print(hmats, "\n", tmats);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, E_rho , source, verbose = 1)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , source, verbose = 1)) );
 
     # package into one array
     Tvals = np.array(Tvals);

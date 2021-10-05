@@ -58,19 +58,19 @@ def Hmat(h, t, verbose = 0):
     return H; 
 
 
-def Hprime(h, t, E, verbose = 0):
+def Hprime(h, t, tl, E, verbose = 0):
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
 
-    h, 1d arr, length N+2, on site energies
-    t, float, hopping
+    h, block diag hamiltonian matrices
+    t, block off diag hopping matrix
+    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
     '''
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
-    tval = t[0][0,0];
 
     # add self energies to hamiltonian
     Hp = Hmat(h, t, verbose = verbose); # regular ham
@@ -79,24 +79,24 @@ def Hprime(h, t, E, verbose = 0):
     # need a self energy for each LL boundary condition
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tval);
+        lamL = (E-V)/(-2*tl);
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
-        SigmaL = -tval/LambdaLminus;
+        SigmaL = -tl/LambdaLminus;
         Hp[Vi,Vi] = SigmaL;
 
     # self energies at RL
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[-1][Vi,Vi];     
-        lamR = (E-V)/(-2*tval);
+        lamR = (E-V)/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
-        SigmaR = -tval*LambdaRplus;
+        SigmaR = -tl*LambdaRplus;
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
     
     if verbose > 3: print("\nH' = \n",Hp);
     return Hp;
 
 
-def Green(h, t, E, verbose = 0):
+def Green(h, t, tl, E, verbose = 0):
     '''
     Greens function for system described by
     - potential V[i] at site i
@@ -113,21 +113,21 @@ def Green(h, t, E, verbose = 0):
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
-    tval = t[0][0,0];
 
     # get green's function matrix
-    Hp = Hprime(h, t, E, verbose = verbose);
+    Hp = Hprime(h, t, tl, E, verbose = verbose);
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
     # of interest is the qith row which contracts with the source q
     return G;
 
 
-def Tcoef(h, t, E, qi, verbose = 0):
+def Tcoef(h, t, tl, E, qi, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     h, block diag hamiltonian matrices
-    t, off diag hopping matrix
+    t, block off diag hopping matrix
+    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
     E, energy of the incident electron
     qi, source vector (loc dof only)
     '''
@@ -141,30 +141,30 @@ def Tcoef(h, t, E, qi, verbose = 0):
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
-    tval = t[0][0,0];
 
     # self energies at LL
     # need a self energy for each LL boundary condition
     SigmaL = [];
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tval);
+        lamL = (E-V)/(-2*tl);
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
-        SigmaL.append( -tval/LambdaLminus);
+        SigmaL.append( -tl/LambdaLminus);
 
     # self energies at RL
     SigmaR = [];
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[-1][Vi,Vi];     
-        lamR = (E-V)/(-2*tval);
+        lamR = (E-V)/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
-        SigmaR.append( -tval*LambdaRplus);
+        SigmaR.append( -tl*LambdaRplus);
 
     # check self energies
+    print(">>>>",tl,E-V,SigmaR[0]);
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function
-    G = Green(h, t, E, verbose = verbose);
+    G = Green(h, t, tl, E, verbose = verbose);
     if verbose > 3: print("\nG[:,qi] = ",G[:,qi]);
 
     # coefs
@@ -243,7 +243,7 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
     # hopping connects like spin orientations only, ie is identity
     tl_arr = []
     for sitei in range(Nsites-1):
-        tl_arr.append(t*np.eye(*np.shape(Se_dot_S1)) );
+        tl_arr.append(-t*np.eye(*np.shape(Se_dot_S1)) );
     tl_arr = np.array(tl_arr);
 
     return h_cicc, tl_arr;
