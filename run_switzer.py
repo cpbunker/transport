@@ -86,7 +86,7 @@ if True:
         ax.plot(Nvals, Tvals[:,2], label = '|down, 2, 1>');
 
     # format
-    ax.set_title("Transmission at resonance, $J_K = 2D/3$");
+    #ax.set_title("Transmission at resonance, $J_K = 2D/3$");
     ax.set_ylabel("$T$");
     ax.set_xlabel("$N$");
     ax.set_ylim(0.0,1.05);
@@ -143,7 +143,7 @@ if False: # iter over th, ie hopping in/out of SR
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
 
-if True: 
+if False: 
 
     # eff params at resonance
     JK = D*2/3;

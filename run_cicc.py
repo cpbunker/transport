@@ -90,7 +90,7 @@ if False:
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
 
-if True: # plot
+if False: # plot
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -108,14 +108,14 @@ if True: # plot
         Ttotals = np.sum(Tvals, axis = 0);
 
         # plot
-        axes[0].plot(kx0vals, Ttotals, label = "$\\rho J = $"+str(np.real(rhoJ_int)));
+        axes[0].plot(kx0vals/np.pi, Ttotals, label = "$\\rho  \, J a= $"+str(np.real(rhoJ_int)));
 
     # format and show
-    axes[0].axvline(np.pi, color = "black", linestyle = "dashed");
-    axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
+    #axes[0].axvline(np.pi, color = "black", linestyle = "dashed");
+    #axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
     axes[0].set_ylim(0.0,1.05);
-    axes[0].set_xlabel("$kx_{0}$");
-    axes[0].set_title("Up electron scattering from $\Psi^+ $ impurities, J = "+str(np.real(Jeff)) );
+    axes[0].set_xlabel("$kx_{0}/\pi$");
+    #axes[0].set_title("Up electron scattering from $\Psi^+ $ impurities, J = "+str(np.real(Jeff)); );
     axes[0].set_ylabel("$T$");
     for ax in axes:
         ax.minorticks_on();
@@ -136,7 +136,8 @@ if False:
     Jeff = 2*tl*tl/Vg; # eff heisenberg strength fixed
 
     # choose boundary condition
-    sourcei = 3; # incident up, imps = down, down
+    source = np.zeros(8); # incident up, imps = down, down
+    source[3] = 1;
     spinstate = "abb"
 
     # cicc inputs
@@ -145,7 +146,7 @@ if False:
 
     # iter over rhoJ, getting T
     Tvals = [];
-    rhoJvals = np.linspace(0.5,5.5,22)
+    rhoJvals = np.linspace(0.5,5.5,44)
     for rhoJ_int in rhoJvals:
 
         # energy and K fixed by J, rhoJ
@@ -170,7 +171,7 @@ if False:
         hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , sourcei)) );
+        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , source)) );
 
     # save results
     Tvals = np.array(Tvals); # rows are diff rhoJ vals
@@ -181,11 +182,11 @@ if False:
         data.append(Tvals[:,Ti]); # row of one dof, but each column is diff rhoJ
     # save data
     fname = "dat/cicc_eff/Fig6/"
-    fname +="gf_"+spinstate+"_kx0"+str(kx0)+".npy";
+    fname +="gf_"+spinstate+"_kx0"+str(kx0)[:4]+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
 
-if False: # plot above
+if True: # plot above
 
     # load data
     fname = sys.argv[1]
@@ -195,15 +196,18 @@ if False: # plot above
     tl, Jeff, N0, kx0 = info[0], info[1], info[2], info[3];
     rhoJvals = data[1];
     Tvals = data[2:];
+    Tup = Tvals[0] + Tvals[1] + Tvals[2] + Tvals[3];
     Tdown = Tvals[4] + Tvals[5] + Tvals[6] + Tvals[7];
 
     # plot
     fig, ax = plt.subplots();
-    ax.scatter(rhoJvals, Tdown, marker = 's');
-    ax.set_xlabel("$\\rho J$");
-    ax.set_ylabel("$T_{down}$");
-    ax.set_title("Fig. 6");
-    ax.set_ylim(0.0,0.25);
+    ax.scatter(rhoJvals, Tup, marker = 's', label = "$T_{up}$");
+    ax.scatter(rhoJvals, Tdown, marker = 's', label = "$T_{down}$");
+    ax.set_xlabel("$\\rho\,J a$");
+    ax.set_ylabel("$T$");
+    #ax.set_title("Fig. 6");
+    #ax.set_ylim(0.0,0.25);
+    ax.legend();
     ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
