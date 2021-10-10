@@ -160,7 +160,7 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
         SigmaR.append( -tl*LambdaRplus);
 
     # check self energies
-    print(">>>>",tl,E-V,SigmaR[0]);
+    #print(">>>>",tl,E-V,SigmaR[0]);
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function

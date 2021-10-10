@@ -108,10 +108,44 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime();
-    hstring += "tf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
     hstring += "\nASU formalism, t_hyb noneq. term"
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_noneq;
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end dot data
+
+
+def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
+
+    # imports here so dmrg can be run even if pyscf not on machine
+    from pyscf import fci
+    import fci_mod
+    import td_fci
+    
+    # unpack
+    norbs = np.shape(h1e)[0];
+    imp_i = [int(norbs/2), int(norbs/2)+1]; # approx midpt
+
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\n"+str(h1e);
+    hstring += "\n"+str(h1e_neq);
     np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
     np.save(fname, observables);
     if (verbose): print("4. Saved data to "+fname);
@@ -231,7 +265,7 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
         fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
-    hstring += "tf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
     hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_neq;

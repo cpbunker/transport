@@ -23,8 +23,8 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 5
 
 # define source
-source = np.zeros(8); # corresponds to |up, 2, 1 > in the device basis
-source[0] = 1;
+source = np.zeros(8); 
+source[2] = 1; # |1,2, -1/2> |2,2> as in Eric's Eq 10
 
 # define params according to Eric's paper
 tl = 1.0; # hopping
@@ -33,23 +33,26 @@ JH = -0.005;
 JK2 = -0.04;
 JK3 = -0.04;
 
-if True: 
+if False: # vary N at resonance
 
     # eff params at resonance
     JK = D*2/3;
     DeltaK = 0;
 
     # iter over N
-    Nmax = 30
+    Nmax = 120
     Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
     Tvals = [];
     for N in Nvals:
 
         # fix energy near bottom of band
         Energy = -2*tl + 0.5;
+        ka = np.arccos(Energy/(-2*tl)) 
+        print("ka = ", ka);
+        print("vg = ", 2*tl*np.sin(ka));
 
         # eff exchange in SR
-        h_ex = np.array([[0,DeltaK,4*JK,              0,0,0,0,0],   # block diag m=3/2
+        h_ex = (1/4)*np.array([[0,DeltaK,4*JK,              0,0,0,0,0],   # block diag m=3/2
                          [DeltaK,-8*JH,-2*DeltaK,     0,0,0,0,0],
                          [4*JK,-2*DeltaK,-6*JK+4*D,   0,0,0,0,0],
                          [0,0,0,         0,0,0,0,0],   # block diag m=1/2
@@ -77,13 +80,13 @@ if True:
     Tvals = np.array(Tvals);
     fig, ax = plt.subplots();
     if False:
-        ax.scatter(Nvals, Tvals[:,0], marker = 's', label = '|up, 2, 1>');
-        ax.scatter(Nvals, Tvals[:,1], marker = 's', label = '|up, 1, 1>');
-        ax.scatter(Nvals, Tvals[:,2], marker = 's', label = '|down, 2, 1>');
+        ax.scatter(Nvals, Tvals[:,0], marker = 's', label = '|1/2, 1/2, 2, 1>');
+        ax.scatter(Nvals, Tvals[:,1], marker = 's', label = '|1/2, 1/2, 1, 1>');
+        ax.scatter(Nvals, Tvals[:,2], marker = 's', label = '|1/2,-1/2, 2, 2>');
     else:
-        ax.plot(Nvals, Tvals[:,0], label = '|up, 2, 1>');
-        ax.plot(Nvals, Tvals[:,1], label = '|up, 1, 1>');
-        ax.plot(Nvals, Tvals[:,2], label = '|down, 2, 1>');
+        ax.plot(Nvals, Tvals[:,0], label = '|1/2, 1/2> |2, 1>');
+        ax.plot(Nvals, Tvals[:,1], label = '|1/2, 1/2> |1, 1>');
+        ax.plot(Nvals, Tvals[:,2], label = '|1/2,-1/2> |2, 2>');
 
     # format
     #ax.set_title("Transmission at resonance, $J_K = 2D/3$");
@@ -96,95 +99,81 @@ if True:
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
 
-if False: # iter over th, ie hopping in/out of SR
+
+if True: # iter over JK at fixed energy, then over N, looking at peak size
 
     # eff params at resonance
-    JK = D*2/3;
-    DeltaK = 0;
-    
-    # iter over JK looking for resonance
-    thvals = np.linspace(0.1,0.9,40);
-    Tvals = []; # get transmission each time
-    for th in thvals:
-
-        # eff exchange in SR
-        h_ex = np.array([[0,DeltaK,4*JK,              0,0,0,0,0],   # block diag m=3/2
-                         [DeltaK,-8*JH,-2*DeltaK,     0,0,0,0,0],
-                         [4*JK,-2*DeltaK,-6*JK+4*D,   0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],   # block diag m=1/2
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0]]);
-
-        # package as block hams
-        hblocks = np.array([np.zeros_like(h_ex), h_ex, np.zeros_like(h_ex)]);
-        tblocks = np.array([-th*np.eye(*np.shape(h_ex)), -th*np.eye(*np.shape(h_ex))]);
-
-        # get transmission coefs
-        Energy = -2*tl + 2; # fix
-        Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
-
-    # plot
-    Tvals = np.array(Tvals);
-    fig, ax = plt.subplots();
-    ax.scatter(thvals, Tvals[:,0], marker = 's', label = '|up, 2, 1>');
-    ax.scatter(thvals, Tvals[:,1], marker = 's', label = '|up, 1, 1>');
-    ax.scatter(thvals, Tvals[:,2], marker = 's', label = '|down, 2, 1>');
-
-    # format
-    ax.set_title("Transmission at resonance, $J_K = 2D/3$");
-    ax.set_ylabel("$T$");
-    ax.set_xlabel("$t_h$");
-    ax.set_ylim(0.0,1.05);
-    plt.legend();
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.show();
-
-if False: 
-
-    # eff params at resonance
-    JK = D*2/3;
+    # JK tbd
     DeltaK = 0;
     
     # modulate
-    Vgvals = np.linspace(0.0,0.5,40);
-    Tvals = []; # get transmission each time
-    for Vg in Vgvals:
+    JKvals = np.linspace(-0.1,0.01,12);
+    maxvals = [];
+    for JK in JKvals:
 
-        # eff exchange in SR
-        h_ex = np.array([[0,DeltaK,4*JK,              0,0,0,0,0],   # block diag m=3/2
-                         [DeltaK,-8*JH,-2*DeltaK,     0,0,0,0,0],
-                         [4*JK,-2*DeltaK,-6*JK+4*D,   0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],   # block diag m=1/2
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0],
-                         [0,0,0,         0,0,0,0,0]]);
+        print(">>>> JK = ",JK);
 
-        # package as block hams
-        hblocks = np.array([np.zeros_like(h_ex), h_ex-np.eye(*np.shape(h_ex))*Vg/2, np.zeros_like(h_ex)-np.eye(*np.shape(h_ex))*Vg]);
-        tblocks = np.array([-tl*np.eye(*np.shape(h_ex)), -tl*np.eye(*np.shape(h_ex))]);
+        # iter over N, just looking for max 
+        Nmax = 60;
+        Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
+        Nvals = Nvals[Nvals % 2 == 0 ];
+        Tvals = [];
+        for N in Nvals:
 
-        # get transmission coefs
-        Energy = -2*tl + 0.5; # fix
-        Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+            # eff exchange in SR
+            h_ex = (1/4)*np.array([[0,DeltaK,4*JK,              0,0,0,0,0],   # block diag m=3/2
+                             [DeltaK,-8*JH,-2*DeltaK,     0,0,0,0,0],
+                             [4*JK,-2*DeltaK,-6*JK+4*D,   0,0,0,0,0],
+                             [0,0,0,         0,0,0,0,0],   # block diag m=1/2
+                             [0,0,0,         0,0,0,0,0],
+                             [0,0,0,         0,0,0,0,0],
+                             [0,0,0,         0,0,0,0,0],
+                             [0,0,0,         0,0,0,0,0]]);
 
-    # plot
-    Tvals = np.array(Tvals);
-    fig, ax = plt.subplots();
-    ax.scatter(Vgvals, Tvals[:,0], marker = 's', label = '|up, 2, 1>');
-    ax.scatter(Vgvals, Tvals[:,1], marker = 's', label = '|up, 1, 1>');
-    ax.scatter(Vgvals, Tvals[:,2], marker = 's', label = '|down, 2, 1>');
+            # package as block hams 
+            # number of blocks depends on N
+            hblocks = [np.zeros_like(h_ex)]
+            tblocks = [-tl*np.eye(*np.shape(h_ex)) ];
+            for Ni in range(N):
+                hblocks.append(np.copy(h_ex));
+                tblocks.append(-tl*np.eye(*np.shape(h_ex)) );
+            hblocks.append(np.zeros_like(h_ex) );
+            hblocks = np.array(hblocks);
+            tblocks = np.array(tblocks);
 
-    # format
-    ax.set_title("Transmission at resonance, $J_K = 2D/3$");
-    ax.set_ylabel("$T$");
-    ax.set_xlabel("$V_g$");
+            # get transmission coefs
+            Energy = -2*tl + 0.5;
+            Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+
+        # get max of |up, 2, 1>
+        Tvals = np.array(Tvals);
+        maxvals.append(np.max(Tvals[:,0]));
+
+        # plot vs N at this JK
+        Tvals = np.array(Tvals);
+        fig, ax = plt.subplots();
+        ax.scatter(Nvals, Tvals[:,0], marker = 's', label = '|1/2, 1/2> |2, 1>');
+        ax.scatter(Nvals, Tvals[:,1], marker = 's', label = '|1/2, 1/2> |1, 1>');
+        ax.scatter(Nvals, Tvals[:,2], marker = 's', label = '|1/2,-1/2> |2, 2>');
+
+        # format
+        #ax.set_title("");
+        ax.set_ylabel("$T$");
+        ax.set_xlabel("$N$");
+        ax.set_ylim(0.0,1.05);
+        plt.legend();
+        ax.minorticks_on();
+        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+        plt.show();
+
+    # plot max vals vs JK
+    fig, ax = plt.subplots()
+    ax.scatter(JKvals, maxvals, marker = 's');
+    ax.axvline(D*2/3, color = "black", linestyle = "dashed");
+    ax.set_ylabel("max($T_{flip}$)");
+    ax.set_xlabel("$J_K$");
     ax.set_ylim(0.0,1.05);
-    plt.legend();
     ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);

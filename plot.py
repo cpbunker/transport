@@ -127,7 +127,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
 
         # format
         axes[axcounter].set_ylabel("Occ.")
-        #axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+        axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
 
     # total lead occupancy
@@ -511,32 +511,29 @@ def TandR(datafs, nleads, sites):
     for dati in range(len(datafs)):
         
         observables = np.load(datafs[dati]);
+        observables = observables.T;
         print("Loading data from "+datafs[dati]);
 
         # unpack data depending on how many dots
-        t, E, JupL, JupR, JdownL, JdownR = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5];
+        t, E, JupL, JupR, JdownL, JdownR, concur = observables[0], observables[1], observables[2], observables[3], observables[4], observables[5], observables[6];
         RLSz = np.zeros_like(t);
         LLSz = np.zeros_like(t);
-        for obsi in range(len(sites)): # observables has an occ and Sz for every site
-            if sites[obsi][0] == 'L':
-                LLSz += observables[obsi+len(sites)+6];
-            elif sites[obsi][0] == 'R':
-                RLSz += observables[obsi+len(sites)+6];
+        for sitei in range(len(sites)): # observables has an occ and Sz for every site
+            if sites[sitei] == 'L1':
+                LLSz += observables[7+4*sitei+3];
+            elif sites[sitei] == 'R2':
+                RLSz += observables[7+4*sitei+3];
 
         plt.plot(t, RLSz);
         plt.plot(t, LLSz);
-
-        # smooth
-        NewRL = np.zeros_like(RLSz);
-        for i in range(len(RLSz)):
-            NewRL[i] = sum(RLSz[i-60:i+60])/120;
-        plt.plot(t,NewRL);
+        plt.xlabel("time");
+        plt.ylabel("$S_z$");
         plt.show();
 
         # max of RLSz, LLSz -> T, R
-        maxi = np.argmax(NewRL);
+        maxi = np.argmax(RLSz);
         print(t[maxi]);
-        Ts.append(NewRL[maxi]/0.5);
+        Ts.append(RLSz[maxi]/0.5);
         Rs.append(LLSz[maxi]/0.5);
 
     return Ts, Rs;       
