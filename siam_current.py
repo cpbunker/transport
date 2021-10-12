@@ -119,40 +119,6 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     return fname; # end dot data
 
 
-def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
-
-    # imports here so dmrg can be run even if pyscf not on machine
-    from pyscf import fci
-    import fci_mod
-    import td_fci
-    
-    # unpack
-    norbs = np.shape(h1e)[0];
-    imp_i = [int(norbs/2), int(norbs/2)+1]; # approx midpt
-
-    # get scf implementation siam by passing hamiltonian arrays
-    if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
-    if( verbose > 3): print("|initial> = ",v_fci);
-
-    # from fci gd state, do time propagation
-    if(verbose): print("3. Time propagation")
-    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
-    
-    hstring = time.asctime();
-    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
-    hstring += "\n"+str(h1e);
-    hstring += "\n"+str(h1e_neq);
-    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
-    np.save(fname, observables);
-    if (verbose): print("4. Saved data to "+fname);
-    
-    return fname; # end dot data
-
-
 def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, spinstate = "", prefix = "dat/", namevar = "Vg", verbose = 0):
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
@@ -274,6 +240,109 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     if(verbose): print("4. Saved data to "+fname);
     
     return fname; # end dot data dmrg
+
+
+def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
+
+    # imports here so dmrg can be run even if pyscf not on machine
+    from pyscf import fci
+    import fci_mod
+    import td_fci
+    
+    # unpack
+    norbs = np.shape(h1e)[0];
+    imp_i = [int(norbs/2)-1, int(norbs/2)]; # approx midpt
+
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\n"+str(h1e);
+    hstring += "\n"+str(h1e_neq);
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end custom data
+
+
+def CustomDataDmrg(h1e, g2e, h1e_neq, nelecs, timestop, deltat, bond_dims, noises, fname = "dmrg_custom.npy", verbose = 0):
+    '''
+    As above but with dmrg
+    '''
+    
+    from pyblock3 import fcidump, hamiltonian
+    from pyblock3.algebra.mpe import MPE
+    import td_dmrg
+
+    # check inputs
+    assert( bond_dims[0] <= bond_dims[-1]); # checks bdims has increasing behavior and is list
+    assert( noises[0] >= noises[-1] ); # checks noises has decreasing behavior and is list
+
+    hstring = time.asctime(); # for printing
+    
+    # set up the hamiltonian
+    norbs = np.shape(h1e)[0]; # num spin orbs
+    imp_i = [int(norbs/2)-1, int(norbs/2)]; # approx midpt
+
+    # store physics in fci dump object
+    hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
+
+    # instead of np array, dmrg wants ham as a matrix product operator (MPO)
+    h_obj = hamiltonian.Hamiltonian(hdump,flat=True);
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff=1E-15); # compressing saves memory
+    if verbose: hstring += "\n- Built H as compressed MPO: "+str( h_mpo.show_bond_dims())
+
+    # initial ansatz for wf, in matrix product state (MPS) form
+    psi_mps = h_obj.build_mps(bond_dims[0]);
+    E_mps_init = td_dmrg.compute_obs(h_mpo, psi_mps);
+    if verbose: hstring += "\n- Initial gd energy = "+str(E_mps_init);
+
+    # ground-state DMRG
+    # runs thru an MPE (matrix product expectation) class built from mpo, mps
+    if(verbose): hstring += "\n2. DMRG solution";
+    MPE_obj = MPE(psi_mps, h_mpo, psi_mps);
+
+    # solve system by doing dmrg sweeps
+    # MPE.dmrg method takes list of bond dimensions, noises, threads defaults to 1e-7
+    # can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
+    # noises[0] = 1e-3 and tol = 1e-8 work best from trial and error
+    dmrg_obj = MPE_obj.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=0);
+    E_dmrg = dmrg_obj.energies;
+    if verbose: hstring += "\n- Final gd energy = "+str(E_dmrg[-1]);
+
+    # nonequil hamiltonian (as MPO)
+    if(verbose > 2 ): hstring += "\n- Add nonequilibrium terms";
+    hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
+    h_obj_neq = hamiltonian.Hamiltonian(hdump_neq, flat=True);
+    h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
+    h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
+
+    # time propagate the noneq state
+    # td dmrg uses highest bond dim
+    if(verbose): hstring += "\n3. Time propagation";
+    init, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, [bond_dims[-1]], verbose = verbose);
+
+    # write results to external file
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat)+"\nbdims = "+str(bond_dims)+"\nnoises = "+str(noises);
+    hstring += "\n"+str(h1e);
+    hstring += "\n"+str(h1e_neq);
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if(verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end custom data data dmrg
 
 
 #################################################
