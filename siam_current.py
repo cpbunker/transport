@@ -273,7 +273,7 @@ def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.
     np.save(fname, observables);
     if (verbose): print("4. Saved data to "+fname);
     
-    return fname; # end custom data
+    return; # end custom data
 
 
 def CustomDataDmrg(h1e, g2e, h1e_neq, nelecs, timestop, deltat, bond_dims, noises, fname = "dmrg_custom.npy", verbose = 0):
@@ -329,6 +329,12 @@ def CustomDataDmrg(h1e, g2e, h1e_neq, nelecs, timestop, deltat, bond_dims, noise
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
     h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
 
+    # neq eigenstate
+    psi_neq = h_obj_neq.build_mps(bond_dims[0]);
+    MPE_obj_neq = MPE(psi_neq, h_mpo_neq, psi_neq);
+    dmrg_obj_neq = MPE_obj_neq.dmrg(bdims = bond_dims, noises = noises, tol = 1e-8, iprint = 0); # solves neq system
+    neq_eigenstate = MPE_obj_neq.ket;
+    
     # time propagate the noneq state
     # td dmrg uses highest bond dim
     if(verbose): hstring += "\n3. Time propagation";
@@ -342,7 +348,7 @@ def CustomDataDmrg(h1e, g2e, h1e_neq, nelecs, timestop, deltat, bond_dims, noise
     np.save(fname, observables);
     if(verbose): print("4. Saved data to "+fname);
     
-    return fname; # end custom data data dmrg
+    return; # end custom data data dmrg
 
 
 #################################################
