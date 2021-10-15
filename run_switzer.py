@@ -114,7 +114,7 @@ if True: # iter over JK at fixed energy, then over N, looking at peak size
         print(">>>> JK = ",JK);
 
         # iter over N, just looking for max 
-        Nmax = 60;
+        Nmax = 180;
         Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
         Nvals = Nvals[Nvals % 2 == 0 ];
         Tvals = [];

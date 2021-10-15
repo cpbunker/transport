@@ -8,6 +8,8 @@ general formalism: all sites map to all the different
 degrees of freedom of the system
 '''
 
+import fci_mod
+
 import numpy as np
 
 import sys
@@ -250,6 +252,17 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
 
 
 if __name__ == "__main__": # test code
+
+    # test 1p -> det conversion on hubbard
+    h1e = np.array( [[0,0,-1,0],[0,0,0,-1],[-1,0,0,0],[0,-1,0,0]] );
+    g2e = np.zeros( (np.shape(h1e)[0], np.shape(h1e)[0], np.shape(h1e)[0], np.shape(h1e)[0]));
+    g2e[0,0,1,1] = 20;
+    g2e[1,1,0,0] = 20;
+    g2e[2,2,3,3] = 20;
+    g2e[3,3,2,2] = 20;
+    Hdet = fci_mod.single_to_det(h1e, g2e, 3, verbose = 5);
+    print(Hdet);
+    assert False;
 
     import matplotlib.pyplot as plt
 

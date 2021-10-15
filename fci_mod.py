@@ -22,6 +22,8 @@ import td_fci
 import numpy as np
 import functools
 
+import math
+
 
 ##########################################################################################################
 #### conversions
@@ -67,6 +69,120 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
                                    # what matter is h1e, h2e are now encoded in this scf instance
 
     return mol, scf_inst;
+
+
+def single_to_det(h1e, g2e, Np, verbose = 0):
+    '''
+    express h1e, g2e arrays, ie matrix elements in single particle basis rep
+    to basis of slater determinants
+    '''
+
+    # check inputs
+    Nbasis = np.shape(h1e)[0]; # num single particle basis states
+    assert(Np <= Nbasis);
+    assert(Nbasis == np.shape(g2e)[0]); 
+
+    # 1 particle basis to N particle slater determinants
+    Ndets = int(math.factorial(Nbasis)/(math.factorial(Np)*math.factorial(Nbasis - Np) ));
+    print("Ndets = ",Ndets);
+
+    # translate between dets and 1p states
+    def gen_dets(arrays, out=None): # all possible determinant combos
+
+        arrays = [np.asarray(x) for x in arrays]
+        dtype = arrays[0].dtype
+
+        n = np.prod([x.size for x in arrays])
+        if out is None:
+            out = np.zeros([n, len(arrays)], dtype=dtype)
+
+        #m = n / arrays[0].size
+        m = int(n / arrays[0].size) 
+        out[:,0] = np.repeat(arrays[0], m)
+        if arrays[1:]:
+            gen_dets(arrays[1:], out=out[0:m, 1:])
+            for j in range(1, arrays[0].size):
+                out[j*m:(j+1)*m, 1:] = out[0:m, 1:]
+        return out
+
+    det_states = [];
+    for pi in range(Np):
+        det_states.append(np.array([range(Nbasis)]));
+    dets = gen_dets(det_states);
+
+    # screen dets with 2 particles in same state, and permutations of same
+    newdets = [];
+    for det in dets:
+        exclude = False;
+        for ei in range(len(det)):
+            for ej in range(ei): # perms
+                if( det[ei] < det[ej]):
+                    exclude = True
+            for ej in range(len(det)): # same state
+                if( (ei != ej) and (det[ei] == det[ej]) ): # exclude;
+                    exclude = True;
+        if not exclude:
+            newdets.append(det);
+
+    dets = np.array(newdets);
+    if verbose: print("Det. basis:\n",dets);
+
+    # put one particle matrix elements into determinantal matrix
+    H = np.zeros((Ndets, Ndets));
+    for deti in range(Ndets):
+        for detj in range(Ndets):
+
+            # how many 1p states the dets differ by, under maximum coincidence
+            ndiff = 0;
+            for pi in dets[deti]:
+                if( pi not in dets[detj]):
+                    ndiff += 1;
+            if( ndiff == 0):
+                
+                # h1e
+                for pi in dets[deti]: # sum over one particle states shared between both dets
+                    H[deti, detj] += h1e[pi, pi]; # diagonal elements of 1p matrix
+
+                # g2e
+                mysum = 0.0;
+                for pi in dets[deti]: # all shared states
+                    for pj in dets[detj]:
+                        mysum += g2e[pi, pi, pj, pj] - g2e[pi, pj, pj, pi]
+                H[deti, detj] += (1/2)*mysum;
+                
+            elif( ndiff == 1):
+                
+                # have to figure out which two orbs are different:
+                for pi in range(len(dets[deti])):
+                    if dets[deti,pi] not in dets[detj]: whichi = pi; # index
+                for pj in range(len(dets[detj])):
+                    if dets[detj,pj] not in dets[deti]: whichj = pj; # index
+                # have to figure out fermi sign
+                deltais = [abs(whichi - whichj)]
+                for el in dets[deti]:
+                    if el in dets[detj]:
+                        deltais.append(abs(np.argmax(dets[detj] == el) - np.argmax(dets[deti] == el)));
+                sign = np.power(-1, np.sum(deltais )/2 );
+
+                # h1e
+                H[deti, detj] += sign*h1e[dets[deti, whichi], dets[detj, whichj]];
+
+                # g2e
+                mysum = 0.0;
+                for pi in dets[deti][dets[deti] != whichi]: # all shared orbs
+                    mysum += g2e[dets[deti,whichi],dets[detj,whichj],pi,pi] - g2e[dets[deti,whichi],pi,pi,dets[detj,whichj]];
+                H[deti, detj] += sign*mysum;
+
+            elif( ndiff == 3):
+
+                # no h1e contribution
+
+                # g2e
+                pass;
+                
+            else: pass; # otherwise det matrix element is zero
+
+    return H;
 
 
 def scf_to_arr(mol, scf_obj):
@@ -124,63 +240,6 @@ def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     # MPE
     return MPE(psi_mps, h_mpo, psi_mps);
     
-    
-def mol_model(nleads, nsites, norbs, nelecs, physical_params,verbose = 0):
-    # WILL NEED OVERHAUL 
-
-    # checks
-    assert norbs == 2*(nsites + nleads[0]+nleads[1]);
-    assert nelecs[1] == 0;
-    assert nelecs[0] <= norbs;
-
-    # unpack inputs
-    V_leads, V_imp_leads, V_bias, mu, mol_params = physical_params;
-    D, E, alpha, U = mol_params;
-
-    if(verbose): # print inputs
-        try:
-            print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias,"\n- mu = ",mu,"\n- D = ",D,"\n- E = ",E, "\n- alpha = ",alpha, "\n- U = ",U, "\n- E/U = ",E/U,"\n- alpha/D = ",alpha/D,"\n- alpha/(E^2/U) = ",alpha*U/(E*E),"\n- alpha^2/(E^2/U) = ",alpha*alpha**U/(E*E) );
-        except: 
-            print("\nInputs:\n- Num. leads = ",nleads,"\n- Num. impurity sites = ",nsites,"\n- nelecs = ",nelecs,"\n- V_leads = ",V_leads,"\n- V_imp_leads = ",V_imp_leads,"\n- V_bias = ",V_bias)
-    #### make full system ham from inputs
-
-    # make, combine all 1e hamiltonians
-    hl = ops.h_leads(V_leads, nleads); # leads only
-    hb = ops.h_chem(mu, nleads);   # chem potential on leads
-    hdl = ops.h_imp_leads(V_imp_leads, nsites); # leads talk to dot
-    hd = molecule_5level.h1e(nsites*2,D,E,alpha); # Silas' model
-    h1e = ops.stitch_h1e(hd, hdl, hl, hb, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias/chem potential
-    if(verbose > 2):
-        print("\n- Full one electron hamiltonian = \n",h1e);
-        
-    # 2e hamiltonian only comes from impurity
-    if(verbose > 2):
-        print("\n- Nonzero h2e elements = ");
-    hd2e = molecule_5level.h2e(2*nsites, U);
-    h2e = ops.stitch_h2e(hd2e, nleads, verbose = verbose);
-
-    #### encode physics of dot model in an SCF obj
-
-    # initial guess density matrices
-    Pa = np.zeros(norbs)
-    Pa[::2] = 1.0
-    Pa = np.diag(Pa)
-
-    # put everything into UHF scf object
-    if(verbose):
-        print("\nUHF energy calculation")
-    mol = gto.M(); # geometry is meaningless
-    mol.incore_anyway = True
-    mol.nelectron = sum(nelecs)
-    mol.spin = nelecs[1] - nelecs[0]; # in all spin up formalism, mol is never spinless!
-    scf_inst = scf.UHF(mol)
-    scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
-    scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
-    scf_inst._eri = h2e # put h2e into scf solver
-    scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
-                                   # what matter is h1e, h2e are now encoded in this scf instance
-        
-    return h1e, h2e, mol, scf_inst;
 
 
 def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
