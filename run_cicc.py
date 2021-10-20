@@ -33,7 +33,7 @@ verbose = 5
     
 if False:
 
-    # siam inputs
+    # tight binding params
     tl = 1.0;
     Vg = 5;
     Jeff = 2*tl*tl/Vg/2; # eff heisenberg

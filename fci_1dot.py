@@ -3,9 +3,8 @@ Christian Bunker
 M^2QM at UF
 September 2021
 
-Itinerant electron scattering from a single dot
-
-Scattering mechanism is Heisenberg exchange J=t^2/Vg
+Time dependent electron scattering from a single dot
+use td fci
 '''
 
 import ops
@@ -45,8 +44,9 @@ tf = 5.0;
 if get_data: # must actually compute data
     for Vg in Vgvals:
         # custom ham
-        h1e, g2e, _ = ops.spin_imp_hams(nleads, nelecs, (tl, 0.0, td, 0.0, mu, Vg, U, B, theta), verbose = verbose);
-        h1e_neq, _, _ = ops.spin_imp_hams(nleads, nelecs, (tl, th, td, Vb, mu, Vg, U, 0.0, theta), verbose = verbose);
+        h1e, g2e, _ = ops.hub_hams(nleads, nelecs, (tl, 0.0, td, 0.0, mu, Vg, U, B, theta), verbose = verbose);
+        h1e_neq, _, _ = ops.hub_hams(nleads, nelecs, (tl, th, td, Vb, mu, Vg, U, 0.0, theta), verbose = verbose);
+        assert False;
         siam_current.CustomData(h1e, g2e, h1e_neq, nelecs, tf, dt, fname = "1dot_Vg"+str(Vg)+"_U"+str(U)+".npy", verbose = verbose);   
     
 else:

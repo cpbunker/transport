@@ -29,7 +29,7 @@ verbose = 5
     
 for rJ in [1.0]:
 
-    # siam inputs
+    # tight binding params
     tl = 1.0;
     Vg = 20;
     Jeff = 2*tl*tl/Vg; # eff heisenberg

@@ -21,6 +21,7 @@ import td_fci
 
 import numpy as np
 import functools
+import itertools
 
 import math
 
@@ -71,72 +72,45 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     return mol, scf_inst;
 
 
-def single_to_det(h1e, g2e, Np, verbose = 0):
+def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
     '''
-    express h1e, g2e arrays, ie matrix elements in single particle basis rep
+    transform h1e, g2e arrays, ie matrix elements in single particle basis rep
     to basis of slater determinants
+
+    Args:
+    - h1e, 2d np array, 1 particle matrix elements
+    - g2e, 4d np array, 2 particle matrix elements
+    - Nps, 1d array, number of particles of each species
+    - states, list of lists of 1p basis states for each species
+    - dets_interest, list of determinants to pick out matrix elements of
+        only if asked
+        only if dets of interest do not couple with other dets (blocked off)
     '''
 
     # check inputs
-    Nbasis = np.shape(h1e)[0]; # num single particle basis states
-    assert(Np <= Nbasis);
-    assert(Nbasis == np.shape(g2e)[0]); 
+    assert( isinstance(Nps, np.ndarray));
+    assert( isinstance(states, list));
+    assert( isinstance(dets_interest, list));
+    assert(len(states) == len(Nps));
+    assert( states[-1][-1]+1 == np.shape(h1e)[0] );
 
     # 1 particle basis to N particle slater determinants
-    Ndets = int(math.factorial(Nbasis)/(math.factorial(Np)*math.factorial(Nbasis - Np) ));
-    print("Ndets = ",Ndets);
+    # dets start as cartesian products
+    dets = np.array([xi for xi in itertools.product(*tuple(states))]);
 
-    # translate between dets and 1p states
-    def gen_dets(arrays, out=None): # all possible determinant combos
-
-        arrays = [np.asarray(x) for x in arrays]
-        dtype = arrays[0].dtype
-
-        n = np.prod([x.size for x in arrays])
-        if out is None:
-            out = np.zeros([n, len(arrays)], dtype=dtype)
-
-        #m = n / arrays[0].size
-        m = int(n / arrays[0].size) 
-        out[:,0] = np.repeat(arrays[0], m)
-        if arrays[1:]:
-            gen_dets(arrays[1:], out=out[0:m, 1:])
-            for j in range(1, arrays[0].size):
-                out[j*m:(j+1)*m, 1:] = out[0:m, 1:]
-        return out
-
-    det_states = [];
-    for pi in range(Np):
-        det_states.append(np.array([range(Nbasis)]));
-    dets = gen_dets(det_states);
-
-    # screen dets with 2 particles in same state, and permutations of same
-    newdets = [];
-    for det in dets:
-        exclude = False;
-        for ei in range(len(det)):
-            for ej in range(ei): # perms
-                if( det[ei] < det[ej]):
-                    exclude = True
-            for ej in range(len(det)): # same state
-                if( (ei != ej) and (det[ei] == det[ej]) ): # exclude;
-                    exclude = True;
-        if not exclude:
-            newdets.append(det);
-
-    dets = np.array(newdets);
     if verbose: print("Det. basis:\n",dets);
 
     # put one particle matrix elements into determinantal matrix
-    H = np.zeros((Ndets, Ndets));
-    for deti in range(Ndets):
-        for detj in range(Ndets):
+    H = np.zeros((len(dets), len(dets) ));
+    for deti in range(len(dets)):
+        for detj in range(len(dets)):
 
             # how many 1p states the dets differ by, under maximum coincidence
             ndiff = 0;
             for pi in dets[deti]:
                 if( pi not in dets[detj]):
                     ndiff += 1;
+
             if( ndiff == 0):
                 
                 # h1e
@@ -149,7 +123,7 @@ def single_to_det(h1e, g2e, Np, verbose = 0):
                     for pj in dets[detj]:
                         mysum += g2e[pi, pi, pj, pj] - g2e[pi, pj, pj, pi]
                 H[deti, detj] += (1/2)*mysum;
-                
+
             elif( ndiff == 1):
                 
                 # have to figure out which two orbs are different:
@@ -157,6 +131,7 @@ def single_to_det(h1e, g2e, Np, verbose = 0):
                     if dets[deti,pi] not in dets[detj]: whichi = pi; # index
                 for pj in range(len(dets[detj])):
                     if dets[detj,pj] not in dets[deti]: whichj = pj; # index
+                    
                 # have to figure out fermi sign
                 deltais = [abs(whichi - whichj)]
                 for el in dets[deti]:
@@ -173,15 +148,65 @@ def single_to_det(h1e, g2e, Np, verbose = 0):
                     mysum += g2e[dets[deti,whichi],dets[detj,whichj],pi,pi] - g2e[dets[deti,whichi],pi,pi,dets[detj,whichj]];
                 H[deti, detj] += sign*mysum;
 
-            elif( ndiff == 3):
+            elif( ndiff == 2):
+
+                # have to figure out which two orbs are different:
+                for pi2 in range(len(dets[deti])):
+                    if dets[deti,pi2] not in dets[detj]: whichi2 = pi2;
+                for pi1 in range(len(dets[deti])):
+                    if dets[deti,pi1] not in dets[detj] and pi1 != whichi2: whichi1 = pi1;
+                for pj2 in range(len(dets[deti])):
+                    if dets[deti,pj2] not in dets[detj]: whichj2 = pj2;
+                for pj1 in range(len(dets[deti])):
+                    if dets[deti,pj1] not in dets[detj] and pj1 != whichj2: whichj1 = pj1;
+
+                # have to figure out fermi sign
+                deltais = [abs(whichi1 - whichj1),abs(whichi2-whichj2)]
+                for el in dets[deti]:
+                    if el in dets[detj]:
+                        deltais.append(abs(np.argmax(dets[detj] == el) - np.argmax(dets[deti] == el)));
+                sign = np.power(-1, np.sum(deltais )/2 );
 
                 # no h1e contribution
 
                 # g2e
-                pass;
+                #print(dets[deti,whichi1],dets[detj,whichj1],dets[deti,whichi2],dets[detj,whichj2]);
+                H[deti,detj] += sign*g2e[dets[deti,whichi1],dets[detj,whichj1],dets[deti,whichi2],dets[detj,whichj2]];
+                H[deti,detj] += -sign*g2e[dets[deti,whichi1],dets[detj,whichj2],dets[deti,whichi2],dets[detj,whichj1]];
+                
                 
             else: pass; # otherwise det matrix element is zero
 
+    # if requested, choose dets of interest only
+    if(len(dets_interest)):
+
+        # make sure requested dets are valid
+        for det in dets_interest:
+            assert(det in dets);
+        dets_interest = np.array(dets_interest);
+
+        # get indices of dets of interest
+        is_interest = [];
+        for deti in range(len(dets)): # all determinants
+            for det in dets_interest: # only ones equal to one of interest
+                if not np.any(dets[deti] - det):
+                    is_interest.append(deti);
+
+        # check that requested dets do not couple to other dets
+        for deti in range(len(dets)): # all determinants
+            for det in dets_interest: # only ones equal to one of interest
+                if not np.any(dets[deti] - det):
+                    coupling = H[deti];
+                    for cindex in range(len(coupling)):
+                        assert(coupling[cindex] == 0 or cindex in is_interest); # ensure that nonzero elements couple to other states of interest only
+
+        # transfer desired matrix elements
+        newH = np.zeros((len(is_interest),len(is_interest) ));
+        for i in range(len(is_interest)):
+            for j in range(len(is_interest)):
+                newH[i,j] += H[is_interest[i], is_interest[j] ];
+        H = newH;
+        
     return H;
 
 
@@ -397,4 +422,12 @@ def vec_to_obs(vec, h1e, g2e, nleads, nelecs, ndots, verbose = 0):
 
 if __name__ == "__main__":
 
-    pass;
+    # test 1p -> det conversion on kondo
+    h1e = np.zeros((4,4));
+    g2e = ops.h_kondo_2e(1.0,0.5);
+    states_1p = [[0,1],[2,3]]; # spin states each particle can occupy
+
+    # 1e ham, 2e ham, num particles
+    interest = [[0,3],[1,2]]; # can pick out certain dets if desired
+    Hdet = single_to_det(h1e, g2e,  np.array([1,1]), states_1p, dets_interest = interest, verbose = 5);
+    print(Hdet);

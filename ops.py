@@ -6,7 +6,7 @@ June 2021
 ops.py
 
 Representation of operators, hamiltonian and otherwise, in pySCF fci friendly
-form, i.e. as numpy arrays
+form, i.e. as numpy arrays corresponding to 2nd quantized hamiltonians
 
 pyscf formalism:
 - h1e_pq = (p|h|q) p,q spatial orbitals
@@ -28,154 +28,7 @@ pyscf/fci module:
 import numpy as np
 
 #######################################################
-#### 1st part of siam hamiltonian array creation:
-#### create sep hams for leads, dot
-
-#### 1 e ham operators
-
-def h_leads(V, N):
-    '''
-    create 1e hamiltonian for leads alone
-    V is hopping between leads
-    N tuple of number of lead sites on left, right lead
-    '''
-
-    assert(isinstance(N, tuple));
-    
-    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
-    h = np.zeros((n_lead_sos,n_lead_sos));
-    
-    # iter over lead sites
-    for i in range(2*N[0]-2): # i is spin up orb on left side, i+1 spin down
-
-        h[i,i+2] += -V; # left side
-        h[i+2,i] += -V; # h.c.
-        
-    for i in range(2*N[1]-2):
-        
-        h[n_lead_sos-1-i,n_lead_sos-1-(i+2)] += -V; # right side
-        h[n_lead_sos-1-(i+2),n_lead_sos-1-i] += -V; # h.c.
-
-    if False:
-        h[0,2] = 0.0;
-        h[2,0] = 0.0;
-        
-    return h; # end h_leads;
-
-
-def h_chem(mu,N):
-    '''
-    create 1e hamiltonian for chem potential of leads
-    mu is chemical potential of leads
-    N tuple of number of lead sites on left, right lead
-    '''
-
-    assert(isinstance(N, tuple));
-    
-    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
-    h = np.zeros((n_lead_sos,n_lead_sos));
-    
-    # iter over lead sites
-    for i in range(2*N[0]): # i is spin up orb on left side, i+1 spin down
-
-        h[i,i] += mu; # left side
-        
-    for i in range(1,2*N[1]+1):
-        h[n_lead_sos-i,n_lead_sos-i] += mu; # right side
-        
-    return h; # end h chem
-    
-    
-def h_imp_leads(V,N,Ncoupled):
-    '''
-    create 1e hamiltonian for e's hopping on and off impurity levels
-    V is hopping between impurity, leads
-    N is total number of impurity levels
-    Ncoupled is number of impurities that couple to the leads (first Ncoupled are coupled)
-    '''
-
-    assert(Ncoupled <= N);
-    
-    h = np.zeros((2+2*N+2,2+2*N+2)); # 2N spin orbs on imp, 1st, last 2 are neighboring lead sites
-
-    for impi in range(1,Ncoupled+1):
-
-        impup = 2*impi
-        impdown = 2*impi + 1;
-        
-        # couple to left lead
-        h[0, impup] = -V; # up e's
-        h[impup, 0] = -V; 
-        h[1, impdown] = -V; # down e's
-        h[impdown, 1] = -V;
-
-        # couple to right lead 
-        h[-2, impup] = -V; # up e's
-        h[impup, -2] = -V;
-        h[-1, impdown] = -V; # down e's
-        h[impdown, -1] = -V;
-        
-    return h; # end h imp leads
-    
-    
-def h_dot_1e(V,t,N):
-    '''
-    create 1e part of dot hamiltonian
-    dot is simple model of impurity
-    V is gate voltage (ie onsite energy of dot sites)
-    t is hopping between the dots (N/A unless N > 1)
-    N is number of dot sites
-    '''
-
-    # create h array
-    h = np.zeros((2*N,2*N));
-    
-    # gate voltage for each dot site
-    for i in range (2*N):
-        h[i,i] = V; # gate voltage
-        if i >= 2: # more than one dot, so couple this dot to previous one
-            h[i, i-2] = -t;
-            h[i-2, i] = -t;
-        
-    return h; # end h dot 1e
-
-
-def h_imp_1e(V, t):
-    '''
-    2 level spin impurity that downfolds into J S dot S
-    '''
-
-    h=np.zeros((4,4));
-
-    # hopping
-    h[0,2] = -t;
-    h[2,0] = -t;
-    h[1,3] = -t;
-    h[3,1] = -t;
-
-    # gate voltage
-    h[2,2] = V;
-    h[3,3] = V;
-
-    return h;
-
-
-def h_cicc_1e(V,t,N):
-
-    # create h array
-    h = np.zeros((2*N,2*N));
-    
-    for i in range (2*N):
-        if i in [0, 1, 2*N - 2, 2*N - 1]: # cicc has gate voltage only on first and last
-            h[i,i] = V; # gate voltage
-        if i >= 2: # more than one dot, so couple this dot to previous one
-            h[i, i-2] = -t;
-            h[i-2, i] = -t;
-        
-    return h; # end h dot 1e
-
-
-#### other 1 e operators
+#### 1e operators
 
 def occ(site_i, norbs):
     '''
@@ -322,36 +175,197 @@ def Jdown(site_i, norbs):
 
     return [JL, JR];
 
-#### 2 e ham operators
-    
-def h_dot_2e(U,N):
+
+#######################################################
+#### 1e hamiltonians
+
+def h_leads(V, N):
     '''
-    create 2e part of dot hamiltonian
+    create 1e hamiltonian for leads alone
+    V is hopping between leads
+    N tuple of number of lead sites on left, right lead
+    '''
+
+    assert(isinstance(N, tuple));
+    
+    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
+    h = np.zeros((n_lead_sos,n_lead_sos));
+    
+    # iter over lead sites
+    for i in range(2*N[0]-2): # i is spin up orb on left side, i+1 spin down
+
+        h[i,i+2] += -V; # left side
+        h[i+2,i] += -V; # h.c.
+        
+    for i in range(2*N[1]-2):
+        
+        h[n_lead_sos-1-i,n_lead_sos-1-(i+2)] += -V; # right side
+        h[n_lead_sos-1-(i+2),n_lead_sos-1-i] += -V; # h.c.
+
+    if False:
+        h[0,2] = 0.0;
+        h[2,0] = 0.0;
+        
+    return h; # end h_leads;
+
+
+def h_chem(mu,N):
+    '''
+    create 1e hamiltonian for chem potential of leads
+    mu is chemical potential of leads
+    N tuple of number of lead sites on left, right lead
+    '''
+
+    assert(isinstance(N, tuple));
+    
+    n_lead_sos = 2*N[0] + 2*N[1]; # 2 spin orbs per lead site
+    h = np.zeros((n_lead_sos,n_lead_sos));
+    
+    # iter over lead sites
+    for i in range(2*N[0]): # i is spin up orb on left side, i+1 spin down
+
+        h[i,i] += mu; # left side
+        
+    for i in range(1,2*N[1]+1):
+        h[n_lead_sos-i,n_lead_sos-i] += mu; # right side
+        
+    return h; # end h chem
+    
+    
+def h_imp_leads(V,N,Ncoupled):
+    '''
+    create 1e hamiltonian for e's hopping on and off impurity levels
+    V is hopping between impurity, leads
+    N is total number of impurity levels
+    Ncoupled is number of impurities that couple to the leads (first Ncoupled are coupled)
+    '''
+
+    assert(Ncoupled <= N);
+    
+    h = np.zeros((2+2*N+2,2+2*N+2)); # 2N spin orbs on imp, 1st, last 2 are neighboring lead sites
+
+    for impi in range(1,Ncoupled+1):
+
+        impup = 2*impi
+        impdown = 2*impi + 1;
+        
+        # couple to left lead
+        h[0, impup] = -V; # up e's
+        h[impup, 0] = -V; 
+        h[1, impdown] = -V; # down e's
+        h[impdown, 1] = -V;
+
+        # couple to right lead 
+        h[-2, impup] = -V; # up e's
+        h[impup, -2] = -V;
+        h[-1, impdown] = -V; # down e's
+        h[impdown, -1] = -V;
+        
+    return h; # end h imp leads
+
+
+def h_bias(V, dot_is, norbs, verbose = 0):
+    '''
+    Manipulate a full siam h1e  (ie stitched already) by
+    turning on bias on leads
+
+    Args:
+    - V is bias voltage
+    - dot_is is list of first and last spin orb indices which are part of dot
+    - norbs, int, num spin orbs in whole system
+
+    Returns 2d np array repping bias voltage term of h1e
+    '''
+
+    assert(isinstance(dot_is, list) or isinstance(site_i, np.ndarray));
+
+    hb = np.zeros((norbs, norbs));
+    for i in range(norbs): # iter over diag of h1e
+
+        # pick out lead orbs
+        if i < dot_is[0]: # left leads
+            hb[i,i] = V/2;
+        elif i > dot_is[-1]: # right leads
+            hb[i,i] = -V/2;
+
+    if(verbose > 4): print("h_bias:\n", hb)
+    return hb;
+
+
+def h_B(B, theta, phi, site_i, norbs, verbose=0):
+    '''
+    Turn on a magnetic field of strength B in the theta hat direction, on site i
+    This has the effect of preparing the spin state of the site
+    e.g. large, negative B, theta=0 yields an up electron
+
+    Args:
+    - B, float, mag field strength
+    - theta, float, mag field direction
+    - norbs, int, num spin orbs in whole system
+    - site_i, list, first and last spin indices that feel mag field
+
+    Returns 2d np array repping magnetic field on given sites
+    '''
+
+    assert(isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    assert(phi == 0.0);
+
+    hB = np.zeros((norbs,norbs));
+    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
+        hB[i,i+1] = B*np.sin(theta); # implement the mag field, x part
+        hB[i+1,i] = B*np.sin(theta);
+        hB[i,i] = B*np.cos(theta)/2;    # z part
+        hB[i+1,i+1] = -B*np.cos(theta)/2;
+        
+    if (verbose > 4): print("h_B:\n", hB);
+    return hB;
+    
+    
+def h_dot_1e(V,t,N):
+    '''
+    create 1e part of dot hamiltonian
     dot is simple model of impurity
-    U is hubbard repulsion
+    V is gate voltage (ie onsite energy of dot sites)
+    t is hopping between the dots (N/A unless N > 1)
     N is number of dot sites
     '''
+
+    # create h array
+    h = np.zeros((2*N,2*N));
     
-    h = np.zeros((2*N,2*N,2*N,2*N));
-    
-    # hubbard repulsion when there are 2 e's on same MO
-    for i in range(0,2*N,2): # i is spin up orb, i+1 is spin down
-        h[i,i,i+1,i+1] = U;
-        h[i+1,i+1,i,i] = U; # switch electron labels
+    # gate voltage for each dot site
+    for i in range (2*N):
+        h[i,i] = V; # gate voltage
+        if i >= 2: # more than one dot, so couple this dot to previous one
+            h[i, i-2] = -t;
+            h[i-2, i] = -t;
         
-    return h; # end h dot 2e
+    return h; # end h dot 1e
 
-def h_cicc_2e(U,N):
 
-    h = np.zeros((2*N,2*N,2*N,2*N));
-    
-    # cicc has hubbard only for first and last
-    for i in [0, 2*N - 2]: # i is spin up orb, i+1 is spin down
-        h[i,i,i+1,i+1] = U;
-        h[i+1,i+1,i,i] = U; # switch electron labels
-        
-    return h; # end h dot 2e
+def h_hub_1e(V, t):
+    '''
+    1e part of two site hubbard hamiltonian, with 2nd site energy diff V relative to 1st
+    downfolds into J S dot S
+    '''
 
+    h=np.zeros((4,4));
+
+    # hopping
+    h[0,2] = -t;
+    h[2,0] = -t;
+    h[1,3] = -t;
+    h[3,1] = -t;
+
+    # gate voltage
+    h[2,2] = V;
+    h[3,3] = V;
+
+    return h;
+
+
+#######################################################
+#### 2e operators
 
 def spinflip(site_i, norbs):
     '''
@@ -379,9 +393,192 @@ def spinflip(site_i, norbs):
     return sf;
 
 
+#######################################################
+#### 2e hams
+    
+def h_dot_2e(U,N):
+    '''
+    create 2e part of dot hamiltonian
+    dot is simple model of impurity
+    U is hubbard repulsion
+    N is number of dot sites
+    '''
+    
+    h = np.zeros((2*N,2*N,2*N,2*N));
+    
+    # hubbard repulsion when there are 2 e's on same MO
+    for i in range(0,2*N,2): # i is spin up orb, i+1 is spin down
+        h[i,i,i+1,i+1] = U;
+        h[i+1,i+1,i,i] = U; # switch electron labels
+        
+    return h; # end h dot 2e
+
+
+def h_hub_2e(U1, U2):
+    '''
+    2e part of two site hubbard ham (see h_hub_1e)   
+    '''
+
+    assert(isinstance(U2, float));
+    h = np.zeros((4,4,4,4)); # 2 site
+    Us = [U1,0, U2,0];
+    
+    # hubbard terms
+    for i in [0, 2]: # i is spin up orb, i+1 is spin down
+        h[i,i,i+1,i+1] = Us[i];
+        h[i+1,i+1,i,i] = Us[i]; # switch electron labels
+        
+    return h; # end h dot 2e
+
+
+def h_kondo_2e(J,s2):
+    '''
+    Kondo interaction between spin 1/2 and spin s2
+    '''
+
+    # m2 states
+    ms = [];
+    m2 = s2;
+    while(m2 >= -s2):
+        ms.append(m2);
+        m2 -= 1;
+
+    assert( len(ms) == 2*s2+1);
+    Nstates = 2 + len(ms);
+    h = np.zeros((Nstates,Nstates,Nstates,Nstates));
+
+    if(s2 == 0.5):
+
+        # S \pm parts
+        h[0,1,3,2] = 2;
+        h[3,2,0,1] = 2;
+        h[1,0,2,3] = 2;
+        h[2,3,1,0] = 2;
+
+        # Sz parts
+        h[0,0,2,2] = 1;
+        h[2,2,0,0] = 1;
+        h[0,0,3,3] = -1;
+        h[3,3,0,0] = -1;
+        h[1,1,2,2] = -1;
+        h[2,2,1,1] = -1;
+        h[1,1,3,3] = 1;
+        h[3,3,1,1] = 1;
+
+        # scale with J
+        h = (J/4.0)*h;
+
+    elif(s2 == 1.0):
+
+        # S \pm parts
+        h[2,3,1,0] = 1/np.sqrt(2);
+        h[1,0,2,3] = 1/np.sqrt(2);
+        h[3,2,0,1] = 1/np.sqrt(2);
+        h[0,1,3,2] = 1/np.sqrt(2);
+        h[3,4,1,0] = 1/np.sqrt(2);
+        h[1,0,3,4] = 1/np.sqrt(2);
+        h[4,3,0,1] = 1/np.sqrt(2);
+        h[0,1,4,3] = 1/np.sqrt(2);
+
+        # Sz parts
+        h[2,2,0,0] = 1/2;
+        h[0,0,2,2] = 1/2;
+        h[2,2,1,1] = -1/2;
+        h[1,1,2,2] = -1/2;
+        h[4,4,0,0] = -1/2;
+        h[0,0,4,4] = -1/2;
+        h[4,4,1,1] = 1/2;
+        h[1,1,4,4] = 1/2;
+
+        # scale with J
+        h = J*h;
+
+    else: raise Exception;
+
+    return h;
+
+
+def h_switzer(D, JH, JK1, JK2):
+    '''
+    Eric's model for spin coupling of itinerant spin 1/2 to two spin 1
+    impurities, in second quantized form
+    '''
+
+    h = np.zeros((8,8));
+    g = np.zeros((8,8,8,8));
+
+    # spin anisotropy
+    h[2,2] = D;
+    h[4,4] = D;
+    h[5,5] = D;
+    h[7,7] = D;
+
+    # heisenberg
+    g[2,3,6,5] += JH;
+    g[6,5,2,3] += JH;
+    g[2,3,7,6] += JH;
+    g[7,6,2,3] += JH;
+    g[3,2,5,6] += JH;
+    g[5,6,3,2] += JH;
+    g[3,2,6,7] += JH;
+    g[6,7,3,2] += JH;
+    g[3,4,6,5] += JH;
+    g[6,5,3,4] += JH;
+    g[3,4,7,6] += JH;
+    g[7,6,3,4] += JH;
+    g[4,3,5,6] += JH;
+    g[5,6,3,4] += JH;
+    g[4,3,6,7] += JH;
+    g[6,7,4,3] += JH;
+    g[2,2,5,5] += JH;
+    g[5,5,2,2] += JH;
+    g[2,2,7,7] += -JH;
+    g[7,7,2,2] += -JH;
+    g[4,4,5,5] += -JH;
+    g[5,5,4,4] += -JH;
+    g[4,4,7,7] += JH;
+    g[7,7,4,4] += JH;
+
+    # K1
+    g[2,3,1,0] += JK1/np.sqrt(2);
+    g[1,0,2,3] += JK1/np.sqrt(2);
+    g[3,2,0,1] += JK1/np.sqrt(2);
+    g[0,1,3,2] += JK1/np.sqrt(2);
+    g[3,4,1,0] += JK1/np.sqrt(2);
+    g[1,0,3,4] += JK1/np.sqrt(2);
+    g[4,3,0,1] += JK1/np.sqrt(2);
+    g[0,1,4,3] += JK1/np.sqrt(2);
+    g[2,2,0,0] += JK1/2;
+    g[0,0,2,2] += JK1/2;
+    g[2,2,1,1] += -JK1/2;
+    g[1,1,2,2] += -JK1/2;
+    g[4,4,0,0] += -JK1/2;
+    g[0,0,4,4] += -JK1/2;
+    g[4,4,1,1] += JK1/2;
+    g[1,1,4,4] += JK1/2;
+
+    # K2
+    g[5,6,1,0] += JK2/np.sqrt(2);
+    g[1,0,5,6] += JK2/np.sqrt(2);
+    g[6,5,0,1] += JK2/np.sqrt(2);
+    g[0,1,6,5] += JK2/np.sqrt(2);
+    g[6,7,1,0] += JK1/np.sqrt(2);
+    g[1,0,6,7] += JK2/np.sqrt(2);
+    g[7,6,0,1] += JK2/np.sqrt(2);
+    g[0,1,7,6] += JK2/np.sqrt(2);
+    g[5,5,0,0] += JK2/2;
+    g[0,0,5,5] += JK2/2;
+    g[5,5,1,1] += -JK2/2;
+    g[1,1,5,5] += -JK2/2;
+    g[7,7,0,0] += -JK2/2;
+    g[0,0,7,7] += -JK2/2;
+    g[7,7,1,1] += JK2/2;
+    g[1,1,7,7] += JK2/2;
+
+    return h, g;
+
 
 #######################################################
-#### 2nd part of siam hamiltonian array creation:
 #### stitch seperate ham arrays together
 
 
@@ -458,88 +655,62 @@ def stitch_h2e(h_imp,n_leads,verbose = 0):
                         
     return h; # end stitch h2e
 
+#####################################
+#### det ops
 
-#######################################################
-#### 3rd part of siam hamiltonian array creation:
-#### add biases, mag fields etc on top
-
-def h_bias(V, dot_is, norbs, verbose = 0):
+def heisenberg(J,s2):
     '''
-    Manipulate a full siam h1e  (ie stitched already) by
-    turning on bias on leads
-
-    Args:
-    - V is bias voltage
-    - dot_is is list of first and last spin orb indices which are part of dot
-    - norbs, int, num spin orbs in whole system
-
-    Returns 2d np array repping bias voltage term of h1e
+    Determinantal operator form of J S_e dot S_2
+    2nd particle operator S_2 has spin s2
     '''
 
-    assert(isinstance(dot_is, list) or isinstance(site_i, np.ndarray));
+    # m2 states
+    ms = [];
+    m2 = s2;
+    while(m2 >= -s2):
+        ms.append(m2);
+        m2 -= 1;
 
-    hb = np.zeros((norbs, norbs));
-    for i in range(norbs): # iter over diag of h1e
+    # combined states
+    states = []
+    for m in ms:
+        states.append([0.5,m]);
+        states.append([-0.5,m]);
+    states = np.array(states);
 
-        # pick out lead orbs
-        if i < dot_is[0]: # left leads
-            hb[i,i] = V/2;
-        elif i > dot_is[-1]: # right leads
-            hb[i,i] = -V/2;
+    # fill in
+    H = np.zeros((len(states),len(states)));
+    for si in range(len(states)):
+        for sj in range(len(states)):
 
-    if(verbose > 4): print("h_bias:\n", hb)
-    return hb;
+            # diagonal
+            if(si == sj):
+                H[si,sj] = states[si,0]*states[si,1];
 
-
-def h_B(B, theta, phi, site_i, norbs, verbose=0):
-    '''
-    Turn on a magnetic field of strength B in the theta hat direction, on site i
-    This has the effect of preparing the spin state of the site
-    e.g. large, negative B, theta=0 yields an up electron
-
-    Args:
-    - B, float, mag field strength
-    - theta, float, mag field direction
-    - norbs, int, num spin orbs in whole system
-    - site_i, list, first and last spin indices that feel mag field
-
-    Returns 2d np array repping magnetic field on given sites
-    '''
-
-    assert(isinstance(site_i, list) or isinstance(site_i, np.ndarray));
-    assert(phi == 0.0);
-
-    hB = np.zeros((norbs,norbs));
-    for i in range(site_i[0],site_i[-1],2): # i is spin up, i+1 is spin down
-        hB[i,i+1] = B*np.sin(theta); # implement the mag field, x part
-        hB[i+1,i] = B*np.sin(theta);
-        hB[i,i] = B*np.cos(theta)/2;    # z part
-        hB[i+1,i+1] = -B*np.cos(theta)/2;
-        
-    if (verbose > 4): print("h_B:\n", hB);
-    return hB;
+    print(H);
 
 
 #####################################
-#### full system hamiltonians
+#### full systems with leads
 
 def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian
-    SIAM impurity hamiltonian:
+    for use with td-fci. Also does spin state preparation
+    which consists of dot(s) coupled to leads:
     H_imp = H_dot = -V_g sum_i n_i + U n_{i uparrow} n_{i downarrow}
         where i are impurity sites
-        for nsites > 1 have linear chain of such dots forming impurity
+        for ndots > 1 have linear chain of such dots forming impurity
     
     Args:
     - nleads, tuple of ints of lead sites on left, right
     - nelecs, tuple of number es, 0 due to All spin up formalism
     - ndots, int, num impurity sites
-    - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta
     
     Returns:
-    h1e, 2d np array, 1e part of siam ham
-    h2e, 2d np array, 2e part of siam ham ( same as g2e)
+    h1e, 2d np array, 1e part of dot ham
+    h2e, 2d np array, 2e part of dot ham
     input_str, string with info on all the phy params
     '''
 
@@ -614,19 +785,23 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
     return h1e, h2e, input_str; #end dot hams
 
 
-def spin_imp_hams(nleads, nelecs, physical_params, verbose = 0):
+def hub_hams(nleads, nelecs, physical_params, verbose = 0):
     '''
-    Converts physical params into 1e and 2e parts of menezes style imp ham
+    Converts physical params into 1e and 2e parts of two site hubbard
+    with leads, and with spin preparation, if B nonzero
+    ie intended for td-fci
+    
+    Two site hubbard model maps onto two level spin impurity, with U
+    This then downfolds into Jeff S1 dot S2 spin impurity ham
     
     Args:
     - nleads, tuple of ints of lead sites on left, right
     - nelecs, tuple of number es, 0 due to All spin up formalism
-    - ndots, int, num impurity sites
-    - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta. if None gives defaults
+    - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta
     
     Returns:
-    h1e, 2d np array, 1e part of siam ham
-    h2e, 2d np array, 2e part of siam ham ( same as g2e)
+    h1e, 2d np array, 1e part
+    g2e, 2d np array, 2e part
     input_str, string with info on all the phy params
     '''
 
@@ -649,7 +824,7 @@ def spin_imp_hams(nleads, nelecs, physical_params, verbose = 0):
     hl = h_leads(t_leads, nleads); # leads only
     hc = h_chem(mu, nleads);   # can adjust lead chemical potential
     hdl = h_imp_leads(t_hyb, ndots, ndots -1); # leads talk to 1st dot only
-    hd = h_imp_1e(V_gate, t_hyb); # 2 site impurity
+    hd = h_hub_1e(V_gate, t_hyb); # 2 site hubbard <-> 2 level spin imp
     h1e = stitch_h1e(hd, hdl, hl, hc, nleads, verbose = verbose); # syntax is imp, imp-leads, leads, bias
     h1e += h_bias(V_bias, dot_i, norbs , verbose = verbose); # turns on bias
 
@@ -663,10 +838,8 @@ def spin_imp_hams(nleads, nelecs, physical_params, verbose = 0):
         print("\n- Full one electron hamiltonian = \n",h1e);
         np.set_printoptions();
         
-    # 2e terms: just U on imp site 2
-    g2e = np.zeros((2*ndots, 2*ndots, 2*ndots, 2*ndots));
-    g2e[2,2,3,3] = U;
-    g2e[3,3,2,2] = U;
+    # 2e terms: U on imp level 2 only
+    g2e = h_hub_2e(0.0,U);
     if(verbose > 2):
         np.set_printoptions(precision = 4, suppress = True);
         print("\n- Nonzero h2e elements = ");

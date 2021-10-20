@@ -253,82 +253,9 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
 
 if __name__ == "__main__": # test code
 
-    # test 1p -> det conversion on hubbard
-    h1e = np.array( [[0,0,-1,0],[0,0,0,-1],[-1,0,0,0],[0,-1,0,0]] );
-    g2e = np.zeros( (np.shape(h1e)[0], np.shape(h1e)[0], np.shape(h1e)[0], np.shape(h1e)[0]));
-    g2e[0,0,1,1] = 20;
-    g2e[1,1,0,0] = 20;
-    g2e[2,2,3,3] = 20;
-    g2e[3,3,2,2] = 20;
-    Hdet = fci_mod.single_to_det(h1e, g2e, 3, verbose = 5);
-    print(Hdet);
-    assert False;
+    pass;
 
-    import matplotlib.pyplot as plt
 
-    # top level
-    plt.style.use('seaborn-dark-palette');
-    np.set_printoptions(precision = 4, suppress = True);
-    verbose = 5;
-
-    # siam inputs
-    Nsites = 3; # total num SR sites
-    i1, i2 = 1, Nsites; # locations of impurities
-    tl = 1.0;
-    Vg = 10;
-    alat = 1.0; # lattice spacing
-    Jeff = 2*tl*tl/Vg; # eff heisenberg # double check
-
-    # souce specifies which basis vector is boundary condition
-    sourcei = 3; # incident up, imps + down, down
-
-    # make diag and off diag block matrices
-    h_cicc, tl_arr = h_cicc_eff(Jeff, tl, i1, i2, Nsites);
-
-    # E, k mesh
-    alat = 1.0; # should always cancel for E and kx0
-    kmin, kmax = 0.0, np.pi/(10*alat); # should also be near bottom of band
-    Npts = 20;
-    kvals = np.linspace(kmin, kmax, Npts, dtype = complex); # k mesh
-    kx0vals = kvals*(i2-i1)*alat; # k*x0 mesh
-    Evals = E_disp(kvals, alat, tl); # E mesh
-    Tvals = []
-
-    # get T(E) data
-    for Ei in range(len(Evals) ):
-        Tvals.append(list(Tcoef(h_cicc, tl_arr, Evals[Ei], sourcei)) );
-    Tvals = np.array(Tvals);
-
-    # check data
-    if True:
-        # total Sz should be conserved
-        Sztot_by_sourcei = np.array([1.5,0.5,0.5,-0.5,0.5,-0.5,-0.5,-1.5]);
-        Sztot = Sztot_by_sourcei[sourcei]; # total Sz spec'd by source
-        for si in range(np.shape(h_cicc[0])[0]): # iter over all transmitted total Sz states
-            if( Sztot_by_sourcei[si] != Sztot): # ie a transmitted state that doesn't conserve Sz
-                for Ei in range(len(Tvals)):
-                    assert(abs(Tvals[Ei,si]) <= 1e-8 ); # should be zero
-
-    # plot total T at each E, k, kx0
-    fig, axes = plt.subplots(3);
-    Ttotals = np.sum(Tvals, axis = 1);
-    axes[0].scatter(Evals+2*tl, Ttotals, marker = 's');
-    axes[1].scatter(kvals, Ttotals, marker = 's');
-    axes[2].scatter(kx0vals, Ttotals, marker = 's');
-    #axes[0].plot(Evals+2*tl, (Evals+2*tl)/Jeff );
-    #axes[0].plot(Evals+2*tl, Jeff*alat/np.pi *np.sqrt(2/((Evals+2*tl)*2*alat*alat*tl) ) );
-
-    # format and show
-    axes[0].set_xlabel("$E + 2t_l$");
-    axes[1].set_xlabel("$k$");
-    axes[2].set_xlabel("$kx_{0}$");
-    axes[0].set_title("Incident up electron");
-    axes[0].set_ylabel("$T$");
-    for ax in axes:
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.show();
 
 
 
