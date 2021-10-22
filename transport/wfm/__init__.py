@@ -8,11 +8,9 @@ general formalism: all sites map to all the different
 degrees of freedom of the system
 '''
 
-import fci_mod
+from .. import fci_mod
 
 import numpy as np
-
-import sys
 
 ##################################################################################
 ####

@@ -9,9 +9,7 @@ freedom can interact with impurity spin degrees of freedom
 In this case, impurities follow eric's paper
 '''
 
-import wfm
-import ops
-import fci_mod
+from transport import wfm, fci_mod, ops
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,11 +24,11 @@ option = sys.argv[1];
 
 # define params according to Eric's paper
 tl = 1.0; # hopping >> other params
-D = -100.0;
-JH = -0.003;
+D = -0.06
+JH = -0.005;
 
 # eff params at resonance
-JK = -0.1
+JK = 2*D/3;
 DeltaK = 0;
 
 #### different ways of doing the scattering region
@@ -102,7 +100,8 @@ elif option == "2q": # second quantized form of eric's model
 
     # define source
     source = np.zeros(3);
-    source[2] = 1;
+    source[0] = 1/np.sqrt(2);
+    source[1] = -1/np.sqrt(2);
 
     # iter over N
     Nmax = 80
@@ -115,17 +114,49 @@ elif option == "2q": # second quantized form of eric's model
         ka = np.arccos(Energy/(-2*tl));
 
         # 2nd qu'd ham
-        JK2 = 10*JK
-        h1e, g2e = ops.h_switzer(D, JH, JK, JK2);
+        h1e, g2e = ops.h_switzer(D, JH, JK, JK);
 
         # convert to many body form
         parts = np.array([1,1,1]); # one particle each
         states = [[0,1],[2,3,4],[5,6,7]]; # e up, down, spin 1 mz, spin 2 mz
         interests = [[0,2,6],[0,3,5],[1,2,5]];
-        h_SR = fci_mod.single_to_det(h1e,g2e, parts, states, dets_interest = interests, verbose = verbose);
-        print("D = ",D,", JH = ",JH,", JK1 = ", JK, ", JK2 = ",JK2, -0.5*JK - 0.5*JK2 + JH);
-        print(h_SR);
-        assert False;
+        h_SR = fci_mod.single_to_det(h1e,g2e, parts, states, dets_interest = interests);
+        #print("D = ",D,", JH = ",JH,", JK1 = ", JK, ", JK2 = ",JK2," pred = ", 2*D+JH-0.5*JK-0.5*JK2);
+        #print(h_SR);
+
+        # package as block hams 
+        # number of blocks depends on N
+        hblocks = [np.zeros_like(h_SR)]
+        tblocks = [-tl*np.eye(*np.shape(h_SR)) ];
+        for Ni in range(N):
+            hblocks.append(np.copy(h_SR));
+            tblocks.append(-tl*np.eye(*np.shape(h_SR)) );
+        hblocks.append(np.zeros_like(h_SR) );
+        hblocks = np.array(hblocks);
+        tblocks = np.array(tblocks);
+        if (N==2): print(hblocks, "\n", tblocks);
+
+        # coefs
+        Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+
+    # plot
+    Tvals = np.array(Tvals);
+    fig, ax = plt.subplots();
+    ax.plot(Nvals, Tvals[:,0], label = '|1/2, 1/2> |2, 1>');
+    ax.plot(Nvals, Tvals[:,1], label = '|1/2, 1/2> |1, 1>');
+    ax.plot(Nvals, Tvals[:,2], label = '|1/2,-1/2> |2, 2>');
+
+    # format
+    #ax.set_title("Transmission at resonance, $J_K = 2D/3$");
+    ax.set_ylabel("$T$");
+    ax.set_xlabel("$N$");
+    ax.set_ylim(0.0,1.05);
+    plt.legend();
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.show();
+        
 
 
 elif option == "JK": # iter over JK at fixed energy, then over N, looking for resonance

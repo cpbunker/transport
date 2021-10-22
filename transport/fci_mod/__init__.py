@@ -16,9 +16,6 @@ pyscf/fci module:
 - direct_spin1 assumes h_pqrs = h_qprs = h_pqsr = h_qpsr
 '''
 
-import ops
-import td_fci
-
 import numpy as np
 import functools
 import itertools
@@ -357,6 +354,8 @@ def kw_to_state(kw, nleads, nelecs, ndots, tl = 1.0, verbose = 0):
     Generate a desired state as gd state of certain ham for system
     '''
 
+    import ops
+
     norbs = 2*(sum(nleads)+ndots);
 
     if( kw == "dota" ):
@@ -399,6 +398,8 @@ def kw_to_state(kw, nleads, nelecs, ndots, tl = 1.0, verbose = 0):
         
 
 def vec_to_obs(vec, h1e, g2e, nleads, nelecs, ndots, verbose = 0):
+
+    import td_fci
     
     norbs = np.shape(h1e)[0];
     imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ];
@@ -421,6 +422,8 @@ def vec_to_obs(vec, h1e, g2e, nleads, nelecs, ndots, verbose = 0):
 #### exec code
 
 if __name__ == "__main__":
+
+    import ops
 
     # test 1p -> det conversion on kondo
     h1e = np.zeros((4,4));
