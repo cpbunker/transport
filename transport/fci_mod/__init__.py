@@ -69,6 +69,16 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     return mol, scf_inst;
 
 
+def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
+
+    for termi in range(len(terms1)):
+        for termj in range(len(terms2)):
+            g2e[terms1[termi][0], terms1[termi][1], terms2[termj][0], terms2[termj][1]] += coefs1[termi]*coefs2[termj];
+            g2e[terms2[termj][0], terms2[termj][1], terms1[termi][0], terms1[termi][1]] += coefs1[termi]*coefs2[termj];
+
+    return g2e;
+
+
 def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
     '''
     transform h1e, g2e arrays, ie matrix elements in single particle basis rep
@@ -98,7 +108,7 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
     if verbose: print("Det. basis:\n",dets);
 
     # put one particle matrix elements into determinantal matrix
-    H = np.zeros((len(dets), len(dets) ));
+    H = np.zeros((len(dets), len(dets) ), dtype = complex);
     for deti in range(len(dets)):
         for detj in range(len(dets)):
 

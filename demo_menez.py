@@ -26,7 +26,7 @@ import seaborn
 import sys
 
 # top level
-colors = seaborn.color_palette("dark");
+plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 option = sys.argv[1];

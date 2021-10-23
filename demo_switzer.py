@@ -17,7 +17,7 @@ import seaborn
 import sys
 
 # top level
-colors = seaborn.color_palette("dark");
+plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 option = sys.argv[1];
@@ -48,7 +48,7 @@ if option == "direct": # directly write down ham --> rabi flopping at resonance
 
         # fix energy near bottom of band
         Energy = -2*tl + 0.5;
-        ka = np.arccos(Energy/(-2*tl)) 
+        ka = np.arccos(Energy/(-2*tl));
         #print("ka = ", ka);
         #print("vg = ", 2*tl*np.sin(ka));
 
@@ -115,6 +115,13 @@ elif option == "2q": # second quantized form of eric's model
 
         # 2nd qu'd ham
         h1e, g2e = ops.h_switzer(D, JH, JK, JK);
+        print(g2e[:2,:2,:2,:2]);
+
+        # check
+        t1 = [(2,3),(3,2)];
+        c1 = [1/np.sqrt(2),1/np.sqrt(2)];
+        t1 = [(1,0),(0,1)];
+        c1 = [1/np.sqrt(2),1/np.sqrt(2)];
 
         # convert to many body form
         parts = np.array([1,1,1]); # one particle each
