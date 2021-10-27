@@ -28,7 +28,7 @@ class site(object):
 
         # defaults
         if(c is None): c = np.ones_like(j, dtype = float);
-        if( ends is None): ends = (int(-1e6),int(1e6) );
+        if( ends is None): ends = (0,int(1e6) );
         if(ham is None): ham = "defH";
 
         # inputs
@@ -110,8 +110,10 @@ class site(object):
             newj.append(self.j[ji]+1);
             newc.append(self.c[ji]);
         return site(np.array(newj), -np.array(newc), self.ends, self.ham);
+    
         
-
+    #### misc
+    
     def condense(self):
         '''
         Combine repeated states, in place
@@ -193,7 +195,7 @@ def gen_as_bs(site0, depth, verbose = 0):
     return np.array(a_s), np.array(b_s);
 
 
-def resolvent(site0, E, depth, verbose = 0):
+def surface_gf(site0, E, depth, verbose = 0):
     '''
     Calculate resolvent green's function according to Haydock 2.6
     (continued fraction form)
@@ -217,7 +219,7 @@ def resolvent(site0, E, depth, verbose = 0):
     return bG;
 
 
-def surface_dos(length, hamkw, depth, E1, E2, epsilon, verbose = 0):
+def surface_dos(length, hamkw, depth, Evals, iE, verbose = 0):
     '''
     For a chain of given length, with physics specified by hamkw,
     which selects the hamiltonian method of the site object to use,
@@ -228,19 +230,57 @@ def surface_dos(length, hamkw, depth, E1, E2, epsilon, verbose = 0):
     '''
 
     # energy sweep
-    Evals = np.linspace(E1, E2, 100, dtype = complex);
-    Evals += complex(0, epsilon); # add small imag part
+    Evals += complex(0, iE); # add small imag part
 
     # site object
     site0 = site(np.array([0]), None, (0,length-1), hamkw);
 
     # green's function, vectorized
-    G = resolvent(site0, Evals, depth, verbose = verbose);
+    G = surface_gf(site0, Evals, depth, verbose = verbose);
 
     # dos, vectorized
     gE = (-1/np.pi)*np.imag(G);
 
     return gE, Evals;
+
+
+def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):
+    '''
+    Given the surface green's function in the leads, as computed above,
+    compute the gf at the junction between the leads, aka scattering region.
+    NB the junction has its own local physics def'd by H_SR
+
+    Args:
+    - g_L, 1d arr, left lead noninteracting gf at each E
+    - t_L, 2d arr, left lead coupling, constant in E
+    - g_R, 1d arr, right lead noninteracting gf at each E
+    - t_R, 2d arr, right lead coupling, constant in E
+    - E, 1d array, energy values
+    '''
+
+    # check inputs
+    assert(np.shape(t_L) == np.shape(H_SR) );
+    assert(len(g_L) == len(E) );
+
+    # vectorize by hand
+    G = [];
+    for Ei in range(len(E)): # do for each energy
+
+        # gL, gR as of now are just numbers at each E, but should be matrices
+        # however since leads are defined to be noninteracting, just identity matrices
+        g_Lmat = g_L[Ei]*np.eye(*np.shape(H_SR));
+        g_Rmat = g_R[Ei]*np.eye(*np.shape(H_SR));
+
+        # integrate out leads, using self energies
+        Sigma_L = np.dot(np.linalg.inv(g_Lmat),-t_L);
+        Sigma_L = np.dot( -t_L, Sigma_L);
+        Sigma_R = np.dot(np.linalg.inv(g_Rmat),-t_R);
+        Sigma_R = np.dot( -t_R, Sigma_R);
+
+        # local green's function
+        G.append(np.linalg.inv( E[Ei]*np.eye(*np.shape(H_SR)) - H_SR - Sigma_L - Sigma_R));
+
+    return np.array(G);
 
 
 if __name__ == "__main__":
