@@ -7,32 +7,38 @@ import fcdmft
 import numpy as np
 
 # top level
+np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
-
-# energy range
-Emin, Emax = 0.01, 0.5;
-Evals = np.linspace(Emin, Emax, 2, dtype = complex);
 iE = 1e-3; # small imag part
 
-# 2 site hubbard, ASU formalism
-td = 1.0; # hopping between sites
+# SIAM, ASU formalism
 Vg = -0.05;
-U = 0.4;
-hmat = ops.h_hub_1e(Vg, td); # 1e matrix
-gmat = ops.h_hub_2e(U, U); # 2e matrix
-th = 0.4; # coupling between sites
-thmat = np.array([[-th,0,0,0],[0,-th,0,0],[-th,0,0,0],[0,-th,0,0]]); # coupling matrix
+U = 1.0;
+h1e = np.array([[Vg,0],[0,Vg]]); # on site energy
+g2e = np.zeros((2,2,2,2));
+g2e[0,0,1,1] += U; # coulomb
+g2e[1,1,0,0] += U;
+th = 0.4; # coupling between imp, leads
+Vmat = np.array([[-th, 0],[-th,0]]); # ASU
 
 # embed in semi infinite leads
+# leads are noninteracting, nearest neighbor only
 tl = 1.0; # lead hopping, rescales input energies
-chain_length = 20; # num sites in tb chain
-if(verbose): print("\n1. Hybridization");
-lead_dos = wingreen.dos.surface_dos(chain_length, None, chain_length+1, Evals/tl, iE/tl, verbose = verbose);
+leadsite = fcdmft.site(np.array([0]), np.array([1.0]), iE, (0,1e6), "defH");
+# this object contains all the physics of the leads
+
+# pass to kernel
+fcdmft.kernel(h1e, g2e, Vmat, leadsite, verbose = verbose);
+assert False;
+
 
 # map semi infinite leads onto discrete bath
-bath = fcdmft.hybridization(Evals, lead_dos, 10);
+bath = fcdmft.hybridization(Evals, lead_dos, Vmat, n_bath_states);
+print(bath);
 
+# input bath physics into a second quantized hamiltonian
 
+# use dmrg to convert second qu'd ham -> GF
 
 
 

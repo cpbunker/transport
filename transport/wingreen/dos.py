@@ -240,8 +240,9 @@ def surface_dos(length, hamkw, depth, Evals, iE, verbose = 0):
 
     # dos, vectorized
     gE = (-1/np.pi)*np.imag(G);
+    assert( isinstance(gE, np.ndarray));
 
-    return gE, Evals;
+    return gE;
 
 
 def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):

@@ -113,11 +113,13 @@ states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 picks = [[0,2,9],[0,3,8],[0,4,7],[0,5,6],[1,2,8],[1,3,7],[1,4,6]]; # m = 1/2 subspace
 pick_is = [3,6,9,12,18,21,24]; # m= 1/2 subspace
 pickstrs = ["|up, 3/2, -3/2>","|up, 1/2, -1/2>","|up, -1/2, 1/2>","|up, -3/2, 3/2>","|down, 3/2, -1/2>","|down, 1/2, 1/2>","|up, 3/2, -3/2>""|down, -1/2, 3/2>"];
-h_SR = fci_mod.single_to_det(h1e, g2e, parts, states, verbose = 0);
+h_SR = fci_mod.single_to_det(h1e, g2e, parts, states, verbose = 1);
 source = np.zeros(np.shape(h_SR)[0]);
 sourcei = 6; # [0,3,8] = |up, 1/2, -1/2>
+entangledi = 9; # = [0,4,7] = |up, -1/2, 1/2>
 flipi = 21; # [1,3,7] = |down, 1/2, 1/2>
-source[sourcei] = 1;
+source[sourcei] = 1/np.sqrt(2);
+source[entangledi] = -1/np.sqrt(2);
 
 #### what to iter over
 
@@ -173,8 +175,8 @@ elif option == "N": # stretch SR, switzer style
     Tvals = np.array(Tvals);
     fig, ax = plt.subplots();
     xlab = "$N$"
-    ax.plot(Nvals,Tvals[:,sourcei],label = "|up, 1/2, -1/2>");
-    ax.plot(Nvals,Tvals[:,flipi],label = "|down, 1/2, 1/2>");
+    for pi in range(len(pick_is)):
+        ax.plot(Nvals,Tvals[:,pick_is[pi]],label = pickstrs[pi]);
 
 
 # format and plot
