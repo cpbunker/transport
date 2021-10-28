@@ -103,8 +103,8 @@ verbose = 5;
 option = sys.argv[1];
 
 # tight binding params
-tl = 1.0; # 2e hopping
-JK = 0.5;
+tl = 1.0; # 2e hopping, in meV
+JK = 0.1;
 
 # construct h_SR and define source
 h1e, g2e = second_q_ham(JK, JK); # second qu'd form
@@ -126,7 +126,7 @@ source[entangledi] = -1/np.sqrt(2);
 if option == "E": # iter over energy
 
     # sweep from bottom of band up
-    Evals = np.linspace(-2*tl, -2*tl + 0.2*tl, 20);
+    Evals = np.linspace(-2*tl, -2*tl + 0.6*tl, 20);
 
     # package h, t block matrices
     hblocks = np.array([np.zeros_like(h_SR), h_SR, np.zeros_like(h_SR)]);
@@ -148,8 +148,8 @@ if option == "E": # iter over energy
 elif option == "N": # stretch SR, switzer style
 
     # iter over N
-    Nmax = 30
-    Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
+    Nmax = 90;
+    Nvals = np.linspace(1,Nmax,30,dtype = int);
     Tvals = [];
     for N in Nvals:
 
@@ -186,6 +186,7 @@ ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
 ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
 ax.set_xlabel(xlab);
 ax.set_ylabel("$T$");
+ax.set_title("$J_{K} = $"+str(JK));
 plt.legend();
 plt.show();
 

@@ -242,6 +242,13 @@ def scf_to_arr(mol, scf_obj):
     return h1e, g2e;
 
 
+def arr_to_fd():
+    '''
+    '''
+    
+    return;
+
+
 def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     '''
     Convert physics contained in an FCIDUMP object or file to a Matrix
