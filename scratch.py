@@ -32,21 +32,10 @@ fcdmft.kernel(h1e, g2e, Vmat, leadsite, verbose = verbose);
 assert False;
 
 
-# map semi infinite leads onto discrete bath
-bath = fcdmft.hybridization(Evals, lead_dos, Vmat, n_bath_states);
-print(bath);
-
-# input bath physics into a second quantized hamiltonian
-
-# use dmrg to convert second qu'd ham -> GF
 
 
 
 
-
-
-
-assert False;
 # Gimp with DMRG
 bdims = np.array([300,400,500]);
 noises = np.array([1e-4,1e-5,1e-6]);

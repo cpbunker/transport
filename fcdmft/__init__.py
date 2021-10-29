@@ -28,18 +28,20 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     # check inputs and unpack
     assert( isinstance(leadsite, site) );
     n_imp_orbs = np.shape(SR_1e)[0];
-    SR_1e = np.array([SR_1e]); # add spin
+    SR_1e = np.array([SR_1e]); # up spin only
     SR_2e = np.array([SR_2e]);
 
-    # for now, due to laziness, will just put defaults here
+    # for now just put defaults here
+    Ha2eV = 27.211386; # hartree to eV
     iter_depth = 10;
     n_bath_orbs = 3;
-    n_core = 0;
+    n_core = 0; # core orbitals
     filling = 0.5; # e's per spin orb
     chem_pot = 4*np.pi*np.pi*filling*filling; # fermi energy, at zero temp
-    chem_pot = 0.0
+    chem_pot = 0.5/Ha2eV; # orbitals below will be filled, above empty
+    nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
-    n_orbs = n_imp_orbs + n_bath_orbs;
+    n_orbs = n_imp_orbs + 2*n_bath_orbs;
 
     # noninteracting green's function in the leads
     if(verbose): print("\n1. Noninteracting Green's function");
@@ -52,24 +54,24 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     g_nona = np.zeros((np.shape(coupling)[0], np.shape(coupling)[1], len(g_non)), dtype = complex); # unfilled
     for coupi in range(np.shape(coupling)[0]):
         for coupj in range(np.shape(coupling)[1]):
-            if(coupi == coupj): g_nona[coupi, coupj, :] = g_non;
-    g_nonab = np.array([g_nona, g_nona]); # up, down spin
+            if(coupi == coupj): g_nona[coupi, coupj, :] = g_non; # I in coupling space
+    g_nona = np.array([g_nona]); # up spin only
 
     # higher level green's function
     if(verbose): print("\n2. Interacting Green's function");
-    dm_guess = np.array([np.eye(n_imp_orbs)]);
-    imp_meanfield = dmft.dmft_solver.mf_kernel(SR_1e, SR_2e, chem_pot, 1, dm_guess, max_mem);
-    g_int = np.ones_like(g_non, dtype = complex);
-    g_inta = np.zeros_like(g_nona, dtype = complex);
-    for coupi in range(np.shape(coupling)[0]):
-        for coupj in range(np.shape(coupling)[1]):
-            if(coupi == coupj): g_inta[coupi, coupj, :] = g_int;
-    g_intab = np.array([g_inta, g_inta]); 
+    imp_meanfield = dmft.dmft_solver.mf_kernel(SR_1e, SR_2e, chem_pot, nao, np.array([np.eye(n_imp_orbs)]), max_mem, verbose = verbose);
+    g_inta = dmft.dmft_solver.mf_gf(imp_meanfield, leadsite.energies, leadsite.iE);
 
+    # understand how the mean field green's function works
+    print(">> energy", imp_meanfield.mo_energy);
+    print(">> occ", imp_meanfield.mo_occ);
+    assert False;
+    
     # get hybridization from dyson eq
     # ie, hybridization defines interaction between imp and leads
     if(verbose): print("\n3. Bath discretization");
-    hyb = dmft.dmft_solver.get_sigma(g_nonab, g_intab);
+    hyb = dmft.dmft_solver.get_sigma(g_nona, g_inta);
+    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
 
     # start convergence loop here
 
@@ -82,52 +84,19 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
 
     # construct manybody hamiltonian of imp + bath
     if(verbose): print("\n4. Combine impurity and bath");
-    #SR_1e = np.array([SR_1e, np.zeros_like(SR_1e)]); # add spin
-    #SR_2e = np.array([SR_2e, np.zeros_like(SR_2e), np.zeros_like(SR_2e)]);
-    SR_1e = np.array([np.copy(SR_1e), np.copy(SR_1e)]); # add spin
-    SR_2e = np.array([np.copy(SR_2e), np.zeros_like(SR_2e), np.copy(SR_2e)]);
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, *bath, n_core); # adds in bath states
         
     # find manybody gf of imp + bath
     # I hope this is equivalent to Zgid paper eq 28
     if(verbose): print("\n5. Impurity Green's function");
-    dm_guess = np.eye(n_imp_orbs*n_bath_orbs+2);
-    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp[0], h2e_imp[0], chem_pot, 1, dm_guess, max_mem, verbose = 0);
-
-    # meanfield outputs spin-dependent matrices, need to make spin-independent for fci
-    meanfield = make_spin_indep(meanfield, verbose = verbose);
+    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = 0);
+    print(">> energies = ", meanfield.mo_energy);
+    print(">> nelecs = ", np.count_nonzero(meanfield.mo_occ));
+    
+    # use fci (which assumes only one kind of spin) to get Green's function
+    assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie no spin dof
     Gimp = dmft.dmft_solver.fci_gf(meanfield, leadsite.energies, leadsite.iE);
     
-
-def make_spin_indep(mf, verbose = 0):
-    '''
-    make a meanfield object spin independent
-    '''
-
-    if(verbose):
-        print("Attempting to make mf spin independent...");
-        print("energies = ", mf.mo_energy);
-        print("mocoeff shape = ",np.shape(mf.mo_coeff));
-        print("nelecs = ", np.count_nonzero(mf.mo_occ));
-        print(mf.mo_occ);
-        assert False;
-
-    # transfer alpha matrices to new meanfield obj
-    nmf = scf.RHF(gto.M(), mf.mu); 
-    nmf.e_tot = np.nan;
-    nmf.mo_energy = mf.mo_energy[0];
-    nmf.mo_coeff = mf.mo_coeff[0];
-    nmf.mo_occ = mf.mo_occ[0];
-    nmf._eri = mf._eri[0];
-    nmf.get_hcore = lambda *args:mf.get_hcore()[0];
-    nmf.get_ovlp = lambda *args:mf.get_ovlp()[0];
-    
-    if(verbose):
-        print("energies = ", nmf.mo_energy);
-        print("mocoeff shape = ",np.shape(nmf.mo_coeff));
-        print("nelecs = ", np.count_nonzero(nmf.mo_occ));
-        
-    return(nmf);
 
 
 def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
