@@ -28,14 +28,23 @@ leadsite = fcdmft.site(np.array([0]), np.array([1.0]), iE, (0,1e6), "defH");
 # this object contains all the physics of the leads
 
 # pass to kernel
-fcdmft.kernel(h1e, g2e, Vmat, leadsite, verbose = verbose);
-assert False;
+# kernel couples the scattering region, repped by h1e and g2e,
+# to the semi infinite leads, repped by leadsite
+# treats the SR with fci green's function
+MBGF = fcdmft.kernel(h1e, g2e, Vmat, leadsite, verbose = verbose);
+
+print("\n>> Results of MBGF calculation:");
+print("\n - shape: ",np.shape(MBGF));
+print("\n - operator: ", MBGF[:,:,0]);
 
 
+hyb = dyson(nonint of whole system, nonint of central region)
+g_nonint_ofwhole system = inv( ({w-h, t,},{t, gsurf}}
+                               g_cc = inv(w - h - t g_surf ^-1 t  )
+                               second term = \Delta
 
 
-
-
+'''
 # Gimp with DMRG
 bdims = np.array([300,400,500]);
 noises = np.array([1e-4,1e-5,1e-6]);
@@ -45,3 +54,4 @@ G_imp = fcdmft.h1e_to_gf(hmat, gmat, (2,0), bdims, noises);
 if(verbose): print("\n2. Impurity green's function:");
 GFSR = wingreen.dos.junction_gf(np.copy(gf_noninteract), np.copy(thmat), np.copy(gf_noninteract), np.copy(thmat), Evals, hmat);
 for el in GFSR: print(el);
+'''

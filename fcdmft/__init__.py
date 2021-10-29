@@ -24,6 +24,16 @@ import numpy as np
 #### my wrappers that access package routines
 
 def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
+    '''
+    Driver of DMFT calculation for
+    - scattering region, treated at high level, repped by SR_1e and SR_2e
+    - noninteracting leads, treated at low level, repped by leadsite
+
+    Difference between my code, Tianyu's code (e.g. fcdmft/dmft/gwdmft.kernel())
+    is that the latter assumes periodicity, and so only takes local hamiltonian
+    of impurity, and does a self-consistent loop. In contrast, this code
+    specifies the environment and skips scf 
+    '''
 
     # check inputs and unpack
     assert( isinstance(leadsite, site) );
@@ -38,7 +48,7 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     n_core = 0; # core orbitals
     filling = 0.5; # e's per spin orb
     chem_pot = 4*np.pi*np.pi*filling*filling; # fermi energy, at zero temp
-    chem_pot = 0.5/Ha2eV; # orbitals below will be filled, above empty
+    chem_pot = 0.0/Ha2eV; # orbitals below will be filled, above empty
     nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
     n_orbs = n_imp_orbs + 2*n_bath_orbs;
@@ -57,15 +67,21 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
             if(coupi == coupj): g_nona[coupi, coupj, :] = g_non; # I in coupling space
     g_nona = np.array([g_nona]); # up spin only
 
-    # higher level green's function
-    if(verbose): print("\n2. Interacting Green's function");
-    imp_meanfield = dmft.dmft_solver.mf_kernel(SR_1e, SR_2e, chem_pot, nao, np.array([np.eye(n_imp_orbs)]), max_mem, verbose = verbose);
-    g_inta = dmft.dmft_solver.mf_gf(imp_meanfield, leadsite.energies, leadsite.iE);
+    # higher level green's function in the scattering region
+    if(verbose): print("\n2. Scattering region Green's function");
+    SR_meanfield = dmft.dmft_solver.mf_kernel(SR_1e, SR_2e, chem_pot, nao, np.array([np.eye(n_imp_orbs)]), max_mem, verbose = 1);
+    g_inta = dmft.dmft_solver.fci_gf(SR_meanfield, leadsite.energies, leadsite.iE, verbose = verbose);
+    g_inta = np.array([g_inta]); # up spin only
+    print(np.shape(g_nona), np.shape(g_inta));
 
     # understand how the mean field green's function works
-    print(">> energy", imp_meanfield.mo_energy);
-    print(">> occ", imp_meanfield.mo_occ);
-    assert False;
+    if(False):
+        print(np.shape(g_inta));
+        print(g_inta[:,:,0]);
+        import matplotlib.pyplot as plt
+        plt.plot(np.linspace(-4,4,1000), g_inta[0,0,:]);
+        plt.show();
+        assert False;
     
     # get hybridization from dyson eq
     # ie, hybridization defines interaction between imp and leads
@@ -73,7 +89,7 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     hyb = dmft.dmft_solver.get_sigma(g_nona, g_inta);
     if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
 
-    # start convergence loop here
+    # convergence loop would start here
 
     # first attempt at bath disc
     # outputs n_bath_orbs bath energies, for each imp orb
@@ -90,13 +106,11 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     # I hope this is equivalent to Zgid paper eq 28
     if(verbose): print("\n5. Impurity Green's function");
     meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = 0);
-    print(">> energies = ", meanfield.mo_energy);
-    print(">> nelecs = ", np.count_nonzero(meanfield.mo_occ));
     
     # use fci (which assumes only one kind of spin) to get Green's function
     assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie no spin dof
-    Gimp = dmft.dmft_solver.fci_gf(meanfield, leadsite.energies, leadsite.iE);
-    
+    Gimp = dmft.dmft_solver.fci_gf(meanfield, leadsite.energies, leadsite.iE, verbose = verbose);
+    return Gimp;
 
 
 def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
@@ -344,7 +358,7 @@ class site(object):
         # recall site describes tight binding band
         # assume mu=0, t=-1 otherwise use scaled energy (E-mu)/t
         # ie band goes from -2 to 2 always
-        E = np.linspace(-1.999, 1.999, 17) + self.iE; # off real axis
+        E = np.linspace(-1.999, -1.5, 101) + self.iE; # off real axis
         self.energies = E;
 
         # start from bottom
