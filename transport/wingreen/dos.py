@@ -10,26 +10,25 @@ hamiltonian. Calculate G00 using recursive formulation of Haydock
 
 import numpy as np
 
+
 class site(object):
     '''
     Represents tight binding basis vector, in discrete 1d chain
     1d chain is truncated by ends but these can be made arbitrarily large
     
-    Computes how such vectors add, multiply
+    Quick implementation of how such vectors add, multiply
     Computes action of 1d nearest neighbor hopping hamiltonian H on such vectors
+    Thus by defining the H() method can make general
     '''
 
-    def __init__(self, j, c, ends, ham):
+    def __init__(self, j, c, iE, ends, ham):
         '''
-        j = sites
-        c = coefficients multiplying sites, defaults to 1
-        ends = first and last allowed sites in the chain
+        j, ndarray, nonzero sites
+        c, ndarray, coefficients multiplying sites, defaults to 1 for each site
+        iE, float, imag offset from real axis
+        ends = first and last allowed sites in the chain, defaults to 0, a million
+        ham, str, which hamiltonian method to use, defines lead physics
         '''
-
-        # defaults
-        if(c is None): c = np.ones_like(j, dtype = float);
-        if( ends is None): ends = (0,int(1e6) );
-        if(ham is None): ham = "defH";
 
         # inputs
         assert(isinstance(j,np.ndarray));
@@ -43,12 +42,14 @@ class site(object):
         # coefficients of nonzero sites, similarly screened
         self.c = c[j >= ends[0]][ j[j >= ends[0]] <= ends[1] ];
 
+        # off real axis
+        self.iE = iE;
+
         # endpts
         self.ends = ends;
 
         # hamiltonian
         self.ham = ham; # keyword for calling a function via H() method
-
 
     #### overloads
 
@@ -56,20 +57,18 @@ class site(object):
         stri = "";
         for ji in range(len(self.j)):
             stri += str(self.c[ji])+"|"+str(self.j[ji])+"> + ";
-        return stri;
-    
+        return stri;   
 
     def __add__(self, other): # add two sites, not in place
 
         assert(self.ends == other.ends); # need to correspond to same chain
 
-        return site(np.append(self.j, other.j), np.append(self.c, other.c), self.ends, self.ham);
-
+        return site(np.append(self.j, other.j), np.append(self.c, other.c), self.iE, self.ends, self.ham);
 
     def __mul__(self, other): # inner product as orthonormal basis
 
         if( isinstance(other, int) or isinstance(other, float) ): # multiply coefficients, not in place
-            return site(self.j, self.c*other, self.ends, self.ham);
+            return site(self.j, self.c*other, self.iE, self.ends, self.ham);
 
         else:
             
@@ -109,10 +108,17 @@ class site(object):
             newc.append(self.c[ji]);
             newj.append(self.j[ji]+1);
             newc.append(self.c[ji]);
-        return site(np.array(newj), -np.array(newc), self.ends, self.ham);
-    
+        return site(np.array(newj), -np.array(newc), self.iE, self.ends, self.ham);
+
+    def ASU(self):
+        '''
+        Default tight binding as above, but in ASU formalism (i.e., all e's
+        treated as up, even sites are spin up, odd sites are spin down
+        '''
+
+        return;
         
-    #### misc
+    #### util
     
     def condense(self):
         '''
@@ -134,89 +140,96 @@ class site(object):
         return self;
         
 
-def gen_as_bs(site0, depth, verbose = 0):
-    '''
-    generate coefficients a_n', b_n' of fictitious states
-    fictitious represent local environment of site of interest, site0
+    #### calculation of the green's function
+    
+    def gen_as_bs(self, depth, verbose = 0):
+        '''
+        generate coefficients a_n', b_n' of fictitious states
+        fictitious represent local environment of site of interest, site0
 
-    local environment encoded in hamiltonian, which is represented by the
-    site.H method. This method assumse nearest neighbor tight binding
-    hamiltonian char'd only by:
-    - onsite energy mu, same on each site, set to 0
-    - hopping t
+        local environment encoded in hamiltonian, which is represented by the
+        site.H method. This method assumse nearest neighbor tight binding
+        hamiltonian char'd only by:
+        - onsite energy mu, same on each site, set to 0
+        - hopping t
 
-    stops iterating at n' = depth
-    '''
+        stops iterating at n' = depth
+        '''
 
-    # check inputs
-    assert(isinstance(site0, site) );
+        # return variables
+        a_s = [];
+        b_s = [];
 
-    # return variables
-    a_s = [];
-    b_s = [];
+        # zeroth iteration
+        mu = 0.0; # choose energy shift
+        a_s.append(mu); # by definition
+        b_s.append(1); # b_(-1) set to one by definition
 
-    # zeroth iteration
-    mu = 0.0; # choose energy shift
-    a_s.append(mu); # by definition
-    b_s.append(1); # b_(-1) set to one by definition
+        # first iteration
+        nmin1prime = self; # |0'>
+        nprime = nmin1prime.H() + nmin1prime*(-a_s[0]); # |1'>
+        if(False):
+            print("|0'> = ",nmin1prime);
+            print("|1'> = ",nprime);
+            a1p = -4*mu*t*t/(2*t*t + mu*mu);
+            print("predicted a1' = ", a1p);
+            a2p = -4*t*t*mu*a1p*(mu+a1p)
+            a2p = a2p/(2*t*t*np.power(mu+a1p,2) + mu*mu*a1p*a1p);
+            print("predicted a2 = ", a2p);
 
-    # first iteration
-    nmin1prime = site0; # |0'>
-    nprime = nmin1prime.H() + nmin1prime*(-a_s[0]); # |1'>
-    if(False):
-        print("|0'> = ",nmin1prime);
-        print("|1'> = ",nprime);
-        a1p = -4*mu*t*t/(2*t*t + mu*mu);
-        print("predicted a1' = ", a1p);
-        a2p = -4*t*t*mu*a1p*(mu+a1p)
-        a2p = a2p/(2*t*t*np.power(mu+a1p,2) + mu*mu*a1p*a1p);
-        print("predicted a2 = ", a2p);
+        # now iterate
+        for itr in range(depth-1):
 
-    # now iterate
-    for itr in range(depth-1):
+            # a_n'
+            divisor = nprime*nprime;
+            if( divisor == 0.0): divisor = 1.0; # to avoid nans
+            a_s.append((nprime*nprime.H())/divisor );
 
-        # a_n'
-        divisor = nprime*nprime;
-        if( divisor == 0.0): divisor = 1.0; # to avoid nans
-        a_s.append((nprime*nprime.H())/divisor );
+            #print(">>>", nprime);
 
-        #print(">>>", nprime);
+            # b_(n-1)'
+            divisor = nmin1prime*nmin1prime;
+            if( divisor == 0.0): divisor = 1.0; # to avoid nans
+            b_s.append((nmin1prime*nprime.H())/divisor);
 
-        # b_(n-1)'
-        divisor = nmin1prime*nmin1prime;
-        if( divisor == 0.0): divisor = 1.0; # to avoid nans
-        b_s.append((nmin1prime*nprime.H())/divisor);
+            # update states
+            nplus1prime = nprime.H() + nprime*(-a_s[-1]) + nmin1prime*(-b_s[-1]);
+            nmin1prime = nprime*1; # to copy
+            nprime = nplus1prime.condense()*1;
 
-        # update states
-        nplus1prime = nprime.H() + nprime*(-a_s[-1]) + nmin1prime*(-b_s[-1]);
-        nmin1prime = nprime*1; # to copy
-        nprime = nplus1prime.condense()*1;
-
-    return np.array(a_s), np.array(b_s);
+        return np.array(a_s), np.array(b_s);
 
 
-def surface_gf(site0, E, depth, verbose = 0):
-    '''
-    Calculate resolvent green's function according to Haydock 2.6
-    (continued fraction form)
-    '''
+    def surface_gf(self, depth, verbose = 0):
+        '''
+        Calculate resolvent green's function according to Haydock 2.6
+        (continued fraction form)
 
-    # check inputs
-    assert(isinstance(site0, site) );
+        Args:
+        - self, site object which contains physics of system thru H method
+        - depth, int,  how far to go recursively in continuing fraction
+        '''
 
-    # get coefs
-    a_s, b_s = gen_as_bs(site0, depth, verbose = verbose);
+        # get coefs
+        a_s, b_s = self.gen_as_bs(depth, verbose = verbose);
 
-    # start from bottom
-    bG = (E-a_s[-1])/2 *(1- np.lib.scimath.sqrt(1-4*b_s[-1]/((E-a_s[-1])*(E-a_s[-1])) ) );
+        # define energy domain
+        # recall site describes tight binding band
+        # assume mu=0, t=-1 otherwise use scaled energy (E-mu)/t
+        # ie band goes from -2 to 2 always
+        E = np.linspace(-1.999, -1.5, 3) + self.iE; # off real axis
+        self.energies = E;
 
-    # iter over rest
-    for i in range(2, depth+1):
+        # start from bottom
+        bG = (E-a_s[-1])/2 *(1- np.lib.scimath.sqrt(1-4*b_s[-1]/((E-a_s[-1])*(E-a_s[-1])) ) );
 
-        bG = b_s[-i]/(E - a_s[-i] - bG); # update recursively
-        if(verbose > 2): print("G (n = "+str(depth - i)+") = ",bG);
+        # iter over rest
+        for i in range(2, depth+1):
 
-    return bG;
+            bG = b_s[-i]/(E - a_s[-i] - bG); # update recursively
+            if(verbose > 2 and (depth-i) < 3): print("g (n = "+str(depth - i)+") = ",bG[:2]);
+
+        return bG;
 
 
 def surface_dos(length, hamkw, depth, Evals, iE, verbose = 0):

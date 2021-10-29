@@ -20,10 +20,10 @@ from pyscf import gto
 
 import numpy as np
 
-
+########################################################################
 #### my wrappers that access package routines
 
-def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
+def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0): # main driver
     '''
     Driver of DMFT calculation for
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -53,40 +53,13 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     max_mem = 8000;
     n_orbs = n_imp_orbs + 2*n_bath_orbs;
 
-    # noninteracting green's function in the leads
-    if(verbose): print("\n1. Noninteracting Green's function");
-    g_non = leadsite.surface_gf(iter_depth, verbose = verbose);
-    # returns array of noninteracting gf vals across tb band energies
-    # ie from -2 + iE to 2 + iE
-    # for hopping != 1, just do E -> E/th
-
-    # now need to expand g (just a number) to operator in coupling space
-    g_nona = np.zeros((np.shape(coupling)[0], np.shape(coupling)[1], len(g_non)), dtype = complex); # unfilled
-    for coupi in range(np.shape(coupling)[0]):
-        for coupj in range(np.shape(coupling)[1]):
-            if(coupi == coupj): g_nona[coupi, coupj, :] = g_non; # I in coupling space
-    g_nona = np.array([g_nona]); # up spin only
-
-    # higher level green's function in the scattering region
-    if(verbose): print("\n2. Scattering region Green's function");
-    SR_meanfield = dmft.dmft_solver.mf_kernel(SR_1e, SR_2e, chem_pot, nao, np.array([np.eye(n_imp_orbs)]), max_mem, verbose = 1);
-    g_inta = dmft.dmft_solver.fci_gf(SR_meanfield, leadsite.energies, leadsite.iE, verbose = verbose);
-    g_inta = np.array([g_inta]); # up spin only
-    print(np.shape(g_nona), np.shape(g_inta));
-
-    # understand how the mean field green's function works
-    if(False):
-        print(np.shape(g_inta));
-        print(g_inta[:,:,0]);
-        import matplotlib.pyplot as plt
-        plt.plot(np.linspace(-4,4,1000), g_inta[0,0,:]);
-        plt.show();
-        assert False;
+    # surface green's function in the leads
+    if(verbose): print("\n1. Surface Green's function");
     
-    # get hybridization from dyson eq
-    # ie, hybridization defines interaction between imp and leads
-    if(verbose): print("\n3. Bath discretization");
-    hyb = dmft.dmft_solver.get_sigma(g_nona, g_inta);
+    # hybridization defines interaction between imp and leads
+    if(verbose): print("\n2. Bath discretization");
+    hyb = np.empty(np.shape(g_nona), dtype = complex); # unfilled
+    hyb[0] = np.dot(coupling.T, np.dot(g_nona, coupling) );
     if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
 
     # convergence loop would start here
@@ -94,7 +67,7 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     # first attempt at bath disc
     # outputs n_bath_orbs bath energies, for each imp orb
     bath = dmft.gwdmft.get_bath_direct(hyb, leadsite.energies, n_bath_orbs);
-    if(verbose): print(" - bath energies = ", bath[1]);
+    if(verbose): print(" - bath energies = ", bath[1]); assert False;
 
     # optimize bath disc
 
@@ -113,10 +86,149 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0):
     return Gimp;
 
 
+def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
+    '''
+    surface dos in semi-infinite noninteracting lead, formula due to Haydock, 1972
+
+    Args:
+    - energies, 1d arr, energy range
+    - iE, float, imag part to add to energies, so that gf is off real axis
+    - H, 2d arr, repeated diagonal component of lead ham
+    - V, 2d arr, repeated off diag component of lead ham
+    '''
+
+    # check inputs
+    assert(len(np.shape(H)) == 3); # should contain spin
+    assert(np.shape(H) == np.shape(V));
+    assert(not np.any(np.imag(V) ) );
+
+    # quick shortcut for diag inputs
+    H_is_diag = (np.trace(H[0]) == np.sum(H.flat) ); # is a diagonal matrix
+    H_is_same = not np.any(np.diagonal(H[0]) - H[0,0,0]); # all diags equal
+    V_is_diag = (np.trace(V[0]) == np.sum(V.flat) );
+    V_is_same = not np.any(np.diagonal(V[0]) - V[0,0,0]);
+
+    # if these are all true, can use closed form eq for diag gf
+    if(H_is_diag and H_is_same and V_is_diag and V_is_same):
+
+        if(verbose): print(" - Diag shortcut");
+        energies = energies + iE;
+        gf = np.zeros((*np.shape(H),len(energies) ), dtype = complex);
+        
+        for i in range(np.shape(H[0])[0]): # iter over diag
+            pref = (energies - H[0,0,0])/(2*V[0,0,0]);
+            gf[0,i,i,:] = pref-np.lib.scimath.sqrt(pref*pref*(1-4*V[0,0,0]*V[0,0,0]/np.power(energies-H[0,0,0],2)));
+
+    else: # do convergence
+
+        # initial guess is inv(E+iE - H)
+        # fcdmft code can get these energy dependent inverses using get_gf
+        gf = dmft.dmft_solver.get_gf(H, np.zeros((*np.shape(H),len(energies))), energies, iE);
+
+        # start convergence loop
+        conv = False;
+        cycle = 0
+        while not conv:
+
+            # last guess
+            cycle += 1;
+            gf0 = gf;
+
+            # update
+            sigma = dot_spinful_arrays(gf0, np.array([V[0].T]) ); #gf0 * V^\dagger
+            sigma = dot_spinful_arrays(sigma, V, backwards = True);
+            gf = dmft.dmft_solver.get_gf(H, sigma, energies, iE);
+
+            # check convergence
+            if( np.max(abs( gf[0,0,0,:] - gf0[0,0,0,:] )) < tol ):
+                if(verbose): print(" - final cycle = ",cycle, abs(gf[0,0,0,:] - gf0[0,0,0,:]));
+                conv = True;
+            elif( cycle >= max_cycle ):
+                if(verbose): print(" - reached max cycle = ", cycle);
+                conv = True;
+
+    assert(np.any(np.imag(gf)));
+    return gf;
+
+
+
+def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):
+    '''
+    Given the surface green's function in the leads, as computed above,
+    compute the gf at the junction between the leads, aka scattering region.
+    NB the junction has its own local physics def'd by H_SR
+
+    Args:
+    - g_L, 1d arr, left lead noninteracting gf at each E
+    - t_L, 2d arr, left lead coupling, constant in E
+    - g_R, 1d arr, right lead noninteracting gf at each E
+    - t_R, 2d arr, right lead coupling, constant in E
+    - E, 1d array, energy values
+    '''
+
+    # check inputs
+    assert(np.shape(t_L) == np.shape(H_SR) );
+    assert(len(g_L) == len(E) );
+
+    # vectorize by hand
+    G = [];
+    for Ei in range(len(E)): # do for each energy
+
+        # gL, gR as of now are just numbers at each E, but should be matrices
+        # however since leads are defined to be noninteracting, just identity matrices
+        g_Lmat = g_L[Ei]*np.eye(*np.shape(H_SR));
+        g_Rmat = g_R[Ei]*np.eye(*np.shape(H_SR));
+
+        # integrate out leads, using self energies
+        Sigma_L = np.dot(np.linalg.inv(g_Lmat),-t_L);
+        Sigma_L = np.dot( -t_L, Sigma_L);
+        Sigma_R = np.dot(np.linalg.inv(g_Rmat),-t_R);
+        Sigma_R = np.dot( -t_R, Sigma_R);
+
+        # local green's function
+        G.append(np.linalg.inv( E[Ei]*np.eye(*np.shape(H_SR)) - H_SR - Sigma_L - Sigma_R));
+
+    return np.array(G);
+
+
+#### utils
+def dot_spinful_arrays(a1, a2, backwards = False):
+    '''
+    given an array of shape (spin, norbs, norbs, nfreqs)
+    and another array , either
+    - an operator, shape (spin, norbs, norbs), indep of freq
+    '''
+
+    # unpack sizes
+    spin, norbs, _, nfreqs = np.shape(a1);
+
+    # return var
+    result = np.zeros_like(a1, dtype = complex);
+
+    # screen by kind of second array
+    if( np.shape(a2) == (spin, norbs, norbs) ): # freq indep operator
+        for s in range(spin):
+            for iw in range(nfreqs):
+                if not backwards:
+                    result[s,:,:,iw] = np.dot(a1[s,:,:,iw], a2[s]);
+                else:
+                    result[s,:,:,iw] = np.dot(a2[s], a1[s,:,:,iw]);
+
+    elif(False):
+        pass;
+
+    else: raise(ValueError("a2 "+str(np.shape(a2))+" is of wrong size") );
+
+    return result;
+
+
 def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
     '''
     Use dmrg routines in the solvers module to extract a green's function from
     a second quantized hamiltonian
+    given an array of shape (spin, norbs, norbs, nfreqs)
+    and another array , either
+    - an operator, shape (spin, norbs, norbs), indep of freq
     '''
 
     # check inputs
@@ -147,227 +259,10 @@ def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
     eta = None;
     dfparams = gmres_tol, conv_tol, nsteps, cps_bond_dims, cps_noises, cps_conv_tol, cps_n_steps, idxs, eta;
     G = dmrg_obj.greens_function(bdims, noises, *dfparams, E, None);
+    # unpack sizes
+    spin, norbs, _, nfreqs = np.shape(a1);
 
     return G;
-
-
-
-########################################################################
-#### calculation of the surface dos in noninteracting lead
-#### recursive formula due to Haydock, 1972
-
-class site(object):
-    '''
-    Represents tight binding basis vector, in discrete 1d chain
-    1d chain is truncated by ends but these can be made arbitrarily large
     
-    Quick implementation of how such vectors add, multiply
-    Computes action of 1d nearest neighbor hopping hamiltonian H on such vectors
-    Thus by defining the H() method can make general
-    '''
-
-    def __init__(self, j, c, iE, ends, ham):
-        '''
-        j, ndarray, nonzero sites
-        c, ndarray, coefficients multiplying sites, defaults to 1 for each site
-        iE, float, imag offset from real axis
-        ends = first and last allowed sites in the chain, defaults to 0, a million
-        ham, str, which hamiltonian method to use, defines lead physics
-        '''
-
-        # inputs
-        assert(isinstance(j,np.ndarray));
-        assert(isinstance(c,np.ndarray));
-        assert(len(j) == len(c) );
-        assert(len(ends) == 2 and isinstance(ends[0], int) );
-        
-        # screen out anything beyond ends
-        self.j = j[j >= ends[0]][ j[j >= ends[0]] <= ends[1] ];
-
-        # coefficients of nonzero sites, similarly screened
-        self.c = c[j >= ends[0]][ j[j >= ends[0]] <= ends[1] ];
-
-        # off real axis
-        self.iE = iE;
-
-        # endpts
-        self.ends = ends;
-
-        # hamiltonian
-        self.ham = ham; # keyword for calling a function via H() method
-
-
-    #### overloads
-
-    def __str__(self):
-        stri = "";
-        for ji in range(len(self.j)):
-            stri += str(self.c[ji])+"|"+str(self.j[ji])+"> + ";
-        return stri;
     
 
-    def __add__(self, other): # add two sites, not in place
-
-        assert(self.ends == other.ends); # need to correspond to same chain
-
-        return site(np.append(self.j, other.j), np.append(self.c, other.c), self.iE, self.ends, self.ham);
-
-
-    def __mul__(self, other): # inner product as orthonormal basis
-
-        if( isinstance(other, int) or isinstance(other, float) ): # multiply coefficients, not in place
-            return site(self.j, self.c*other, self.iE, self.ends, self.ham);
-
-        else:
-            
-            assert(self.ends == other.ends); # need to correspond to same chain
-            
-            mysum = 0.0;
-            for ji in range(len(self.j)):
-                for ii in range(len(other.j)):
-                    if(self.j[ji] == other.j[ii]):
-                        mysum += self.c[ji]*other.c[ii];
-            return mysum;
-
-    #### hamiltonians
-
-    def H(self):
-        if self.ham == "defH":
-            return self.defH();
-        else: raise(TypeError);
-        
-    def defH(self):
-        '''
-        hamiltonian for uniform nearest neighbor hopping, mu=0
-        default H option
-        not in place
-
-        assume hopping between all sites is same
-        assume onsite energy of all sites is same
-        Acts as if mu = 0 and t = -1, but this can be generalized by treating
-        E as a scaled energy, E -> (E-mu)/t
-        
-        '''
-        
-        newj = [];
-        newc = [];
-        for ji in range(len(self.j)):
-            newj.append(self.j[ji]-1);
-            newc.append(self.c[ji]);
-            newj.append(self.j[ji]+1);
-            newc.append(self.c[ji]);
-        return site(np.array(newj), -np.array(newc), self.iE, self.ends, self.ham);
-    
-        
-    #### util
-    
-    def condense(self):
-        '''
-        Combine repeated states, in place
-        '''
-
-        newj = [];
-        newc = [];
-        for ji in range(len(self.j)):
-            if self.j[ji] not in newj: # add site and coef
-                newj.append(self.j[ji]);
-                newc.append(self.c[ji]);
-            else: # only update coef
-                whichi = newj.index(self.j[ji]);
-                newc[whichi] += self.c[ji];
-
-        self.j = np.array(newj);
-        self.c = np.array(newc);
-        return self;
-        
-
-    #### calculation of the green's function
-    
-    def gen_as_bs(self, depth, verbose = 0):
-        '''
-        generate coefficients a_n', b_n' of fictitious states
-        fictitious represent local environment of site of interest, site0
-
-        local environment encoded in hamiltonian, which is represented by the
-        site.H method. This method assumse nearest neighbor tight binding
-        hamiltonian char'd only by:
-        - onsite energy mu, same on each site, set to 0
-        - hopping t
-
-        stops iterating at n' = depth
-        '''
-
-        # return variables
-        a_s = [];
-        b_s = [];
-
-        # zeroth iteration
-        mu = 0.0; # choose energy shift
-        a_s.append(mu); # by definition
-        b_s.append(1); # b_(-1) set to one by definition
-
-        # first iteration
-        nmin1prime = self; # |0'>
-        nprime = nmin1prime.H() + nmin1prime*(-a_s[0]); # |1'>
-        if(False):
-            print("|0'> = ",nmin1prime);
-            print("|1'> = ",nprime);
-            a1p = -4*mu*t*t/(2*t*t + mu*mu);
-            print("predicted a1' = ", a1p);
-            a2p = -4*t*t*mu*a1p*(mu+a1p)
-            a2p = a2p/(2*t*t*np.power(mu+a1p,2) + mu*mu*a1p*a1p);
-            print("predicted a2 = ", a2p);
-
-        # now iterate
-        for itr in range(depth-1):
-
-            # a_n'
-            divisor = nprime*nprime;
-            if( divisor == 0.0): divisor = 1.0; # to avoid nans
-            a_s.append((nprime*nprime.H())/divisor );
-
-            #print(">>>", nprime);
-
-            # b_(n-1)'
-            divisor = nmin1prime*nmin1prime;
-            if( divisor == 0.0): divisor = 1.0; # to avoid nans
-            b_s.append((nmin1prime*nprime.H())/divisor);
-
-            # update states
-            nplus1prime = nprime.H() + nprime*(-a_s[-1]) + nmin1prime*(-b_s[-1]);
-            nmin1prime = nprime*1; # to copy
-            nprime = nplus1prime.condense()*1;
-
-        return np.array(a_s), np.array(b_s);
-
-
-    def surface_gf(self, depth, verbose = 0):
-        '''
-        Calculate resolvent green's function according to Haydock 2.6
-        (continued fraction form)
-
-        Args:
-        - self, site object which contains physics of system thru H method
-        - depth, int,  how far to go recursively in continuing fraction
-        '''
-
-        # get coefs
-        a_s, b_s = self.gen_as_bs(depth, verbose = verbose);
-
-        # define energy domain
-        # recall site describes tight binding band
-        # assume mu=0, t=-1 otherwise use scaled energy (E-mu)/t
-        # ie band goes from -2 to 2 always
-        E = np.linspace(-1.999, -1.5, 101) + self.iE; # off real axis
-        self.energies = E;
-
-        # start from bottom
-        bG = (E-a_s[-1])/2 *(1- np.lib.scimath.sqrt(1-4*b_s[-1]/((E-a_s[-1])*(E-a_s[-1])) ) );
-
-        # iter over rest
-        for i in range(2, depth+1):
-
-            bG = b_s[-i]/(E - a_s[-i] - bG); # update recursively
-            if(verbose > 2 and (depth-i) < 3): print("g (n = "+str(depth - i)+") = ",bG[:2]);
-
-        return bG;
