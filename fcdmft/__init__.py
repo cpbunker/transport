@@ -23,7 +23,7 @@ import numpy as np
 ########################################################################
 #### my wrappers that access package routines
 
-def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0): # main driver
+def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
     '''
     Driver of DMFT calculation for
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -32,22 +32,38 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0): # main driver
     Difference between my code, Tianyu's code (e.g. fcdmft/dmft/gwdmft.kernel())
     is that the latter assumes periodicity, and so only takes local hamiltonian
     of impurity, and does a self-consistent loop. In contrast, this code
-    specifies the environment and skips scf 
+    specifies the environment and skips scf
+
+    Args:
+    energies, 1d arr of energies
+    iE, float, complex part to add to energies
+    SR_1e, (spin,n_imp_orbs, n_imp_orbs) array, 1e part of scattering region hamiltonian
+    SR_2e, 2e part of scattering region hamiltonian
+    coupling, (spin, n_imp_orbs, n_imp_orbs) array, couples SR to lead
+    L_diag, (spin, n_imp_orbs, n_imp_orbs) array, onsite energy for lead blocks
+    L_hop, (spin, n_imp_orbs, n_imp_orbs) array, hopping for lead blocks
+
+    Optional args:
+    solver, string, tells how to compute imp MBGF. options:
+    - cc
+    - fci, if n_orbs is sufficiently small
+    n_bath_orbs, int, how many disc bath orbs to make
     '''
 
-    # check inputs and unpack
-    assert( isinstance(leadsite, site) );
-    n_imp_orbs = np.shape(SR_1e)[0];
-    SR_1e = np.array([SR_1e]); # up spin only
-    SR_2e = np.array([SR_2e]);
+    # TO DO: add in bias
+
+    # check inputs
+    assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
+    assert(np.shape(SR_1e) == np.shape(coupling) );
+    assert(np.shape(SR_1e) == np.shape(L_diag));
+    assert(np.shape(SR_1e) == np.shape(L_hop));
+    
+    # unpack
+    spin, n_imp_orbs, _ = np.shape(SR_1e); # size of arrs on spin, norb axes
 
     # for now just put defaults here
     Ha2eV = 27.211386; # hartree to eV
-    iter_depth = 10;
-    n_bath_orbs = 3;
     n_core = 0; # core orbitals
-    filling = 0.5; # e's per spin orb
-    chem_pot = 4*np.pi*np.pi*filling*filling; # fermi energy, at zero temp
     chem_pot = 0.0/Ha2eV; # orbitals below will be filled, above empty
     nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
@@ -55,34 +71,46 @@ def kernel(SR_1e, SR_2e, coupling, leadsite, verbose = 0): # main driver
 
     # surface green's function in the leads
     if(verbose): print("\n1. Surface Green's function");
+    surfgf = surface_gf(energies, iE, L_diag, L_hop, verbose = verbose);
+
+    # hybridization between leads and SR
+    # hyb = V*surface_gf*V^\dagger
+    if(verbose): print("\n2. Hybridization");
+    hyb = dot_spinful_arrays(surfgf, np.array([coupling[0].T]));
+    hyb = dot_spinful_arrays(hyb, coupling, backwards = True);
+    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
     
     # hybridization defines interaction between imp and leads
-    if(verbose): print("\n2. Bath discretization");
-    hyb = np.empty(np.shape(g_nona), dtype = complex); # unfilled
-    hyb[0] = np.dot(coupling.T, np.dot(g_nona, coupling) );
-    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
-
+    if(verbose): print("\n3. Bath discretization");
+    
     # convergence loop would start here
-
     # first attempt at bath disc
     # outputs n_bath_orbs bath energies, for each imp orb
-    bath = dmft.gwdmft.get_bath_direct(hyb, leadsite.energies, n_bath_orbs);
-    if(verbose): print(" - bath energies = ", bath[1]); assert False;
+    bathe, bathv = dmft.gwdmft.get_bath_direct(hyb, energies, n_bath_orbs);
+    if(verbose): print(" - bath energies = ", bathe);
 
     # optimize bath disc
+    bathe, bathv = dmft.gwdmft.opt_bath(bathe, bathv, hyb, energies, iE, n_bath_orbs);
+    if(verbose): print(" - bath energies = ", bathe);
 
     # construct manybody hamiltonian of imp + bath
     if(verbose): print("\n4. Combine impurity and bath");
-    h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, *bath, n_core); # adds in bath states
+    h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
         
     # find manybody gf of imp + bath
     # I hope this is equivalent to Zgid paper eq 28
     if(verbose): print("\n5. Impurity Green's function");
-    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = 0);
+    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = verbose);
     
-    # use fci (which assumes only one kind of spin) to get Green's function
-    assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie no spin dof
-    Gimp = dmft.dmft_solver.fci_gf(meanfield, leadsite.energies, leadsite.iE, verbose = verbose);
+    # use fci (which is spin restricted) to get Green's function
+    # choose solver
+    assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie spin restricted
+    if(solver == 'cc'):
+        Gimp = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
+    elif(solver == 'fci'):
+        assert(n_orbs <= 10);
+        Gimp = dmft.dmft_solver.fci_gf(meanfield, energies, iE);
+    else: raise(ValueError(solver+" is not a valid solver type"));
     return Gimp;
 
 
