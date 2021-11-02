@@ -1,10 +1,10 @@
 '''
-Compute the many body impurity Green's function using DMFT
-For DMFT overview see: https://arxiv.org/pdf/1012.3609.pdf (Zgid, Chan paper)
-
 fcdmft package due to Tianyu Zhu et al, Caltech
 
-Wrapper functions due to Christian Bunker, UF
+Wrapper functions due to Christian Bunker, UF, October 2021
+
+Compute the many body impurity Green's function using DMFT
+For DMFT overview see: https://arxiv.org/pdf/1012.3609.pdf (Zgid, Chan paper)
 '''
 
 #### setup the fcdmft the package
@@ -15,8 +15,6 @@ if 'OMP_NUM_THREADS' not in os.environ:
 
 from fcdmft import dmft
 from fcdmft.solver import scf_mu as scf
-from transport import fci_mod
-from pyscf import gto
 
 import numpy as np
 
@@ -51,6 +49,11 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     - cc
     - fci, if n_orbs is sufficiently small
     n_bath_orbs, int, how many disc bath orbs to make
+
+    Returns:
+    G, 3d arr, (spin, norbs, norbs, nw) ie for each spin <nu| G(E) |nu'>
+    where nu, nu' run over all quantum numbers except spin. Typically do ASU
+    so there is only up sin.
     '''
     
     # check inputs
@@ -63,8 +66,6 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     spin, n_imp_orbs, _ = np.shape(SR_1e); # size of arrs on spin, norb axes
     LL_diag, LL_hop = LL;
     RL_diag, RL_hop = RL;
-
-    # for now just put defaults here
     n_core = 0; # core orbitals
     nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
@@ -117,20 +118,20 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     if(solver == 'cc'):
 
         # get MBGF, reduced density matrix
-        Gimp, rdm = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
+        G, rdm = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
         rdm = rdm[:n_imp_orbs, :n_imp_orbs];
         
     elif(solver == 'fci'):
 
         # get MBGF
         assert(n_orbs <= 10); # so it doesn't stall
-        Gimp, soln = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
+        G, soln = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
 
         # get rdm for scattering region only
         rdm = dmft.dmft_solver.fci_sol_to_rdm(meanfield, soln, n_imp_orbs);
 
     else: raise(ValueError(solver+" is not a valid solver type"));
-    return Gimp, rdm;
+    return G;
 
 
 def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):

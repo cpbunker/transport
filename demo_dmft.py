@@ -57,11 +57,13 @@ V_RL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
 # kernel couples the scattering region, repped by h1e and g2e,
 # to the semi infinite leads, repped by HL, VL
 # treats the SR with fci green's function
-MBGF, rdm = fcdmft.kernel(Es, iE, imp_occ, h1e, g2e, coupling, (H_LL, V_LL), (H_RL, V_RL), solver = 'fci', n_bath_orbs = 4, verbose = verbose);
+MBGF = fcdmft.kernel(Es, iE, imp_occ, h1e, g2e, coupling, (H_LL, V_LL), (H_RL, V_RL), solver = 'cc', n_bath_orbs = 4, verbose = verbose);
+
+print(np.trapz( (-1/np.pi)*np.imag(MBGF[0,0,0,:]), Es) );
+print(np.trapz( (-1/np.pi)*np.imag(MBGF[0,1,1,:]), Es) );
 
 # see results
 print("\n>> Results of MBGF calculation:");
-print("\n - imp occupancy = \n", rdm);
 plt.plot(Es, (-1/np.pi)*np.imag(MBGF[0,0,0,:]), label = "up" );
 plt.plot(Es, (-1/np.pi)*np.imag(MBGF[0,1,1,:]), label = "down" );
 plt.xlabel("$E$");
