@@ -23,7 +23,7 @@ import numpy as np
 ########################################################################
 #### my wrappers that access package routines
 
-def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
+def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
     '''
     Driver of DMFT calculation for
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -37,11 +37,14 @@ def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n
     Args:
     energies, 1d arr of energies
     iE, float, complex part to add to energies
+    imp_occ, int, target impurity occupancy
     SR_1e, (spin,n_imp_orbs, n_imp_orbs) array, 1e part of scattering region hamiltonian
     SR_2e, 2e part of scattering region hamiltonian
     coupling, (spin, n_imp_orbs, n_imp_orbs) array, couples SR to lead
-    L_diag, (spin, n_imp_orbs, n_imp_orbs) array, onsite energy for lead blocks
-    L_hop, (spin, n_imp_orbs, n_imp_orbs) array, hopping for lead blocks
+    LL, tuple of:
+        LL_diag, (spin, n_imp_orbs, n_imp_orbs) array, onsite energy for left lead blocks
+        LL_hop, (spin, n_imp_orbs, n_imp_orbs) array, hopping for left lead blocks
+    RL, similarly for the right lead
 
     Optional args:
     solver, string, tells how to compute imp MBGF. options:
@@ -49,36 +52,38 @@ def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n
     - fci, if n_orbs is sufficiently small
     n_bath_orbs, int, how many disc bath orbs to make
     '''
-
-    # TO DO: add in bias
-
+    
     # check inputs
     assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
     assert(np.shape(SR_1e) == np.shape(coupling) );
-    assert(np.shape(SR_1e) == np.shape(L_diag));
-    assert(np.shape(SR_1e) == np.shape(L_hop));
+    assert(np.shape(SR_1e) == np.shape(LL[0]));
+    assert(np.shape(SR_1e) == np.shape(LL[1]));
     
     # unpack
     spin, n_imp_orbs, _ = np.shape(SR_1e); # size of arrs on spin, norb axes
+    LL_diag, LL_hop = LL;
+    RL_diag, RL_hop = RL;
 
     # for now just put defaults here
-    Ha2eV = 27.211386; # hartree to eV
     n_core = 0; # core orbitals
-    chem_pot = 0.0/Ha2eV; # orbitals below will be filled, above empty
     nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
     n_orbs = n_imp_orbs + 2*n_bath_orbs;
 
     # surface green's function in the leads
     if(verbose): print("\n1. Surface Green's function");
-    surfgf = surface_gf(energies, iE, L_diag, L_hop, verbose = verbose);
+    LL_surf = surface_gf(energies, iE, LL_diag, LL_hop, verbose = verbose);
+    RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
 
     # hybridization between leads and SR
     # hyb = V*surface_gf*V^\dagger
     if(verbose): print("\n2. Hybridization");
-    hyb = dot_spinful_arrays(surfgf, np.array([coupling[0].T]));
-    hyb = dot_spinful_arrays(hyb, coupling, backwards = True);
-    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
+    LL_hyb = dot_spinful_arrays(LL_surf, np.array([coupling[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_hyb, coupling, backwards = True);
+    RL_hyb = dot_spinful_arrays(RL_surf, np.array([coupling[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_hyb, coupling, backwards = True);
+    hyb = LL_hyb # + RL_hyb; # combine as one self energy
+    if(verbose): print(" - hyb(E) = \n", LL_hyb[0,:,:,0]);
     
     # hybridization defines interaction between imp and leads
     if(verbose): print("\n3. Bath discretization");
@@ -96,7 +101,11 @@ def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n
     # construct manybody hamiltonian of imp + bath
     if(verbose): print("\n4. Combine impurity and bath");
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
-        
+
+    # get chem pot that corresponds to desired occupancy
+    #chem_pot = find_mu(h1e_imp, h2e_imp, 0.0, np.array([np.eye(n_orbs)]), imp_occ, max_mem, verbose = 0);
+    chem_pot = 0.0; # corresponds to bath half-filling
+    
     # find manybody gf of imp + bath
     # I hope this is equivalent to Zgid paper eq 28
     if(verbose): print("\n5. Impurity Green's function");
@@ -106,12 +115,22 @@ def kernel(energies, iE, SR_1e, SR_2e, coupling, L_diag, L_hop, solver = "cc", n
     # choose solver
     assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie spin restricted
     if(solver == 'cc'):
-        Gimp = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
+
+        # get MBGF, reduced density matrix
+        Gimp, rdm = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
+        rdm = rdm[:n_imp_orbs, :n_imp_orbs];
+        
     elif(solver == 'fci'):
-        assert(n_orbs <= 10);
-        Gimp = dmft.dmft_solver.fci_gf(meanfield, energies, iE);
+
+        # get MBGF
+        assert(n_orbs <= 10); # so it doesn't stall
+        Gimp, soln = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
+
+        # get rdm for scattering region only
+        rdm = dmft.dmft_solver.fci_sol_to_rdm(meanfield, soln, n_imp_orbs);
+
     else: raise(ValueError(solver+" is not a valid solver type"));
-    return Gimp;
+    return Gimp, rdm;
 
 
 def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
@@ -250,6 +269,82 @@ def dot_spinful_arrays(a1, a2, backwards = False):
     return result;
 
 
+def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 5, trust_region = 1.0, step = 0.2, nelec_tol = 2e-3, verbose = 0):
+    '''
+    Find chemical potential that reproduces the target occupancy on the impurity
+    '''
+
+    # check inputs
+    assert(np.shape(h1e) == np.shape(dm0));
+
+    # before starting loop
+    mu_cycle = 0
+    dmu = 0 # change in mu
+    record = [] # records stuff as we cycle
+    nao = 2; # only affects printouts
+    nimp = 2;
+
+    # loop
+    while mu_cycle < max_cycle:
+        
+        # run HF for embedding problem
+        mu = mu0 + dmu
+        mf = dmft.dmft_solver.mf_kernel(h1e, g2e, mu, nao, dm0, max_mem)
+
+        # run ground-state impurity solver to get 1-rdm
+        rdm = dmft.dmft_solver.fci_rdm(mf, ao_orbs = range(nimp), verbose = verbose)
+        nelec = np.trace(rdm)
+        if mu_cycle > 0:
+            dnelec_old = dnelec
+        dnelec = nelec - target
+        print("mu cycle ", mu_cycle, "mu = ", mu,"dmu = ", dmu,"nelec = ", nelec, "dnelec = ", dnelec);
+        if abs(dnelec) < nelec_tol * target:
+            break
+        if mu_cycle > 0:
+            if abs(dnelec - dnelec_old) < 1e-8:
+                print(" line 294");
+                #break
+        record.append([dmu, dnelec])
+
+        if mu_cycle == 0:
+            if dnelec > 0:
+                dmu = -1. * step
+            else:
+                dmu = step
+        elif len(record) == 2:
+            # linear fit
+            dmu1 = record[0][0]; dnelec1 = record[0][1]
+            dmu2 = record[1][0]; dnelec2 = record[1][1]
+            dmu = (dmu1*dnelec2 - dmu2*dnelec1) / (dnelec2 - dnelec1)
+        else:
+            # linear fit
+            dmu_fit = []
+            dnelec_fit = []
+            for rec in record:
+                dmu_fit.append(rec[0])
+                dnelec_fit.append(rec[1])
+            dmu_fit = np.array(dmu_fit)
+            dnelec_fit = np.array(dnelec_fit)
+            idx = np.argsort(np.abs(dnelec_fit))[:2]
+            dmu_fit = dmu_fit[idx]
+            dnelec_fit = dnelec_fit[idx]
+            a,b = np.polyfit(dmu_fit, dnelec_fit, deg=1)
+            dmu = -b/a
+
+        if abs(dmu) > trust_region:
+            if dmu < 0:
+                dmu = -trust_region
+            else:
+                dmu = trust_region
+
+        mu_cycle += 1
+        
+    return mu
+
+
+    
+
+
 def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
     '''
     Use dmrg routines in the solvers module to extract a green's function from
@@ -258,6 +353,8 @@ def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
     and another array , either
     - an operator, shape (spin, norbs, norbs), indep of freq
     '''
+
+    
 
     # check inputs
 

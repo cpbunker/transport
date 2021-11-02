@@ -16,7 +16,6 @@ My fcdmft.kernel() function uses utils and solvers to put together a dmft driver
 that skips the self consistent loop, i. e. for a non periodic system
 '''
 
-from transport import wingreen, ops, fci_mod
 import fcdmft
 
 import numpy as np
@@ -30,35 +29,39 @@ iE = 1e-3; # small imag part
 #### do SIAM in ASU formalism
 
 # energy spectrum
-Es = np.linspace(-2.0,0.0,101);
+Es = np.linspace(-1.0,1.0,101);
 iE = 1e-2;
 
 # anderson dot
-Vg = -0.5;
-U = 1.1;
-h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
+imp_occ = 2;
+Vg = -0.6;
+degen_break = 1e-3; # break degeneracy
+U = 1.0;
+h1e = np.array([[[Vg,0],[0,Vg+degen_break]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
-th = 1.0; # coupling between imp, leads
+th = 0.4; # coupling between imp, leads
 coupling = np.array([[[-th, 0],[0,-th]]]); # ASU
 
 # embed in semi infinite leads
 # leads are noninteracting, nearest neighbor only
 tl = 1.0; # lead hopping
-HL = np.array([[[0,0],[0,0]]]);
-VL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
+Vb = 0.0; # bias
+H_LL = np.array([[[Vb/2,0],[0,Vb/2]]]);
+V_LL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
+H_RL = np.array([[[-Vb/2,0],[0,-Vb/2]]]);
+V_RL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
 
 # pass to kernel
 # kernel couples the scattering region, repped by h1e and g2e,
 # to the semi infinite leads, repped by HL, VL
 # treats the SR with fci green's function
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, coupling, HL, VL, solver = 'fci', verbose = verbose);
+MBGF, rdm = fcdmft.kernel(Es, iE, imp_occ, h1e, g2e, coupling, (H_LL, V_LL), (H_RL, V_RL), solver = 'fci', n_bath_orbs = 4, verbose = verbose);
 
 # see results
 print("\n>> Results of MBGF calculation:");
-print("\n - shape: ",np.shape(MBGF));
-print("\n - operator:\n", MBGF[0,:3,:3,0]);
+print("\n - imp occupancy = \n", rdm);
 plt.plot(Es, (-1/np.pi)*np.imag(MBGF[0,0,0,:]), label = "up" );
 plt.plot(Es, (-1/np.pi)*np.imag(MBGF[0,1,1,:]), label = "down" );
 plt.xlabel("$E$");
