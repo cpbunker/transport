@@ -19,9 +19,9 @@ from fcdmft.solver import scf_mu as scf
 import numpy as np
 
 ########################################################################
-#### my wrappers that access package routines
+#### drivers
 
-def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
+def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
     '''
     Driver of DMFT calculation for
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -31,6 +31,8 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     is that the latter assumes periodicity, and so only takes local hamiltonian
     of impurity, and does a self-consistent loop. In contrast, this code
     specifies the environment and skips scf
+
+    NB chem potential fixed at 0 as convention
 
     Args:
     energies, 1d arr of energies
@@ -58,14 +60,15 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     
     # check inputs
     assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
-    assert(np.shape(SR_1e) == np.shape(coupling) );
     assert(np.shape(SR_1e) == np.shape(LL[0]));
     assert(np.shape(SR_1e) == np.shape(LL[1]));
+    assert(np.shape(SR_1e) == np.shape(LL[2]));
+    assert(len(LL) == len(RL) );
     
     # unpack
     spin, n_imp_orbs, _ = np.shape(SR_1e); # size of arrs on spin, norb axes
-    LL_diag, LL_hop = LL;
-    RL_diag, RL_hop = RL;
+    LL_diag, LL_hop, LL_coup, mu_L = LL;
+    RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_core = 0; # core orbitals
     nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
@@ -79,28 +82,24 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     # hybridization between leads and SR
     # hyb = V*surface_gf*V^\dagger
     if(verbose): print("\n2. Hybridization");
-    LL_hyb = dot_spinful_arrays(LL_surf, np.array([coupling[0].T]));
-    LL_hyb = dot_spinful_arrays(LL_hyb, coupling, backwards = True);
-    RL_hyb = dot_spinful_arrays(RL_surf, np.array([coupling[0].T]));
-    RL_hyb = dot_spinful_arrays(RL_hyb, coupling, backwards = True);
-    hyb = LL_hyb # + RL_hyb; # combine as one self energy
-    if(verbose): print(" - hyb(E) = \n", LL_hyb[0,:,:,0]);
-    
-    # hybridization defines interaction between imp and leads
-    if(verbose): print("\n3. Bath discretization");
+    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
+    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
+    hyb = LL_hyb + RL_hyb; # combine, renormalize ?
+    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
     
     # convergence loop would start here
     # first attempt at bath disc
     # outputs n_bath_orbs bath energies, for each imp orb
+    if(verbose): print("\n3. Bath discretization");
     bathe, bathv = dmft.gwdmft.get_bath_direct(hyb, energies, n_bath_orbs);
-    if(verbose): print(" - bath energies = ", bathe);
 
     # optimize bath disc
     bathe, bathv = dmft.gwdmft.opt_bath(bathe, bathv, hyb, energies, iE, n_bath_orbs);
     if(verbose): print(" - bath energies = ", bathe);
 
     # construct manybody hamiltonian of imp + bath
-    if(verbose): print("\n4. Combine impurity and bath");
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
 
     # get chem pot that corresponds to desired occupancy
@@ -109,7 +108,7 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
     
     # find manybody gf of imp + bath
     # I hope this is equivalent to Zgid paper eq 28
-    if(verbose): print("\n5. Impurity Green's function");
+    if(verbose): print("\n4. Impurity Green's function");
     meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = verbose);
     
     # use fci (which is spin restricted) to get Green's function
@@ -131,8 +130,91 @@ def kernel(energies, iE, imp_occ, SR_1e, SR_2e, coupling, LL, RL, solver = "cc",
         rdm = dmft.dmft_solver.fci_sol_to_rdm(meanfield, soln, n_imp_orbs);
 
     else: raise(ValueError(solver+" is not a valid solver type"));
-    return G;
 
+    if True:
+        import matplotlib.pyplot as plt
+        x = (-1/np.pi)*np.imag(LL_hyb)
+        for i in range(np.shape(x)[1]):
+            for j in range(np.shape(x)[2]):
+                if (i==j):
+                    plt.plot(energies, x[0,i,j,:], label = (i,j));
+
+        plt.legend();
+        plt.title("LL_hyb");
+        plt.show();
+
+                
+    return G; # package in up spin for shape consistency
+
+
+def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
+    '''
+    Given the MBGF for the impurity + bath system, apply meir wingreen formula
+    to get "density of current" j(E) at temp kBT. Then total particle current
+    is given by J = \int dE j(E)
+    '''
+    
+    # check inputs
+    assert( len(energies) == np.shape(MBGF)[-1]);
+    assert( np.shape(LL[0]) == np.shape(RL[0]) );
+    
+    # unpack
+    LL_diag, LL_hop, LL_coup, mu_L = LL;
+    RL_diag, RL_hop, RL_coup, mu_R = RL;
+    n_imp_orbs = np.shape(LL_coup)[1];
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], kBT);
+    # 1: hybridization between leads and SR
+    
+    # surface gf (matrices of vectors of E)
+    LL_surf = surface_gf(energies, iE, LL_diag, LL_hop, verbose = verbose);
+    RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
+    
+    # hyb(E) = V*surface_gf(E)*V^\dagger
+    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
+    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
+
+    # meir-wingreen Lambda matrix = -2*Im[hyb]
+    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
+    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
+    Lambda_L = (-2)*np.imag(LL_hyb);
+    Lambda_R = (-2)*np.imag(RL_hyb);
+
+    # 2: thermal distributions (vectors of E)
+    if(kBT == 0.0):
+        nL = np.zeros_like(energies, dtype = int);
+        nL[energies <= mu_L] = 1; # step function
+        nR = np.zeros_like(energies, dtype = int);
+        nR[energies <= mu_R] = 1; # step function
+    else:
+        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
+        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
+
+    # 4: meir wingreen formula
+    therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
+    jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
+    jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
+    jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
+
+    if True:
+        import matplotlib.pyplot as plt
+        x = -np.imag(G_ret) #-np.imag(dot_spinful_arrays(therm, G_ret - G_adv))
+        for i in range(np.shape(x)[1]):
+            for j in range(np.shape(x)[2]):
+                if (i==j):
+                    plt.plot(energies, x[0,i,j,:], label = (i,j));
+        plt.legend();
+        plt.title("therm");
+        plt.show();
+
+    return jE;
+
+    
+
+
+########################################################################
+#### green's function finders
 
 def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
     '''
@@ -199,7 +281,6 @@ def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
     return gf;
 
 
-
 def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):
     '''
     Given the surface green's function in the leads, as computed above,
@@ -239,7 +320,64 @@ def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):
     return np.array(G);
 
 
+########################################################################
 #### utils
+
+def decompose_gf(energies, G, kBT):
+    '''
+    Decompose the full time-ordered many body green's function (from kernel)
+    into r, a, <, > parts according to page 18 of
+    http://www.physics.udel.edu/~bnikolic/QTTG/NOTES/MANY_PARTICLE_PHYSICS/BROUWER=theory_of_many_particle_systems.pdf
+
+    NB chem potential fixed at 0 as convention
+    '''
+
+    # check inputs
+    assert( len(energies) == np.shape(G)[-1]);
+
+    # return values
+    G_ret = np.empty(np.shape(G), dtype = complex);
+    G_adv = np.empty(np.shape(G), dtype = complex);
+    G_les = np.empty(np.shape(G), dtype = complex);
+    G_gre = np.empty(np.shape(G), dtype = complex);
+
+    # vectorize in energy by hand
+    for wi in range(len(energies)):
+
+        # temperature dependence comes as exponential factor
+        if(kBT == 0.0):
+            expT = 0.0;
+            expTinv = 1e9;
+        else:
+            expT = np.exp(-energies[wi]/kBT);
+            expTinv = np.exp(energies[wi]/kBT);
+
+        # screen out nans
+        #if(1-expT == 0): expT += 1e-9;
+        #if(1+expTinv == 0): expTinv += 1e-9;
+
+        # retarded gf
+        G_ret[:,:,:,wi] = np.real(G[:,:,:,wi]) + complex(0,1)*((1+expT)/(1-expT))*np.imag(G[:,:,:,wi]);
+
+        # advanced gf (just the conj of retarded)
+        G_adv[:,:,:,wi] = np.real(G[:,:,:,wi]) - complex(0,1)*((1+expT)/(1-expT))*np.imag(G[:,:,:,wi]);
+
+        # spectral function from G_ret
+        spectral = (-2)*np.imag(G_ret[:,:,:,wi])
+
+        # lesser gf
+        G_les[:,:,:,wi] = complex(0,1)*spectral/(1+expTinv);
+
+        # greater gf
+        G_gre[:,:,:,wi] = -complex(0,1)*spectral/(1+expT);
+
+    assert( not np.any(np.isnan(G_ret)) );
+    assert( not np.any(np.isnan(G_adv)) );
+    assert( not np.any(np.isnan(G_les)) );
+    assert( not np.any(np.isnan(G_adv)) );
+    return G_ret, G_adv, G_les, G_gre;
+
+
 def dot_spinful_arrays(a1, a2, backwards = False):
     '''
     given an array of shape (spin, norbs, norbs, nfreqs)
@@ -262,6 +400,17 @@ def dot_spinful_arrays(a1, a2, backwards = False):
                 else:
                     result[s,:,:,iw] = np.dot(a2[s], a1[s,:,:,iw]);
 
+    elif(np.shape(a2) == (nfreqs,) ): # freq dependent scalar
+        for s in range(spin):
+            for i in range(norbs):
+                for j in range(norbs):
+                    result[s,i,j] = a1[s,i,j]*a2;
+
+    elif(np.shape(a2) == np.shape(a1) ): # both are freq dependent ops
+        for s in range(spin):
+            for iw in range(nfreqs):
+                result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
+
     elif(False):
         pass;
 
@@ -269,6 +418,37 @@ def dot_spinful_arrays(a1, a2, backwards = False):
 
     return result;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################################
+#### garbage
 
 def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 5, trust_region = 1.0, step = 0.2, nelec_tol = 2e-3, verbose = 0):
     '''
