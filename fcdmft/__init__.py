@@ -130,20 +130,7 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
         rdm = dmft.dmft_solver.fci_sol_to_rdm(meanfield, soln, n_imp_orbs);
 
     else: raise(ValueError(solver+" is not a valid solver type"));
-
-    if True:
-        import matplotlib.pyplot as plt
-        x = (-1/np.pi)*np.imag(LL_hyb)
-        for i in range(np.shape(x)[1]):
-            for j in range(np.shape(x)[2]):
-                if (i==j):
-                    plt.plot(energies, x[0,i,j,:], label = (i,j));
-
-        plt.legend();
-        plt.title("LL_hyb");
-        plt.show();
-
-                
+               
     return G; # package in up spin for shape consistency
 
 
@@ -176,8 +163,6 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
 
     # meir-wingreen Lambda matrix = -2*Im[hyb]
-    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
-    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
 
@@ -197,9 +182,9 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
     jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
 
-    if True:
+    if False:
         import matplotlib.pyplot as plt
-        x = -np.imag(G_ret) #-np.imag(dot_spinful_arrays(therm, G_ret - G_adv))
+        x = -np.imag(dot_spinful_arrays(therm, G_ret - G_adv))
         for i in range(np.shape(x)[1]):
             for j in range(np.shape(x)[2]):
                 if (i==j):
@@ -210,7 +195,51 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
 
     return jE;
 
+
+def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
+    '''
+    '''
+
+    # check inputs
+    assert( len(energies) == np.shape(MBGF)[-1]);
+    assert( np.shape(LL[0]) == np.shape(RL[0]) );
     
+    # unpack
+    LL_diag, LL_hop, LL_coup, mu_L = LL;
+    RL_diag, RL_hop, RL_coup, mu_R = RL;
+    n_imp_orbs = np.shape(LL_coup)[1];
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], kBT);
+
+    # 1: hybridization between leads and SR
+    
+    # surface gf (matrices of vectors of E)
+    LL_surf = surface_gf(energies, iE, LL_diag, LL_hop, verbose = verbose);
+    RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
+
+    # hyb(E) = V*surface_gf(E)*V^\dagger
+    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
+    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
+    
+    # meir-wingreen Lambda matrix = -2*Im[hyb]
+    Lambda_L = (-2)*np.imag(LL_hyb);
+    Lambda_R = (-2)*np.imag(RL_hyb);
+
+    # 2: thermal distributions
+    if(kBT == 0.0):
+        nL = np.zeros_like(energies, dtype = int);
+        nL[energies <= mu_L] = 1; # step function
+        nR = np.zeros_like(energies, dtype = int);
+        nR[energies <= mu_R] = 1; # step function
+    else:
+        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
+        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
+
+    # landauer formula
+    jEmat = dot_spinful_arrays( dot_spinful_arrays(G_adv, Lambda_R), dot_spinful_arrays(G_ret, Lambda_L) );
+    jE = np.trace( jEmat[0])*(nL-nR);
+    return jE;
 
 
 ########################################################################

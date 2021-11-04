@@ -16,9 +16,9 @@ iE = 1e-3; # small imag part
 ##### 1: set up the impurity + leads system
 
 # anderson dot
-Vg = 0.0;
-U = 0.0;
-h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
+Vg = -0.5;
+U = 2.0;
+h1e = np.array([[[Vg,0],[0,-Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
@@ -26,7 +26,7 @@ g2e[0][1,1,0,0] += U;
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
 Vb = 0.001; # bias
-th = 1.0; # coupling between imp, leads
+th = 0.5; # coupling between imp, leads
 coupling = np.array([[[-th, 0],[0,-th]]]); # ASU
 
 # left lead
@@ -51,9 +51,13 @@ kBT = 0.0;
 MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, solver = 'fci', n_bath_orbs = 4, verbose = verbose);
 
 #### 3: use meir wingreen formula
-jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys);
+jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
+
+# also try landauer formula
+jE_land = fcdmft.landauer(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
 plt.plot(Es, np.real(jE));
+plt.plot(Es, np.real(jE_land));
 plt.title((np.pi/Vb)*np.trapz(np.real(jE), Es) );
 plt.show();
 
