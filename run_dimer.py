@@ -29,10 +29,12 @@ def second_q_ham(JK1, JK2):
 
     # first principles params, in meV
     Jx = 0.209;
+    Jy = Jx; # for more flexibility
     Jz = 0.124;
     DO = 0.674;
     DT = 0.370;
     An = 0.031;
+    #An = 0; # for simplicity
 
     # 1 particle terms
     h1e = np.zeros((Nb, Nb), dtype = complex);
@@ -54,16 +56,16 @@ def second_q_ham(JK1, JK2):
 
     # isotropic terms
     xOcoefs = np.array([np.sqrt(3),np.sqrt(3),2,2,np.sqrt(3),np.sqrt(3)])/2;
-    xOops = [(4,5),(5,4),(5,6),(6,5),(6,7),(7,6)];
+    xOops = [(2,3),(3,2),(3,4),(4,3),(4,5),(5,4)];
     xTcoefs = np.copy(xOcoefs);
     xTops = [(6,7),(7,6),(7,8),(8,7),(8,9),(9,8)];
     g2e = fci_mod.terms_to_g2e(g2e, xOops, Jx*xOcoefs, xTops, xTcoefs);
 
     yOcoefs = complex(0,1)*np.array([-np.sqrt(3),np.sqrt(3),-2,2,-np.sqrt(3),np.sqrt(3)])/2;
     yOops = xOops;
-    yTcoefs = np.copy(xOcoefs);
+    yTcoefs = np.copy(yOcoefs);
     yTops = xTops;
-    g2e = fci_mod.terms_to_g2e(g2e, yOops, Jx*yOcoefs, yTops, yTcoefs);
+    g2e = fci_mod.terms_to_g2e(g2e, yOops, Jy*yOcoefs, yTops, yTcoefs);
 
     zOcoefs = np.array([3,1,-1,3])/2;
     zOops = [(2,2),(3,3),(4,4),(5,5)];
@@ -74,7 +76,7 @@ def second_q_ham(JK1, JK2):
     # anisotropic terms
     g2e = fci_mod.terms_to_g2e(g2e, xOops, An*xOcoefs, zTops, zTcoefs);
     g2e = fci_mod.terms_to_g2e(g2e, yOops,-An*yOcoefs, zTops, zTcoefs);
-    g2e = fci_mod.terms_to_g2e(g2e, zOops,-An*zOcoefs, xTops, xTcoefs);
+    g2e = fci_mod.terms_to_g2e(g2e, zOops, -An*zOcoefs, xTops, xTcoefs);
     g2e = fci_mod.terms_to_g2e(g2e, zOops, An*zOcoefs, yTops, yTcoefs);
 
     # Kondo terms
@@ -94,6 +96,31 @@ def second_q_ham(JK1, JK2):
     return h1e, g2e;
 
 
+def subspace(m):
+
+    if(m==1/2):
+        # pick out m=1/2 subspace
+        picks = [[0,2,9],[0,3,8],[0,4,7],[0,5,6],[1,2,8],[1,3,7],[1,4,6]]; 
+        pickis = [3,6,9,12,18,21,24]; 
+        pickstrs = ["|up, 3/2, -3/2>","|up, 1/2, -1/2>","|up, -1/2, 1/2>","|up, -3/2, 3/2>","|down, 3/2, -1/2>","|down, 1/2, 1/2>","|down, -1/2, 3/2>"];
+
+    elif(m==3/2):
+        # pick out m=3/2 subspace
+        picks = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]];
+        pickis = [2, 5, 8, 17, 20,];
+        pickstrs = ["|up, 3/2, -1/2>", "|up, 1/2, 1/2>", "|up, -1/2, 3/2>","|down, 3/2, 1/2>","|down, 1/2, 3/2>"];
+
+    elif(m==5/2):
+        picks = [[0,2,7],[0,3,6],[1,2,6]];
+        pickis = [1, 4, 16];
+        pickstrs = ["|up, 3/2, 1/2>", "|up, 1/2, 3/2>","|down, 3/2, 3/2>"];
+
+    else:
+        raise(ValueError);
+
+    return picks, pickis, pickstrs;
+
+
 #### run code
 
 # top level
@@ -104,22 +131,22 @@ option = sys.argv[1];
 
 # tight binding params
 tl = 1.0; # 2e hopping, in meV
-JK = 0.1;
+JK = -0.0;
 
 # construct h_SR and define source
 h1e, g2e = second_q_ham(JK, JK); # second qu'd form
 parts = np.array([1,1,1]); # one e, 2 separate impurities
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
-picks = [[0,2,9],[0,3,8],[0,4,7],[0,5,6],[1,2,8],[1,3,7],[1,4,6]]; # m = 1/2 subspace
-pick_is = [3,6,9,12,18,21,24]; # m= 1/2 subspace
-pickstrs = ["|up, 3/2, -3/2>","|up, 1/2, -1/2>","|up, -1/2, 1/2>","|up, -3/2, 3/2>","|down, 3/2, -1/2>","|down, 1/2, 1/2>","|up, 3/2, -3/2>""|down, -1/2, 3/2>"];
-h_SR = fci_mod.single_to_det(h1e, g2e, parts, states, verbose = 1);
+
+# prep system
+mT = 1/2; # total z spin
+mystates, myis, mystrs = subspace(mT); # subspace
+h_SR = fci_mod.single_to_det(h1e, g2e, parts, states, dets_interest = mystates);
 source = np.zeros(np.shape(h_SR)[0]);
-sourcei = 6; # [0,3,8] = |up, 1/2, -1/2>
-entangledi = 9; # = [0,4,7] = |up, -1/2, 1/2>
-flipi = 21; # [1,3,7] = |down, 1/2, 1/2>
-source[sourcei] = 1/np.sqrt(2);
-source[entangledi] = -1/np.sqrt(2);
+source[1] = 1/np.sqrt(2);
+source[2] = 1/np.sqrt(2);
+print(h_SR);
+mysource = r"$0.71|up, \frac{1}{2}, -\frac{1}{2} \rangle + 0.71|up, -\frac{1}{2}, \frac{1}{2} \rangle$"
 
 #### what to iter over
 
@@ -141,14 +168,14 @@ if option == "E": # iter over energy
     Tvals = np.array(Tvals);
     fig, ax = plt.subplots();
     xlab = "$E+2t_l $"
-    for pi in range(len(pick_is)):
-        ax.scatter(Evals + 2*tl,Tvals[:,pick_is[pi]], marker = 's',label = pickstrs[pi]);
+    for pi in range(len(myis)):
+        ax.scatter(Evals + 2*tl,Tvals[:,myis[pi]], marker = 's',label = mystrs[pi]);
                                                     
     
 elif option == "N": # stretch SR, switzer style
 
     # iter over N
-    Nmax = 90;
+    Nmax = 10;
     Nvals = np.linspace(1,Nmax,30,dtype = int);
     Tvals = [];
     for N in Nvals:
@@ -175,8 +202,8 @@ elif option == "N": # stretch SR, switzer style
     Tvals = np.array(Tvals);
     fig, ax = plt.subplots();
     xlab = "$N$"
-    for pi in range(len(pick_is)):
-        ax.plot(Nvals,Tvals[:,pick_is[pi]],label = pickstrs[pi]);
+    for pi in range(len(myis)):
+        ax.plot(Nvals,Tvals[:,pi], label = mystrs[pi]);
 
 
 # format and plot
@@ -186,7 +213,7 @@ ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
 ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
 ax.set_xlabel(xlab);
 ax.set_ylabel("$T$");
-ax.set_title("$J_{K} = $"+str(JK));
+ax.set_title("source = "+mysource+", $J_{K} = $"+str(JK));
 plt.legend();
 plt.show();
 

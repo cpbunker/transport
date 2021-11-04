@@ -73,9 +73,11 @@ def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
 
     for termi in range(len(terms1)):
         for termj in range(len(terms2)):
+            #print(terms1[termi][0], terms1[termi][1], terms2[termj][0], terms2[termj][1]);
             g2e[terms1[termi][0], terms1[termi][1], terms2[termj][0], terms2[termj][1]] += coefs1[termi]*coefs2[termj];
             g2e[terms2[termj][0], terms2[termj][1], terms1[termi][0], terms1[termi][1]] += coefs1[termi]*coefs2[termj];
 
+    #assert False;
     return g2e;
 
 
@@ -196,19 +198,21 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         is_interest = [];
         for deti in range(len(dets)): # all determinants
             for det in dets_interest: # only ones equal to one of interest
-                if not np.any(dets[deti] - det):
+                if not np.any(dets[deti] - det): # dets same
                     is_interest.append(deti);
 
         # check that requested dets do not couple to other dets
         for deti in range(len(dets)): # all determinants
-            for det in dets_interest: # only ones equal to one of interest
-                if not np.any(dets[deti] - det):
-                    coupling = H[deti];
-                    for cindex in range(len(coupling)):
-                        assert(coupling[cindex] == 0 or cindex in is_interest); # ensure that nonzero elements couple to other states of interest only
-
+            if deti in is_interest: # must be one of interest
+                for detj in range(len(dets)): # all others
+                    if np.any(dets[deti] - dets[detj]): # dets not same
+                        coupling = H[deti,detj];
+                        if( (coupling != 0) and (detj not in is_interest) ):
+                            # bad: nonzero coupling outside subspace of interest
+                            if(verbose): print("bad coupling: ",dets[deti], dets[detj], coupling);
+       
         # transfer desired matrix elements
-        newH = np.zeros((len(is_interest),len(is_interest) ));
+        newH = np.zeros((len(is_interest),len(is_interest) ), dtype = complex);
         for i in range(len(is_interest)):
             for j in range(len(is_interest)):
                 newH[i,j] += H[is_interest[i], is_interest[j] ];
