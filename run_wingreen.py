@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #### top level
-np.set_printoptions(precision = 4, suppress = True);
+#np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 iE = 1e-3; # small imag part
 
@@ -17,16 +17,16 @@ iE = 1e-3; # small imag part
 
 # anderson dot
 Vg = -0.5;
-U = 2.0;
-h1e = np.array([[[Vg,0],[0,-Vg]]]); # on site energy
+U = 0.0;
+h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
 
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
-Vb = 0.001; # bias
-th = 0.5; # coupling between imp, leads
+Vb = 0.005; # bias
+th = 0.4; # coupling between imp, leads
 coupling = np.array([[[-th, 0],[0,-th]]]); # ASU
 
 # left lead
@@ -40,8 +40,9 @@ V_RL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
 RLphys = (H_RL, V_RL, np.copy(coupling), -Vb/2); # pack
 
 # energy spectrum
-cutoff = 1e-5; # how far around 0 to avoid
-Es = np.append(np.linspace(-Vb, -cutoff, 99), np.linspace(cutoff, Vb, 99));
+numE = 49; # number energies
+cutoff = 1e-4; # how far around 0 to avoid
+Es = np.append(np.linspace(-Vb, -cutoff, numE), np.linspace(cutoff, Vb, numE));
 iE = 1e-2;
 
 # temp

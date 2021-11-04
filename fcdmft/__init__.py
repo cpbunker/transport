@@ -59,6 +59,7 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     '''
     
     # check inputs
+    assert(energies[0] < energies[-1]);
     assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
     assert(np.shape(SR_1e) == np.shape(LL[0]));
     assert(np.shape(SR_1e) == np.shape(LL[1]));
@@ -86,18 +87,15 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
     RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
-    hyb = LL_hyb + RL_hyb; # combine, renormalize ?
-    if(verbose): print(" - hyb(E) = \n", hyb[0,:,:,0]);
     
-    # convergence loop would start here
-    # first attempt at bath disc
-    # outputs n_bath_orbs bath energies, for each imp orb
+    # bath disc: outputs n_bath_orbs bath energies, for each imp orb
     if(verbose): print("\n3. Bath discretization");
+    hyb = LL_hyb + RL_hyb;
     bathe, bathv = dmft.gwdmft.get_bath_direct(hyb, energies, n_bath_orbs);
 
-    # optimize bath disc
+    # optimize
     bathe, bathv = dmft.gwdmft.opt_bath(bathe, bathv, hyb, energies, iE, n_bath_orbs);
-    if(verbose): print(" - bath energies = ", bathe);
+    if(verbose): print(" - opt. bath energies = ", bathe);
 
     # construct manybody hamiltonian of imp + bath
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
@@ -107,10 +105,10 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     chem_pot = 0.0; # corresponds to bath half-filling
     
     # find manybody gf of imp + bath
-    # I hope this is equivalent to Zgid paper eq 28
+    # ie Zgid paper eq 28
     if(verbose): print("\n4. Impurity Green's function");
     meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = verbose);
-    
+
     # use fci (which is spin restricted) to get Green's function
     # choose solver
     assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie spin restricted
@@ -182,6 +180,8 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
     jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
 
+    # test code
+    assert( np.max(abs(np.trace((complex(0,1)/2)*(dot_spinful_arrays((Lambda_L - Lambda_R), G_les))[0]))) < 1e-10 );
     if False:
         import matplotlib.pyplot as plt
         x = -np.imag(dot_spinful_arrays(therm, G_ret - G_adv))
@@ -260,6 +260,7 @@ def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
     assert(len(np.shape(H)) == 3); # should contain spin
     assert(np.shape(H) == np.shape(V));
     assert(not np.any(np.imag(V) ) );
+    energies = energies + complex(0,iE);
 
     # quick shortcut for diag inputs
     H_is_diag = (np.trace(H[0]) == np.sum(H.flat) ); # is a diagonal matrix
@@ -271,7 +272,7 @@ def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
     if(H_is_diag and H_is_same and V_is_diag and V_is_same):
 
         if(verbose): print(" - Diag shortcut");
-        energies = energies + iE;
+        energies = np.real(energies); # no + iE necessary in this case
         gf = np.zeros((*np.shape(H),len(energies) ), dtype = complex);
         
         for i in range(np.shape(H[0])[0]): # iter over diag
