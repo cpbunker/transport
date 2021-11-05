@@ -60,6 +60,7 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     
     # check inputs
     assert(energies[0] < energies[-1]);
+    assert( iE >= 0);
     assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
     assert(np.shape(SR_1e) == np.shape(LL[0]));
     assert(np.shape(SR_1e) == np.shape(LL[1]));
@@ -71,9 +72,9 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     LL_diag, LL_hop, LL_coup, mu_L = LL;
     RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_core = 0; # core orbitals
-    nao = 1; # pretty sure this does not do anything
     max_mem = 8000;
     n_orbs = n_imp_orbs + 2*n_bath_orbs;
+    nao = n_imp_orbs
 
     # surface green's function in the leads
     if(verbose): print("\n1. Surface Green's function");
@@ -101,8 +102,9 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
 
     # get chem pot that corresponds to desired occupancy
-    #chem_pot = find_mu(h1e_imp, h2e_imp, 0.0, np.array([np.eye(n_orbs)]), imp_occ, max_mem, verbose = 0);
-    chem_pot = 0.0; # corresponds to bath half-filling
+    chem_pot = find_mu(h1e_imp, h2e_imp, 0.0, np.array([np.eye(n_orbs)]), 1.0, max_mem, verbose = verbose);
+    #print("-->", chem_pot);
+    #assert False;
     
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
@@ -115,17 +117,13 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     if(solver == 'cc'):
 
         # get MBGF, reduced density matrix
-        G, rdm = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
-        rdm = rdm[:n_imp_orbs, :n_imp_orbs];
+        G = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
         
     elif(solver == 'fci'):
 
         # get MBGF
         assert(n_orbs <= 10); # so it doesn't stall
-        G, soln = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
-
-        # get rdm for scattering region only
-        rdm = dmft.dmft_solver.fci_sol_to_rdm(meanfield, soln, n_imp_orbs);
+        G = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
 
     else: raise(ValueError(solver+" is not a valid solver type"));
                
@@ -181,17 +179,7 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
 
     # test code
-    assert( np.max(abs(np.trace((complex(0,1)/2)*(dot_spinful_arrays((Lambda_L - Lambda_R), G_les))[0]))) < 1e-10 );
-    if False:
-        import matplotlib.pyplot as plt
-        x = -np.imag(dot_spinful_arrays(therm, G_ret - G_adv))
-        for i in range(np.shape(x)[1]):
-            for j in range(np.shape(x)[2]):
-                if (i==j):
-                    plt.plot(energies, x[0,i,j,:], label = (i,j));
-        plt.legend();
-        plt.title("therm");
-        plt.show();
+    #assert( np.max(abs(np.trace((complex(0,1)/2)*(dot_spinful_arrays((Lambda_L - Lambda_R), G_les))[0]))) < 1e-10 );
 
     return jE;
 
@@ -350,6 +338,33 @@ def junction_gf(g_L, t_L, g_R, t_R, E, H_SR):
     return np.array(G);
 
 
+def spdm(energies, iE, G):
+    '''
+    Get the single particle density matrix from the many body green's function
+    '''
+    import matplotlib.pyplot as plt
+    # check inputs
+    assert(len(energies) == np.shape(G)[-1]);
+
+    # return val
+    P = np.zeros(np.shape(G)[:3], dtype = complex);
+
+    # fill
+    for s in range(np.shape(P)[0]):
+        for i in range(np.shape(P)[1]):
+            for j in range(np.shape(P)[2]):
+                fE = np.exp(complex(0,1)*energies*iE)*G[s,i,j]; # func to integrate
+                P[s,i,j] = complex(0,-1)*np.trapz(fE, energies);
+                if(i==j and False):
+                    plt.plot(energies, np.real(fE));
+                    plt.plot(energies, np.imag(fE));
+                    plt.title(i);
+                    plt.show();
+                    
+    return P;
+    
+
+
 ########################################################################
 #### utils
 
@@ -449,38 +464,7 @@ def dot_spinful_arrays(a1, a2, backwards = False):
     return result;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################################################################
-#### garbage
-
-def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 5, trust_region = 1.0, step = 0.2, nelec_tol = 2e-3, verbose = 0):
+def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 10, trust_region = 0.03, step = 0.02, nelec_tol = 2e-3, verbose = 0):
     '''
     Find chemical potential that reproduces the target occupancy on the impurity
     '''
@@ -553,7 +537,13 @@ def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 5, trust_region = 1
     return mu
 
 
-    
+
+
+
+
+
+########################################################################
+#### garbage    
 
 
 def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):

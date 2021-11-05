@@ -8,17 +8,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #### top level
-#np.set_printoptions(precision = 4, suppress = True);
+np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
-iE = 1e-3; # small imag part
 
 
 ##### 1: set up the impurity + leads system
 
 # anderson dot
-Vg = -0.5;
-U = 0.0;
-h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
+Vg = -0.25;
+U = 1.0;
+dbg = 0*1e-4;
+h1e = np.array([[[Vg+dbg,0],[0,Vg-dbg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
@@ -39,17 +39,28 @@ H_RL = np.array([[[-Vb/2,0],[0,-Vb/2]]]);
 V_RL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
 RLphys = (H_RL, V_RL, np.copy(coupling), -Vb/2); # pack
 
-# energy spectrum
-numE = 49; # number energies
-cutoff = 1e-4; # how far around 0 to avoid
-Es = np.append(np.linspace(-Vb, -cutoff, numE), np.linspace(cutoff, Vb, numE));
-iE = 1e-2;
+# energy spectrum needs to handle close to 0 finely, but also extend to \pm 2
+# also needs to avoid 0 and \pm Vb/2 (screened out)
+numE = 10; # number energies
+bigstep, smallstep = 2/100, 1.5*Vb/100
+Es = np.append(np.arange(-2.0,-1.5*Vb-smallstep, bigstep), np.arange(-1.5*Vb+smallstep, -Vb/100, smallstep));
+Es = np.append(Es, np.arange(Vb/100, 1.5*Vb-smallstep, smallstep));
+Es = np.append(Es, np.arange(1.5*Vb+smallstep, 2.0, bigstep)); # lends itself to 4 bath orbs
+iE = Vb; # imag part, seems to work
+# screen out
+for badnum in [0, Vb/2, -Vb/2]:
+    if(np.min(abs(Es - badnum)) < 1e-10): assert False
+Es = np.linspace(-1.49*Vb, 1.5*Vb, 101);
 
 # temp
 kBT = 0.0;
 
 #### 2: compute the many body green's function for imp + leads system
 MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, solver = 'fci', n_bath_orbs = 4, verbose = verbose);
+SPDM = fcdmft.spdm(Es, iE/1000, MBGF);
+print(SPDM[0,:2,:2]);
+print(np.trace(SPDM[0]));
+print(np.trace(SPDM[0,:2,:2]));
 
 #### 3: use meir wingreen formula
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
