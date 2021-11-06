@@ -74,7 +74,6 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     n_core = 0; # core orbitals
     max_mem = 8000;
     n_orbs = n_imp_orbs + 2*n_bath_orbs;
-    nao = n_imp_orbs
 
     # surface green's function in the leads
     if(verbose): print("\n1. Surface Green's function");
@@ -102,14 +101,13 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
 
     # get chem pot that corresponds to desired occupancy
-    chem_pot = find_mu(h1e_imp, h2e_imp, 0.0, np.array([np.eye(n_orbs)]), 1.0, max_mem, verbose = verbose);
-    #print("-->", chem_pot);
-    #assert False;
+    chem_pot = 0.0; # init guess
+    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = verbose);
     
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
     if(verbose): print("\n4. Impurity Green's function");
-    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, nao, np.array([np.eye(n_orbs)]), max_mem, verbose = verbose);
+    meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, dm_guess, max_mem, verbose = verbose);
 
     # use fci (which is spin restricted) to get Green's function
     # choose solver
@@ -145,7 +143,8 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     LL_diag, LL_hop, LL_coup, mu_L = LL;
     RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_imp_orbs = np.shape(LL_coup)[1];
-    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], kBT);
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs]);
+    
     # 1: hybridization between leads and SR
     
     # surface gf (matrices of vectors of E)
@@ -159,8 +158,8 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
 
     # meir-wingreen Lambda matrix = -2*Im[hyb]
-    Lambda_L = (-2)*np.imag(LL_hyb);
-    Lambda_R = (-2)*np.imag(RL_hyb);
+    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
+    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
 
     # 2: thermal distributions (vectors of E)
     if(kBT == 0.0):
@@ -179,7 +178,15 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
 
     # test code
-    #assert( np.max(abs(np.trace((complex(0,1)/2)*(dot_spinful_arrays((Lambda_L - Lambda_R), G_les))[0]))) < 1e-10 );
+    if False:
+        print(-np.imag(G_les))
+        print(Lambda_L, Lambda_R, Lambda_L - Lambda_R, np.max(Lambda_L-Lambda_R));
+        import matplotlib.pyplot as plt
+        plt.plot(energies, -0.5*np.imag(np.trace( G_ret)[0]  ) )
+        plt.plot(energies, -0.5*np.imag(np.trace( G_adv)[0]  ) )
+        plt.plot(energies, -0.5*np.imag(np.trace(dot_spinful_arrays((Lambda_L - Lambda_R), G_les)[0])))
+        #plt.plot(energies, jE);
+        plt.show()
 
     return jE;
 
@@ -196,7 +203,7 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     LL_diag, LL_hop, LL_coup, mu_L = LL;
     RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_imp_orbs = np.shape(LL_coup)[1];
-    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], kBT);
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs]);
 
     # 1: hybridization between leads and SR
     
@@ -211,8 +218,8 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
     
     # meir-wingreen Lambda matrix = -2*Im[hyb]
-    Lambda_L = (-2)*np.imag(LL_hyb);
-    Lambda_R = (-2)*np.imag(RL_hyb);
+    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
+    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
 
     # 2: thermal distributions
     if(kBT == 0.0):
@@ -368,7 +375,7 @@ def spdm(energies, iE, G):
 ########################################################################
 #### utils
 
-def decompose_gf(energies, G, kBT):
+def decompose_gf(energies, G):
     '''
     Decompose the full time-ordered many body green's function (from kernel)
     into r, a, <, > parts according to page 18 of
@@ -386,51 +393,52 @@ def decompose_gf(energies, G, kBT):
     G_les = np.empty(np.shape(G), dtype = complex);
     G_gre = np.empty(np.shape(G), dtype = complex);
 
+    # hermitian conjugate of the MBGF
+    Gdagger = np.zeros_like(G);
+    for s in range(np.shape(G)[0]):
+        for wi in range(np.shape(G)[-1]):
+            Gdagger[s,:,:,wi] = np.conj(G[s,:,:,wi].T);
+    
+    # "real", "imag" part of time orderd MBGF
+    realG = (1/2)*(G + Gdagger);
+    imagG = (1/complex(0,2))*(G-Gdagger);
+
     # vectorize in energy by hand
-    for wi in range(len(energies)):
+    for s in range(np.shape(G)[0]):
+        for wi in range(len(energies)):
+            
+            # fermi dirac dist
+            nFD = min(0, energies[wi]);
+            if nFD: nFD = 1;
 
-        # temperature dependence comes as exponential factor
-        if(kBT == 0.0):
-            expT = 0.0;
-            expTinv = 1e9;
-        else:
-            expT = np.exp(-energies[wi]/kBT);
-            expTinv = np.exp(energies[wi]/kBT);
+            # retarded gf
+            G_ret[s,:,:,wi] = realG[s,:,:,wi] + complex(0,1)*imagG[s,:,:,wi];
 
-        # screen out nans
-        #if(1-expT == 0): expT += 1e-9;
-        #if(1+expTinv == 0): expTinv += 1e-9;
+            # advanced gf (just the conj of retarded)
+            G_adv[s,:,:,wi] = realG[s,:,:,wi] - complex(0,1)*imagG[s,:,:,wi];
 
-        # retarded gf
-        G_ret[:,:,:,wi] = np.real(G[:,:,:,wi]) + complex(0,1)*((1+expT)/(1-expT))*np.imag(G[:,:,:,wi]);
+            # spectral function from G_ret
+            spectral = (-1/np.pi)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
 
-        # advanced gf (just the conj of retarded)
-        G_adv[:,:,:,wi] = np.real(G[:,:,:,wi]) - complex(0,1)*((1+expT)/(1-expT))*np.imag(G[:,:,:,wi]);
+            # lesser gf
+            G_les[s,:,:,wi] = complex(0,1)*spectral;
 
-        # spectral function from G_ret
-        spectral = (-2)*np.imag(G_ret[:,:,:,wi])
+            # greater gf
+            G_gre[s,:,:,wi] = -complex(0,1)*spectral;
 
-        # lesser gf
-        G_les[:,:,:,wi] = complex(0,1)*spectral/(1+expTinv);
-
-        # greater gf
-        G_gre[:,:,:,wi] = -complex(0,1)*spectral/(1+expT);
-
-    assert( not np.any(np.isnan(G_ret)) );
-    assert( not np.any(np.isnan(G_adv)) );
-    assert( not np.any(np.isnan(G_les)) );
-    assert( not np.any(np.isnan(G_adv)) );
+    assert( not np.any(np.isnan(np.array([G_ret, G_adv, G_les, G_gre]) ) ) );
     return G_ret, G_adv, G_les, G_gre;
 
 
-def dot_spinful_arrays(a1, a2, backwards = False):
+def dot_spinful_arrays(a1_, a2_, backwards = False):
     '''
     given an array of shape (spin, norbs, norbs, nfreqs)
     and another array , either
     - an operator, shape (spin, norbs, norbs), indep of freq
     '''
 
-    # unpack sizes
+    # unpack
+    a1, a2 = np.copy(a1_), np.copy(a2_); # not in place
     spin, norbs, _, nfreqs = np.shape(a1);
 
     # return var
@@ -464,41 +472,57 @@ def dot_spinful_arrays(a1, a2, backwards = False):
     return result;
 
 
-def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 10, trust_region = 0.03, step = 0.02, nelec_tol = 2e-3, verbose = 0):
+def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region = 0.05, step = 0.01, nelec_tol = 1e-2, verbose = 0):
     '''
     Find chemical potential that reproduces the target occupancy on the impurity
     '''
 
     # check inputs
-    assert(np.shape(h1e) == np.shape(dm0));
+    assert(np.shape(h1e) == np.shape(g2e)[:3]);
+    assert( isinstance( target, int) );
 
     # before starting loop
+    norbs = np.shape(h1e)[1];
     mu_cycle = 0
     dmu = 0 # change in mu
     record = [] # records stuff as we cycle
-    nao = 2; # only affects printouts
-    nimp = 2;
+
+    # initial guess dm
+    dm0 = np.zeros((norbs, norbs));
+    for i in range(norbs):
+        if(i < target): # filled imp state
+            dm0[i,i] = 1;
+        elif( i < nimp): # unfilled imp state
+            dm0[i,i] = 0;
+        else: # half filled bath state
+            dm0[i,i] = 0.5;
+    dm0 = np.array([dm0]); # spin wrapper
 
     # loop
     while mu_cycle < max_cycle:
         
         # run HF for embedding problem
         mu = mu0 + dmu
-        mf = dmft.dmft_solver.mf_kernel(h1e, g2e, mu, nao, dm0, max_mem)
+        mf = dmft.dmft_solver.mf_kernel(h1e, g2e, mu, nimp, dm0, max_mem, verbose = verbose)
 
-        # run ground-state impurity solver to get 1-rdm
-        rdm = dmft.dmft_solver.fci_rdm(mf, ao_orbs = range(nimp), verbose = verbose)
-        nelec = np.trace(rdm)
+        # run ground-state impurity solver to get rdm, nelec
+        dm = mf.make_rdm1()
+        nelec = np.trace(dm[:nimp,:nimp])
         if mu_cycle > 0:
             dnelec_old = dnelec
         dnelec = nelec - target
-        print("mu cycle ", mu_cycle, "mu = ", mu,"dmu = ", dmu,"nelec = ", nelec, "dnelec = ", dnelec);
+
+        # diagnostic
+        if(verbose): print("mu cycle ", mu_cycle, "mu = ", mu,"dmu = ", dmu,"nelec = ", nelec, "dnelec = ", dnelec, "record = ",record);
+        assert(np.trace(dm) < norbs); # full filling indicates error
+
+        # check convergence
         if abs(dnelec) < nelec_tol * target:
             break
         if mu_cycle > 0:
-            if abs(dnelec - dnelec_old) < 1e-8:
-                print(" line 294");
-                #break
+            if abs(dnelec - dnelec_old) < nelec_tol:
+                if(verbose): print(" - nelec converged");
+                break
         record.append([dmu, dnelec])
 
         if mu_cycle == 0:
@@ -533,8 +557,9 @@ def find_mu(h1e, g2e, mu0, dm0, target, max_mem, max_cycle = 10, trust_region = 
                 dmu = trust_region
 
         mu_cycle += 1
-        
-    return mu
+
+    # return result of density matrix assoc'd with target occ
+    return mu, np.array([dm]);
 
 
 
