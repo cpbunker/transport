@@ -15,7 +15,7 @@ verbose = 1;
 ##### 1: set up the impurity + leads system
 
 # anderson dot
-Vg = -0.003;
+Vg = -0.0;
 U = 0.0;
 h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
@@ -53,7 +53,7 @@ Es = np.linspace(-1.09*Vb, 1.1*Vb, 101);
 
 # kernel inputs
 nbo = 4;
-iE = (Es[-1] - Es[0])/nbo;
+iE = (Es[-1] - Es[0])/(2*nbo);
 kBT = 0.0;
 
 # run kernel for MBGF
@@ -71,7 +71,7 @@ jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 jE_land = fcdmft.landauer(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
 plt.plot(Es, np.real(jE));
-plt.plot(Es, np.real(2*np.pi*jE_land));
+plt.plot(Es, np.real(jE_land));
 plt.title((np.pi/Vb)*np.trapz(np.real(jE), Es) );
 plt.show();
 

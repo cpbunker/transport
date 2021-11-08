@@ -14,7 +14,6 @@ if 'OMP_NUM_THREADS' not in os.environ:
     os.environ['OMP_NUM_THREADS'] = '1'
 
 from fcdmft import dmft
-from fcdmft.solver import scf_mu as scf
 
 import numpy as np
 
@@ -158,8 +157,8 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
 
     # meir-wingreen Lambda matrix = -2*Im[hyb]
-    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
-    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
+    Lambda_L = (-2)*np.imag(LL_hyb);
+    Lambda_R = (-2)*np.imag(RL_hyb);
 
     # 2: thermal distributions (vectors of E)
     if(kBT == 0.0):
@@ -171,28 +170,19 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
         nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
         nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
 
-    # 4: meir wingreen formula
+    # 4: Meir Wingreen formula - Meir Wingreen Eq 6
     therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
     jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
     jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
-    jE = (complex(0,1)/2)*np.trace(jEmat[0]); # trace over impurity sites
-
-    # test code
-    if False:
-        print(-np.imag(G_les))
-        print(Lambda_L, Lambda_R, Lambda_L - Lambda_R, np.max(Lambda_L-Lambda_R));
-        import matplotlib.pyplot as plt
-        plt.plot(energies, -0.5*np.imag(np.trace( G_ret)[0]  ) )
-        plt.plot(energies, -0.5*np.imag(np.trace( G_adv)[0]  ) )
-        plt.plot(energies, -0.5*np.imag(np.trace(dot_spinful_arrays((Lambda_L - Lambda_R), G_les)[0])))
-        #plt.plot(energies, jE);
-        plt.show()
+    jE = (complex(0,1)/(4*np.pi))*np.trace(jEmat[0]); # hbar = 1, trace over impurity sites
 
     return jE;
 
 
 def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     '''
+    Given the MBGF for the impurity + bath system, calculate the current
+    through the impurity, assuming the noninteracting case (Meir Wingreen Eq 7)
     '''
 
     # check inputs
@@ -218,8 +208,8 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
     
     # meir-wingreen Lambda matrix = -2*Im[hyb]
-    Lambda_L = (-1/np.pi)*np.imag(LL_hyb);
-    Lambda_R = (-1/np.pi)*np.imag(RL_hyb);
+    Lambda_L = (-2)*np.imag(LL_hyb);
+    Lambda_R = (-2)*np.imag(RL_hyb);
 
     # 2: thermal distributions
     if(kBT == 0.0):
@@ -231,9 +221,22 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
         nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
         nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
 
-    # landauer formula
+    # landauer formula - Meir Wingreen Eq. 7
     jEmat = dot_spinful_arrays( dot_spinful_arrays(G_adv, Lambda_R), dot_spinful_arrays(G_ret, Lambda_L) );
-    jE = np.trace( jEmat[0])*(nL-nR);
+    jE = np.trace( jEmat[0])*(nL-nR)/(2*np.pi); # hbar = 1
+
+    # test code
+    if True:
+        import matplotlib.pyplot as plt
+        plt.plot(energies, np.imag(G_les[0,0,0]));
+        plt.plot(energies, np.imag(G_les[0,1,1]));
+        idenL = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_L, G_adv));
+        idenR = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_R, G_adv));
+        identity = complex(0,1)*(dot_spinful_arrays(idenL, nL) + dot_spinful_arrays(idenR, nR));
+        plt.plot(energies, np.imag(identity[0,0,0]), linestyle = "dashed");
+        plt.plot(energies, np.imag(identity[0,1,1]), linestyle = "dashed");
+        plt.show()
+        
     return jE;
 
 
@@ -418,7 +421,7 @@ def decompose_gf(energies, G):
             G_adv[s,:,:,wi] = realG[s,:,:,wi] - complex(0,1)*imagG[s,:,:,wi];
 
             # spectral function from G_ret
-            spectral = (-1/np.pi)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
+            spectral = (-2)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
 
             # lesser gf
             G_les[s,:,:,wi] = complex(0,1)*spectral;
@@ -454,12 +457,14 @@ def dot_spinful_arrays(a1_, a2_, backwards = False):
                     result[s,:,:,iw] = np.dot(a2[s], a1[s,:,:,iw]);
 
     elif(np.shape(a2) == (nfreqs,) ): # freq dependent scalar
+        assert( not backwards);
         for s in range(spin):
             for i in range(norbs):
                 for j in range(norbs):
                     result[s,i,j] = a1[s,i,j]*a2;
 
     elif(np.shape(a2) == np.shape(a1) ): # both are freq dependent ops
+        assert(not backwards);
         for s in range(spin):
             for iw in range(nfreqs):
                 result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
