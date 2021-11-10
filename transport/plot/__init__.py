@@ -2,8 +2,6 @@
 Plotting module for quick methods of making matplotlib plots in pyscf context
 '''
 
-import siam_current
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines
@@ -362,7 +360,6 @@ def CompObservables(datafs, labs, sites = ['LL','D','RL'], splots = ['J'], mytit
 
 def CompOnly(datafs, labs, obs, mytitle = "", leg_title="", leg_ncol = 1 ):
     '''
-
     '''
 
     # check args

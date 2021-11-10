@@ -24,8 +24,7 @@ import math
 
 
 ##########################################################################################################
-#### conversions
-
+#### fci conversions
 
 def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
@@ -67,6 +66,133 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
                                    # what matter is h1e, h2e are now encoded in this scf instance
 
     return mol, scf_inst;
+
+def scf_to_arr(mol, scf_obj):
+    '''
+    Converts physics of an atomic/molecular system, as contained in an scf inst
+    ie produced by passing molecular geometry object mol to
+    - scf.RHF(mol) restricted hartree fock
+    - scf.UHF(mol) unrestricted hartree fock
+    - scf.RKS(mol).run() restricted Kohn sham
+    - etc
+    to ab initio hamiltonian arrays h1e and g2e
+    '''
+
+    from pyscf import ao2mo
+
+    # unpack scf object
+    hcore = scf_obj.get_hcore();
+    coeffs = scf_obj.mo_coeff;
+    norbs = np.shape(coeffs)[0];
+
+    # convert to h1e and h2e array reps in molecular orb basis
+    h1e = np.dot(coeffs.T, hcore @ coeffs);
+    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
+
+    return h1e, g2e;
+
+
+def cj_to_ck(h1e, nleads):
+    '''
+    Transform hams which are second quantized in real space (ie c_j)
+    into hams which are second quantized in momentum space (ie c_k)
+
+    Note on ASU formalism
+    For an L sight chain we have tight binding sites 0,1,...2L in real space.
+    Each are single e only, even are up and odd are down.
+    In k space k = (2\pi)/La * integer < \pi/a -> L states of each spin
+    We order these 
+    '''
+
+    # check inputs
+    assert(np.shape(h1e)[0] % 2 == 0);
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+    nimp = norbs - 2*sum(nleads);
+    iLL = 2*nleads[0];
+    iRL = 2*nleads[0] + nimp;
+
+    # full k state ham
+    hk = np.zeros_like(h1e, dtype = complex);
+    for j in range(norbs): # iter over spin orbs
+        for jp in range(norbs):
+
+            # to ref molecular orbs
+            jmo = j // 2;
+            jpmo = jp // 2;
+            
+            # replace pure lead j states with k states, left lead
+            if( j < iLL and jp < iLL ):
+                # k is just index in ham, m reps ka=2\pi m/L, w/ m <= L/2
+                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                        #if((k,kp) == (0,1)): print(h1e[j,jp], m*(jmo%nleads[0]) - mp*(jmo%nleads[0]));
+                        if(j % 2 == 0 and jp % 2 == 0): # up states
+                            hk[k, kp] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        elif(j % 2 == 1 and jp % 2 == 1): # down states
+                            hk[k+nleads[0], kp+nleads[0]] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
+
+            # replace pure lead j states with k states, right lead
+            elif(j >= iRL and jp >= iRL ):
+                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                        if(j % 2 == 0 and jp % 2 == 0): # up states
+                            hk[iRL + k, iRL + kp] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        elif(j % 2 == 1 and jp % 2 == 1): # down states
+                            hk[iRL+k+nleads[1], iRL+kp+nleads[1]] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
+
+            # jp coupling to LL
+            elif( j >= iLL and j < iRL and jp < iLL):
+
+                # jp column elements go to kp
+                for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(jp % 2 == 0): # up states
+                        hk[j,kp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                    elif(jp % 2 == 1): # down states
+                        hk[j,kp+nleads[0]] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+
+            # j coupling to LL
+            elif( jp >= iLL and jp < iRL and j < iLL):
+
+                # j row elements go to k
+                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(j % 2 == 0): # up states
+                        hk[k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+                    elif(j % 2 == 1): # down states
+                        hk[k+nleads[0],jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+
+            # jp coupling to RL
+            elif( j >= iLL and j < iRL and jp >= iRL):
+
+                # jp column elements go to kp
+                for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(jp % 2 == 0): # up states
+                        hk[j,kp+iRL] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                    elif(jp % 2 == 1): # down states
+                        hk[j,kp+nleads[1]+iRL] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+
+            # j coupling to RL
+            elif( jp >= iLL and jp < iRL and j >= iRL):
+
+                # j row elements go to k
+                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(j % 2 == 0): # up states
+                        hk[k+iRL,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                    elif(j % 2 == 1): # down states
+                        hk[k+nleads[0]+iRL,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                        
+            # pure SR states unchanged
+            elif( j >= iLL and j < iRL and jp >= iLL and jp < iRL):
+                hk[j,jp] += h1e[j,jp];
+
+            else: assert(h1e[j,jp] == 0);
+
+    # resulting ham should be real
+    #assert(np.max(abs(np.imag(hk))) < 1e-10);
+    return hk;
 
 
 def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
@@ -221,37 +347,8 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
     return H;
 
 
-def scf_to_arr(mol, scf_obj):
-    '''
-    Converts physics of an atomic/molecular system, as contained in an scf inst
-    ie produced by passing molecular geometry object mol to
-    - scf.RHF(mol) restricted hartree fock
-    - scf.UHF(mol) unrestricted hartree fock
-    - scf.RKS(mol).run() restricted Kohn sham
-    - etc
-    to ab initio hamiltonian arrays h1e and g2e
-    '''
-
-    from pyscf import ao2mo
-
-    # unpack scf object
-    hcore = scf_obj.get_hcore();
-    coeffs = scf_obj.mo_coeff;
-    norbs = np.shape(coeffs)[0];
-
-    # convert to h1e and h2e array reps in molecular orb basis
-    h1e = np.dot(coeffs.T, hcore @ coeffs);
-    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
-
-    return h1e, g2e;
-
-
-def arr_to_fd():
-    '''
-    '''
-    
-    return;
-
+##########################################################################################################
+#### dmrg conversions
 
 def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     '''
@@ -282,8 +379,10 @@ def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
 
     # MPE
     return MPE(psi_mps, h_mpo, psi_mps);
-    
 
+
+##########################################################################################################
+#### solvers
 
 def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
     '''
@@ -366,77 +465,6 @@ def arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = 0):
     E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
 
     return E_fci, v_fci;
-
-
-def kw_to_state(kw, nleads, nelecs, ndots, tl = 1.0, verbose = 0):
-    '''
-    Given a system setup defd by nleads, nelecs, ndots
-
-    Generate a desired state as gd state of certain ham for system
-    '''
-
-    import ops
-
-    norbs = 2*(sum(nleads)+ndots);
-
-    if( kw == "dota" ):
-        # dot has up electron
-        # down spread over rest of system
-
-        # params
-        assert(ndots == 1);
-        B = 100*tl;
-        params = tl, tl, tl, 0.0, 0.0, 0.0, 0.0, -B, 0.0;
-
-        # create system from params
-        h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params,"", verbose = verbose);
-        mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-
-        # desired state is gd state of system
-        E0, v0 = scf_FCI(mol, dotscf, verbose = verbose);
-
-        return v0, h1e, g2e;
-
-    elif( kw == "dotb" ):
-        # dot has down electron
-        # up spread over rest of system
-
-        # params
-        assert(ndots == 1);
-        B = 100*tl;
-        params = tl, tl, tl, 0.0, 0.0, 0.0, 0.0, B, 0.0;
-
-        # create system from params
-        h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params,"", verbose = verbose);
-        mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-
-        # desired state is gd state of system
-        E0, v0 = scf_FCI(mol, dotscf, verbose = verbose);
-
-        return v0, h1e, g2e;
-
-    else: assert(False);
-        
-
-def vec_to_obs(vec, h1e, g2e, nleads, nelecs, ndots, verbose = 0):
-
-    import td_fci
-    
-    norbs = np.shape(h1e)[0];
-    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ];
-
-    # get scf 
-    mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-
-    # do trivial time propagation
-    init_str, obs = td_fci.kernel(h1e, g2e, vec, mol, dotscf, 0.0, 1.0, imp_i, 1.0, verbose = verbose);
-
-    # put observables in str form for easy printing
-    obs_str = "\n \t Occ = "+str(np.real(obs[6:6+sum(nleads)+ndots].T) );
-    obs_str += "\n \t Sz = "+str(np.real(obs[6+sum(nleads)+ndots:-1].T) );
-    obs_str += "\n \t Concur = "+str(np.real(obs[-1]));
-    
-    return obs, obs_str;
 
 
 ##########################################################################################################

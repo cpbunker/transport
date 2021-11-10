@@ -1,68 +1,52 @@
 '''
 '''
 
-from transport import wingreen, ops, fci_mod
-import fcdmft
+from transport import tddmrg, fci_mod, ops
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
-iE = 1e-3; # small imag part
+get_data = int(sys.argv[1]);
 
-#### test dot_spinful arrays
-if(False):
-    
-    gE = np.array(range(3), dtype = complex);
-    gf = np.array([[ [np.copy(gE), np.zeros_like(gE)],[np.zeros_like(gE),np.copy(gE)] ]]); # classic spin by norb by norb by nw array
-    Sy = complex(0,1/2)*np.array([[[0,-1],[1,0]]]);
-    Sz = (1/2)*np.array([[[1,0],[0,-1]]]);
-    print("gf",np.shape(gf)," before:");
-    for wi in range(len(gE)): print(gf[0,:,:,wi]);
+# SIAM hyperparams
+nleads = (4,4);
+nelecs = (sum(nleads),0);
+ndots = 1;
+tf = 0.1;
+dt = 0.01;
+bdims = [700,800,900,1000];
+noises = [1e-3,1e-4,1e-5,0];
 
-    # try dot
-    gf = fcdmft.dot_spinful_arrays(gf, Sy);
-    print("gf",np.shape(gf)," after:");
-    for wi in range(len(gE)): print(gf[0,:,:,wi]);
+# SIAM params
+#        tl,  th,  td,  Vb,   mu,  Vg,   U,   B,   theta
+params = 1.0, 0.4, 0.0, 0.00, 0.0, -0.5, 0.0, 0.0, 0.0;
 
-    assert(False); # stop
+# occupied spin orbs
+source = [3,9]; # m=+2 incident up, imp down
 
-#### test new surface gf
-if(False):
+# run or plot
+if get_data:
 
-    Es = np.linspace(-2,2,30);
-    iE = 1e-3;
-    tl = 1.0
-    mu = 0.0
-    H = np.array([[[mu,0],[0,mu]]]); # set mu-2t = 0
-    V = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
-    gf = fcdmft.surface_gf(Es, iE, H, V, verbose = verbose);
+    # set up SIAM in spatial basis
+    h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params, verbose = 0);
 
-    # plot results
-    for i in range(np.shape(H)[1]):
-        for j in range(np.shape(H)[2]):
-            plt.plot(Es, (-1/np.pi)*np.imag(gf[0,i,j,:]), label = (i,j));
-            print(">>>",(i,j), np.trapz((-1/np.pi)*np.imag(gf[0,i,j,:]),Es) );
-    plt.legend();
-    plt.show();
+    # convert leads from spatial to k space basis
+    h1e = fci_mod.cj_to_ck(h1e, nleads);
 
-    #### understand how the mean field green's function works
-    if(False):
-        
-        # higher level green's function in the scattering region
-        SR_meanfield = dmft.dmft_solver.mf_kernel(H, dummy, chem_pot, nao, np.array([np.eye(n_imp_orbs)]), max_mem, verbose = 1);
-        g_inta = dmft.dmft_solver.fci_gf(SR_meanfield, Es, iE, verbose = verbose);
-        print(np.shape(g_nona), np.shape(g_inta));
-        print(g_inta[:,:,0]);
-        plt.plot(Es, g_inta[0,0,:]);
-        plt.show();
+    # td fci
+    print(np.shape(h1e), np.shape(g2e));
+    tddmrg.Data(source, nleads, h1e, g2e, tf, dt, bdims, noises, verbose = verbose);   
 
-    assert(False); # stop
+else:
 
-################################################################
-#### main code
+    # plot
+    pass;
+
+
 
 
 

@@ -58,11 +58,6 @@ kBT = 0.0;
 
 # run kernel for MBGF
 MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, solver = 'fci', n_bath_orbs = nbo, verbose = verbose);
-if False:
-    SPDM = fcdmft.spdm(Es, iE/1000, MBGF);
-    print(SPDM[0,:2,:2]);
-    print(np.trace(SPDM[0]));
-    print(np.trace(SPDM[0,:2,:2]));
 
 #### 3: use meir wingreen formula
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);

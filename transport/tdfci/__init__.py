@@ -2,7 +2,7 @@
 Time dependent fci code and SIAM example
 Author: Ruojing Peng
 
-td fci module:
+tdfci module:
 - have to run thru direct_uhf solver
 - I use all spin up formalism: only alpha electrons input, only h1e_a and g1e_aa matter to solver
 - benchmarked with dot impurity model from ruojings_td_fci.py
@@ -10,105 +10,18 @@ td fci module:
 - turn on bias in leads, pass hamiltonians, molecule, and scf object to time prop
 - outputs current and energy vs time
 '''
-import ops
+
+from transport import ops
+from transport import fci_mod
 
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
+
 import numpy as np
 import functools
 import os
+import time
 einsum = lib.einsum
-
-################################################################
-#### util functions
-
-def make_hop(eris, norb, nelec):
-    h2e = direct_uhf.absorb_h1e(eris.h1e, eris.g2e, norb, nelec,.5)
-    def _hop(c):
-        return direct_uhf.contract_2e(h2e, c, norb, nelec)
-    return _hop
-
-def compute_update(ci, eris, h, RK=4):
-    hop = make_hop(eris, ci.norb, ci.nelec)
-    dr1 =  hop(ci.i)
-    di1 = -hop(ci.r)
-    if RK == 1:
-        return dr1, di1
-    if RK == 4:
-        r = ci.r+dr1*h*0.5
-        i = ci.i+di1*h*0.5
-        norm = np.linalg.norm(r + 1j*i)
-        r /= norm
-        i /= norm
-        dr2 =  hop(i)
-        di2 = -hop(r)
-
-        r = ci.r+dr2*h*0.5
-        i = ci.i+di2*h*0.5
-        norm = np.linalg.norm(r + 1j*i)
-        r /= norm
-        i /= norm
-        dr3 =  hop(i)
-        di3 = -hop(r)
-
-        r = ci.r+dr3*h
-        i = ci.i+di3*h
-        norm = np.linalg.norm(r + 1j*i)
-        r /= norm
-        i /= norm
-        dr4 =  hop(i)
-        di4 = -hop(r)
-
-        dr = (dr1+2.0*dr2+2.0*dr3+dr4)/6.0
-        di = (di1+2.0*di2+2.0*di3+di4)/6.0
-        return dr, di
-        
-        
-################################################################
-#### measure observables from density matrices
-
-def compute_energy(d1, d2, eris, time=None):
-    '''
-    Ruojing's code
-    Computes <H> by
-        1) getting h1e, h2e from eris object
-        2) contracting with density matrix
-
-    I overload this function by passing it eris w/ arb op x stored
-    then ruojings code gets <x> for any eris operator x
-
-    Args:
-    d1, d2, 1 and 2 particle density matrices
-    eris, object which contains hamiltonians
-    ''' 
-
-    h1e_a, h1e_b = eris.h1e
-    g2e_aa, g2e_ab, g2e_bb = eris.g2e
-    h1e_a = np.array(h1e_a,dtype=complex)
-    h1e_b = np.array(h1e_b,dtype=complex)
-    g2e_aa = np.array(g2e_aa,dtype=complex)
-    g2e_ab = np.array(g2e_ab,dtype=complex)
-    g2e_bb = np.array(g2e_bb,dtype=complex)
-    d1a, d1b = d1
-    d2aa, d2ab, d2bb = d2
-    # to physicts notation
-    g2e_aa = g2e_aa.transpose(0,2,1,3)
-    g2e_ab = g2e_ab.transpose(0,2,1,3)
-    g2e_bb = g2e_bb.transpose(0,2,1,3)
-    d2aa = d2aa.transpose(0,2,1,3)
-    d2ab = d2ab.transpose(0,2,1,3)
-    d2bb = d2bb.transpose(0,2,1,3)
-    # antisymmetrize integral
-    g2e_aa -= g2e_aa.transpose(1,0,2,3)
-    g2e_bb -= g2e_bb.transpose(1,0,2,3)
-
-    e  = einsum('pq,qp',h1e_a,d1a)
-    e += einsum('PQ,QP',h1e_b,d1b)
-    e += 0.25 * einsum('pqrs,rspq',g2e_aa,d2aa)
-    e += 0.25 * einsum('PQRS,RSPQ',g2e_bb,d2bb)
-    e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
-    return e
-    
 
 ################################################################
 #### kernel
@@ -233,6 +146,211 @@ def kernel_old(eris, ci, tf, dt, RK):
     d2bbs = np.array(d2bbs,dtype=complex)
     return (d1as, d1bs), (d2aas, d2abs, d2bbs)
 
+
+############################################################################
+#### wrappers
+
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = "", prefix = "dat/temp/", namevar="Vg", verbose = 0):
+    '''
+    Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
+    and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
+    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
+    - encode hamiltonians in an scf.UHF inst
+    - do FCI on scf.UHF to get exact gd state
+    - turn on thyb to intro nonequilibrium (current will flow)
+    - use ruojing's code (td_fci module) to do time propagation
+
+    Args:
+    nleads, tuple of ints of left lead sites, right lead sites
+    nelecs, tuple of num up e's, 0 due to ASU formalism
+    ndots, int, number of dots in impurity
+    timestop, float, how long to run for
+    deltat, float, time step increment
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
+    	if None, gives defaults vals for all (see below)
+    prefix: assigns prefix (eg folder) to default output file name
+
+    Returns:
+    none, but outputs t, observable data to /dat/DotData/ folder
+    '''
+
+    # check inputs
+    assert( isinstance(nleads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
+
+    # set up the hamiltonian
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
+    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
+    # nelecs left as tunable
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
+
+    # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
+    if(verbose): print("1. Construct hamiltonian")
+    eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
+    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
+        
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+    
+    # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
+    if(verbose > 3 ): print("- Add nonequilibrium terms");
+    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
+    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    # write results to external file
+    fname = os.getcwd()+"/";
+    if namevar == "Vg":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
+    elif namevar == "U":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
+    elif namevar == "Vb":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+    elif namevar == "th":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
+    else: assert(False); # invalid option
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "\nEquilibrium"+input_str; # write input vals to txt
+    hstring += "\nNonequlibrium"+input_str_noneq;
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end dot data
+
+
+def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
+    
+    # unpack
+    norbs = np.shape(h1e)[0];
+    imp_i = [int(norbs/2)-1, int(norbs/2)]; # approx midpt
+
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+    assert(False);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\n"+str(h1e);
+    hstring += "\n"+str(h1e_neq);
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end custom data
+
+
+
+################################################################
+#### util functions
+
+def make_hop(eris, norb, nelec):
+    h2e = direct_uhf.absorb_h1e(eris.h1e, eris.g2e, norb, nelec,.5)
+    def _hop(c):
+        return direct_uhf.contract_2e(h2e, c, norb, nelec)
+    return _hop
+
+def compute_update(ci, eris, h, RK=4):
+    hop = make_hop(eris, ci.norb, ci.nelec)
+    dr1 =  hop(ci.i)
+    di1 = -hop(ci.r)
+    if RK == 1:
+        return dr1, di1
+    if RK == 4:
+        r = ci.r+dr1*h*0.5
+        i = ci.i+di1*h*0.5
+        norm = np.linalg.norm(r + 1j*i)
+        r /= norm
+        i /= norm
+        dr2 =  hop(i)
+        di2 = -hop(r)
+
+        r = ci.r+dr2*h*0.5
+        i = ci.i+di2*h*0.5
+        norm = np.linalg.norm(r + 1j*i)
+        r /= norm
+        i /= norm
+        dr3 =  hop(i)
+        di3 = -hop(r)
+
+        r = ci.r+dr3*h
+        i = ci.i+di3*h
+        norm = np.linalg.norm(r + 1j*i)
+        r /= norm
+        i /= norm
+        dr4 =  hop(i)
+        di4 = -hop(r)
+
+        dr = (dr1+2.0*dr2+2.0*dr3+dr4)/6.0
+        di = (di1+2.0*di2+2.0*di3+di4)/6.0
+        return dr, di
+        
+    
+def compute_energy(d1, d2, eris, time=None):
+    '''
+    Ruojing's code
+    Computes <H> by
+        1) getting h1e, h2e from eris object
+        2) contracting with density matrix
+
+    I overload this function by passing it eris w/ arb op x stored
+    then ruojings code gets <x> for any eris operator x
+
+    Args:
+    d1, d2, 1 and 2 particle density matrices
+    eris, object which contains hamiltonians
+    ''' 
+
+    h1e_a, h1e_b = eris.h1e
+    g2e_aa, g2e_ab, g2e_bb = eris.g2e
+    h1e_a = np.array(h1e_a,dtype=complex)
+    h1e_b = np.array(h1e_b,dtype=complex)
+    g2e_aa = np.array(g2e_aa,dtype=complex)
+    g2e_ab = np.array(g2e_ab,dtype=complex)
+    g2e_bb = np.array(g2e_bb,dtype=complex)
+    d1a, d1b = d1
+    d2aa, d2ab, d2bb = d2
+    # to physicts notation
+    g2e_aa = g2e_aa.transpose(0,2,1,3)
+    g2e_ab = g2e_ab.transpose(0,2,1,3)
+    g2e_bb = g2e_bb.transpose(0,2,1,3)
+    d2aa = d2aa.transpose(0,2,1,3)
+    d2ab = d2ab.transpose(0,2,1,3)
+    d2bb = d2bb.transpose(0,2,1,3)
+    # antisymmetrize integral
+    g2e_aa -= g2e_aa.transpose(1,0,2,3)
+    g2e_bb -= g2e_bb.transpose(1,0,2,3)
+
+    e  = einsum('pq,qp',h1e_a,d1a)
+    e += einsum('PQ,QP',h1e_b,d1b)
+    e += 0.25 * einsum('pqrs,rspq',g2e_aa,d2aa)
+    e += 0.25 * einsum('PQRS,RSPQ',g2e_bb,d2bb)
+    e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
+    return e
+
 #####################################################################################
 #### class definitions
 
@@ -299,45 +417,6 @@ class CIObject():
         d2bb = d2bb.transpose(1,0,3,2)
         return (d1a, d1b), (d2aa, d2ab, d2bb)
 
-
-##########################################################################################################
-#### time propagation 
-
-def TimeProp(h1e, h2e, fcivec, mol,  scf_inst, time_stop, time_step, dot_i, t_hyb, verbose = 0):
-    '''
-    Time propagate an FCI gd state
-    The physics of the FCI gd state is encoded in an scf instance
-
-    Kernel is driver of time prop
-    Kernel gets hamiltonian, and ci wf, which is coeffs of slater dets of HF-determined molecular orbs
-    Then updates ci wf at each time step, this in turn updates density matrices
-    Contract density matrices at each time step to compute obervables (e.g. compute_energy, compute_current functions)
-    Set kernel_mode to std to call kernel_std which returns density matrices
-    Set kernel_mode to plot to call kernel_plot which returns arrays of time, observable vals (default)
-    Defaults to kernel mode plot, in which case returns
-    timevals, observables (tuple of E(t), J(t), Occ(t), Sz(t) )
-    '''
-
-    # assertion statements to check inputs
-    assert( np.shape(h1e)[0] == np.shape(h2e)[0]);
-    assert( type(mol) == type(gto.M() ) );
-    assert( type(scf_inst) == type(scf.UHF(mol) ) );
-    assert( isinstance(dot_i, list));
-
-    # unpack
-    norbs = np.shape(h1e)[0];
-    nelecs = (mol.nelectron,0);
-    if(verbose > 1):
-        print("\n- Time Propagation, norbs = ", norbs, ", nelecs = ", nelecs);
-
-    # time propagation kernel requires
-    # - ERIS object to encode hamiltonians
-    # - CI object to encode ci states
-    eris = ERIs(h1e, h2e, scf_inst.mo_coeff);
-    ci = CIObject(fcivec, norbs, nelecs);
-    
-    # kernel does time prop, NB we assume a spin blind formalism
-    return kernel(eris, ci, time_stop, time_step, dot_i, t_hyb, verbose = verbose);
 
 
 ###########################################################################################################

@@ -693,7 +693,7 @@ def heisenberg(J,s2):
 #####################################
 #### full systems with leads
 
-def dot_hams(nleads, nelecs, ndots, physical_params, spinstate, verbose = 0):
+def dot_hams(nleads, nelecs, ndots, physical_params, spinstate = "", verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian
     for use with td-fci. Also does spin state preparation
