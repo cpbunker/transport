@@ -32,10 +32,11 @@ source = [3,9]; # m=+2 incident up, imp down
 if get_data:
 
     # set up SIAM in spatial basis
-    h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params, verbose = 0);
+    h1e, g2e, _ = ops.dot_hams(nleads, nelecs, ndots, params, verbose = verbose);
 
     # convert leads from spatial to k space basis
     h1e = fci_mod.cj_to_ck(h1e, nleads);
+    print(h1e[4:10,4:10]); assert False;
 
     # td fci
     print(np.shape(h1e), np.shape(g2e));

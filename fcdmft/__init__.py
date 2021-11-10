@@ -101,8 +101,8 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, v
 
     # get chem pot that corresponds to desired occupancy
     chem_pot = 0.0; # init guess
-    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = verbose);
-    
+    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = 0);
+
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
     if(verbose): print("\n4. Impurity Green's function");
@@ -132,6 +132,8 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     Given the MBGF for the impurity + bath system, apply meir wingreen formula
     to get "density of current" j(E) at temp kBT. Then total particle current
     is given by J = \int dE j(E)
+
+    Currently zero temperature only !
     '''
     
     # check inputs
@@ -142,7 +144,19 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     LL_diag, LL_hop, LL_coup, mu_L = LL;
     RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_imp_orbs = np.shape(LL_coup)[1];
-    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs]);
+
+    # thermal distributions (vectors of E)
+    if(kBT == 0.0):
+        nL = np.zeros_like(energies, dtype = int);
+        nL[energies <= mu_L] = 1; # step function
+        nR = np.zeros_like(energies, dtype = int);
+        nR[energies <= mu_R] = 1; # step function
+    else:
+        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
+        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
+
+    # particular gf's
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], (nL+nR)/2);
     
     # 1: hybridization between leads and SR
     
@@ -160,17 +174,7 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
 
-    # 2: thermal distributions (vectors of E)
-    if(kBT == 0.0):
-        nL = np.zeros_like(energies, dtype = int);
-        nL[energies <= mu_L] = 1; # step function
-        nR = np.zeros_like(energies, dtype = int);
-        nR[energies <= mu_R] = 1; # step function
-    else:
-        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
-        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
-
-    # 4: Meir Wingreen formula - Meir Wingreen Eq 6
+    # 2: Meir Wingreen formula - Meir Wingreen Eq 6
     therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
     jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
     jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
@@ -193,7 +197,19 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     LL_diag, LL_hop, LL_coup, mu_L = LL;
     RL_diag, RL_hop, RL_coup, mu_R = RL;
     n_imp_orbs = np.shape(LL_coup)[1];
-    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs]);
+
+    # thermal distributions (vectors of E)
+    if(kBT == 0.0):
+        nL = np.zeros_like(energies, dtype = int);
+        nL[energies <= mu_L] = 1; # step function
+        nR = np.zeros_like(energies, dtype = int);
+        nR[energies <= mu_R] = 1; # step function
+    else:
+        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
+        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
+
+    # particular gf's
+    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], (nL+nR)/2);
 
     # 1: hybridization between leads and SR
     
@@ -211,16 +227,6 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
 
-    # 2: thermal distributions
-    if(kBT == 0.0):
-        nL = np.zeros_like(energies, dtype = int);
-        nL[energies <= mu_L] = 1; # step function
-        nR = np.zeros_like(energies, dtype = int);
-        nR[energies <= mu_R] = 1; # step function
-    else:
-        nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
-        nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
-
     # landauer formula - Meir Wingreen Eq. 7
     jEmat = dot_spinful_arrays( dot_spinful_arrays(G_adv, Lambda_R), dot_spinful_arrays(G_ret, Lambda_L) );
     jE = np.trace( jEmat[0])*(nL-nR)/(2*np.pi); # hbar = 1
@@ -228,14 +234,15 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # test code
     if True:
         import matplotlib.pyplot as plt
-        plt.plot(energies, np.imag(G_les[0,0,0]));
-        plt.plot(energies, np.imag(G_les[0,1,1]));
+        plt.plot(energies, np.imag(G_les[0,0,0]), label = "imag");
+        plt.plot(energies, np.imag(G_les[0,1,1]), label = "imag");
         idenL = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_L, G_adv));
         idenR = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_R, G_adv));
         identity = complex(0,1)*(dot_spinful_arrays(idenL, nL) + dot_spinful_arrays(idenR, nR));
-        plt.plot(energies, np.imag(identity[0,0,0]), linestyle = "dashed");
-        plt.plot(energies, np.imag(identity[0,1,1]), linestyle = "dashed");
-        plt.show()
+        plt.plot(energies, np.imag(identity[0,0,0]), linestyle = "dashed", label = "iden");
+        plt.plot(energies, np.imag(identity[0,1,1]), linestyle = "dashed", label = "iden");
+        plt.legend();
+        plt.show();
         
     return jE;
 
@@ -378,7 +385,7 @@ def spdm(energies, iE, G):
 ########################################################################
 #### utils
 
-def decompose_gf(energies, G):
+def decompose_gf(energies, G, nFD):
     '''
     Decompose the full time-ordered many body green's function (from kernel)
     into r, a, <, > parts according to page 18 of
@@ -409,10 +416,6 @@ def decompose_gf(energies, G):
     # vectorize in energy by hand
     for s in range(np.shape(G)[0]):
         for wi in range(len(energies)):
-            
-            # fermi dirac dist
-            nFD = min(0, energies[wi]);
-            if nFD: nFD = 1;
 
             # retarded gf
             G_ret[s,:,:,wi] = realG[s,:,:,wi] + complex(0,1)*imagG[s,:,:,wi];
@@ -420,15 +423,18 @@ def decompose_gf(energies, G):
             # advanced gf (just the conj of retarded)
             G_adv[s,:,:,wi] = realG[s,:,:,wi] - complex(0,1)*imagG[s,:,:,wi];
 
-            # spectral function from G_ret
+            # spectral function =  -Im(Gr - Ga) = -2Im(Gr)
             spectral = (-2)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
 
             # lesser gf
-            G_les[s,:,:,wi] = complex(0,1)*spectral;
+            G_les[s,:,:,wi] = complex(0,1)*spectral*nFD[wi];
 
             # greater gf
-            G_gre[s,:,:,wi] = -complex(0,1)*spectral;
+            G_gre[s,:,:,wi] = -complex(0,1)*spectral*(1-nFD[wi]);
 
+    # check outputs
+    assert( np.max(abs(G_ret - G_adv - (G_gre - G_les) )) < 1e-15);
+    #assert( np.max(abs(np.real(G_les))) < 1e-10);
     assert( not np.any(np.isnan(np.array([G_ret, G_adv, G_les, G_gre]) ) ) );
     return G_ret, G_adv, G_les, G_gre;
 
@@ -469,6 +475,9 @@ def dot_spinful_arrays(a1_, a2_, backwards = False):
             for iw in range(nfreqs):
                 result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
 
+    elif(a2 == 1.0): # for generality
+        return a1;
+
     elif(False):
         pass;
 
@@ -477,7 +486,7 @@ def dot_spinful_arrays(a1_, a2_, backwards = False):
     return result;
 
 
-def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region = 0.05, step = 0.01, nelec_tol = 1e-2, verbose = 0):
+def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region = 0.1, step = 0.01, nelec_tol = 1e-2, verbose = 0):
     '''
     Find chemical potential that reproduces the target occupancy on the impurity
     '''
@@ -519,15 +528,18 @@ def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region =
 
         # diagnostic
         if(verbose): print("mu cycle ", mu_cycle, "mu = ", mu,"dmu = ", dmu,"nelec = ", nelec, "dnelec = ", dnelec, "record = ",record);
-        assert(np.trace(dm) < norbs); # full filling indicates error
 
         # check convergence
         if abs(dnelec) < nelec_tol * target:
             break
         if mu_cycle > 0:
-            if abs(dnelec - dnelec_old) < nelec_tol:
+            if abs(dnelec - dnelec_old) < nelec_tol/10:
                 if(verbose): print(" - nelec converged");
-                break
+                if(abs(dnelec) < nelec_tol * target):
+                    break;
+                else:
+                    mu = mu0;
+                    break;
         record.append([dmu, dnelec])
 
         if mu_cycle == 0:
