@@ -20,7 +20,7 @@ import numpy as np
 ########################################################################
 #### drivers
 
-def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "cc", n_bath_orbs = 4, verbose = 0): # main driver
+def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, verbose = 0): # main driver
     '''
     Driver of DMFT calculation for
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -164,13 +164,13 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     LL_surf = surface_gf(energies, iE, LL_diag, LL_hop, verbose = verbose);
     RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
     
-    # hyb(E) = V*surface_gf(E)*V^\dagger
+    # hyb(E) matrix = V*surface_gf(E)*V^\dagger
     LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
     LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
     RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
 
-    # meir-wingreen Lambda matrix = -2*Im[hyb]
+    # meir-wingreen Lambda(E) matrix = -2*Im[hyb]
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
 
@@ -241,6 +241,8 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
         identity = complex(0,1)*(dot_spinful_arrays(idenL, nL) + dot_spinful_arrays(idenR, nR));
         plt.plot(energies, np.imag(identity[0,0,0]), linestyle = "dashed", label = "iden");
         plt.plot(energies, np.imag(identity[0,1,1]), linestyle = "dashed", label = "iden");
+        plt.plot(energies, np.real(identity[0,0,0]), linestyle = "dashed", label = "iden");
+        plt.plot(energies, np.real(identity[0,1,1]), linestyle = "dashed", label = "iden");
         plt.legend();
         plt.show();
         
@@ -250,7 +252,7 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
 ########################################################################
 #### green's function finders
 
-def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 10000, verbose = 0):
+def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 1000, verbose = 0):
     '''
     surface dos in semi-infinite noninteracting lead, formula due to Haydock, 1972
 
@@ -385,6 +387,24 @@ def spdm(energies, iE, G):
 ########################################################################
 #### utils
 
+
+def dagger(g):
+    '''
+    Get hermitian conjugate of a spin by norb by norb (energy) object
+    '''
+
+    # check inputs
+    assert(len(np.shape(g)) == 4);
+
+    # hermitian conjugate
+    gdagger = np.zeros_like(g);
+    for s in range(np.shape(g)[0]):
+        for wi in range(np.shape(g)[-1]):
+            gdagger[s,:,:,wi] = np.conj(g[s,:,:,wi].T);
+
+    return gdagger;
+                             
+
 def decompose_gf(energies, G, nFD):
     '''
     Decompose the full time-ordered many body green's function (from kernel)
@@ -402,14 +422,9 @@ def decompose_gf(energies, G, nFD):
     G_adv = np.empty(np.shape(G), dtype = complex);
     G_les = np.empty(np.shape(G), dtype = complex);
     G_gre = np.empty(np.shape(G), dtype = complex);
-
-    # hermitian conjugate of the MBGF
-    Gdagger = np.zeros_like(G);
-    for s in range(np.shape(G)[0]):
-        for wi in range(np.shape(G)[-1]):
-            Gdagger[s,:,:,wi] = np.conj(G[s,:,:,wi].T);
     
     # "real", "imag" part of time orderd MBGF
+    Gdagger = dagger(G);
     realG = (1/2)*(G + Gdagger);
     imagG = (1/complex(0,2))*(G-Gdagger);
 
@@ -423,6 +438,10 @@ def decompose_gf(energies, G, nFD):
             # advanced gf (just the conj of retarded)
             G_adv[s,:,:,wi] = realG[s,:,:,wi] - complex(0,1)*imagG[s,:,:,wi];
 
+    #G_ret, G_adv = complex(0,1)*np.imag(G_ret), complex(0,1)*np.imag(G_adv);
+    for s in range(np.shape(G)[0]):
+        for wi in range(len(energies)):
+
             # spectral function =  -Im(Gr - Ga) = -2Im(Gr)
             spectral = (-2)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
 
@@ -434,7 +453,9 @@ def decompose_gf(energies, G, nFD):
 
     # check outputs
     assert( np.max(abs(G_ret - G_adv - (G_gre - G_les) )) < 1e-15);
-    #assert( np.max(abs(np.real(G_les))) < 1e-10);
+    if not (np.max(abs(np.real(G_les))) < 1e-6):
+        print(np.max(abs(np.real(G_les))));
+        assert False;
     assert( not np.any(np.isnan(np.array([G_ret, G_adv, G_les, G_gre]) ) ) );
     return G_ret, G_adv, G_les, G_gre;
 
@@ -458,9 +479,9 @@ def dot_spinful_arrays(a1_, a2_, backwards = False):
         for s in range(spin):
             for iw in range(nfreqs):
                 if not backwards:
-                    result[s,:,:,iw] = np.dot(a1[s,:,:,iw], a2[s]);
+                    result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s]);
                 else:
-                    result[s,:,:,iw] = np.dot(a2[s], a1[s,:,:,iw]);
+                    result[s,:,:,iw] = np.matmul(a2[s], a1[s,:,:,iw]);
 
     elif(np.shape(a2) == (nfreqs,) ): # freq dependent scalar
         assert( not backwards);
@@ -473,16 +494,18 @@ def dot_spinful_arrays(a1_, a2_, backwards = False):
         assert(not backwards);
         for s in range(spin):
             for iw in range(nfreqs):
+                assert( len(np.shape(a1[s,:,:,iw])) == 2 and np.shape(a1)[1] == np.shape(a1)[2]);
                 result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
 
-    elif(a2 == 1.0): # for generality
-        return a1;
+    elif(isinstance(a2, float)):
+        return a2*a1;
 
     elif(False):
         pass;
 
     else: raise(ValueError("a2 "+str(np.shape(a2))+" is of wrong size") );
 
+    assert(np.shape(result) == np.shape(a1));
     return result;
 
 
@@ -577,60 +600,5 @@ def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region =
 
     # return result of density matrix assoc'd with target occ
     return mu, np.array([dm]);
-
-
-
-
-
-
-
-########################################################################
-#### garbage    
-
-
-def h1e_to_gf(E, h1e, g2e, nelecs, bdims, noises):
-    '''
-    Use dmrg routines in the solvers module to extract a green's function from
-    a second quantized hamiltonian
-    given an array of shape (spin, norbs, norbs, nfreqs)
-    and another array , either
-    - an operator, shape (spin, norbs, norbs), indep of freq
-    '''
-
-    
-
-    # check inputs
-
-    # unpack
-    nsites = np.shape(h1e)[0];
-
-    # init GFDMRG object
-    dmrg_obj = solver.gfdmrg.GFDMRG();
-
-    # input hams
-    pointgroup = 'c1';
-    Ecore = 0.0;
-    isym = None;
-    orb_sym = None;
-    dmrg_obj.init_hamiltonian(pointgroup, nsites, sum(nelecs), nelecs[0] - nelecs[1], isym, orb_sym, Ecore, h1e, g2e);
-
-    # get greens function
-        # default params taken from fcdmft/examples/DMRG_GF_test/run_dmrg.py
-    gmres_tol = 1e-9;
-    conv_tol = 1e-8;
-    nsteps = 10;
-    cps_bond_dims=[1500];
-    cps_noises=[0];
-    cps_tol=1E-13;
-    cps_n_steps=20;
-    idxs = None;
-    eta = None;
-    dfparams = gmres_tol, conv_tol, nsteps, cps_bond_dims, cps_noises, cps_conv_tol, cps_n_steps, idxs, eta;
-    G = dmrg_obj.greens_function(bdims, noises, *dfparams, E, None);
-    # unpack sizes
-    spin, norbs, _, nfreqs = np.shape(a1);
-
-    return G;
-    
     
 

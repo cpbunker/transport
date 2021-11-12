@@ -22,14 +22,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #### top level
-np.set_printoptions(precision = 4, suppress = True);
+#np.set_printoptions(precision = 4, suppress = True);
 verbose = 1;
 
 ##### 1: set up the impurity + leads system
 
 # anderson dot
-Vg = -0.5;
-U = 0.5;
+Vg = -0.0;
+U = 0.0;
 h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
@@ -57,11 +57,12 @@ Es = np.linspace(-1.09*Vb, 1.1*Vb, 101);
 #### 2: compute the many body green's function for imp + leads system
 
 # kernel inputs
-iE = (Es[-1] - Es[0])/(2*nbo);
+nbo = 8; # num bath orbs
+iE = (Es[-1] - Es[0])/(2*nbo)
 kBT = 0.0;
 
 # run kernel for MBGF
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, verbose = verbose);
+MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'cc', verbose = verbose);
 
 #### 3: use meir wingreen formula
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);

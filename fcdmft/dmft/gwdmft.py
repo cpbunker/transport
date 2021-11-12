@@ -403,7 +403,7 @@ def mu_fit(dmft, mu0, occupancy, himp, eri_imp, dm0, step=0.02, trust_region=0.0
 # bath numerical optimization : opt_bath, opt_bath_v_only
 # ****************************************************************************
 
-def opt_bath(bath_e, bath_v, hyb, freqs, delta, nw_org, diag_only=False, orb_fit=None):
+def opt_bath(bath_e, bath_v, hyb, freqs, delta, nw_org, max_evals = 1000, diag_only=False, orb_fit=None):
     '''
     Optimize bath energies and couplings for minimizing bath discretization error
 
@@ -440,20 +440,20 @@ def opt_bath(bath_e, bath_v, hyb, freqs, delta, nw_org, diag_only=False, orb_fit
             v0 = np.concatenate([bath_e[s][:nw_org], bath_v[s].reshape(-1)])
             try:
                 xopt = least_squares(bath_fit, v0, jac='2-point', method='trf', bounds=(min_bound,max_bound), xtol=1e-8,
-                     gtol=1e-6, max_nfev=500, verbose=1, args=(hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
+                     gtol=1e-6, max_nfev=max_evals, verbose=1, args=(hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
             except:
                 xopt = least_squares(bath_fit, v0, jac='2-point', method='lm', xtol=1e-8,
-                     gtol=1e-6, max_nfev=500, verbose=1, args=(hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
+                     gtol=1e-6, max_nfev=max_evals, verbose=1, args=(hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
             v_opt[s] = xopt.x.copy()
         else:
             v0 = bath_v[s].reshape(-1)
             try:
                 xopt = least_squares(bath_fit_v, v0, jac='2-point', method='trf', xtol=1e-8,
-                             gtol=1e-6, max_nfev=500, verbose=1,
+                             gtol=1e-6, max_nfev=max_evals, verbose=1,
                              args=(v_opt[0][:nw_org], hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
             except:
                 xopt = least_squares(bath_fit_v, v0, jac='2-point', method='lm', xtol=1e-8,
-                             gtol=1e-6, max_nfev=500, verbose=1,
+                             gtol=1e-6, max_nfev=max_evals, verbose=1,
                              args=(v_opt[0][:nw_org], hyb[s], bath_v[s], freqs, delta, nw_org, diag_only, orb_fit))
             v_opt[s][nw_org:] = xopt.x.copy()
             v_opt[s][:nw_org] = v_opt[0][:nw_org]
