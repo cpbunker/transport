@@ -16,6 +16,7 @@ if 'OMP_NUM_THREADS' not in os.environ:
 from fcdmft import dmft
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 ########################################################################
 #### drivers
@@ -101,7 +102,7 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
 
     # get chem pot that corresponds to desired occupancy
     chem_pot = 0.0; # init guess
-    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = 0);
+    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = verbose);
 
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
@@ -173,15 +174,29 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # meir-wingreen Lambda(E) matrix = -2*Im[hyb]
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
-    Lambda = dot_spinful_arrays(Lambda_L, Lambda_R)
-    #Lambda = dot_spinful_arrays(Lambda, np.inv(Lambda_L+Lambda_R));
-    Lambda = (1/2)*Lambda_L;
 
     # 2: Meir Wingreen formula - Meir Wingreen Eq 6
     therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
     jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
     jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
     jE = (complex(0,1)/(4*np.pi))*np.trace(jEmat[0]); # hbar = 1, trace over impurity sites
+
+    if(verbose > 4):
+        plt.plot(energies, Lambda_L[0,0,0], label = "L00");
+        plt.plot(energies, Lambda_L[0,1,1], label = "L11");
+        plt.plot(energies, Lambda_R[0,0,0], label = "R00");
+        plt.plot(energies, Lambda_R[0,1,1], label = "R11");
+        plt.legend();
+        plt.show();
+        
+    if(verbose > 4):
+        jE_L = (-1/np.pi)*(nL-nR)*np.imag(np.trace(dot_spinful_arrays(Lambda_L/2, G_ret)[0]));
+        jE_R = (-1/np.pi)*(nL-nR)*np.imag(np.trace(dot_spinful_arrays(Lambda_R/2, G_ret)[0]));
+        plt.plot(energies, np.real(jE), label = "MW Eq 6");
+        plt.plot(energies, jE_L+1e-6, label = "MW Eq 9, Lambda L");
+        plt.plot(energies, jE_R+2e-6, label = "MW Eq 9, Lambda R");
+        plt.legend();
+        plt.show();
 
     return jE;
 
@@ -235,17 +250,16 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     jE = np.trace( jEmat[0])*(nL-nR)/(2*np.pi); # hbar = 1
 
     # test code
-    if True:
-        import matplotlib.pyplot as plt
-        plt.plot(energies, np.imag(G_les[0,0,0]), label = "imag");
-        plt.plot(energies, np.imag(G_les[0,1,1]), label = "imag");
+    if (verbose > 4):
+        plt.plot(energies, np.imag(G_les[0,0,0]), label = "G<");
+        plt.plot(energies, np.imag(G_les[0,1,1]), label = "G<");
         idenL = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_L, G_adv));
         idenR = dot_spinful_arrays(G_ret, dot_spinful_arrays(Lambda_R, G_adv));
         identity = complex(0,1)*(dot_spinful_arrays(idenL, nL) + dot_spinful_arrays(idenR, nR));
         plt.plot(energies, np.imag(identity[0,0,0]), linestyle = "dashed", label = "iden");
         plt.plot(energies, np.imag(identity[0,1,1]), linestyle = "dashed", label = "iden");
-        plt.plot(energies, np.real(identity[0,0,0]), linestyle = "dashed", label = "iden");
-        plt.plot(energies, np.real(identity[0,1,1]), linestyle = "dashed", label = "iden");
+        plt.plot(energies, np.real(identity[0,0,0]), linestyle = "dashed", label = "iden real");
+        plt.plot(energies, np.real(identity[0,1,1]), linestyle = "dashed", label = "iden real");
         plt.legend();
         plt.show();
         
@@ -491,10 +505,6 @@ def decompose_gf(energies, G, nFD):
             # advanced gf (just the conj of retarded)
             G_adv[s,:,:,wi] = realG[s,:,:,wi] - complex(0,1)*imagG[s,:,:,wi];
 
-    #G_ret, G_adv = complex(0,1)*np.imag(G_ret), complex(0,1)*np.imag(G_adv);
-    for s in range(np.shape(G)[0]):
-        for wi in range(len(energies)):
-
             # spectral function =  -Im(Gr - Ga) = -2Im(Gr)
             spectral = (-2)*(1/complex(0,2))*(G_ret[s,:,:,wi] - np.conj(G_ret[s,:,:,wi].T));
 
@@ -506,9 +516,9 @@ def decompose_gf(energies, G, nFD):
 
     # check outputs
     assert( np.max(abs(G_ret - G_adv - (G_gre - G_les) )) < 1e-15);
-    if not (np.max(abs(np.real(G_les))) < 1e-6):
+    if not (np.max(abs(np.real(G_les))) < 1e-10):
         print(np.max(abs(np.real(G_les))));
-        assert False;
+        #assert False;
     assert( not np.any(np.isnan(np.array([G_ret, G_adv, G_les, G_gre]) ) ) );
     return G_ret, G_adv, G_les, G_gre;
 
@@ -558,10 +568,11 @@ def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region =
 
         # check convergence
         if abs(dnelec) < nelec_tol * target:
+            if(verbose): print(" - nelec converged");
             break
         if mu_cycle > 0:
             if abs(dnelec - dnelec_old) < nelec_tol/10:
-                if(verbose): print(" - nelec converged");
+                if(verbose): print(" - dnelec converged");
                 if(abs(dnelec) < nelec_tol * target):
                     break;
                 else:
