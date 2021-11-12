@@ -130,11 +130,9 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
 
 def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     '''
-    Given the MBGF for the impurity + bath system, apply meir wingreen formula
+    Given the MBGF for the impurity + bath system, Bruus 10.57
     to get "density of current" j(E) at temp kBT. Then total particle current
     is given by J = \int dE j(E)
-
-    Currently zero temperature only !
     '''
     
     # check inputs
@@ -155,9 +153,6 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     else:
         nL = 1/(np.exp((energies - mu_L)/kBT) + 1);
         nR = 1/(np.exp((energies - mu_R)/kBT) + 1);
-
-    # particular gf's
-    G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF[:,:n_imp_orbs, :n_imp_orbs], (nL+nR)/2);
     
     # 1: hybridization between leads and SR
     
@@ -174,27 +169,23 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # meir-wingreen Lambda(E) matrix = -2*Im[hyb]
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
+    Lambda = dot_spinful_arrays(dot_spinful_arrays(Lambda_L, Lambda_R), invert(Lambda_L + Lambda_R));
 
-    # 2: Meir Wingreen formula - Meir Wingreen Eq 6
-    therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
-    jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
-    jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
-    jE = (complex(0,1)/(4*np.pi))*np.trace(jEmat[0]); # hbar = 1, trace over impurity sites
-
-    if(verbose > 4):
-        plt.plot(energies, Lambda_L[0,0,0], label = "L00");
-        plt.plot(energies, Lambda_L[0,1,1], label = "L11");
-        plt.plot(energies, Lambda_R[0,0,0], label = "R00");
-        plt.plot(energies, Lambda_R[0,1,1], label = "R11");
-        plt.legend();
-        plt.show();
+    # 2: current density in terms of spectral density = -1/pi Im(MBGF)
+    # ie Bruus, equation 10.57
+    MBGF_trunc = MBGF[:,:2,:2,:];
+    spectral = (-1/np.pi)*(MBGF_trunc - dagger(MBGF_trunc))/complex(0,2);
+    jE = (nL - nR)*np.trace(dot_spinful_arrays(Lambda, spectral)[0])
         
     if(verbose > 4):
-        jE_L = (-1/np.pi)*(nL-nR)*np.imag(np.trace(dot_spinful_arrays(Lambda_L/2, G_ret)[0]));
-        jE_R = (-1/np.pi)*(nL-nR)*np.imag(np.trace(dot_spinful_arrays(Lambda_R/2, G_ret)[0]));
-        plt.plot(energies, np.real(jE), label = "MW Eq 6");
-        plt.plot(energies, jE_L+1e-6, label = "MW Eq 9, Lambda L");
-        plt.plot(energies, jE_R+2e-6, label = "MW Eq 9, Lambda R");
+        # compare with Meir Wingreen formula - Meir Wingreen Eq 6 (deprecated)
+        G_ret, G_adv, G_les, G_gre = decompose_gf(energies, MBGF_trunc, (nL+nR)/2);
+        therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
+        jEmat = dot_spinful_arrays(therm, G_ret - G_adv); # first term of MW Eq 6, before trace
+        jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
+        jEnew = (complex(0,1)/(4*np.pi))*np.trace(jEmat[0]); # hbar = 1, trace over impurity sites
+        plt.plot(energies, np.real(jEnew), label = "MW Eq 6");
+        plt.plot(energies, jE, label = "Bruus Eq 10.57");
         plt.legend();
         plt.show();
 
@@ -248,6 +239,12 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # landauer formula - Meir Wingreen Eq. 7
     jEmat = dot_spinful_arrays( dot_spinful_arrays(G_adv, Lambda_R), dot_spinful_arrays(G_ret, Lambda_L) );
     jE = np.trace( jEmat[0])*(nL-nR)/(2*np.pi); # hbar = 1
+
+    # in terms of spectral = -1/pi Im(MBGF) only
+    MBGF_trunc = MBGF[:,:2,:2,:];
+    spectral = (-1/np.pi)*(MBGF_trunc - dagger(MBGF_trunc))/complex(0,2);
+    #assert(np.max(abs(np.imag(spectral))) < 1e-10)
+    jEnew = (nL - nR)*np.trace(dot_spinful_arrays(Lambda_L/2, spectral)[0])
 
     # test code
     if (verbose > 4):
@@ -423,6 +420,23 @@ def dagger(g):
     return gdagger;
 
 
+def invert(g):
+    '''
+    Get inverse of a spin by norb by norb (energy) object
+    '''
+
+    # check inputs
+    assert(len(np.shape(g)) == 4);
+
+    # hermitian conjugate
+    ginv = np.zeros_like(g);
+    for s in range(np.shape(g)[0]):
+        for wi in range(np.shape(g)[-1]):
+            ginv[s,:,:,wi] = np.linalg.inv(g[s,:,:,wi]);
+
+    return ginv;
+
+
 def dot_spinful_arrays(a1_, a2_, backwards = False):
     '''
     given an array of shape (spin, norbs, norbs, nfreqs)
@@ -523,9 +537,17 @@ def decompose_gf(energies, G, nFD):
     return G_ret, G_adv, G_les, G_gre;
 
 
-def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region = 0.1, step = 0.01, nelec_tol = 1e-2, verbose = 0):
+def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 20, trust_region = 0.1, step = 0.01, nelec_tol = 1e-2, verbose = 0):
     '''
     Find chemical potential that reproduces the target occupancy on the impurity
+
+    dm0, the initial density matrix, is hardcoded in to guess:
+    - that the first "target" imp orbs are filled to 1
+    - that the rest of the imp orbs are unfilled
+    - that all the bath orbs are half filled
+
+    Very Important! if the cycle converges due to dnelec converging, but not to
+    zero, then just returns mu=mu0
     '''
 
     # check inputs
@@ -576,6 +598,7 @@ def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region =
                 if(abs(dnelec) < nelec_tol * target):
                     break;
                 else:
+                    if(verbose): print(" - nelec not converged, returning mu0");
                     mu = mu0;
                     break;
         record.append([dmu, dnelec])

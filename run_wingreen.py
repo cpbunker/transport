@@ -28,8 +28,8 @@ verbose = 5;
 ##### 1: set up the impurity + leads system
 
 # anderson dot
-Vg = -0.0;
-U = 0.3;
+Vg = -0.5;
+U = 0.0;
 h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
@@ -57,12 +57,12 @@ Es = np.linspace(-1.09*Vb, 1.1*Vb, 101);
 #### 2: compute the many body green's function for imp + leads system
 
 # kernel inputs
-nbo = 8; # num bath orbs
+nbo = 4; # num bath orbs
 iE = (Es[-1] - Es[0])/nbo/2
 kBT = 0.0;
 
 # run kernel for MBGF
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'cc', verbose = verbose);
+MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'fci', verbose = verbose);
 
 #### 3: use meir wingreen formula
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
