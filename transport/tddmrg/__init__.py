@@ -11,6 +11,7 @@ Combine with fci code later
 '''
 
 from transport import ops
+from transport.ops import dmrg
 
 import numpy as np
 from pyblock3 import hamiltonian, fcidump
@@ -94,50 +95,96 @@ def compute_obs(op,mps):
 
     return np.dot(mps.conj(), op @ mps)/np.dot(mps.conj(),mps);
 
+def coefs(mps):
+    '''
+    Get a coefficient at each site
+    '''
+
+    return;
+
+def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
+    '''
+    Convert physics contained in an FCIDUMP object or file
+    to a MatrixProduct Expectation (MPE) for doing DMRG
+
+    Args:
+    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
+    bdim_i, int, initial bond dimension of the MPE
+
+    Returns:
+    MPE object
+    '''
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+
+    # convert arrays to fcidump
+    fd = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
+
+    # convert fcidump to hamiltonian obj
+    h_obj = hamiltonian.Hamiltonian(fd,flat=True);
+    
+    # from hamiltonian obj, build Matrix Product Operator
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    h_mps = h_obj.build_mps(bdim_i);
+
+    # MPE
+    return MPE(h_mps, h_mpo, h_mps);
+
 
 ##########################################################################################################
 #### wrappers
 
-def Data(occs, nleads, h1e, g2e, tf, dt, bond_dims, noises, fname = "dmrg_custom.npy", verbose = 0):
+def Data(source, leadsites, h1e, g2e, tf, dt, bond_dims, noises, fname = "dmrg_data.npy", verbose = 0):
     '''
+    Wrapper for taking a system setup (geometry spec'd by leadsites, physics by
+    h1e, g2e, and electronic config by source) and going through the entire
+    tddmrg process.
+
+    Args:
+    source, list, spin orbs to fill with an electron initially
+    leadsites, tuple of how many sites in left, right lead
+    h1e, 2d arr, one body interactions
+    g2e, 4d arr, two body interactions
+    tf, float, time to stop propagation
+    dt, float, time step for propagation
+    bond_dims, list, increasing bond dimensions for DMRG energy minimization
+    noises, list, decreasing noises for DMRG energy minimization
     '''
 
     # check inputs
+    assert(np.shape(h1e) == np.shape(g2e)[:2]);
     assert( bond_dims[0] <= bond_dims[-1]); # checks bdims has increasing behavior and is list
     assert( noises[0] >= noises[-1] ); # checks noises has decreasing behavior and is list
     
     # set up
     hstring = time.asctime(); # for printing
-    nelecs = (len(occs), 0);
+    nelecs = (len(source), 0);
     norbs = np.shape(h1e)[0]; # num spin orbs
-    imp_i = [2*nleads[0],norbs - 2*nleads[1]];
+    imp_i = [2*leadsites[0],norbs - 2*leadsites[1]-1];
 
-    # initial state
-    hinit = np.zeros_like(h1e);
-    for i in occs:
-        hinit[i,i] = -1e6;
+    # prep initial state
+    hinit = -np.ones_like(h1e, dtype = float);
+    for i in source:
+        hinit[i,i] += -1e6;
 
-    # ground state of init state ham
-    # follows process explained in depth for h1e below
-    hinit_obj = hamiltonian.Hamiltonian(fcidump.FCIDUMP(h1e=hinit,g2e=np.zeros_like(g2e),pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]), flat = True);
-    hinit_mpo, _ = hinit_obj.build_qc_mpo().compress(cutoff=1e-15);
-    hinit_mps = hinit_obj.build_mps(bond_dims[0]);
-    hinit_MPE = MPE(hinit_mps, hinit_mpo, hinit_mps);
-    hinit_MPE.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=0);
+    # initial mps = ground state of init state ham
+    hinit_MPE = arr_to_mpe(hinit, np.zeros((norbs,)*4), nelecs, bond_dims[0]);
     psi_init = hinit_MPE.ket;
 
-    # convert physics from array to MPE   
+    # convert physics from array to MPE
+    if(verbose): hstring += "\n1. DMRG solution";
     h_obj = hamiltonian.Hamiltonian(fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]),flat=True);
-    h_mpo = h_obj.build_qc_mpo().compress(cutoff=1E-15); # compressing saves memory
+    h_mpo = h_obj.build_complex_qc_mpo(max_bond_dim=-5);
+    h_mpo, _ = h_mpo.compress(cutoff=1e-15); # compressing saves memory
     if verbose: hstring += "\n- Built H as compressed MPO: "+str( h_mpo.show_bond_dims())
-
     # initial ansatz for wf, in matrix product state (MPS) form
     h_mps = h_obj.build_mps(bond_dims[0]);
     E_dmrg0 = compute_obs(h_mpo, h_mps);
-    if verbose: hstring += "\n- Initial gd energy = "+str(E_dmrg0);
+    if verbose: hstring += "\n- Guess gd energy = "+str(E_dmrg0);
 
     # solve using ground-state DMRG which runs thru MPE class
-    if(verbose): hstring += "\n2. DMRG solution";
     h_MPE = MPE(h_mps, h_mpo, h_mps);
 
     # solve system by doing dmrg sweeps
@@ -145,22 +192,21 @@ def Data(occs, nleads, h1e, g2e, tf, dt, bond_dims, noises, fname = "dmrg_custom
     # can also control verbosity (iprint) sweeps (n_sweeps), conv tol (tol)
     # noises[0] = 1e-3 and tol = 1e-8 work best from trial and error
     dmrg_obj = h_MPE.dmrg(bdims=bond_dims, noises = noises, tol = 1e-8, iprint=0);
-    E_dmrg = dmrg_obj.energies;
     psi_mps = h_MPE.ket; # actual wf
-    if verbose: hstring += "\n- Final gd energy = "+str(E_dmrg[-1]);
-    if verbose: hstring += "\n- Final gd energy = "+str(compute_obs(h_mpo,psi_mps));
+    E_dmrg = compute_obs(h_mpo,psi_mps);
+    if verbose: hstring += "\n- Actual gd energy = "+str(E_dmrg);
     
     # time propagate the init state
     # td dmrg uses highest bond dim
-    if(verbose): hstring += "\n3. Time propagation";
+    if(verbose): hstring += "\n2. Time propagation";
     init, observables = kernel(h_mpo, h_obj, psi_init, tf, dt, imp_i, [bond_dims[-1]], verbose = verbose);
 
     # write results to external file
-    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat)+"\nbdims = "+str(bond_dims)+"\nnoises = "+str(noises);
+    hstring += "\ntf = "+str(tf)+"\ndt = "+str(dt)+"\nbdims = "+str(bond_dims)+"\nnoises = "+str(noises);
     hstring += "\n"+str(h1e);
     np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
     np.save(fname, observables);
-    if(verbose): print("4. Saved data to "+fname);
+    if(verbose): print("3. Saved data to "+fname);
     
     return; # end custom data data dmrg
 

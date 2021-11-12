@@ -111,157 +111,6 @@ def kernel(h1e, g2e, fcivec, mol, scf_inst, tf, dt, dot_i, ASU = True, RK = 4, v
     # column ordering is always t, E, JupL, JupR, JdownL, JdownR, concurrence, (occ, Sx, Sy, Sz for each site)
     return initobs, observables;
     
-def kernel_old(eris, ci, tf, dt, RK):
-    '''
-    Kernel for td calc copied straight from ruojing
-    Outputs density matrices in form (1e alpha, 1e beta), (2e aa, 2e ab, 2e bb)
-    Equivalent to calculating wf at every time step instead of just some observables and discarding
-    Not in use at moment
-    '''
-    N = int(tf/dt+1e-6)
-    d1as = []
-    d1bs = []
-    d2aas = []
-    d2abs = []
-    d2bbs = []
-    for i in range(N+1):
-        (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12()
-        d1as.append(d1a)
-        d1bs.append(d1b)
-        d2aas.append(d2aa)
-        d2abs.append(d2ab)
-        d2bbs.append(d2bb)
-
-        print('time: ', i*dt)
-        dr, di = compute_update(ci, eris, dt, RK)
-        r = ci.r + dt*dr
-        i = ci.i + dt*di
-        norm = np.linalg.norm(r + 1j*i)
-        ci.r = r/norm
-        ci.i = i/norm
-    d1as = np.array(d1as,dtype=complex)
-    d1bs = np.array(d1bs,dtype=complex)
-    d2aas = np.array(d2aas,dtype=complex)
-    d2abs = np.array(d2abs,dtype=complex)
-    d2bbs = np.array(d2bbs,dtype=complex)
-    return (d1as, d1bs), (d2aas, d2abs, d2bbs)
-
-
-############################################################################
-#### wrappers
-
-def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = "", prefix = "dat/temp/", namevar="Vg", verbose = 0):
-    '''
-    Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
-    and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
-    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
-    - encode hamiltonians in an scf.UHF inst
-    - do FCI on scf.UHF to get exact gd state
-    - turn on thyb to intro nonequilibrium (current will flow)
-    - use ruojing's code (td_fci module) to do time propagation
-
-    Args:
-    nleads, tuple of ints of left lead sites, right lead sites
-    nelecs, tuple of num up e's, 0 due to ASU formalism
-    ndots, int, number of dots in impurity
-    timestop, float, how long to run for
-    deltat, float, time step increment
-    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
-    	if None, gives defaults vals for all (see below)
-    prefix: assigns prefix (eg folder) to default output file name
-
-    Returns:
-    none, but outputs t, observable data to /dat/DotData/ folder
-    '''
-
-    # check inputs
-    assert( isinstance(nleads, tuple) );
-    assert( isinstance(nelecs, tuple) );
-    assert( isinstance(ndots, int) );
-    assert( isinstance(timestop, float) );
-    assert( isinstance(deltat, float) );
-    assert( isinstance(phys_params, tuple) or phys_params == None);
-
-    # set up the hamiltonian
-    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
-    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
-    # nelecs left as tunable
-    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
-
-    # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
-    if(verbose): print("1. Construct hamiltonian")
-    eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
-    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
-        
-    # get scf implementation siam by passing hamiltonian arrays
-    if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
-    if( verbose > 3): print("|initial> = ",v_fci);
-    
-    # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
-    if(verbose > 3 ): print("- Add nonequilibrium terms");
-    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
-    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
-
-    # from fci gd state, do time propagation
-    if(verbose): print("3. Time propagation")
-    init, observables = kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
-    
-    # write results to external file
-    fname = os.getcwd()+"/";
-    if namevar == "Vg":
-        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
-    elif namevar == "U":
-        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
-    elif namevar == "Vb":
-        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
-    elif namevar == "th":
-        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
-    else: assert(False); # invalid option
-    hstring = time.asctime();
-    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
-    hstring += "\nASU formalism, t_hyb noneq. term"
-    hstring += "\nEquilibrium"+input_str; # write input vals to txt
-    hstring += "\nNonequlibrium"+input_str_noneq;
-    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
-    np.save(fname, observables);
-    if (verbose): print("4. Saved data to "+fname);
-    
-    return fname; # end dot data
-
-
-def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
-    
-    # unpack
-    norbs = np.shape(h1e)[0];
-    imp_i = [int(norbs/2)-1, int(norbs/2)]; # approx midpt
-
-    # get scf implementation siam by passing hamiltonian arrays
-    if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
-    if( verbose > 3): print("|initial> = ",v_fci);
-    assert(False);
-
-    # from fci gd state, do time propagation
-    if(verbose): print("3. Time propagation")
-    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
-    
-    hstring = time.asctime();
-    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
-    hstring += "\n"+str(h1e);
-    hstring += "\n"+str(h1e_neq);
-    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
-    np.save(fname, observables);
-    if (verbose): print("4. Saved data to "+fname);
-    
-    return fname; # end custom data
-
 
 
 ################################################################
@@ -350,6 +199,147 @@ def compute_energy(d1, d2, eris, time=None):
     e += 0.25 * einsum('PQRS,RSPQ',g2e_bb,d2bb)
     e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
+
+
+############################################################################
+#### wrappers
+
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = "", prefix = "dat/temp/", namevar="Vg", verbose = 0):
+    '''
+    Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
+    and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
+    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
+    - encode hamiltonians in an scf.UHF inst
+    - do FCI on scf.UHF to get exact gd state
+    - turn on thyb to intro nonequilibrium (current will flow)
+    - use ruojing's code (td_fci module) to do time propagation
+
+    Args:
+    nleads, tuple of ints of left lead sites, right lead sites
+    nelecs, tuple of num up e's, 0 due to ASU formalism
+    ndots, int, number of dots in impurity
+    timestop, float, how long to run for
+    deltat, float, time step increment
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
+    	if None, gives defaults vals for all (see below)
+    prefix: assigns prefix (eg folder) to default output file name
+
+    Returns:
+    none, but outputs t, observable data to /dat/DotData/ folder
+    '''
+
+    # check inputs
+    assert( isinstance(nleads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
+
+    # set up the hamiltonian
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
+    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
+    # nelecs left as tunable
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
+
+    # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
+    if(verbose): print("1. Construct hamiltonian")
+    eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
+    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
+        
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+    
+    # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
+    if(verbose > 3 ): print("- Add nonequilibrium terms");
+    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
+    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    # write results to external file
+    fname = os.getcwd()+"/";
+    if namevar == "Vg":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
+    elif namevar == "U":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
+    elif namevar == "Vb":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+    elif namevar == "th":
+        fname += prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
+    else: assert(False); # invalid option
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "\nEquilibrium"+input_str; # write input vals to txt
+    hstring += "\nNonequlibrium"+input_str_noneq;
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end dot data
+
+
+def Data(source, leadsites, h1e, g2e, tf, dt, fname = "fci_data.npy", verbose = 0):
+    '''
+    Wrapper for taking a system setup (geometry spec'd by leadsites, physics by
+    h1e, g2e, and electronic config by source) and going through the entire
+    tdfci process.
+
+    Args:
+    source, list, spin orbs to fill with an electron initially
+    leadsites, tuple of how many sites in left, right lead
+    h1e, 2d arr, one body interactions
+    g2e, 4d arr, two body interactions
+    tf, float, time to stop propagation
+    dt, float, time step for propagation
+    '''
+
+    # check inputs
+    assert(np.shape(h1e) == np.shape(g2e)[:2]);
+    
+    # unpack
+    nelecs = (len(source), 0);
+    norbs = np.shape(h1e)[0];
+    ndets = int(np.math.factorial(norbs)/(np.math.factorial(nelecs[0])*np.math.factorial(norbs - nelecs[0])));
+    imp_i = [2*leadsites[0],norbs - 2*leadsites[1]-1];
+
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("1. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("\n - |initial> = \n",v_fci);
+
+    # prep initial state
+    ci0 = np.zeros((ndets,1));
+    ci0 = v_fci;
+    for ielec in range(len(source)):
+        ci0 = 
+
+    assert False;
+    # from fci gd state, do time propagation
+    if(verbose): print("2. Time propagation");
+    init, observables = td_fci.kernel(h1e, g2e, v_fci, mol, dotscf, tf, dt, imp_i, verbose = verbose);
+    
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(tf)+"\ndt = "+str(dt);
+    hstring += "\n"+str(h1e);
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("3. Saved data to "+fname);
+    
+    return fname; # end custom data
+
+
 
 #####################################################################################
 #### class definitions

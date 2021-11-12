@@ -693,7 +693,7 @@ def heisenberg(J,s2):
 #####################################
 #### full systems with leads
 
-def dot_hams(nleads, nelecs, ndots, physical_params, spinstate = "", verbose = 0):
+def dot_hams(nleads, ndots, physical_params, spinstate = "", verbose = 0):
     '''
     Converts physical params into 1e and 2e parts of siam model hamiltonian
     for use with td-fci. Also does spin state preparation
@@ -704,7 +704,6 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate = "", verbose = 0
     
     Args:
     - nleads, tuple of ints of lead sites on left, right
-    - nelecs, tuple of number es, 0 due to All spin up formalism
     - ndots, int, num impurity sites
     - physical params, tuple of tleads, thyb, tdots, Vbias, mu, Vgate, U, B, theta
     
@@ -715,7 +714,6 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate = "", verbose = 0
     '''
 
     assert(isinstance(nleads, tuple) );
-    assert(isinstance(nelecs, tuple) );
     assert(isinstance(ndots, int) );
     assert( isinstance(physical_params, tuple) );
 
@@ -724,7 +722,7 @@ def dot_hams(nleads, nelecs, ndots, physical_params, spinstate = "", verbose = 0
     dot_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
     t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = physical_params;
     
-    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(ndots)+"\n- nelecs = "+str(nelecs)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
+    input_str = "\nInputs:\n- Num. leads = "+str(nleads)+"\n- Num. impurity sites = "+str(ndots)+"\n- t_leads = "+str(t_leads)+"\n- t_hyb = "+str(t_hyb)+"\n- t_dots = "+str(t_dots)+"\n- V_bias = "+str(V_bias)+"\n- mu = "+str(mu)+"\n- V_gate = "+str(V_gate)+"\n- Hubbard U = "+str(U)+"\n- B = "+str(B)+"\n- theta = "+str(theta);
     if verbose: print(input_str);
 
     #### make full system ham from inputs

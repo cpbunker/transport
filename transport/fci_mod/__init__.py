@@ -100,8 +100,9 @@ def cj_to_ck(h1e, nleads):
     Note on ASU formalism
     For an L sight chain we have tight binding sites 0,1,...2L in real space.
     Each are single e only, even are up and odd are down.
-    In k space k = (2\pi)/La * integer < \pi/a -> L states of each spin
-    We order these 
+    In k space k = (2\pi)/La * integer < \pi/a -> L//2 states of each spin
+    where m = \pm 1, ... \pm L/2 e.g. for a 2 site lead, m = \pm 1
+    corresponding to a left and right moving state of each spin (4 total states)
     '''
 
     # check inputs
@@ -126,33 +127,42 @@ def cj_to_ck(h1e, nleads):
             if( j < iLL and jp < iLL ):
                 # k is just index in ham, m reps ka=2\pi m/L, w/ m <= L/2
                 for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(j == 0 and jp == 0): # do only once
+                        ka = 2*np.pi*m/nleads[0];
+                        hk[2*k,2*k] += -2*np.cos(ka);
+                        hk[2*k+1,2*k+1] += -2*np.cos(ka);
+                    '''
                     for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
-                        #if((k,kp) == (0,1)): print(h1e[j,jp], m*(jmo%nleads[0]) - mp*(jmo%nleads[0]));
                         if(j % 2 == 0 and jp % 2 == 0): # up states
-                            hk[k, kp] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                            hk[2*k, 2*kp] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
                         elif(j % 2 == 1 and jp % 2 == 1): # down states
-                            hk[k+nleads[0], kp+nleads[0]] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                            hk[2*k+1, 2*kp+1] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
                         else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
-
+                    '''
             # replace pure lead j states with k states, right lead
             elif(j >= iRL and jp >= iRL ):
                 for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(j == 0 and jp == 0): # do only once
+                        ka = 2*np.pi*m/nleads[1];
+                        hk[iRL+2*k,iRL+2*k] += -2*np.cos(ka);
+                        hk[iRL+2*k+1,iRL+2*k+1] += -2*np.cos(ka);
+                    '''
                     for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
                         if(j % 2 == 0 and jp % 2 == 0): # up states
-                            hk[iRL + k, iRL + kp] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                            hk[iRL + 2*k, iRL + 2*kp] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
                         elif(j % 2 == 1 and jp % 2 == 1): # down states
-                            hk[iRL+k+nleads[1], iRL+kp+nleads[1]] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                            hk[iRL+2*k+1, iRL+2*kp+1] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
                         else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
-
+                    '''
             # jp coupling to LL
             elif( j >= iLL and j < iRL and jp < iLL):
 
                 # jp column elements go to kp
                 for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
                     if(jp % 2 == 0): # up states
-                        hk[j,kp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        hk[j,2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
                     elif(jp % 2 == 1): # down states
-                        hk[j,kp+nleads[0]] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        hk[j,2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
 
             # j coupling to LL
             elif( jp >= iLL and jp < iRL and j < iLL):
@@ -160,9 +170,9 @@ def cj_to_ck(h1e, nleads):
                 # j row elements go to k
                 for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
                     if(j % 2 == 0): # up states
-                        hk[k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+                        hk[2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
                     elif(j % 2 == 1): # down states
-                        hk[k+nleads[0],jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+                        hk[2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
 
             # jp coupling to RL
             elif( j >= iLL and j < iRL and jp >= iRL):
@@ -170,9 +180,9 @@ def cj_to_ck(h1e, nleads):
                 # jp column elements go to kp
                 for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
                     if(jp % 2 == 0): # up states
-                        hk[j,kp+iRL] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        hk[j,iRL+2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
                     elif(jp % 2 == 1): # down states
-                        hk[j,kp+nleads[1]+iRL] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        hk[j,iRL+2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
 
             # j coupling to RL
             elif( jp >= iLL and jp < iRL and j >= iRL):
@@ -180,9 +190,9 @@ def cj_to_ck(h1e, nleads):
                 # j row elements go to k
                 for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
                     if(j % 2 == 0): # up states
-                        hk[k+iRL,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                        hk[iRL+2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
                     elif(j % 2 == 1): # down states
-                        hk[k+nleads[0]+iRL,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                        hk[iRL+2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
                         
             # pure SR states unchanged
             elif( j >= iLL and j < iRL and jp >= iLL and jp < iRL):
@@ -346,39 +356,6 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         
     return H;
 
-
-##########################################################################################################
-#### dmrg conversions
-
-def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
-    '''
-    Convert physics contained in an FCIDUMP object or file to a Matrix
-    Product Expectation (MPE) for doing DMRG
-
-    Args:
-    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
-    bdim_i, int, initial bond dimension of the MPE
-
-    Returns:
-    MPE object
-    '''
-
-    from pyblock3 import fcidump, hamiltonian, algebra
-    from pyblock3.algebra.mpe import MPE
-
-    # convert fcidump to hamiltonian obj
-    if( isinstance(fd, string) ): # fd is file, must be read
-        hobj = hamiltonian.Hamiltonian(FCIDUMP().read(fd), flat=True);
-    else: # fcidump obj already
-        h_obj = hamiltonian.Hamiltonian(fd, flat=True);
-
-    # Matrix Product Operator
-    h_mpo = h_obj.build_qc_mpo();
-    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
-    psi_mps = h_obj.build_mps(bdim_i);
-
-    # MPE
-    return MPE(psi_mps, h_mpo, psi_mps);
 
 
 ##########################################################################################################
