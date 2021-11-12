@@ -173,6 +173,9 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # meir-wingreen Lambda(E) matrix = -2*Im[hyb]
     Lambda_L = (-2)*np.imag(LL_hyb);
     Lambda_R = (-2)*np.imag(RL_hyb);
+    Lambda = dot_spinful_arrays(Lambda_L, Lambda_R)
+    #Lambda = dot_spinful_arrays(Lambda, np.inv(Lambda_L+Lambda_R));
+    Lambda = (1/2)*Lambda_L;
 
     # 2: Meir Wingreen formula - Meir Wingreen Eq 6
     therm = dot_spinful_arrays(Lambda_L, nL) - dot_spinful_arrays(Lambda_R, nR); # combines thermal contributions
@@ -388,6 +391,7 @@ def spdm(energies, iE, G):
 #### utils
 
 
+
 def dagger(g):
     '''
     Get hermitian conjugate of a spin by norb by norb (energy) object
@@ -403,6 +407,55 @@ def dagger(g):
             gdagger[s,:,:,wi] = np.conj(g[s,:,:,wi].T);
 
     return gdagger;
+
+
+def dot_spinful_arrays(a1_, a2_, backwards = False):
+    '''
+    given an array of shape (spin, norbs, norbs, nfreqs)
+    and another array , either
+    - an operator, shape (spin, norbs, norbs), indep of freq
+    '''
+
+    # unpack
+    a1, a2 = np.copy(a1_), np.copy(a2_); # not in place
+    spin, norbs, _, nfreqs = np.shape(a1);
+
+    # return var
+    result = np.zeros_like(a1, dtype = complex);
+
+    # screen by kind of second array
+    if( np.shape(a2) == (spin, norbs, norbs) ): # freq indep operator
+        for s in range(spin):
+            for iw in range(nfreqs):
+                if not backwards:
+                    result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s]);
+                else:
+                    result[s,:,:,iw] = np.matmul(a2[s], a1[s,:,:,iw]);
+
+    elif(np.shape(a2) == (nfreqs,) ): # freq dependent scalar
+        assert( not backwards);
+        for s in range(spin):
+            for i in range(norbs):
+                for j in range(norbs):
+                    result[s,i,j] = a1[s,i,j]*a2;
+
+    elif(np.shape(a2) == np.shape(a1) ): # both are freq dependent ops
+        assert(not backwards);
+        for s in range(spin):
+            for iw in range(nfreqs):
+                assert( len(np.shape(a1[s,:,:,iw])) == 2 and np.shape(a1)[1] == np.shape(a1)[2]);
+                result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
+
+    elif(isinstance(a2, float)):
+        return a2*a1;
+
+    elif(False):
+        pass;
+
+    else: raise(ValueError("a2 "+str(np.shape(a2))+" is of wrong size") );
+
+    assert(np.shape(result) == np.shape(a1));
+    return result;
                              
 
 def decompose_gf(energies, G, nFD):
@@ -458,55 +511,6 @@ def decompose_gf(energies, G, nFD):
         assert False;
     assert( not np.any(np.isnan(np.array([G_ret, G_adv, G_les, G_gre]) ) ) );
     return G_ret, G_adv, G_les, G_gre;
-
-
-def dot_spinful_arrays(a1_, a2_, backwards = False):
-    '''
-    given an array of shape (spin, norbs, norbs, nfreqs)
-    and another array , either
-    - an operator, shape (spin, norbs, norbs), indep of freq
-    '''
-
-    # unpack
-    a1, a2 = np.copy(a1_), np.copy(a2_); # not in place
-    spin, norbs, _, nfreqs = np.shape(a1);
-
-    # return var
-    result = np.zeros_like(a1, dtype = complex);
-
-    # screen by kind of second array
-    if( np.shape(a2) == (spin, norbs, norbs) ): # freq indep operator
-        for s in range(spin):
-            for iw in range(nfreqs):
-                if not backwards:
-                    result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s]);
-                else:
-                    result[s,:,:,iw] = np.matmul(a2[s], a1[s,:,:,iw]);
-
-    elif(np.shape(a2) == (nfreqs,) ): # freq dependent scalar
-        assert( not backwards);
-        for s in range(spin):
-            for i in range(norbs):
-                for j in range(norbs):
-                    result[s,i,j] = a1[s,i,j]*a2;
-
-    elif(np.shape(a2) == np.shape(a1) ): # both are freq dependent ops
-        assert(not backwards);
-        for s in range(spin):
-            for iw in range(nfreqs):
-                assert( len(np.shape(a1[s,:,:,iw])) == 2 and np.shape(a1)[1] == np.shape(a1)[2]);
-                result[s,:,:,iw] = np.matmul(a1[s,:,:,iw], a2[s,:,:,iw]);
-
-    elif(isinstance(a2, float)):
-        return a2*a1;
-
-    elif(False):
-        pass;
-
-    else: raise(ValueError("a2 "+str(np.shape(a2))+" is of wrong size") );
-
-    assert(np.shape(result) == np.shape(a1));
-    return result;
 
 
 def find_mu(h1e, g2e, mu0, nimp, target, max_mem, max_cycle = 10, trust_region = 0.1, step = 0.01, nelec_tol = 1e-2, verbose = 0):
