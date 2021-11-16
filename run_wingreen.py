@@ -34,21 +34,42 @@ h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
+del h1e, g2e
+
+# spin 1/2 scatterer
+nimp = 2;
+Vg = -0.5;
+J = 0.1;
+h1e = np.zeros((1,2*nimp,2*nimp));
+h1e[0][1,1] = Vg; # localized down spin
+g2e = np.zeros((1,2*nimp,2*nimp,2*nimp,2*nimp));
+g2e[0][0,0,2,2] = J/4;
+g2e[0][2,2,0,0] = J/4;
+g2e[0][0,0,3,3] = -J/4;
+g2e[0][3,3,0,0] = -J/4;
+g2e[0][1,1,2,2] = -J/4;
+g2e[0][2,2,1,1] = -J/4;
+g2e[0][1,1,3,3] = J/4;
+g2e[0][3,3,1,1] = J/4;
+g2e[0][0,1,2,3] = J/2;
+g2e[0][2,3,0,1] = J/2;
+g2e[0][1,0,2,3] = J/2;
+g2e[0][2,3,1,0] = J/2;
 
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
 Vb = 0.005; # bias
-th = 0.4; # coupling between imp, leads
-coupling = np.array([[[-th, 0],[0,-th]]]); # ASU
+th = 1.0; # coupling between imp, leads
+coupling = np.array([-th*np.eye(2*nimp)]);
 
 # left lead
-H_LL = np.array([[[Vb/2,0],[0,Vb/2]]]);
-V_LL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
+H_LL = np.array([np.zeros((2*nimp,2*nimp))]);
+V_LL = np.array([-tl*np.eye(2*nimp)]); # spin conserving hopping
 LLphys = (H_LL, V_LL, np.copy(coupling), Vb/2); # pack
 
 # right lead
-H_RL = np.array([[[-Vb/2,0],[0,-Vb/2]]]);
-V_RL = np.array([[[-tl,0],[0,-tl]]]); # spin conserving hopping
+H_RL = np.array([np.zeros((2*nimp,2*nimp))]);
+V_RL = np.array([-tl*np.eye(2*nimp)]); # spin conserving hopping
 RLphys = (H_RL, V_RL, np.copy(coupling), -Vb/2); # pack
 
 # energy spectrum 
@@ -58,14 +79,22 @@ Es = np.linspace(-1.09*Vb, 1.1*Vb, 101);
 
 # kernel inputs
 nbo = 4; # num bath orbs
-iE = (Es[-1] - Es[0])/nbo/2
+iE = (Es[-1] - Es[0])/nbo
 kBT = 0.0;
 
 # run kernel for MBGF
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'fci', verbose = verbose);
+MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'cc', verbose = verbose);
 
 #### 3: use meir wingreen formula
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
+
+# plot all spin currents
+for sigma in [0,1]:
+    for sigmap in [0,1]:
+        plt.plot(energies, jE[sigma,sigmap], label = (sigma, sigmap));
+
+plt.show();
+assert(False);
 
 # also try landauer formula
 jE_land = fcdmft.landauer(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);

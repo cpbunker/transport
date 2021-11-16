@@ -173,9 +173,9 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
 
     # 2: current density in terms of spectral density = -1/pi Im(MBGF)
     # ie Bruus, equation 10.57
-    MBGF_trunc = MBGF[:,:2,:2,:];
+    MBGF_trunc = MBGF[:,:n_imp_orbs,:n_imp_orbs,:];
     spectral = (-1/np.pi)*(MBGF_trunc - dagger(MBGF_trunc))/complex(0,2);
-    jE = (nL - nR)*np.trace(dot_spinful_arrays(Lambda, spectral)[0])
+    jE = (nL - nR)*(dot_spinful_arrays(Lambda, spectral)[0])
         
     if(verbose > 4):
         # compare with Meir Wingreen formula - Meir Wingreen Eq 6 (deprecated)
