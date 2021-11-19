@@ -121,6 +121,100 @@ def subspace(m):
     return picks, pickis, pickstrs;
 
 
+def entangle(H,bi,bj):
+    '''
+    Perform a change of basis on a matrix such that basis vectors bi, bj become entangled (unentangled)
+    '''
+
+    # check inputs
+    assert(bi < bj);
+    assert(bj < max(np.shape(H)));
+
+    # rotation matrix
+    R = np.zeros_like(H);
+    for i in range(np.shape(H)[0]):
+        for j in range(np.shape(H)[1]):
+            if( i != bi and i != bj):
+                if(i == j):
+                    R[i,j] = 1; # identity
+            elif( i == bi and j == bi):
+                R[i,j] = 1/np.sqrt(2);
+            elif( i == bj and j == bj):
+                R[i,j] = -1/np.sqrt(2);
+            elif( i == bi and j == bj):
+                R[i,j] = 1/np.sqrt(2);
+            elif( i == bj and j== bi):
+                R[i,j] = 1/np.sqrt(2);
+
+    return np.matmul(np.matmul(R.T,H),R);
+
+
+#### test code
+if True:
+    h_SR = np.array([[1,0,0,0],[0,-1,2,0],[0,2,-1,0],[0,0,0,1]])/4;
+    print(h_SR);
+    tl = 1.0;
+    Energy = -2*tl + 0.1;
+    ka = np.arccos(Energy/(-2*tl));
+    source = np.array([0,1,0,0]);
+    Nmax = 10;
+    Nvals = np.linspace(0,Nmax,min(Nmax, 20),dtype = int);
+    Tvals = [];
+    for N in Nvals:
+
+        # package as block hams 
+        # number of blocks depends on N
+        hblocks = [np.zeros_like(h_SR)]
+        tblocks = [-tl*np.eye(*np.shape(h_SR)) ];
+        for Ni in range(N):
+            hblocks.append(np.copy(h_SR));
+            tblocks.append(-tl*np.eye(*np.shape(h_SR)) );
+        hblocks.append(np.zeros_like(h_SR) );
+        hblocks = np.array(hblocks);
+        tblocks = np.array(tblocks);
+
+        # coefs
+        Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+
+    # plot Tvals vs E
+    Tvals = np.array(Tvals);
+    fig, ax = plt.subplots();
+    xlab = "$N$"
+    for bi in range(np.shape(h_SR)[0]):
+        ax.plot(Nvals, Tvals[:,bi], label = bi);
+    plt.legend();
+    plt.show();
+
+    # again with entangled state
+    h_SR = entangle(h_SR,1,2);
+    print(h_SR);
+    Tvals = [];
+    for N in Nvals:
+
+        # package as block hams 
+        # number of blocks depends on N
+        hblocks = [np.zeros_like(h_SR)]
+        tblocks = [-tl*np.eye(*np.shape(h_SR)) ];
+        for Ni in range(N):
+            hblocks.append(np.copy(h_SR));
+            tblocks.append(-tl*np.eye(*np.shape(h_SR)) );
+        hblocks.append(np.zeros_like(h_SR) );
+        hblocks = np.array(hblocks);
+        tblocks = np.array(tblocks);
+
+        # coefs
+        Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+
+    # plot Tvals vs E
+    Tvals = np.array(Tvals);
+    fig, ax = plt.subplots();
+    xlab = "$N$"
+    for bi in range(np.shape(h_SR)[0]):
+        ax.plot(Nvals, Tvals[:,bi], label = bi);
+    plt.legend();
+    plt.show();
+    assert False;
+
 #### run code
 
 # top level
@@ -174,15 +268,15 @@ if option == "E": # iter over energy
     
 elif option == "N": # stretch SR, switzer style
 
+    # fix energy near bottom of band
+    Energy = -2*tl + 0.5;
+    ka = np.arccos(Energy/(-2*tl));
+
     # iter over N
     Nmax = 10;
-    Nvals = np.linspace(1,Nmax,30,dtype = int);
+    Nvals = np.linspace(0,Nmax,30,dtype = int);
     Tvals = [];
     for N in Nvals:
-
-        # fix energy near bottom of band
-        Energy = -2*tl + 0.5;
-        ka = np.arccos(Energy/(-2*tl));
 
         # package as block hams 
         # number of blocks depends on N

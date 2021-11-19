@@ -177,7 +177,8 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
         
         # Caroli expression 
         Ts[Ti] = 4*np.imag(SigmaR[Ti])*Gqi[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqi.conj()[Ti-n_loc_dof];
-        assert( abs(np.imag(Ts[Ti])) <= 1e-8);
+        assert( abs(np.imag(Ts[Ti])) <= 1e-10);
+        Ts[Ti] = np.real(Ts[Ti]);
 
     return tuple(Ts);
 
