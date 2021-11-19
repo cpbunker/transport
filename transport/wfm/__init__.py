@@ -172,13 +172,13 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
     for j in range(len(qi)):
         qivector[j] = qi[j]; # fill
     Gqi = np.dot(G, qivector);
-    Ts = np.zeros(n_loc_dof, dtype = complex);
+    Ts = np.zeros(n_loc_dof, dtype = float); # must be real
     for Ti in range(n_loc_dof):
         
         # Caroli expression 
-        Ts[Ti] = 4*np.imag(SigmaR[Ti])*Gqi[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqi.conj()[Ti-n_loc_dof];
-        assert( abs(np.imag(Ts[Ti])) <= 1e-10);
-        Ts[Ti] = np.real(Ts[Ti]);
+        caroli = 4*np.imag(SigmaR[Ti])*Gqi[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqi.conj()[Ti-n_loc_dof];
+        assert( abs(np.imag(caroli)) <= 1e-10); # screen for errors
+        Ts[Ti] = np.real(caroli);
 
     return tuple(Ts);
 

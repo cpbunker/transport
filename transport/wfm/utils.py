@@ -70,6 +70,41 @@ def entangle(H,bi,bj):
 
     return np.matmul(np.matmul(R.T,H),R);
 
+
+def sweep_pairs(source):
+    '''
+    Given a single state source vector, return a list of all the pairs
+    of basis states that are initially unoccupied
+    '''
+
+    # check inputs
+    assert(isinstance(source, np.ndarray));
+    assert(max(source) == 1);
+    assert(sum(source) == 1); # together these ensure a single state source
+
+    # return value
+    result = [];
+
+    si = np.argmax(source);
+    for i in range(len(source)):
+        for j in range(len(source)):
+            if(i != si and j != si and i < j): # add to pairs list
+                result.append((i,j));
+
+    return result;
+
+
+def sweep_param_space(init_params, dev):
+    '''
+    Given initial vals of params, make a list covering all mesh points
+    in the param space, s.t. each param is allowed to deviate from its initial
+    value by dev
+
+    Returns list
+    '''
+
+    return [init_params];
+
 ##################################################################################
 #### functions specific to a model
 
@@ -129,7 +164,7 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
 
     return h_cicc, tl_arr;
 
-def h_dimer_2q(JK1, JK2):
+def h_dimer_2q(params):
     '''
     Generate second quantized form of the Co dimer spin hamiltonian
 
@@ -141,14 +176,8 @@ def h_dimer_2q(JK1, JK2):
     # basis size
     Nb = 2+8; # e + 4 m states each imp
 
-    # first principles params, in meV
-    Jx = 0.209;
-    Jy = Jx; # for more flexibility
-    Jz = 0.124;
-    DO = 0.674;
-    DT = 0.370;
-    An = 0.031;
-    #An = 0; # for simplicity
+    # unpack params
+    Jx, Jy, Jz, DO, DT, An, JK1, JK2 = params;
 
     # 1 particle terms
     h1e = np.zeros((Nb, Nb), dtype = complex);
@@ -208,3 +237,4 @@ def h_dimer_2q(JK1, JK2):
     g2e = fci_mod.terms_to_g2e(g2e, zeops, JK2*zecoefs, zTops, zTcoefs);
 
     return h1e, g2e;
+
