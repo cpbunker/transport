@@ -8,7 +8,7 @@ general formalism: all sites map to all the different
 degrees of freedom of the system
 '''
 
-from .. import fci_mod
+from transport import fci_mod
 
 import numpy as np
 
@@ -181,73 +181,6 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
         Ts[Ti] = np.real(Ts[Ti]);
 
     return tuple(Ts);
-
-
-##################################################################################
-#### functions specific to the cicc model
-
-def E_disp(k,a,t):
-    # vectorized conversion from k to E(k), measured from bottom of band
-    return -2*t*np.cos(k*a);
-
-def k_disp(E,a,t):
-    return np.arccos(E/(-2*t))/a;
-
-def h_cicc_eff(J, t, i1, i2, Nsites):
-    '''
-    construct hams
-    formalism works by
-    1) having 3 by 3 block's each block is differant site for itinerant e
-          H_LL T    0
-          T    H_SR T
-          0    T    H_RL        T is hopping between leads and scattering region
-    2) all other dof's encoded into blocks
-
-    Args:
-    - J, float, eff heisenberg coupling
-    - t, float, hopping btwn sites
-    = i1, int, site of 1st imp
-    - i2, int, site of 2nd imp
-    - Nsites, int, total num sites in SR
-    '''
-    
-    # heisenberg interaction matrices
-    Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
-                        [0,1,0,0,0,0,0,0],
-                        [0,0,-1,0,2,0,0,0],
-                        [0,0,0,-1,0,2,0,0],
-                        [0,0,2,0,-1,0,0,0],
-                        [0,0,0,2,0,-1,0,0],
-                        [0,0,0,0,0,0,1,0],
-                        [0,0,0,0,0,0,0,1] ]);
-
-    Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
-                        [0,-1,0,0,2,0,0,0],
-                        [0,0,1,0,0,0,0,0],
-                        [0,0,0,-1,0,0,2,0],
-                        [0,2,0,0,-1,0,0,0],
-                        [0,0,0,0,0,1,0,0],
-                        [0,0,0,2,0,0,-1,0],
-                        [0,0,0,0,0,0,0,1] ]);
-
-    # insert these local interactions
-    h_cicc =[];
-    for sitei in range(Nsites): # iter over all sites
-        if(sitei == i1):
-            h_cicc.append(Se_dot_S1);
-        elif(sitei == i2):
-            h_cicc.append(Se_dot_S2);
-        else:
-            h_cicc.append(np.zeros_like(Se_dot_S1) );
-    h_cicc = np.array(h_cicc);
-
-    # hopping connects like spin orientations only, ie is identity
-    tl_arr = []
-    for sitei in range(Nsites-1):
-        tl_arr.append(-t*np.eye(*np.shape(Se_dot_S1)) );
-    tl_arr = np.array(tl_arr);
-
-    return h_cicc, tl_arr;
 
 
 if __name__ == "__main__": # test code

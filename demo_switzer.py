@@ -10,10 +10,11 @@ In this case, impurities follow eric's paper
 '''
 
 from transport import wfm, fci_mod, ops
+from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn
+
 import sys
 
 # top level
@@ -37,20 +38,19 @@ if option == "direct": # directly write down ham --> rabi flopping at resonance
 
     # define source
     source = np.zeros(3);
-    source[2] = 1;
+    source[2] = 1; # me, m1, m2 = down, 1, 1 state
     
+    # fix energy near bottom of band
+    Energy = -2*tl + 0.5;
+    ka = np.arccos(Energy/(-2*tl));
+    #print("ka = ", ka);
+    #print("vg = ", 2*tl*np.sin(ka));
 
     # iter over N
     Nmax = 80
-    Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
+    Nvals = np.linspace(1,Nmax,min(Nmax, 20),dtype = int);
     Tvals = [];
     for N in Nvals:
-
-        # fix energy near bottom of band
-        Energy = -2*tl + 0.5;
-        ka = np.arccos(Energy/(-2*tl));
-        #print("ka = ", ka);
-        #print("vg = ", 2*tl*np.sin(ka));
 
         # eff exchange in SR
         h_ex = (1/4)*np.array([[0,DeltaK,4*JK],   # block diag m=3/2 subspace
@@ -100,36 +100,37 @@ elif option == "2q": # second quantized form of eric's model
 
     # define source
     source = np.zeros(3);
-    source[0] = 1/np.sqrt(2);
-    source[1] = -1/np.sqrt(2);
+    source[2] = 1;  # me, m1, m2 = down, 1, 1 state
+
+    # fix energy near bottom of band
+    Energy = -2*tl + 0.5;
+    ka = np.arccos(Energy/(-2*tl));
 
     # iter over N
     Nmax = 80
-    Nvals = np.linspace(1,Nmax,Nmax,dtype = int);
+    Nvals = np.linspace(1,Nmax,min(Nmax,20),dtype = int);
     Tvals = [];
     for N in Nvals:
 
-        # fix energy near bottom of band
-        Energy = -2*tl + 0.5;
-        ka = np.arccos(Energy/(-2*tl));
-
         # 2nd qu'd ham
         h1e, g2e = ops.h_switzer(D, JH, JK, JK);
-        print(g2e[:2,:2,:2,:2]);
 
         # check
-        t1 = [(2,3),(3,2)];
-        c1 = [1/np.sqrt(2),1/np.sqrt(2)];
-        t1 = [(1,0),(0,1)];
-        c1 = [1/np.sqrt(2),1/np.sqrt(2)];
+        #t1 = [(2,3),(3,2)];
+        #c1 = [1/np.sqrt(2),1/np.sqrt(2)];
+        #t1 = [(1,0),(0,1)];
+        #c1 = [1/np.sqrt(2),1/np.sqrt(2)];
 
         # convert to many body form
         parts = np.array([1,1,1]); # one particle each
         states = [[0,1],[2,3,4],[5,6,7]]; # e up, down, spin 1 mz, spin 2 mz
-        interests = [[0,2,6],[0,3,5],[1,2,5]];
+        interests = [[0,2,6],[0,3,5],[1,2,5]]; # pick me, m1, m2 = up, 1, 0>, up, 0, 1>, down, 1, 1 states
         h_SR = fci_mod.single_to_det(h1e,g2e, parts, states, dets_interest = interests);
-        #print("D = ",D,", JH = ",JH,", JK1 = ", JK, ", JK2 = ",JK2," pred = ", 2*D+JH-0.5*JK-0.5*JK2);
+        #print("D = ",D,", JH = ",JH,", JK1 = ", JK, ", JK2 = ",JK," pred = ", 2*D+JH-0.5*JK-0.5*JK);
         #print(h_SR);
+
+        # entangle the me up states into eric's me, s12, m12> = up, 2, 1> state
+        h_SR = wfm.utils.entangle(h_SR, 0, 1);
 
         # package as block hams 
         # number of blocks depends on N
