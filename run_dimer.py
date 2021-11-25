@@ -18,28 +18,29 @@ import matplotlib.pyplot as plt
 import itertools
 
 import sys
+import time
 
 #### setup
 
 # top level
 plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 4;
+verbose = 3;
 sourcei = int(sys.argv[1]);
-param_dev = 0.5; # how much params can deviate from ab initio vals in grid sweep
-numEvals = 3; # energy pts, -2 < E < -1
+param_dev = 0.4; # % params can deviate from ab initio vals in grid sweep
+numEvals = 9; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
 spec_strs = ["e","1","2"];
-states = np.array([[0,1],[2,3,4,5],[6,7,8,9]]); # e up, down, spin 1 mz, spin 2 mz
+states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
 dets = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]
 
 # initialize source vector
 assert(sourcei >= 0 and sourcei < len(dets));
-source = np.zeros(5);
+source = np.zeros(len(dets));
 source[sourcei] = 1;
 source_str = "|";
 for si in dets[sourcei]: source_str += state_strs[si];
@@ -48,7 +49,7 @@ print("\nSource:\n"+source_str);
 
 # tight binding params
 tl = 1.0; # 2e hopping, in meV
-JK1 = 0.4;
+JK1 = 0.3;
 JK2 = JK1;
 
 # Ab initio params, in meV:
@@ -58,8 +59,7 @@ Jz = 0.124;
 DO = 0.674;
 DT = 0.370;
 An = 0.031;
-An = 0; # for convenience
-abinit_params = Jx, Jy, Jz, DO, DT, An, JK1, JK2; # package
+abinit_params = Jx, Jz, DO, DT, An, JK1; # package
 
 #### get data for all entangled state pairs, across physical param space sweep
 
@@ -68,6 +68,7 @@ abinit_params = Jx, Jy, Jz, DO, DT, An, JK1, JK2; # package
 features = [];
 
 # sweep over entangled pairs
+start = time.time()
 for pair in wfm.utils.sweep_pairs(dets, sourcei):
 
     if(verbose):
@@ -81,20 +82,21 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei):
             pair_strs.append(pair_str);
 
     # sweep over energy
-    for Energy in np.linspace(-2.0+1e-3,-1.0-1e-3, numEvals): # keep in quadratic regime
+    for Energy in [-1.0]: # keep in quadratic regime
 
         # sweep over physical params
-        for params in wfm.utils.sweep_param_space(abinit_params[:3], param_dev, numEvals):
+        for params in wfm.utils.sweep_param_space(abinit_params, param_dev, numEvals):
 
             # truncate to 3d param space for now, remove later!
-            for el in abinit_params[3:]: params.append(el);
+            Jx, Jz, DO, DT, An, JK1 = tuple(params);
+            params = Jx, Jx, Jz, DO, DT, An, JK1, JK1;
 
             # construct second quantized ham
             h1e, g2e = wfm.utils.h_dimer_2q(params); 
 
             # construct h_SR (determinant basis) in a given total Sz subspace
             mystates, myis, mystrs = wfm.utils.subspace(3/2); # subspace
-            h_SR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = mystates);
+            h_SR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets);
             h_SR = wfm.utils.entangle(h_SR, *pair);
             if(verbose > 4): print("\n- Entangled hamiltonian\n", h_SR);
 
@@ -159,6 +161,8 @@ fname = "dat/"+str(source_str[1:-1]);
 print("Saving data to "+fname);
 assert( features != []);
 np.save(fname, np.array(features) );
+stop = time.time();
+print("Elapsed time = ", (stop - start)/60, " minutes.");
 
 
 

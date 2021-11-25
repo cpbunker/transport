@@ -234,7 +234,7 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
 
     # check inputs
     assert( isinstance(Nps, np.ndarray));
-    assert( isinstance(states, np.ndarray));
+    assert( isinstance(states, list));
     assert( isinstance(dets_interest, list));
     assert(len(states) == len(Nps));
     assert( states[-1][-1]+1 == np.shape(h1e)[0] );

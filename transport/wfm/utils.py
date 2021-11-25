@@ -84,8 +84,11 @@ def sweep_pairs(dets, sourcei):
     for i in range(len(dets)):
         for j in range(len(dets)):
             if(i != sourcei and j != sourcei and i < j): # distinct pair
-                if((dets[sourcei][0] != dets[i][0]) and (dets[i][0] == dets[j][0])):
-                    result.append((i,j));
+                # high spin pairs only
+                if(True):
+                #if(dets[i][1] in [2,5] and dets[j][1] in [2,5] and dets[i][2] in [6,9] and dets[j][2] in [6,9]):
+                    if((dets[sourcei][0] != dets[i][0]) and (dets[i][0] == dets[j][0])):
+                        result.append((i,j));
 
     return result;
 
@@ -108,13 +111,13 @@ def sweep_param_space(ps, d, n):
     if(len(ps) > 2): # truncate param space until 2 by 2
         result = []
         inner = sweep_param_space(ps[1:], d, n);
-        for pi in np.linspace(ps[0] - d, ps[0] + d, n):
+        for pi in np.linspace(ps[0]*(1 - d), ps[0]*(1 + d), n):
             for el in inner:
                 result.append([pi, *tuple(el) ]);
     else: # do 2 by 2 directly
         result = [];
-        for pi in np.linspace(ps[0] - d, ps[0] + d, n):
-            for pj in np.linspace(ps[1] - d, ps[1] + d, n):
+        for pi in np.linspace(ps[0]*(1 - d), ps[0]*(1 + d), n):
+            for pj in np.linspace(ps[1]*(1 - d), ps[1]*(1 + d), n):
                 result.append([pi,pj]);
                 
     return result;                   
