@@ -28,7 +28,7 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
 sourcei = int(sys.argv[1]);
 param_dev = 0.4; # % params can deviate from ab initio vals in grid sweep
-numEvals = 9; # energy pts, -2 < E < -1
+numEvals = 5; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -60,6 +60,7 @@ DO = 0.674;
 DT = 0.370;
 An = 0.031;
 abinit_params = Jx, Jz, DO, DT, An, JK1; # package
+del Jx, Jy, Jz, DO, DT, An;
 
 #### get data for all entangled state pairs, across physical param space sweep
 
@@ -157,7 +158,7 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei):
                 plt.show();
 
 #### save data
-fname = "dat/"+str(source_str[1:-1]);
+fname = str(source_str[1:-1]);
 print("Saving data to "+fname);
 assert( features != []);
 np.save(fname, np.array(features) );
