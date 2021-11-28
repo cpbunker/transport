@@ -25,7 +25,7 @@ plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 4;
 sourcei = int(sys.argv[1]);
-numEvals = 10;
+numEvals = 5;
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -53,20 +53,31 @@ features = np.load(fname);
 # after that is source/entangled state info
 # two targets: Peak of + state, peak of - state
 feature_strs = ["E", "Jx", "Jy", "Jz", "DO", "DT", "An", "JK1", "JK2"];
-X = ml.Scale(features[:,:4]);
+included_features = ["Jx", "Jz", "DO", "DT", "An", "JK1"];
+
+# process important features into X
+nsamples, nfeatures = len(features[:,0]), len(included_features);
+print("nsamples, nfeatures = ", nsamples, nfeatures);
+X = np.empty((nsamples, nfeatures));
+Xcoli = 0;
+for coli in range(len(feature_strs)):
+    if feature_strs[coli] in included_features:
+        X[:,Xcoli] = features[:,coli];
+        Xcoli += 1;
+
 ys = features[:,-2:];
-nsamples, nfeatures = np.shape(X);
+X = ml.Scale(X);
 
 # machine learning!
 for y in [ys[:,0]]:
     
     # find principal component
-    ml.PlotPolyFit(X, ys[:,0], 1, feature_strs);
+    ml.PlotPolyFit(X, y, 1, included_features);
     Xpca = ml.PCA(X, 1, inverse = True);
-    ml.PlotPolyFit(Xpca, ys[:,0], 1, feature_strs);
+    ml.PlotPolyFit(Xpca, y, 3, included_features);
 
     # use random forest regression
-    ml.PlotForestFit(X, y, 10, feature_strs, numEvals)
+    #ml.PlotForestFit(X, y, 50, included_features, numEvals)
 
 
     

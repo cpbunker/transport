@@ -104,6 +104,7 @@ def PlotPolyFit(X1, y1, degree, labs, mytitle = "Polynomial fit"):
 
     # visualize w linear regression
     fig, axes = plt.subplots(nfeatures, sharex = True, sharey = True);
+    if(nfeatures == 1): axes = [axes];
     for fi in range(nfeatures):
 
         # linear fit

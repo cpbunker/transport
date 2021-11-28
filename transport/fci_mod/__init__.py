@@ -344,8 +344,9 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
                         coupling = H[deti,detj];
                         if( (coupling != 0) and (detj not in is_interest) ):
                             # bad: nonzero coupling outside subspace of interest
-                            print("\nWARN: bad coupling: ",dets[deti], dets[detj], coupling);
-       
+                            #print("\nWARN: bad coupling: ",dets[deti], dets[detj], coupling);
+                            pass;
+                        
         # transfer desired matrix elements
         newH = np.zeros((len(is_interest),len(is_interest) ), dtype = complex);
         for i in range(len(is_interest)):

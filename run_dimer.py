@@ -28,7 +28,7 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
 sourcei = int(sys.argv[1]);
 param_dev = 0.4; # % params can deviate from ab initio vals in grid sweep
-numEvals = 5; # energy pts, -2 < E < -1
+numEvals = 3; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -83,7 +83,7 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei):
             pair_strs.append(pair_str);
 
     # sweep over energy
-    for Energy in [-1.0]: # keep in quadratic regime
+    for Energy in [-1.8,-1.6,-1.4,-1.2,-1.0]: # keep in quadratic regime
 
         # sweep over physical params
         for params in wfm.utils.sweep_param_space(abinit_params, param_dev, numEvals):
