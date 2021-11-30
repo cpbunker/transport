@@ -5,7 +5,7 @@ Methods for calculating transport through magnetic molecules / spin impurities
 Steady state calculation of transmission coefficient of a single electron incident on the spin-interacting scattering region.
 
 ## fcdmft
-Revision of DMFT code (due to Tianyu Zhu, Garnet Chan Group, Caltech) for calculation of the many body Green's function (MBGF) at a high level of quantum chemistry for an interacting region coupled to two noninteracting, block tridiagonal leads. This MBGF can then be used to obtain the linear response current due to a finite bias in the lead chemical potential( mu_L - mu_R !=  0) using the Meir Wingreen formalism.
+Revision of DMFT code (due to Tianyu Zhu, Garnet Chan Group, Caltech) for calculation of the many body Green's function (MBGF) at a high level of quantum chemistry for an interacting region coupled to two noninteracting, block tridiagonal leads. This MBGF can then be used to obtain the linear response current due to a finite bias in the lead chemical potential(mu_L != mu_R) using the Meir Wingreen formalism.
 
 Process as done by fcdmft/__init__.py (my code):
 1. Formalism of the MBGF
@@ -21,6 +21,11 @@ Process as done by fcdmft/__init__.py (my code):
 - surface gf of leads have to be discretized into a bath
 - then given a bath, second quantized hamiltonian for the interacting region, and chemical potential, can determine the thermal equilibrium MBGF for the system using desired level of quantum chemistry (fci, cc, etc)
 4. Implementation of Meir Wingreen
+- Linear response MW: first order effects of the bias (mu_L != mu_R) are contained in the FD occupation numbers (ie, in the stat mech)
+- Can just use the equilibrium (ie zero bias) value for the MBGF and its derived quantities (Gr, A, etc)
+- At equilibrium, LambdaL = LambdaR and we can use MW Eq 9
+- Assuming that there are no spin interactions in the lead, Lambda's are diagonal and we can use MW Eq 11
+- Therefore get a spin current
 
 ## tdfci
 Time Dependent Full Configuration Interaction
