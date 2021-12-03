@@ -23,9 +23,9 @@ import matplotlib.pyplot as plt
 
 def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, verbose = 0): # main driver
     '''
-    Driver of DMFT calculation for
+    Driver of MBGF calculation
     - scattering region, treated at high level, repped by SR_1e and SR_2e
-    - noninteracting leads, treated at low level, repped by leadsite
+    - noninteracting leads, treated at low level, repped by LL, RL
 
     Difference between my code, Tianyu's code (e.g. fcdmft/dmft/gwdmft.kernel())
     is that the latter assumes periodicity, and so only takes local hamiltonian
@@ -125,19 +125,28 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
 
     else: raise(ValueError(solver+" is not a valid solver type"));
                
-    return G; # package in up spin for shape consistency
+    return G; 
 
 
 def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     '''
-    Given the MBGF for the impurity + bath system, Bruus 10.57
-    to get "density of current" j(E) at temp kBT. Then total particle current
-    is given by J = \int dE j(E)
+    Given the MBGF for the impurity + bath system, use Bruus Eq 10.57 to get
+    linear response current j(E) at temp kBT.
+
+    Skip trace bc doing all spin up formalism, so channels carry spin info (ie
+    jE[0,0] = up spin current)
+    
+    Assumptions and connections to MW:
+    - Interacting, so start with MW Eq 6
+    - at equilibrium, LambdaL = LambdaR -> can use MW Eq 9 (w/out trace)
+    - since there are no spin interactions in leads, Lambda's are always
+        diagonal thus trace -> sum over sigma -> MW Eq 12
     '''
     
     # check inputs
     assert( len(energies) == np.shape(MBGF)[-1]);
     assert( np.shape(LL[0]) == np.shape(RL[0]) );
+    assert(LL[0][0][0,1] == 0 and LL[1][0][0,1] == 0); # no spin interactions allowed in leads
     
     # unpack
     LL_diag, LL_hop, LL_coup, mu_L = LL;
@@ -175,7 +184,7 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # ie Bruus, equation 10.57
     MBGF_trunc = MBGF[:,:n_imp_orbs,:n_imp_orbs,:];
     spectral = (-1/np.pi)*(MBGF_trunc - dagger(MBGF_trunc))/complex(0,2);
-    jE = (nL - nR)*(dot_spinful_arrays(Lambda, spectral)[0])
+    jE = (nL - nR)*(dot_spinful_arrays(Lambda, spectral)); #
         
     if(verbose > 4):
         # compare with Meir Wingreen formula - Meir Wingreen Eq 6 (deprecated)
@@ -185,11 +194,11 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
         jEmat += dot_spinful_arrays((Lambda_L - Lambda_R), G_les);
         jEnew = (complex(0,1)/(4*np.pi))*np.trace(jEmat[0]); # hbar = 1, trace over impurity sites
         plt.plot(energies, np.real(jEnew), label = "MW Eq 6");
-        plt.plot(energies, jE, label = "Bruus Eq 10.57");
+        plt.plot(energies, np.trace(jE[0]), linestyle = "dashed", label = "Bruus Eq 10.57");
         plt.legend();
         plt.show();
 
-    return jE;
+    return jE[0]; # remove spin wrapper at end
 
 
 def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):

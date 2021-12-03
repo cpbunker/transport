@@ -14,6 +14,7 @@ from transport import fci_mod, wfm
 from transport.wfm import utils
 
 import numpy as np
+import matplotlib.pyplot as plt
 import itertools
 
 import sys
@@ -23,10 +24,10 @@ import time
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 3;
+verbose = 4;
 sourcei = int(sys.argv[1]);
 param_dev = 0.4; # % params can deviate from ab initio vals in grid sweep
-numEvals = 7; # energy pts, -2 < E < -1
+numEvals = 5; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2

@@ -26,35 +26,16 @@ import matplotlib.pyplot as plt
 verbose = 5;
 
 ##### 1: set up the impurity + leads system
+nimp = 1; # number of impurities
 
 # anderson dot
-Vg = -0.5;
-U = 0.0;
+Vg = -0.1;
+U = 0.3;
 h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U; # coulomb
 g2e[0][1,1,0,0] += U;
-del h1e, g2e
-
-# spin 1/2 scatterer
-nimp = 2;
-Vg = -0.5;
-J = 0.1;
-h1e = np.zeros((1,2*nimp,2*nimp));
-h1e[0][1,1] = Vg; # localized down spin
-g2e = np.zeros((1,2*nimp,2*nimp,2*nimp,2*nimp));
-g2e[0][0,0,2,2] = J/4;
-g2e[0][2,2,0,0] = J/4;
-g2e[0][0,0,3,3] = -J/4;
-g2e[0][3,3,0,0] = -J/4;
-g2e[0][1,1,2,2] = -J/4;
-g2e[0][2,2,1,1] = -J/4;
-g2e[0][1,1,3,3] = J/4;
-g2e[0][3,3,1,1] = J/4;
-g2e[0][0,1,2,3] = J/2;
-g2e[0][2,3,0,1] = J/2;
-g2e[0][1,0,2,3] = J/2;
-g2e[0][2,3,1,0] = J/2;
+assert(np.shape(h1e)[1] == 2*nimp); # 2 spin orbs per imp
 
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
@@ -78,7 +59,7 @@ Es = np.linspace(-1.09*Vb, 1.1*Vb, 101);
 #### 2: compute the many body green's function for imp + leads system
 
 # kernel inputs
-nbo = 4; # num bath orbs
+nbo = 6; # num bath orbs
 iE = (Es[-1] - Es[0])/nbo
 kBT = 0.0;
 
@@ -86,22 +67,44 @@ kBT = 0.0;
 MBGF = fcdmft.kernel(Es, iE, h1e, g2e, LLphys, RLphys, n_bath_orbs = nbo, solver = 'cc', verbose = verbose);
 
 #### 3: use meir wingreen formula
+
+# matrix of spin current at all energies
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
-# plot all spin currents
-for sigma in [0,1]:
-    for sigmap in [0,1]:
-        plt.plot(energies, jE[sigma,sigmap], label = (sigma, sigmap));
-
+# plot
+plt.plot(Es, np.real(jE[0,0]+jE[1,1]));
+plt.title((np.pi/Vb)*np.trapz(np.real(jE[0,0]+jE[1,1]), Es) );
+plt.xlabel("Energy");
+plt.ylabel("Current density");
 plt.show();
-assert(False);
+assert False;
 
 # also try landauer formula
 jE_land = fcdmft.landauer(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
-plt.plot(Es, np.real(jE));
-plt.plot(Es, np.real(jE_land));
-plt.title((np.pi/Vb)*np.trapz(np.real(jE), Es) );
+# spin 1/2 scatterer
+Vg = -0.5;
+J = 0.1;
+h1e = np.zeros((1,2*nimp,2*nimp));
+h1e[0][1,1] = Vg; # localized down spin
+g2e = np.zeros((1,2*nimp,2*nimp,2*nimp,2*nimp));
+g2e[0][0,0,2,2] = J/4;
+g2e[0][2,2,0,0] = J/4;
+g2e[0][0,0,3,3] = -J/4;
+g2e[0][3,3,0,0] = -J/4;
+g2e[0][1,1,2,2] = -J/4;
+g2e[0][2,2,1,1] = -J/4;
+g2e[0][1,1,3,3] = J/4;
+g2e[0][3,3,1,1] = J/4;
+g2e[0][0,1,2,3] = J/2;
+g2e[0][2,3,0,1] = J/2;
+g2e[0][1,0,2,3] = J/2;
+g2e[0][2,3,1,0] = J/2;
+
+# plot all spin currents
+for sigma in [0,1]:
+    for sigmap in [0,1]:
+        plt.plot(Es, jE[sigma,sigmap], label = (sigma, sigmap));
+plt.legend();
 plt.show();
-
-
+assert(False);

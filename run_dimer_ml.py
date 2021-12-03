@@ -52,35 +52,102 @@ features = np.load(fname);
 # recall features are energy, Jx, Jy, Jz, DO, DT, An, JK1, JK2
 # after that is source/entangled state info
 # two targets: Peak of + state, peak of - state
-feature_strs = ["E", "Jx", "Jy", "Jz", "DO", "DT", "An", "JK1", "JK2"];
-included_features = ["Jx", "Jz", "DO", "DT", "An", "JK1"];
+feature_strs = np.array(["E", "Jx", "Jy", "Jz", "DO", "DT", "An", "JK1", "JK2"]);
+phys_features = np.array(["Jx", "Jz", "DO", "DT", "An", "JK1"]);
 
-# process important features into X
-nsamples, nfeatures = len(features[:,0]), len(included_features);
+# target
+ys = features[:,-2:];
+y = np.mean(ys, axis = 1);
+
+# process physical features into X
+nsamples, nfeatures = len(features[:,0]), len(phys_features);
 print("nsamples, nfeatures = ", nsamples, nfeatures);
 X = np.empty((nsamples, nfeatures));
 Xcoli = 0;
 for coli in range(len(feature_strs)):
-    if feature_strs[coli] in included_features:
+    if feature_strs[coli] in phys_features:
         X[:,Xcoli] = features[:,coli];
         Xcoli += 1;
 
-ys = features[:,-2:];
+# now have 6 dim data
+ml.PlotPolyFit(X, y, 1, phys_features, mytitle = "Raw data");
 X = ml.Scale(X);
+ml.PlotPolyFit(X, y, 1, phys_features, mytitle = "Scaled data");
 
-# machine learning!
-for y in [ys[:,0]]:
+if False:
+    # filter out by percentile
+    ypercentile = 99;
+    ycutoff = np.percentile(y, ypercentile);
+    Xf, yf = [], []; # only samples above cutoff
+    for si in range(len(y)):
+        if(y[si] > ycutoff): 
+            Xf.append(X[si]);
+            yf.append(y[si]);
+    Xf, yf = np.array(Xf), np.array(yf);
+    print("Data kept: ",len(yf)/len(y));
+    ml.PlotPolyFit(Xf, yf, 1, phys_features, mytitle = "Filtered data");
+
+    # dim reduction
+    pcais = ml.PCA(Xf, nfeatures, components = True);
+    Xpca = ml.PCA(Xf, 4, inverse = True);
+    ml.PlotPolyFit(Xpca, yf, 1, phys_features, mytitle = "Filtered 4D data");
+
+    # explained variance of dim reduction
+    plt.plot(range(1, nfeatures+1), np.cumsum(ml.PCA(Xf, nfeatures, explained = True)));
+    plt.ylabel("Explained variance");
+    plt.xlabel("PCA components");
+    plt.show();
+
+    # filter + lowest PCA = most important dims --> 2 dim representation (binned)
+    if sourcei == 0:
+        imp_features = ["DO","Jz"];
+        imp_indices = [2,1];
+    elif sourcei == 1:
+        imp_features = ["Jx", "JK1"];
+        imp_indices = [0,5];
+    X = X[:,imp_indices];
+    ml.PlotPolyFit(X, y, 1, imp_features, mytitle = "2d data");
+
+    # violin plot of binned data
+    ml.PlotBinsViolin(X, y, imp_features);
+
+    # average out unimportant dims to make purely 2d
+    ml.PlotTarget2d(X, y, imp_features);
+
+if True:
+
+    # filter for density estimation
+    ypercentile = 99;
+    ycutoff = np.percentile(y, ypercentile);
+    Xf, yf = [], []; # only samples above cutoff
+    for si in range(len(y)):
+        if(y[si] > ycutoff): 
+            Xf.append(X[si]);
+            yf.append(y[si]);
+    Xf, yf = np.array(Xf), np.array(yf);
+    print("Data kept: ",len(yf)/len(y));
+    ml.PlotPolyFit(Xf, yf, 1, phys_features, mytitle = "Filtered data");
+
+    # find optimal # of GMM components
+    Ns = range(5,40);
+    scores = [];
+    for N in Ns:
+        scores.append(ml.GMM(Xf, yf, N, score = True));
+    plt.plot(Ns, scores);
+    plt.xlabel("GMM components");
+    plt.ylabel("BIC score");
+    plt.show();
+    ncomps = Ns[np.argmin(scores)];
+    print("Optimal # components = ", ncomps);
+
+    # find high density area
+    densest = ml.GMM(Xf, yf, ncomps, density = True);
+    print(densest);
+    ml.PlotPolyFit([densest], [0], 1, phys_features, mytitle = "Densest point");
     
-    # find principal component
-    ml.PlotPolyFit(X, y, 1, included_features);
-    Xpca = ml.PCA(X, 1, inverse = True);
-    ml.PlotPolyFit(Xpca, y, 3, included_features);
-
-    # use random forest regression
-    #ml.PlotForestFit(X, y, 50, included_features, numEvals)
-
 
     
+
 
 
 
