@@ -46,6 +46,7 @@ def subspace(m):
 def entangle(H,bi,bj):
     '''
     Perform a change of basis on a matrix such that basis vectors bi, bj become entangled (unentangled)
+    in new ham, index bi -> + entangled state, bj -> - entangled state
     '''
 
     # check inputs
@@ -203,7 +204,7 @@ def h_dimer_2q(params):
     # octo spin anisitropy
     h1e[2,2] += DO*9/4;
     h1e[3,3] += DO*1/4;
-    h1e[5,5] += DO*1/4;
+    h1e[4,4] += DO*1/4;
     h1e[5,5] += DO*9/4;
 
     # tetra spin anisotropy

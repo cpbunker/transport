@@ -24,9 +24,9 @@ import time
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
+plt.style.use("seaborn-dark-palette");
 verbose = 5;
 sourcei = int(sys.argv[1]);
-numEvals = 5; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -34,6 +34,8 @@ spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
+dets32 = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]; # total spin 3/2 subspace
+dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # initialize source vector
 assert(sourcei >= 0 and sourcei < len(dets));
@@ -45,14 +47,20 @@ source_str += ">";
 print("\nSource:\n"+source_str);
 
 # tight binding params
-tl = 1.0; # 2e hopping, in meV
+# recall lattice constant a is in units a0 = Bohr radius = 0.529 Angstrom
+tl = 1.0; # 2e hopping, in Hartree, where 1 hartree = hbar^2/(m_e * a0^2)
+# recall electron mass = 5.11*10^8 meV = 1.88 * 10^4 hartree
+# recall tl := hbar^2/(2*m*a^2)
+# thus if tl = 1, hbar = 1 -> 
 
 # Ab initio params, in meV:
-Jx = 0.209;
-Jz = 0.124;
-DO = 0.674;
-DT = 0.370;
-An = 0.031;
+Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
+tl = 0.005
+Jx = 0.209/Ha2meV; # convert to hartree
+Jz = 0.124/Ha2meV;
+DO = 0.674/Ha2meV;
+DT = 0.370/Ha2meV;
+An = 0.031/Ha2meV;
 
 #### get data for all entangled state pairs, across physical param space sweep
 
@@ -62,9 +70,8 @@ features = [];
 
 # sweep over entangled pairs
 start = time.time()
-for pair in wfm.utils.sweep_pairs(dets, sourcei)[:1]:
+for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
 
-    pair = (17, 20);
     if(verbose):
         print("\nEntangled pair:");
         pair_strs = [];
@@ -76,25 +83,30 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei)[:1]:
             pair_strs.append(pair_str);
 
     # sweep over energy
-    for Energy in [-1.0]: # keep in quadratic regime
+    for Energy in [-1.9*tl]: # keep in quadratic regime
 
         # sweep over JK
-        for JK in [0.8]:
+        JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
+        for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
             # define all physical params
+            DT = DO;
             params = Jx, Jx, Jz, DO, DT, An, JK, JK;
-
+            
             # construct second quantized ham
             h1e, g2e = wfm.utils.h_dimer_2q(params); 
 
             # construct h_SR (determinant basis)
             h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
             h_SR = wfm.utils.entangle(h_SR, *pair);
-            if(verbose > 4): print("\n- Entangled hamiltonian\n", h_SR);
+            if(verbose > 4): 
+                h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+                h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
+                print("\n- Entangled hamiltonian\n", h_SR_sub);
 
             # iter over N
-            Nmax = 8;
-            Nvals = np.linspace(0,Nmax,Nmax+1,dtype = int);
+            Nmax = 200;
+            Nvals = np.linspace(0,Nmax,min(Nmax+1,30),dtype = int);
             Tvals = [];
             ka = np.arccos(Energy/(-2*tl));
             for N in Nvals:
@@ -138,21 +150,21 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei)[:1]:
 
                 # first plot is just source and entangled pair
                 fig, axes = plt.subplots(2, sharex = True);
-                axes[0].set_title("Incident energy = "+str(Energy));
-                axes[0].set_ylim(0,0.5)
-                axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = source_str);
-                axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = str(pair_strs[0])+"+"+str(pair_strs[1]));
-                axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = str(pair_strs[0])+"--"+str(pair_strs[1]));
-                axes[0].legend(loc = 'lower left');
+                axes[0].set_title("$E$ = "+str(int(100*Energy/tl)/100)+"$t_l$");
+                axes[0].set_xlim(0,int(1.3*Nmax));
+                axes[0].set_ylim(0,1.05);
+                axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = "$|d>$");
+                axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
+                axes[0].scatter(Nvals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
+                axes[0].legend(loc = 'upper right');
                 
                 # second plot is contamination
                 contamination = np.zeros_like(Tvals[:,0]);
                 for contami in range(len(dets)):
-                    if((contami not in pair) and (dets[contami][0] == 1)):
+                    if((contami not in pair) and (dets[contami][0] != dets[sourcei][0])):
                         contamination += Tvals[:, contami];
-                contamination = 100*contamination/(contamination+Tvals[:,pair[0]]); # convert to percentage
-                axes[1].scatter(Nvals, contamination, marker = 's');
-                axes[1].set_title("Contamination");
+                contamination = contamination/(contamination+Tvals[:,pair[0]]); 
+                axes[1].scatter(Nvals, contamination, marker = 's', color = "grey");
                 
                 # format
                 for ax in axes:
@@ -161,7 +173,7 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei)[:1]:
                     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
                 axes[-1].set_xlabel("$N$");
                 axes[0].set_ylabel("$T$");
-                axes[1].set_ylabel("%");
+                axes[1].set_ylabel("Contamination");
                 plt.show();
 
 #### save data
