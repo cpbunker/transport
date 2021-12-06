@@ -24,9 +24,8 @@ import time
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 4;
+verbose = 5;
 sourcei = int(sys.argv[1]);
-param_dev = 0.4; # % params can deviate from ab initio vals in grid sweep
 numEvals = 5; # energy pts, -2 < E < -1
 
 # def particles and their single particle states
@@ -35,7 +34,6 @@ spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
-dets = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]
 
 # initialize source vector
 assert(sourcei >= 0 and sourcei < len(dets));
@@ -48,18 +46,13 @@ print("\nSource:\n"+source_str);
 
 # tight binding params
 tl = 1.0; # 2e hopping, in meV
-JK1 = 0.3;
-JK2 = JK1;
 
 # Ab initio params, in meV:
 Jx = 0.209;
-Jy = Jx; 
 Jz = 0.124;
 DO = 0.674;
 DT = 0.370;
 An = 0.031;
-abinit_params = Jx, Jz, DO, DT, An, JK1; # package
-del Jx, Jy, Jz, DO, DT, An;
 
 #### get data for all entangled state pairs, across physical param space sweep
 
@@ -69,8 +62,9 @@ features = [];
 
 # sweep over entangled pairs
 start = time.time()
-for pair in wfm.utils.sweep_pairs(dets, sourcei):
+for pair in wfm.utils.sweep_pairs(dets, sourcei)[:1]:
 
+    pair = (17, 20);
     if(verbose):
         print("\nEntangled pair:");
         pair_strs = [];
@@ -84,25 +78,23 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei):
     # sweep over energy
     for Energy in [-1.0]: # keep in quadratic regime
 
-        # sweep over physical params
-        for params in wfm.utils.sweep_param_space(abinit_params, param_dev, numEvals):
+        # sweep over JK
+        for JK in [0.8]:
 
-            # truncate to 3d param space for now, remove later!
-            Jx, Jz, DO, DT, An, JK1 = tuple(params);
-            params = Jx, Jx, Jz, DO, DT, An, JK1, JK1;
+            # define all physical params
+            params = Jx, Jx, Jz, DO, DT, An, JK, JK;
 
             # construct second quantized ham
             h1e, g2e = wfm.utils.h_dimer_2q(params); 
 
-            # construct h_SR (determinant basis) in a given total Sz subspace
-            mystates, myis, mystrs = wfm.utils.subspace(3/2); # subspace
-            h_SR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets);
+            # construct h_SR (determinant basis)
+            h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
             h_SR = wfm.utils.entangle(h_SR, *pair);
             if(verbose > 4): print("\n- Entangled hamiltonian\n", h_SR);
 
             # iter over N
-            Nmax = 10;
-            Nvals = np.linspace(0,Nmax,30,dtype = int);
+            Nmax = 8;
+            Nvals = np.linspace(0,Nmax,Nmax+1,dtype = int);
             Tvals = [];
             ka = np.arccos(Energy/(-2*tl));
             for N in Nvals:
@@ -138,28 +130,44 @@ for pair in wfm.utils.sweep_pairs(dets, sourcei):
             if(verbose):
                 print("\n - Energy = ", Energy);
                 print("    ",row[1:9]); # physical features
-                print("    ",row[9:18]); # bookkeeping features
-                print("    ",row[18:]); # targets
+                #print("    ",row[9:18]); # bookkeeping features
+                #print("    ",row[18:]); # targets
 
             # plot Tvals vs N
             if(verbose > 3):
-                fig, ax = plt.subplots();
-                ax.plot(Nvals,Tvals[:,sourcei], label = source_str);
-                ax.plot(Nvals,Tvals[:,pair[0]], label = str(pair_strs[0])+"+"+str(pair_strs[1]));
-                ax.plot(Nvals,Tvals[:,pair[0]], label = str(pair_strs[0])+"--"+str(pair_strs[1]));
-                ax.minorticks_on();
-                ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-                ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-                ax.set_xlabel("$N$");
-                ax.set_ylabel("$T$");
-                ax.set_title("Incident energy = "+str(Energy));
-                plt.legend();
+
+                # first plot is just source and entangled pair
+                fig, axes = plt.subplots(2, sharex = True);
+                axes[0].set_title("Incident energy = "+str(Energy));
+                axes[0].set_ylim(0,0.5)
+                axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = source_str);
+                axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = str(pair_strs[0])+"+"+str(pair_strs[1]));
+                axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = str(pair_strs[0])+"--"+str(pair_strs[1]));
+                axes[0].legend(loc = 'lower left');
+                
+                # second plot is contamination
+                contamination = np.zeros_like(Tvals[:,0]);
+                for contami in range(len(dets)):
+                    if((contami not in pair) and (dets[contami][0] == 1)):
+                        contamination += Tvals[:, contami];
+                contamination = 100*contamination/(contamination+Tvals[:,pair[0]]); # convert to percentage
+                axes[1].scatter(Nvals, contamination, marker = 's');
+                axes[1].set_title("Contamination");
+                
+                # format
+                for ax in axes:
+                    ax.minorticks_on();
+                    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+                    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+                axes[-1].set_xlabel("$N$");
+                axes[0].set_ylabel("$T$");
+                axes[1].set_ylabel("%");
                 plt.show();
 
 #### save data
+assert( features != []);
 fname = str(source_str[1:-1]);
 print("Saving data to "+fname);
-assert( features != []);
 np.save(fname, np.array(features) );
 stop = time.time();
 print("Elapsed time = ", (stop - start)/60, " minutes.");
