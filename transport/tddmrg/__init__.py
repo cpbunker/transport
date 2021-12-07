@@ -123,7 +123,7 @@ def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
 
     # convert fcidump to hamiltonian obj
     h_obj = hamiltonian.Hamiltonian(fd,flat=True);
-    
+
     # from hamiltonian obj, build Matrix Product Operator
     h_mpo = h_obj.build_qc_mpo();
     h_mpo, _ = h_mpo.compress(cutoff = cutoff);

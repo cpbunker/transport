@@ -41,16 +41,17 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
         mf : mean-field class
     '''
 
-    if(verbose): print(">> In mf_kernel()");
+    if(verbose): print("\n>> In mf_kernel()");
 
     spin, n = himp.shape[0:2]
     mol = gto.M()
-    mol.verbose = min(0,verbose - 2)
+    mol.verbose = 0;
     mol.incore_anyway = True
     mol.build()
     if spin == 1:
         assert(np.shape(eri_imp)[0] == spin and np.shape(dm0)[0] == spin);
         mf = scf.RHF(mol, mu)
+        mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([n])
         mf.max_cycle = 1000
@@ -64,7 +65,6 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
         if rank == 0:
             mf.kernel(dm0[0])
         else:
-            mf.verbose = 1
             mf.kernel(dm0[0])
         if mf.converged is False:
             try:
@@ -79,7 +79,7 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
                 if mf.converged is False:
                     raise RuntimeError('SCF with smearing not converged.')
 
-        mf.verbose = min(0, verbose - 1);
+        mf.verbose = verbose;
         dm = mf.make_rdm1()
         if rank == 0:
             logger.info(mf, ' - HF Nelec = %s', np.trace(dm[:nao,:nao]))
@@ -91,6 +91,7 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
             mf.kernel(dm)
     else:
         mf = scf.UHF(mol, mu)
+        mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([2,n])
         mf.max_cycle = 100
@@ -105,9 +106,7 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
         if rank == 0:
             mf.kernel(dm0)
         else:
-            mf.verbose = 1
             mf.kernel(dm0)
-            mf.verbose = verbose
         dm = mf.make_rdm1()
         if rank == 0:
             logger.info(mf, 'HF Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
@@ -127,9 +126,12 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
     comm.Barrier()
 
     # diagnostic
-    if(verbose):
-        print("\n - energies = "+str(mf.mo_energy));
-        print(" - gd = "+str(mf.e_tot)+"\n - occ = "+str(sum(mf.mo_occ)));
+    if(verbose > 1):
+        print(" - mo E's = "+str(mf.mo_energy));
+        print(" - mo n's = "+str(mf.mo_occ));
+        print(" - imp occ = ", np.trace(dm[:nao,:nao]));
+        print(" - total occ = ", np.trace(dm));
+        print(" - E_gd= "+str(mf.e_tot));
         
     return mf
 
@@ -696,9 +698,14 @@ def cas_hf(mf, freqs, delta, nimp=None, nvir_act=None, nocc_act=None):
 
 def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
           cas=False, casno='gw', composite=True, thresh=5e-3, nvir_act=None,
-          nocc_act=None, save_gf=False, read_gf=False, load_cas=False):
-    '''Calculate CCSD GF matrix in the AO basis'''
+          nocc_act=None, save_gf=False, read_gf=False, load_cas=False, verbose = 0):
+    '''
+    Calculate CCSD GF matrix in the AO basis
+    '''
+    
     from fcdmft.solver import mpiccgf as ccgf
+
+    if(verbose): print(">> In cc_gf()");
 
     if ao_orbs is None:
         nmo = mf.mo_coeff.shape[0]
@@ -734,15 +741,16 @@ def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
         mf.nvir_act = len(mf_cas.mo_energy) - mf.nocc_act
     else:
         mycc = cc.RCCSD(mf)
-    mycc.conv_tol = 1e-8
+    mycc.conv_tol = 1e-9
     mycc.conv_tol_normt = 1e-5
     mycc.diis_space = 15
-    mycc.max_cycle = 200
+    mycc.max_cycle = 1000
     if rank == 0:
         mycc.kernel()
         if mycc.converged is False:
             log = logger.Logger(sys.stdout, 4)
-            log.warn('!!! Ground-state CCSD not converged !!!')
+            log.warn('!!! Ground-state RCCSD not converged !!!');
+            raise RuntimeError("Ground-state RCCSD not converged");
         mycc.solve_lambda()
         dm = mycc.make_rdm1()
         if not cas:
@@ -754,6 +762,7 @@ def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
             dm_ao = dm_low + ddm
         logger.info(mf, 'CC Nelec = %s', np.trace(dm_ao[:nimp,:nimp]))
         logger.info(mf, 'CC 1-RDM diag = \n %s', dm_ao[:nimp,:nimp].diagonal())
+        logger.info(mf, 'MF 1-RDM diag = \n %s', mf.make_rdm1()[:nimp,:nimp].diagonal())
 
         fn = 'amplitudes.h5'
         feri = h5py.File(fn, 'w')
@@ -824,11 +833,16 @@ def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
 def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
           cas=False, casno='ucc', composite=False, thresh=5e-3, nvir_act_a=None,
           nocc_act_a=None, nvir_act_b=None, nocc_act_b=None,
-          save_gf=False, read_gf=False, load_cas=False):
-    '''Calculate UCCSD GF matrix in the AO basis'''
+          save_gf=False, read_gf=False, load_cas=False, verbose = 0):
+    '''
+    Calculate UCCSD GF matrix in the AO basis
+    '''
+    
     from fcdmft.solver import ucc_eri
     from fcdmft.solver import mpiuccgf as uccgf
 
+    if(verbose): print(">> In ucc_gf()");
+        
     if ao_orbs is None:
         nmo = mf.mo_coeff[0].shape[0]
         ao_orbs = range(nmo)
@@ -858,10 +872,16 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     mycc.diis_space = 15
     mycc.max_cycle = 200
     if rank == 0:
+        # key part
+        print("\n???\n")
+        print(np.shape(mycc.mo_coeff))
+        print(np.shape(mycc._scf._eri))
+        eris = mycc.ao2mo(mycc.mo_coeff)
         mycc.kernel()
         if mycc.converged is False:
             log = logger.Logger(sys.stdout, 4)
-            log.warn('!!! Ground-state CCSD not converged !!!')
+            log.warn('!!! Ground-state UCCSD not converged !!!')
+            raise RuntimeError("Ground-state UCCSD not converged");
         mycc.solve_lambda()
         dm = mycc.make_rdm1()
         if not cas:

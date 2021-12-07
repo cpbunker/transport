@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 ########################################################################
 #### drivers
 
-def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, verbose = 0): # main driver
+def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n_bath_orbs = 4, verbose = 0): # main driver
     '''
     Driver of MBGF calculation
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -40,6 +40,8 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
     imp_occ, int, target impurity occupancy
     SR_1e, (spin,n_imp_orbs, n_imp_orbs) array, 1e part of scattering region hamiltonian
     SR_2e, 2e part of scattering region hamiltonian
+    chem_pot, chemical potential in the SR, controls occupancy
+    dm_SR, (spin,n_imp_orbs, n_imp_orbs) array, initial density matrix of the SR
     coupling, (spin, n_imp_orbs, n_imp_orbs) array, couples SR to lead
     LL, tuple of:
         LL_diag, (spin, n_imp_orbs, n_imp_orbs) array, onsite energy for left lead blocks
@@ -62,6 +64,7 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
     assert(energies[0] < energies[-1]);
     assert( iE >= 0);
     assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
+    assert(np.shape(SR_1e) == np.shape(dm_SR));
     assert(np.shape(SR_1e) == np.shape(LL[0]));
     assert(np.shape(SR_1e) == np.shape(LL[1]));
     assert(np.shape(SR_1e) == np.shape(LL[2]));
@@ -100,9 +103,14 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
     # construct manybody hamiltonian of imp + bath
     h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
 
-    # get chem pot that corresponds to desired occupancy
-    chem_pot = 0.0; # init guess
-    chem_pot, dm_guess = find_mu(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, n_imp_orbs//2, max_mem, verbose = verbose);
+    # include bath orbs in density matrix
+    dm_guess = np.zeros_like(h1e_imp);
+    for s in range(np.shape(dm_guess)[0]):
+        for orbi in range(np.shape(dm_guess)[1]):
+            if( orbi < np.shape(dm_SR)[1]): # copy from SR dm
+                dm_guess[s,orbi,orbi] = dm_SR[s,orbi, orbi];
+            else:
+                dm_guess[s,orbi, orbi] = 0.5; # half filled bath orbs
 
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
@@ -112,20 +120,34 @@ def kernel(energies, iE, SR_1e, SR_2e, LL, RL, solver = "fci", n_bath_orbs = 4, 
     # use fci (which is spin restricted) to get Green's function
     # choose solver
     assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie spin restricted
-    if(solver == 'cc'):
 
-        # get MBGF, reduced density matrix
-        G = dmft.dmft_solver.cc_gf(meanfield, energies, iE);
+    if(solver == 'mf'):
+
+        # get MBGF in hartree fock approx
+        MBGF = dmft.dmft_solver.mf_gf(meanfield, energies, iE, verbose = verbose);
         
     elif(solver == 'fci'):
 
         # get MBGF
         assert(n_orbs <= 10); # so it doesn't stall
-        G = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
+        MBF = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
+    
+    elif(solver == 'cc'):
+
+        # get MBGF, needs to be unrestricted
+        #meanfield = scf.addons.convert_to_uhf(meanfield);
+        MBGF = dmft.dmft_solver.cc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+
+    elif(solver == 'dmrg'):
+
+        from transport import tddmrg
+        
+        # make MPE
+        MPE = tddmrg.arr_to_mpe(h1e_imp, h2e_imp, (n_orbs,0), 500);
 
     else: raise(ValueError(solver+" is not a valid solver type"));
                
-    return G; 
+    return MBGF; 
 
 
 def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
