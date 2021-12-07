@@ -47,15 +47,10 @@ source_str += ">";
 print("\nSource:\n"+source_str);
 
 # tight binding params
-# recall lattice constant a is in units a0 = Bohr radius = 0.529 Angstrom
-tl = 1.0; # 2e hopping, in Hartree, where 1 hartree = hbar^2/(m_e * a0^2)
-# recall electron mass = 5.11*10^8 meV = 1.88 * 10^4 hartree
-# recall tl := hbar^2/(2*m*a^2)
-# thus if tl = 1, hbar = 1 -> 
+tl = 0.005; # in Hartree, s.t. a = a0 = Bohr radius = 0.529 Angstrom
 
 # Ab initio params, in meV:
 Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
-tl = 0.005
 Jx = 0.209/Ha2meV; # convert to hartree
 Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
@@ -82,8 +77,9 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
             print(pair_str);
             pair_strs.append(pair_str);
 
-    # sweep over energy
-    for Energy in [-1.9*tl]: # keep in quadratic regime
+    # sweep over incident wavevector
+    for ka in [0.2]:
+        Energy = -2*tl*np.cos(ka);
 
         # sweep over JK
         JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
@@ -105,7 +101,7 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
                 print("\n- Entangled hamiltonian\n", h_SR_sub);
 
             # iter over N
-            Nmax = 200;
+            Nmax = 90;
             Nvals = np.linspace(0,Nmax,min(Nmax+1,30),dtype = int);
             Tvals = [];
             ka = np.arccos(Energy/(-2*tl));
@@ -150,7 +146,7 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
 
                 # first plot is just source and entangled pair
                 fig, axes = plt.subplots(2, sharex = True);
-                axes[0].set_title("$E$ = "+str(int(100*Energy/tl)/100)+"$t_l$");
+                axes[0].set_title("$ka$ = "+str(ka));
                 axes[0].set_xlim(0,int(1.3*Nmax));
                 axes[0].set_ylim(0,1.05);
                 axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = "$|d>$");
