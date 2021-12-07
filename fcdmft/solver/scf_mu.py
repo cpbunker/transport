@@ -7,7 +7,7 @@ import numpy as np
 from pyscf import ao2mo
 
 '''
-HF with fluctuating occupantion and smearing
+HF with fluctuating occupation and smearing
 '''
 
 class RHF(scf.hf.RHF):
@@ -22,11 +22,11 @@ class RHF(scf.hf.RHF):
         mo_occ = numpy.zeros_like(mo_energy)
         if self.smearing:
             for n,e in enumerate(mo_energy):
-                mo_occ[n] = 1./(numpy.exp((e-self.mu)/self.smearing)+1) #### CHANGE TO ASU FORMALISM
+                mo_occ[n] = 2./(numpy.exp((e-self.mu)/self.smearing)+1) 
         else:
-            mo_occ[mo_energy<=self.mu] = 1. #### CHANGE TO ASU FORMALISM
+            mo_occ[mo_energy<=self.mu] = 2. 
         nmo = mo_energy.size
-        nocc = int(numpy.sum(mo_occ)) // 1 #### CHANGE TO ASU FORMALISM
+        nocc = int(numpy.sum(mo_occ) // 2); 
         if self.verbose >= logger.INFO and nocc < nmo:
             if mo_energy[nocc-1]+1e-3 > mo_energy[nocc]:
                 logger.warn(self, 'HOMO %.15g == LUMO %.15g',

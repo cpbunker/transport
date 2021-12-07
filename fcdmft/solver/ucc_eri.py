@@ -17,6 +17,7 @@ def _make_eris_incore(mycc, mo_coeff=None, ao2mofn=None):
     """
     Hacked CC make eri function. NOTE the order.
     """
+
     cput0 = (time.process_time(), time.perf_counter())
     eris = _ChemistsERIs()
     eris._common_init_(mycc, mo_coeff)

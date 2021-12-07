@@ -63,7 +63,6 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
     # check inputs
     assert(energies[0] < energies[-1]);
     assert( iE >= 0);
-    assert(np.shape(SR_1e) == np.shape(SR_2e)[:3]);
     assert(np.shape(SR_1e) == np.shape(dm_SR));
     assert(np.shape(SR_1e) == np.shape(LL[0]));
     assert(np.shape(SR_1e) == np.shape(LL[1]));
@@ -86,9 +85,9 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
     # hybridization between leads and SR
     # hyb = V*surface_gf*V^\dagger
     if(verbose): print("\n2. Hybridization");
-    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_surf, LL_coup);
     LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
-    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_surf, RL_coup);
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
     
     # bath disc: outputs n_bath_orbs bath energies, for each imp orb
@@ -110,17 +109,14 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
             if( orbi < np.shape(dm_SR)[1]): # copy from SR dm
                 dm_guess[s,orbi,orbi] = dm_SR[s,orbi, orbi];
             else:
-                dm_guess[s,orbi, orbi] = 0.5; # half filled bath orbs
+                dm_guess[s,orbi, orbi] = 1; # half filled bath orbs
 
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
     if(verbose): print("\n4. Impurity Green's function");
     meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, dm_guess, max_mem, verbose = verbose);
 
-    # use fci (which is spin restricted) to get Green's function
-    # choose solver
-    assert(len(np.shape(meanfield.mo_coeff)) == 2); # ie spin restricted
-
+    # choose solver to get Green's function
     if(solver == 'mf'):
 
         # get MBGF in hartree fock approx
@@ -136,7 +132,8 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
 
         # get MBGF, needs to be unrestricted
         #meanfield = scf.addons.convert_to_uhf(meanfield);
-        MBGF = dmft.dmft_solver.cc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+        assert(len(meanfield.mo_coeff) == 2);
+        MBGF = dmft.dmft_solver.ucc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
 
     elif(solver == 'dmrg'):
 
@@ -168,7 +165,6 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     # check inputs
     assert( len(energies) == np.shape(MBGF)[-1]);
     assert( np.shape(LL[0]) == np.shape(RL[0]) );
-    assert(LL[0][0][0,1] == 0 and LL[1][0][0,1] == 0); # no spin interactions allowed in leads
     
     # unpack
     LL_diag, LL_hop, LL_coup, mu_L = LL;
@@ -192,9 +188,9 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
     
     # hyb(E) matrix = V*surface_gf(E)*V^\dagger
-    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_surf, LL_coup);
     LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
-    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_surf, RL_coup);
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
 
     # meir-wingreen Lambda(E) matrix = -2*Im[hyb]
@@ -220,7 +216,7 @@ def wingreen(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
         plt.legend();
         plt.show();
 
-    return jE[0]; # remove spin wrapper at end
+    return jE; # remove spin wrapper at end
 
 
 def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
@@ -258,9 +254,9 @@ def landauer(energies, iE, kBT, MBGF, LL, RL, verbose = 0):
     RL_surf = surface_gf(energies, iE, RL_diag, RL_hop, verbose = verbose);
 
     # hyb(E) = V*surface_gf(E)*V^\dagger
-    LL_hyb = dot_spinful_arrays(LL_surf, np.array([LL_coup[0].T]));
+    LL_hyb = dot_spinful_arrays(LL_surf, LL_coup);
     LL_hyb = dot_spinful_arrays(LL_hyb, LL_coup, backwards = True);
-    RL_hyb = dot_spinful_arrays(RL_surf, np.array([RL_coup[0].T]));
+    RL_hyb = dot_spinful_arrays(RL_surf, RL_coup);
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
     
     # meir-wingreen Lambda matrix = -2*Im[hyb]
@@ -315,21 +311,28 @@ def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 1000, verbose = 0):
     energies = energies + complex(0,iE);
 
     # quick shortcut for diag inputs
-    H_is_diag = (np.trace(H[0]) == np.sum(H.flat) ); # is a diagonal matrix
-    H_is_same = not np.any(np.diagonal(H[0]) - H[0,0,0]); # all diags equal
-    V_is_diag = (np.trace(V[0]) == np.sum(V.flat) );
-    V_is_same = not np.any(np.diagonal(V[0]) - V[0,0,0]);
+    shortcut = True;
+    for s in range(np.shape(H)[0]): # spin dof
+        if(not np.trace(H[s]) == np.sum(H[s].flat)): # is a diagonal matrix
+            shortcut = False;
+        if(np.any(np.diagonal(H[s]) - H[s,0,0])): # all diags equal
+            shortcut = False;
+        if(not np.trace(V[s]) == np.sum(V[s].flat) ):
+           shortcut = False;
+        if(np.any(np.diagonal(V[0]) - V[0,0,0])):
+            shortcut = False;
 
     # if these are all true, can use closed form eq for diag gf
-    if(H_is_diag and H_is_same and V_is_diag and V_is_same):
+    if(shortcut):
 
         if(verbose): print(" - Diag shortcut");
         energies = np.real(energies); # no + iE necessary in this case
         gf = np.zeros((*np.shape(H),len(energies) ), dtype = complex);
-        
-        for i in range(np.shape(H[0])[0]): # iter over diag
-            pref = (energies - H[0,0,0])/(2*V[0,0,0]);
-            gf[0,i,i,:] = pref-np.lib.scimath.sqrt(pref*pref*(1-4*V[0,0,0]*V[0,0,0]/np.power(energies-H[0,0,0],2)));
+
+        for s in range(np.shape(H)[0]): # iter over spin
+            for orbi in range(np.shape(H)[1]): # iter over diag
+                pref = (energies - H[s,orbi,orbi])/(2*V[s,orbi,orbi]);
+                gf[s,orbi,orbi,:] = pref-np.lib.scimath.sqrt(pref*pref*(1-4*V[s,orbi,orbi]*V[s,orbi,orbi]/np.power(energies-H[s,orbi,orbi],2)));
 
     else: # do convergence
 
@@ -347,7 +350,7 @@ def surface_gf(energies, iE, H, V, tol = 1e-3, max_cycle = 1000, verbose = 0):
             gf0 = gf;
 
             # update
-            sigma = dot_spinful_arrays(gf0, np.array([V[0].T]) ); #gf0 * V^\dagger
+            sigma = dot_spinful_arrays(gf0, V ); #gf0 * V^\dagger
             sigma = dot_spinful_arrays(sigma, V, backwards = True);
             gf = dmft.dmft_solver.get_gf(H, sigma, energies, iE);
 

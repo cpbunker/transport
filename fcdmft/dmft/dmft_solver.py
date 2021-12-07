@@ -5,7 +5,7 @@ from scipy import linalg
 from pyscf.lib import logger
 from pyscf import lib, gto, ao2mo, cc
 from fcdmft import solver
-from fcdmft.solver import scf_mu as scf
+from fcdmft.solver import scf_mu
 from mpi4py import MPI
 
 einsum = lib.einsum
@@ -45,12 +45,13 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
 
     spin, n = himp.shape[0:2]
     mol = gto.M()
-    mol.verbose = 0;
+    mol.verbose = verbose;
     mol.incore_anyway = True
     mol.build()
-    if spin == 1:
+    
+    if spin == 1: # spin restricted
         assert(np.shape(eri_imp)[0] == spin and np.shape(dm0)[0] == spin);
-        mf = scf.RHF(mol, mu)
+        mf = scf_mu.RHF(mol, mu)
         mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([n])
@@ -63,6 +64,18 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
         mf._eri = ao2mo.restore(8, eri_imp[0], n)
         mf.smearing = None
         if rank == 0:
+            print(mf.conv_check)
+            my_vhf = mf.get_veff(mol, dm0[0]);
+            my_fock = mf.get_fock(mf.get_hcore(), mf.get_ovlp(mol), my_vhf, dm0[0])
+            print("my_fock\n",my_fock)
+            my_energy, my_coeff = mf.eig(my_fock, mf.get_ovlp(mol))
+            my_occ = mf.get_occ(my_energy, my_coeff)
+            print("my_occ\n",my_occ)
+            print("my_energy\n",my_energy)
+            dm1 = mf.make_rdm1(my_coeff, my_occ)
+            print("dm1\n",dm1)
+            my_vhf1 = mf.get_veff(mol, dm0[0], dm1)
+            print("my_vhf1\n", my_vhf1)
             mf.kernel(dm0[0])
         else:
             mf.kernel(dm0[0])
@@ -89,8 +102,9 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
             mf.smearing = None
             mf.max_cycle = 1
             mf.kernel(dm)
-    else:
-        mf = scf.UHF(mol, mu)
+            
+    else: # spin unrestricted
+        mf = scf_mu.UHF(mol, mu)
         mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([2,n])
@@ -109,7 +123,7 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
             mf.kernel(dm0)
         dm = mf.make_rdm1()
         if rank == 0:
-            logger.info(mf, 'HF Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+            logger.info(mf, ' - HF Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
                         np.trace(dm[0,:nao,:nao]),np.trace(dm[1,:nao,:nao]),
                         np.trace(dm[0,:nao,:nao])+np.trace(dm[1,:nao,:nao]))
         if mf.converged is False:
@@ -129,9 +143,9 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
     if(verbose > 1):
         print(" - mo E's = "+str(mf.mo_energy));
         print(" - mo n's = "+str(mf.mo_occ));
-        print(" - imp occ = ", np.trace(dm[:nao,:nao]));
-        print(" - total occ = ", np.trace(dm));
-        print(" - E_gd= "+str(mf.e_tot));
+        #print(" - imp occ = ", np.trace(dm[:nao,:nao]));
+        #print(" - total occ = ", np.trace(dm));
+        #print(" - E_gd= "+str(mf.e_tot));
         
     return mf
 
@@ -760,9 +774,9 @@ def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
             ddm = dm_cc_cas - dm_low_cas
             ddm = np.dot(no_coeff[0], np.dot(ddm, no_coeff[0].T))
             dm_ao = dm_low + ddm
-        logger.info(mf, 'CC Nelec = %s', np.trace(dm_ao[:nimp,:nimp]))
-        logger.info(mf, 'CC 1-RDM diag = \n %s', dm_ao[:nimp,:nimp].diagonal())
-        logger.info(mf, 'MF 1-RDM diag = \n %s', mf.make_rdm1()[:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC Nelec = %s', np.trace(dm_ao[:nimp,:nimp]))
+        logger.info(mf, ' - CC 1-RDM diag = \n %s', dm_ao[:nimp,:nimp].diagonal())
+        logger.info(mf, ' - MF 1-RDM diag = \n %s', mf.make_rdm1()[:nimp,:nimp].diagonal())
 
         fn = 'amplitudes.h5'
         feri = h5py.File(fn, 'w')
@@ -842,6 +856,8 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     from fcdmft.solver import mpiuccgf as uccgf
 
     if(verbose): print(">> In ucc_gf()");
+    assert False;
+    mf.verbose = 0
         
     if ao_orbs is None:
         nmo = mf.mo_coeff[0].shape[0]
@@ -895,11 +911,11 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
                 ddm = dm_cc_cas - dm_low_cas[s]
                 ddm = np.dot(no_coeff[s], np.dot(ddm, no_coeff[s].T))
                 dm_ao[s] = dm_low[s] + ddm
-        logger.info(mf, 'CC Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+        logger.info(mf, ' - CC Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
                     np.trace(dm_ao[0][:nimp,:nimp]),np.trace(dm_ao[1][:nimp,:nimp]),
                     np.trace(dm_ao[0][:nimp,:nimp])+np.trace(dm_ao[1][:nimp,:nimp]))
-        logger.info(mf, 'CC 1-RDM up diag = \n %s', dm_ao[0][:nimp,:nimp].diagonal())
-        logger.info(mf, 'CC 1-RDM dn diag = \n %s', dm_ao[1][:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC 1-RDM up diag = \n %s', dm_ao[0][:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC 1-RDM dn diag = \n %s', dm_ao[1][:nimp,:nimp].diagonal())
 
         fn = 'amplitudes.h5'
         feri = h5py.File(fn, 'w')

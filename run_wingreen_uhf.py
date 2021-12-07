@@ -1,14 +1,17 @@
 '''
 Demonstration of my wrappers to Tianyu Zhu's fcdmft package
+
 Dynamical Mean Field Theory:
 Treat impurity region, which is highly correlated, at a very high level of
 quantum chemistry. Treat environment at lower level. If the environment is
 periodic and highly correlated, one can then do a self consistent loop. See
 e. g. https://arxiv.org/pdf/1012.3609.pdf.
+
 fcdmt package contains:
 - drivers for dmft algorithm, including self consistent loop (dmft/gwdmft.py)
 - utils for these drivers (dmft/gwdmft.py)
 - solvers for many body physics (e. g. RHF, CC, FCI)
+
 My fcdmft.kernel() function uses utils and solvers to put together a dmft driver
 that skips the self consistent loop, i. e. for a non periodic system
 '''
@@ -27,30 +30,28 @@ nimp = 1; # number of impurities
 
 # anderson dot
 Vg = -1.0;
-mu = 3.0; # dot chem potential
+mu = 0.0; # dot chem potential
 U = 2.0;
-h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
-g2e = np.zeros((1,2,2,2,2));
-g2e[0][0,0,1,1] += U/2; # since # elecs is always doubled
-g2e[0][1,1,0,0] += U/2;
+h1e = np.array([[[Vg]],[[Vg]]]); # on site energy
+g2e = np.zeros((3,1,1,1,1)); # aa, ab, bb parts
+g2e[2][0,0,0,0] += 2*U; # coulomb
 dm0 = np.zeros_like(h1e);
-dm0[0,0,0] = 2; # filling of the dot
-assert(np.shape(h1e)[1] == 2*nimp); # 2 spin orbs per imp
+dm0[1,0,0] = 1; # full up filling of dot
 
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
 Vb = 0.005; # bias
 th = 1.0; # coupling between imp, leads
-coupling = np.array([-th*np.eye(2*nimp)]);
+coupling = np.array([[[-th]],[[-th]]]); 
 
 # left lead
-H_LL = np.array([mu*np.eye(2*nimp)]);
-V_LL = np.array([-tl*np.eye(2*nimp)]); # spin conserving hopping
+H_LL = np.array([[[mu]],[[mu]]]);
+V_LL = np.array([[[-tl]],[[-tl]]]); # spin conserving hopping
 LLphys = (H_LL, V_LL, np.copy(coupling), mu+Vb/2); # pack
 
 # right lead
-H_RL = np.array([mu*np.eye(2*nimp)]);
-V_RL = np.array([-tl*np.eye(2*nimp)]); # spin conserving hopping
+H_RL = np.array([[[mu]],[[mu]]]);
+V_RL = np.array([[[-tl]],[[-tl]]]); # spin conserving hopping
 RLphys = (H_RL, V_RL, np.copy(coupling), mu-Vb/2); # pack
 
 # energy spectrum 
@@ -64,7 +65,7 @@ iE = (Es[-1] - Es[0])/nbo
 kBT = 0.0;
 
 # run kernel for MBGF
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys, n_bath_orbs=nbo, solver='cc', verbose=verbose);
+MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys, n_bath_orbs=nbo, solver='mf', verbose=verbose);
 
 #### 3: use meir wingreen formula
 
@@ -72,8 +73,15 @@ MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys, n_bath_orbs=nbo,
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
 # plot
-plt.plot(Es, np.real(jE[0,0]+jE[1,1]));
-plt.title((np.pi/Vb)*np.trapz(np.real(jE[0,0]+jE[1,1]), Es) );
+jE_sum = np.zeros_like(jE[0,0,0]);
+for s in range(np.shape(jE)[0]):
+    plt.plot(Es, -np.imag(MBGF[s,0,0]));
+    for c in range(np.shape(jE)[1]):
+        jE_sum += jE[s,c,c];
+plt.show();
+        
+plt.plot(Es, np.real(jE_sum));
+plt.title((np.pi/Vb)*np.trapz(np.real(jE_sum), Es));
 plt.xlabel("Energy");
 plt.ylabel("Current density");
 plt.show();
