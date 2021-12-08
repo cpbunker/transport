@@ -23,7 +23,7 @@ import time
 #### setup
 
 # top level
-np.set_printoptions(precision = 4, suppress = True);
+#np.set_printoptions(precision = 4, suppress = True);
 plt.style.use("seaborn-dark-palette");
 verbose = 5;
 sourcei = int(sys.argv[1]);
@@ -47,7 +47,7 @@ source_str += ">";
 print("\nSource:\n"+source_str);
 
 # tight binding params
-tl = 0.005; # in Hartree, s.t. a = a0 = Bohr radius = 0.529 Angstrom
+tl = 0.01; # in Hartree, s.t. a = a0 = Bohr radius = 0.529 Angstrom
 
 # Ab initio params, in meV:
 Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
@@ -78,7 +78,7 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
             pair_strs.append(pair_str);
 
     # sweep over incident wavevector
-    for ka in [0.2]:
+    for ka in [0.1]:
         Energy = -2*tl*np.cos(ka);
 
         # sweep over JK
@@ -95,13 +95,15 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
             # construct h_SR (determinant basis)
             h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
             h_SR = wfm.utils.entangle(h_SR, *pair);
-            if(verbose > 4): 
+            if(verbose > 4):
+                print("\n - Energy = ", Energy + 2*tl);
+                print(" - Barrier = ", abs(np.array(params)));
                 h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
                 h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
                 print("\n- Entangled hamiltonian\n", h_SR_sub);
 
             # iter over N
-            Nmax = 90;
+            Nmax = 50;
             Nvals = np.linspace(0,Nmax,min(Nmax+1,30),dtype = int);
             Tvals = [];
             ka = np.arccos(Energy/(-2*tl));
@@ -135,18 +137,13 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
             row.append(peakminus);
             row = np.array(row);
             features.append(np.copy(row));
-            if(verbose):
-                print("\n - Energy = ", Energy);
-                print("    ",row[1:9]); # physical features
-                #print("    ",row[9:18]); # bookkeeping features
-                #print("    ",row[18:]); # targets
 
             # plot Tvals vs N
             if(verbose > 3):
 
                 # first plot is just source and entangled pair
                 fig, axes = plt.subplots(2, sharex = True);
-                axes[0].set_title("$ka$ = "+str(ka));
+                axes[0].set_title("$E$ = "+str(int(100*Energy/tl)/100)+"$t_l, ka$ = "+str(int(100*ka)/100)+" $t_l$ = "+str(tl));
                 axes[0].set_xlim(0,int(1.3*Nmax));
                 axes[0].set_ylim(0,1.05);
                 axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = "$|d>$");
