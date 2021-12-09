@@ -45,7 +45,7 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
 
     spin, n = himp.shape[0:2]
     mol = gto.M()
-    mol.verbose = verbose;
+    mol.verbose = 0;
     mol.incore_anyway = True
     mol.build()
     
@@ -64,18 +64,6 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
         mf._eri = ao2mo.restore(8, eri_imp[0], n)
         mf.smearing = None
         if rank == 0:
-            print(mf.conv_check)
-            my_vhf = mf.get_veff(mol, dm0[0]);
-            my_fock = mf.get_fock(mf.get_hcore(), mf.get_ovlp(mol), my_vhf, dm0[0])
-            print("my_fock\n",my_fock)
-            my_energy, my_coeff = mf.eig(my_fock, mf.get_ovlp(mol))
-            my_occ = mf.get_occ(my_energy, my_coeff)
-            print("my_occ\n",my_occ)
-            print("my_energy\n",my_energy)
-            dm1 = mf.make_rdm1(my_coeff, my_occ)
-            print("dm1\n",dm1)
-            my_vhf1 = mf.get_veff(mol, dm0[0], dm1)
-            print("my_vhf1\n", my_vhf1)
             mf.kernel(dm0[0])
         else:
             mf.kernel(dm0[0])
@@ -92,10 +80,10 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
                 if mf.converged is False:
                     raise RuntimeError('SCF with smearing not converged.')
 
-        mf.verbose = verbose;
         dm = mf.make_rdm1()
         if rank == 0:
-            logger.info(mf, ' - HF Nelec = %s', np.trace(dm[:nao,:nao]))
+            mf.verbose = verbose
+            logger.info(mf, ' - HF Nelec = %.2f', np.trace(dm[:nao,:nao]))
 
         # one shot HF, normal for this to not converge!
         if mf.smearing is not None:
@@ -123,7 +111,8 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
             mf.kernel(dm0)
         dm = mf.make_rdm1()
         if rank == 0:
-            logger.info(mf, ' - HF Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+            mf.verbose = verbose
+            logger.info(mf, ' - HF Nelec_up = %.2f, Nelec_dn = %.2f, Nelec = %.2f',
                         np.trace(dm[0,:nao,:nao]),np.trace(dm[1,:nao,:nao]),
                         np.trace(dm[0,:nao,:nao])+np.trace(dm[1,:nao,:nao]))
         if mf.converged is False:
@@ -140,12 +129,9 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
     comm.Barrier()
 
     # diagnostic
-    if(verbose > 1):
-        print(" - mo E's = "+str(mf.mo_energy));
-        print(" - mo n's = "+str(mf.mo_occ));
-        #print(" - imp occ = ", np.trace(dm[:nao,:nao]));
-        #print(" - total occ = ", np.trace(dm));
-        #print(" - E_gd= "+str(mf.e_tot));
+    if(verbose > 1):        
+        print(" - IP's / EA's = "+str(list(mf.mo_energy)));
+        if(spin == 1): print(" - HF RDM Diag = ",dm.diagonal())
         
     return mf
 

@@ -26,16 +26,15 @@ verbose = 5;
 nimp = 1; # number of impurities
 
 # anderson dot
-Vg = -1.0;
-mu = 3.0; # dot chem potential
-U = 2.0;
+Vg = -0.5;
+mu = 0.0; # dot chem potential
+U = 0.4;
 h1e = np.array([[[Vg,0],[0,Vg]]]); # on site energy
 g2e = np.zeros((1,2,2,2,2));
 g2e[0][0,0,1,1] += U/2; # since # elecs is always doubled
 g2e[0][1,1,0,0] += U/2;
 dm0 = np.zeros_like(h1e);
-dm0[0,0,0] = 2; # filling of the dot
-assert(np.shape(h1e)[1] == 2*nimp); # 2 spin orbs per imp
+dm0[0,0,0] = 2; # up filling on the dot
 
 # embed in semi infinite leads (noninteracting, nearest neighbor only)
 tl = 1.0; # lead hopping
@@ -64,16 +63,23 @@ iE = (Es[-1] - Es[0])/nbo
 kBT = 0.0;
 
 # run kernel for MBGF
-MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys, n_bath_orbs=nbo, solver='cc', verbose=verbose);
+MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys,
+                nbo, solver='mf',verbose=verbose);
 
 #### 3: use meir wingreen formula
 
 # matrix of spin current at all energies
+# shape = spin, n channels, n_channels, n_enerrgies
 jE = fcdmft.wingreen(Es, iE, kBT, MBGF, LLphys, RLphys, verbose = verbose);
 
 # plot
-plt.plot(Es, np.real(jE[0,0]+jE[1,1]));
-plt.title((np.pi/Vb)*np.trapz(np.real(jE[0,0]+jE[1,1]), Es) );
+jE_sum = np.zeros_like(jE[0,0,0]);
+for s in range(np.shape(jE)[0]):
+    for c in range(np.shape(jE)[1]):
+        jE_sum += jE[s,c,c];
+plt.show();
+plt.plot(Es, np.real(jE_sum));
+plt.title((np.pi/Vb)*np.trapz(np.real(jE_sum), Es));
 plt.xlabel("Energy");
 plt.ylabel("Current density");
 plt.show();

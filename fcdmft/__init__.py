@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 ########################################################################
 #### drivers
 
-def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n_bath_orbs = 4, verbose = 0): # main driver
+def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, n_bath_orbs, solver = "mf", verbose = 0): # main driver
     '''
     Driver of MBGF calculation
     - scattering region, treated at high level, repped by SR_1e and SR_2e
@@ -31,8 +31,6 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
     is that the latter assumes periodicity, and so only takes local hamiltonian
     of impurity, and does a self-consistent loop. In contrast, this code
     specifies the environment and skips scf
-
-    NB chem potential fixed at 0 as convention
 
     Args:
     energies, 1d arr of energies
@@ -91,29 +89,35 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
     RL_hyb = dot_spinful_arrays(RL_hyb, RL_coup, backwards = True);
     
     # bath disc: outputs n_bath_orbs bath energies, for each imp orb
-    if(verbose): print("\n3. Bath discretization");
-    hyb = LL_hyb + RL_hyb;
-    bathe, bathv = dmft.gwdmft.get_bath_direct(hyb, energies, n_bath_orbs);
+    if(n_bath_orbs > 0):
+        
+        if(verbose): print("\n3. Bath discretization");
+        hyb = LL_hyb + RL_hyb;
+        bathe, bathv = dmft.gwdmft.get_bath_direct(hyb, energies, n_bath_orbs);
 
-    # optimize
-    bathe, bathv = dmft.gwdmft.opt_bath(bathe, bathv, hyb, energies, iE, n_bath_orbs);
-    if(verbose): print(" - opt. bath energies = ", bathe);
+        # optimize
+        bathe, bathv = dmft.gwdmft.opt_bath(bathe, bathv, hyb, energies, iE, n_bath_orbs);
+        if(verbose): print(" - opt. bath energies = ", bathe);
 
-    # construct manybody hamiltonian of imp + bath
-    h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
+        # construct manybody hamiltonian of imp + bath
+        h1e_imp, h2e_imp = dmft.gwdmft.imp_ham(SR_1e, SR_2e, bathe, bathv, n_core); # adds in bath states
 
-    # include bath orbs in density matrix
-    dm_guess = np.zeros_like(h1e_imp);
-    for s in range(np.shape(dm_guess)[0]):
-        for orbi in range(np.shape(dm_guess)[1]):
-            if( orbi < np.shape(dm_SR)[1]): # copy from SR dm
-                dm_guess[s,orbi,orbi] = dm_SR[s,orbi, orbi];
-            else:
-                dm_guess[s,orbi, orbi] = 1; # half filled bath orbs
+        # include bath orbs in density matrix
+        dm_guess = np.zeros_like(h1e_imp);
+        for s in range(np.shape(dm_guess)[0]):
+            for orbi in range(np.shape(dm_guess)[1]):
+                if( orbi < np.shape(dm_SR)[1]): # copy from SR dm
+                    dm_guess[s,orbi,orbi] = dm_SR[s,orbi, orbi];
+                else:
+                    dm_guess[s,orbi, orbi] = 1; # half filled bath orbs
+
+    # don't do bath if nbo = 0
+    else:
+        h1e_imp, h2e_imp, dm_guess = SR_1e, SR_2e, dm_SR;
 
     # find manybody gf of imp + bath
     # ie Zgid paper eq 28
-    if(verbose): print("\n4. Impurity Green's function");
+    if(verbose): print("\n4. Impurity Green's function with "+solver);
     meanfield = dmft.dmft_solver.mf_kernel(h1e_imp, h2e_imp, chem_pot, n_imp_orbs, dm_guess, max_mem, verbose = verbose);
 
     # choose solver to get Green's function
@@ -121,26 +125,24 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, solver = "mf", n
 
         # get MBGF in hartree fock approx
         MBGF = dmft.dmft_solver.mf_gf(meanfield, energies, iE, verbose = verbose);
-        
-    elif(solver == 'fci'):
-
-        # get MBGF
-        assert(n_orbs <= 10); # so it doesn't stall
-        MBF = dmft.dmft_solver.fci_gf(meanfield, energies, iE, verbose = verbose);
     
     elif(solver == 'cc'):
 
-        # get MBGF, needs to be unrestricted
-        #meanfield = scf.addons.convert_to_uhf(meanfield);
-        assert(len(meanfield.mo_coeff) == 2);
-        MBGF = dmft.dmft_solver.ucc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+        # get MBGF
+        if( spin == 1):
+            MBGF = dmft.dmft_solver.cc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+        if( spin == 2):
+            MBGF = dmft.dmft_solver.ucc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
 
+    elif(solver == 'fci'):
+
+        # get MBGF
+        pass;
+    
     elif(solver == 'dmrg'):
 
         from transport import tddmrg
-        
-        # make MPE
-        MPE = tddmrg.arr_to_mpe(h1e_imp, h2e_imp, (n_orbs,0), 500);
+        pass;
 
     else: raise(ValueError(solver+" is not a valid solver type"));
                
