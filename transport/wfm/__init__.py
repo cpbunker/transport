@@ -187,6 +187,14 @@ def Green(h, th, tl, E, verbose = 0):
 
 def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
     '''
+    Given a LL + SR + RL wave function matching system, defined by
+    - blocks h_SR[i] on the ith site of the SR
+    - hopping V_SR[i] btwn the ith and the i+1th site of the SR
+    - hopping th onto the SR
+    - hopping tl in the leads
+
+    construct the transmission coefficients for an incident electron defined by source
+    for all ka in kalims
     '''
 
     # check inputs
@@ -214,7 +222,7 @@ def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
         print(" - V = ", -tblocks[1,0,0]);
 
     # iter over ka
-    kavals = np.linspace(*kalims, 11);
+    kavals = np.linspace(*kalims, 21);
     Tvals = [];
     for ka in kavals:
 

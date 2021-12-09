@@ -226,7 +226,7 @@ if True:
     Jeff = 2*tl*tl/Vg/2; # eff heisenberg
 
     fig, ax = plt.subplots();
-    for N_SR in [50, 99]:
+    for N_SR in [50, 99, 494]:
         # cicc inputs
         #N_SR = 100; # num sites in SR, imps will be located at site 0, N_SR
                     # N_SR = 50, J = 0.2 gives rhoJa \approx 1, Na \approx 20 angstrom
@@ -241,7 +241,6 @@ if True:
             print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
             print(" - ka0 = ",ka0);
             print("- rho*J*a = ", rhoJa);
-
         # choose boundary condition
         source = np.zeros(8);
         source[1] = 1;
@@ -253,7 +252,7 @@ if True:
         
         # get data
         # wfm.Data(): tblocks is hopping in SR, then th = hopping onto SR, then tl = in leads
-        kavals, Tvals = wfm.Data(source, hblocks, tblocks, 1.0, 1.0, (0.5*ka0, 1.5*ka0), verbose = verbose);
+        kavals, Tvals = wfm.Data(source, hblocks, tblocks, 1.0, 1.0, (0.7*ka0, 1.1*ka0), verbose = verbose);
         Ttotals = np.sum(Tvals, axis = 1);
 
         # plot data
@@ -262,6 +261,7 @@ if True:
     # format and show
     ax.set_xlabel("$kNa/\pi$");
     ax.set_ylabel("$T$");
+    ax.set_ylim(0,1);
     ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
