@@ -12,18 +12,17 @@ Following cicc, imp spins are confined to single sites, separated by x0
     since this is discrete, separate by x0 = N0 a lattice spacings
 '''
 
-import wfm
+from transport import wfm
+from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn
 import sys
 
 # top level
 plt.style.use('seaborn-dark-palette');
-colors = seaborn.color_palette("dark");
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 5
+verbose = 4
 
 
 ##################################################################################
@@ -35,7 +34,7 @@ if False:
 
     # tight binding params
     tl = 1.0;
-    Vg = 5;
+    Vg = 10;
     Jeff = 2*tl*tl/Vg/2; # eff heisenberg
 
     # cicc inputs
@@ -44,8 +43,8 @@ if False:
     rhoJ_int = 1.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJ_int*rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
-    k_rho = wfm.k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
-    assert(abs((E_rho - 2*tl) - wfm.E_disp(k_rho,alat, tl) ) <= 1e-8 ); # check by getting back energy measured from bottom of band
+    k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
+    assert(abs((E_rho - 2*tl) - -2*tl*np.cos(k_rho)) <= 1e-8 ); # check by getting back energy measured from bottom of band
     print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
     print("k*a = ",k_rho*alat);
     print("rho*J = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
@@ -53,8 +52,8 @@ if False:
 
     # choose boundary condition
     source = np.zeros(8);
-    source[0] = 1;
-    spinstate = "aaa"
+    source[1] = 1;
+    spinstate = "aab";
     
     # mesh of x0s (= N0s * alat)
     kx0max = 1.1*np.pi;
@@ -65,28 +64,30 @@ if False:
 
     # iter over all the differen impurity spacings, get transmission
     Tvals = []
-    for N0i in range(len(N0vals)):
+    for N0i in[int(np.pi/(k_rho*alat))]: # range(len(N0vals)):
 
         # construct hams
         N0 = N0vals[N0i];
         i1, i2 = 1, 1+N0;
         Nsites = i2+2; # 1 lead site on each side
         print("i1, i2, Nsites = ",i1, i2, Nsites)
-        hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
+        hmats, tmats = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , source)) );
+        Tvals.append(list(wfm.kernel(hmats, tmats, tl, E_rho , source)) );
 
     # package into one array
     Tvals = np.array(Tvals);
+    print(Tvals);
+    assert False;
     info = np.zeros_like(kx0vals);
     info[0], info[1], info[2], info[3], info[4] = tl, Jeff, rhoJ_int, E_rho, k_rho; # save info we need
     data = [info, N0vals, kx0vals];
     for Ti in range(np.shape(Tvals)[1]):
         data.append(Tvals[:,Ti]); # data has columns of N0val, k0val, corresponding T vals
     # save data
-    fname = "dat/cicc/eff/"+spinstate+"/";
-    fname +="gf_E"+str(E_rho)[:6]+"_k"+str(k_rho)[:4]+"_"+str(rhoJ_int)[:4]+".npy";
+    fname = "dat/cicc_eff/"+spinstate+"/";
+    fname +="gf_E"+str(E_rho)[:6]+"_ka"+str(k_rho*alat)[:4]+"_"+str(rhoJ_int)[:4]+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
 
@@ -186,7 +187,7 @@ if False:
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
 
-if True: # plot above
+if False: # plot above
 
     # load data
     fname = sys.argv[1]
@@ -212,6 +213,60 @@ if True: # plot above
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
+
+
+#################################################################
+#### fixed N
+
+if True:
+
+    # tight binding params
+    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
+    Vg = 5;
+    Jeff = 2*tl*tl/Vg/2; # eff heisenberg
+
+    fig, ax = plt.subplots();
+    for N_SR in [50, 99]:
+        # cicc inputs
+        #N_SR = 100; # num sites in SR, imps will be located at site 0, N_SR
+                    # N_SR = 50, J = 0.2 gives rhoJa \approx 1, Na \approx 20 angstrom
+        ka0 = np.pi/N_SR; # val of ka (dimensionless) s.t. kx0 = ka*N_SR = pi
+        E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
+                                        # measured from bottom of the band!!
+        rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho))
+
+        # diagnostic
+        if(verbose):
+            print("\nCiccarello inputs")
+            print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
+            print(" - ka0 = ",ka0);
+            print("- rho*J*a = ", rhoJa);
+
+        # choose boundary condition
+        source = np.zeros(8);
+        source[1] = 1;
+        spinstate = "aab";
+
+        # construct blocks of hamiltonian
+        # num sites in SR, imps will be located at site 0, N_SR
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 0, N_SR-1, N_SR);
+        
+        # get data
+        # wfm.Data(): tblocks is hopping in SR, then th = hopping onto SR, then tl = in leads
+        kavals, Tvals = wfm.Data(source, hblocks, tblocks, 1.0, 1.0, (0.5*ka0, 1.5*ka0), verbose = verbose);
+        Ttotals = np.sum(Tvals, axis = 1);
+
+        # plot data
+        ax.plot(kavals*N_SR/np.pi, Ttotals, label = "$N$ = "+str(N_SR)+", $\\rho Ja(kNa = \pi)$ = "+str(int(100*rhoJa)/100));
+
+    # format and show
+    ax.set_xlabel("$kNa/\pi$");
+    ax.set_ylabel("$T$");
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.legend();
+    plt.show()
     
     
     

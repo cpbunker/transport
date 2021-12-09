@@ -13,120 +13,13 @@ from transport import fci_mod
 import numpy as np
 
 ##################################################################################
-####
+#### driver of transmission coefficient calculations
 
-def Hmat(h, t, verbose = 0):
-    '''
-    Make the hamiltonian H for N+2 x N+2 system
-    where there are N sites in the scattering region (SR).
-
-    h, 1d arr 
-    t, float, hopping
-    '''
-
-    # check
-    assert(len(h) == len(t) + 1);
-
-    # unpack
-    N = len(h) - 2; # num scattering region sites, ie N+2 = num spatial dof
-    n_loc_dof = np.shape(h[0])[0]; # dofs that will be mapped onto row in H
-    H =  np.zeros((n_loc_dof*(N+2), n_loc_dof*(N+2) ), dtype = complex);
-    # outer shape: num sites x num sites (degree of freedom is loc of itinerant e)
-    # shape at each site: runs over all other degrees of freedom)
-
-    # first construct matrix of matrices
-    for sitei in range(0,N+2): # iter sites dof only
-        for sitej in range(0,N+2): # same
-                
-            for loci in range(np.shape(h[0])[0]): # iter over local dofs
-                for locj in range(np.shape(h[0])[0]):
-                    
-                    # site, loc indices -> overall indices
-                    ovi = sitei*n_loc_dof + loci;
-                    ovj = sitej*n_loc_dof + locj;
-
-                    if(sitei == sitej): # input from local h to main diag
-                        H[ovi, ovj] += h[sitei][loci, locj];
-
-                    elif(sitei == sitej+1): # input from T to lower diag
-                        H[ovi, ovj] += t[sitej][loci, locj];
-
-                    elif(sitei+1 == sitej): # input from T to upper diag
-                        H[ovi, ovj] += t[sitei][loci, locj];                
-
-    if verbose > 3: print("\nH_SR[0] = \n",np.real(H[n_loc_dof:2*n_loc_dof,n_loc_dof:2*n_loc_dof]));
-    return H; 
-
-
-def Hprime(h, t, tl, E, verbose = 0):
-    '''
-    Make H' (hamiltonian + self energy) for N+2 x N+2 system
-    where there are N sites in the scattering region (SR).
-
-    h, block diag hamiltonian matrices
-    t, block off diag hopping matrix
-    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
-    '''
-
-    # unpack
-    N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0];
-
-    # add self energies to hamiltonian
-    Hp = Hmat(h, t, verbose = verbose); # regular ham
-
-    # self energies at LL
-    # need a self energy for each LL boundary condition
-    for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tl);
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
-        SigmaL = -tl/LambdaLminus;
-        Hp[Vi,Vi] = SigmaL;
-
-    # self energies at RL
-    for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[-1][Vi,Vi];     
-        lamR = (E-V)/(-2*tl);
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
-        SigmaR = -tl*LambdaRplus;
-        Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
-    
-    if verbose > 3: print("\nH' = \n",Hp);
-    return Hp;
-
-
-def Green(h, t, tl, E, verbose = 0):
-    '''
-    Greens function for system described by
-    - potential V[i] at site i
-    - lattice spacing a
-    - incident mass m
-    -incident energy E
-
-    Assumes that incident flux is up spin only!!!!
-    '''
-
-    # check inputs
-    assert( isinstance(h, np.ndarray));
-
-    # unpack
-    N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0];
-
-    # get green's function matrix
-    Hp = Hprime(h, t, tl, E, verbose = verbose);
-    G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
-
-    # of interest is the qith row which contracts with the source q
-    return G;
-
-
-def Tcoef(h, t, tl, E, qi, verbose = 0):
+def kernel(h, th, tl, E, qi, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     h, block diag hamiltonian matrices
-    t, block off diag hopping matrix
+    th, block off diag hopping matrix 
     tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
     E, energy of the incident electron
     qi, source vector (loc dof only)
@@ -134,7 +27,7 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
 
     # check inputs
     assert( isinstance(h, np.ndarray));
-    assert( isinstance(t, np.ndarray));
+    assert( isinstance(th, np.ndarray));
     assert( isinstance(qi, np.ndarray));
     assert( len(qi) == np.shape(h[0])[0] );
 
@@ -164,14 +57,16 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function
-    G = Green(h, t, tl, E, verbose = verbose);
-    if verbose > 3: print("\nG[:,qi] = ",G[:,qi]);
+    G = Green(h, th, tl, E, verbose = verbose);
 
     # coefs
-    qivector = np.zeros(np.shape(G)[0]);
+    qivector = np.zeros(np.shape(G)[0]); # go from block space to full space
     for j in range(len(qi)):
-        qivector[j] = qi[j]; # fill
+        qivector[j] = qi[j]; # fill from block space
     Gqi = np.dot(G, qivector);
+    if verbose > 3: print("\nG*q[0] = ",Gqi[0]);
+
+    # transmission coefs
     Ts = np.zeros(n_loc_dof, dtype = float); # must be real
     for Ti in range(n_loc_dof):
         
@@ -183,7 +78,160 @@ def Tcoef(h, t, tl, E, qi, verbose = 0):
     return tuple(Ts);
 
 
-if __name__ == "__main__": # test code
+def Hmat(h, t, verbose = 0):
+    '''
+    Make the hamiltonian H for N+2 x N+2 system
+    where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
+
+    h, arr of on site blocks at each of the N+2 sites
+    t, arr of N-1 hopping blocks between the N+2
+    '''
+
+    # check
+    assert(len(h) == len(t) + 1);
+
+    # unpack
+    N = len(h) - 2; # num scattering region sites, ie N+2 = num spatial dof
+    n_loc_dof = np.shape(h[0])[0]; # dofs that will be mapped onto row in H
+    H =  np.zeros((n_loc_dof*(N+2), n_loc_dof*(N+2) ), dtype = complex);
+    # outer shape: num sites x num sites (degree of freedom is loc of itinerant e)
+    # shape at each site: runs over all other degrees of freedom)
+
+    # first construct matrix of matrices
+    for sitei in range(0,N+2): # iter sites dof only
+        for sitej in range(0,N+2): # same
+                
+            for loci in range(np.shape(h[0])[0]): # iter over local dofs
+                for locj in range(np.shape(h[0])[0]):
+                    
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    if(sitei == sitej): # input from local h to main diag
+                        H[ovi, ovj] += h[sitei][loci, locj];
+
+                    elif(sitei == sitej+1): # input from t to lower diag
+                        H[ovi, ovj] += t[sitej][loci, locj];
+
+                    elif(sitei+1 == sitej): # input from t to upper diag
+                        H[ovi, ovj] += t[sitei][loci, locj];                
+
+    if verbose > 3: print("\nH_SR[0] = \n",np.real(H[n_loc_dof:2*n_loc_dof,n_loc_dof:2*n_loc_dof]));
+    return H; 
+
+
+def Hprime(h, th, tl, E, verbose = 0):
+    '''
+    Make H' (hamiltonian + self energy) for N+2 x N+2 system
+    where there are N sites in the scattering region (SR).
+
+    h, block diag hamiltonian matrices
+    t, block off diag hopping matrix
+    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
+    '''
+
+    # unpack
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+
+    # add self energies to hamiltonian
+    Hp = Hmat(h, th, verbose = verbose); # regular ham from SR on site blocks h and hop blocks th
+
+    # self energies at LL
+    # need a self energy for each LL boundary condition
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[0][Vi,Vi];
+        lamL = (E-V)/(-2*tl);
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
+        SigmaL = -tl/LambdaLminus;
+        Hp[Vi,Vi] = SigmaL;
+
+    # self energies at RL
+    for Vi in range(n_loc_dof): # iters over all bcs
+        V = h[-1][Vi,Vi];     
+        lamR = (E-V)/(-2*tl);
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
+        SigmaR = -tl*LambdaRplus;
+        Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
+    
+    if verbose > 3: print("\nH' = \n",Hp);
+    return Hp;
+
+
+def Green(h, th, tl, E, verbose = 0):
+    '''
+    Greens function for system described by
+    - potential h[i] at site i of the scattering region (SR, sites i=1 to i=N)
+    - hopping th on and off the SR
+    - hopping tl in the leads (sites i=-\inf to 0, N+1 to +\inf)
+    - incident energy E
+    '''
+
+    # check inputs
+    assert( isinstance(h, np.ndarray));
+
+    # unpack
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+
+    # get green's function matrix
+    Hp = Hprime(h, th, tl, E, verbose = verbose);
+    G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
+
+    # of interest is the qith row which contracts with the source q
+    return G;
+
+##################################################################################
+#### wrappers
+
+def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
+    '''
+    '''
+
+    # check inputs
+    assert(np.shape(source)[0] == np.shape(h_SR[0])[0]);
+    assert(len(h_SR) == 1 + len(V_SR));
+    assert(np.shape(h_SR[0]) == np.shape(V_SR[0]));
+
+    # unpack
+    N_SR = len(h_SR); # number of sites in the scattering region
+
+    # package as block hams 
+    hblocks = [np.zeros_like(h_SR[0])] # ie sets mu=0 in LL
+    tblocks = [-th*np.eye(*np.shape(h_SR[0]))]; # hopping from LL to SR
+    hblocks.append(h_SR[0]); # site 1 in SR
+    for n in range(1,N_SR):
+        hblocks.append(h_SR[n]); # site n in SR, n=2...n=N_SR \
+        tblocks.append(V_SR[n-1]); # V_SR[n] gives hopping from nth to n+1th site
+    hblocks.append(np.zeros_like(h_SR[0])); # ie sets mu=0 in RL
+    tblocks.append(-th*np.eye(*np.shape(h_SR[0]))); # hopping from SR to RL
+    hblocks = np.array(hblocks);
+    tblocks = np.array(tblocks);
+    if(verbose):
+        print(" - tl = ", tl);
+        print(" - th = ", -tblocks[0,0,0]);
+        print(" - V = ", -tblocks[1,0,0]);
+
+    # iter over ka
+    kavals = np.linspace(*kalims, 11);
+    Tvals = [];
+    for ka in kavals:
+
+        # transmission coefs
+        Energy = -2*tl*np.cos(ka); # tight binding band
+        if(verbose > 4 and ka == kalims[-1]):
+            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source, verbose = verbose));
+        else:
+            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));
+        
+    Tvals = np.array(Tvals);
+    return kavals, Tvals;
+
+##################################################################################
+#### test code
+
+if __name__ == "__main__":
 
     pass;
 

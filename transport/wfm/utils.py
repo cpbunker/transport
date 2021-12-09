@@ -9,15 +9,6 @@ import numpy as np
 ##################################################################################
 #### general
 
-def E_disp(k,a,t):
-    # vectorized conversion from k to E(k), measured from bottom of band
-    return -2*t*np.cos(k*a);
-
-
-def k_disp(E,a,t):
-    return np.arccos(E/(-2*t))/a;
-
-
 def subspace(m):
 
     if(m==1/2):
@@ -176,12 +167,12 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
     h_cicc = np.array(h_cicc);
 
     # hopping connects like spin orientations only, ie is identity
-    tl_arr = []
+    tblocks = []
     for sitei in range(Nsites-1):
-        tl_arr.append(-t*np.eye(*np.shape(Se_dot_S1)) );
-    tl_arr = np.array(tl_arr);
+        tblocks.append(-t*np.eye(*np.shape(Se_dot_S1)) );
+    tblocks = np.array(tblocks);
 
-    return h_cicc, tl_arr;
+    return h_cicc, tblocks;
 
 def h_dimer_2q(params):
     '''

@@ -121,7 +121,7 @@ for pair in [(1,4)]: #wfm.utils.sweep_pairs(dets, sourcei)[:1]:
                 tblocks = np.array(tblocks);
 
                 # coefs
-                Tvals.append(wfm.Tcoef(hblocks, tblocks, tl, Energy, source));
+                Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
 
             # save features
             Tvals = np.array(Tvals);

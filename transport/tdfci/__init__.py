@@ -322,8 +322,6 @@ def Data(source, leadsites, h1e, g2e, tf, dt, fname = "fci_data.npy", verbose = 
     # prep initial state
     ci0 = np.zeros((ndets,1));
     ci0 = v_fci;
-    for ielec in range(len(source)):
-        ci0 = 
 
     assert False;
     # from fci gd state, do time propagation
