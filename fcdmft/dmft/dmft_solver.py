@@ -5,7 +5,7 @@ from scipy import linalg
 from pyscf.lib import logger
 from pyscf import lib, gto, ao2mo, cc
 from fcdmft import solver
-from fcdmft.solver import scf_mu as scf
+from fcdmft.solver import scf_mu
 from mpi4py import MPI
 
 einsum = lib.einsum
@@ -48,9 +48,10 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
     mol.verbose = 0;
     mol.incore_anyway = True
     mol.build()
-    if spin == 1:
+    
+    if spin == 1: # spin restricted
         assert(np.shape(eri_imp)[0] == spin and np.shape(dm0)[0] == spin);
-        mf = scf.RHF(mol, mu)
+        mf = scf_mu.RHF(mol, mu)
         mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([n])
@@ -79,18 +80,19 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
                 if mf.converged is False:
                     raise RuntimeError('SCF with smearing not converged.')
 
-        mf.verbose = verbose;
         dm = mf.make_rdm1()
         if rank == 0:
-            logger.info(mf, ' - HF Nelec = %s', np.trace(dm[:nao,:nao]))
+            mf.verbose = verbose
+            logger.info(mf, ' - HF Nelec = %.2f', np.trace(dm[:nao,:nao]))
 
         # one shot HF, normal for this to not converge!
         if mf.smearing is not None:
             mf.smearing = None
             mf.max_cycle = 1
             mf.kernel(dm)
-    else:
-        mf = scf.UHF(mol, mu)
+            
+    else: # spin unrestricted
+        mf = scf_mu.UHF(mol, mu)
         mf.verbose = mol.verbose;
         mf.max_memory = max_mem
         mf.mo_energy = np.zeros([2,n])
@@ -109,7 +111,8 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
             mf.kernel(dm0)
         dm = mf.make_rdm1()
         if rank == 0:
-            logger.info(mf, 'HF Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+            mf.verbose = verbose
+            logger.info(mf, ' - HF Nelec_up = %.2f, Nelec_dn = %.2f, Nelec = %.2f',
                         np.trace(dm[0,:nao,:nao]),np.trace(dm[1,:nao,:nao]),
                         np.trace(dm[0,:nao,:nao])+np.trace(dm[1,:nao,:nao]))
         if mf.converged is False:
@@ -126,12 +129,9 @@ def mf_kernel(himp, eri_imp, mu, nao, dm0, max_mem, verbose=logger.NOTE):
     comm.Barrier()
 
     # diagnostic
-    if(verbose > 1):
-        print(" - mo E's = "+str(mf.mo_energy));
-        print(" - mo n's = "+str(mf.mo_occ));
-        print(" - imp occ = ", np.trace(dm[:nao,:nao]));
-        print(" - total occ = ", np.trace(dm));
-        print(" - E_gd= "+str(mf.e_tot));
+    if(verbose > 1):        
+        print(" - IP's / EA's = "+str(list(mf.mo_energy)));
+        if(spin == 1): print(" - HF RDM Diag = ",dm.diagonal())
         
     return mf
 
@@ -760,9 +760,9 @@ def cc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
             ddm = dm_cc_cas - dm_low_cas
             ddm = np.dot(no_coeff[0], np.dot(ddm, no_coeff[0].T))
             dm_ao = dm_low + ddm
-        logger.info(mf, 'CC Nelec = %s', np.trace(dm_ao[:nimp,:nimp]))
-        logger.info(mf, 'CC 1-RDM diag = \n %s', dm_ao[:nimp,:nimp].diagonal())
-        logger.info(mf, 'MF 1-RDM diag = \n %s', mf.make_rdm1()[:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC Nelec = %s', np.trace(dm_ao[:nimp,:nimp]))
+        logger.info(mf, ' - CC 1-RDM diag = \n %s', dm_ao[:nimp,:nimp].diagonal())
+        logger.info(mf, ' - MF 1-RDM diag = \n %s', mf.make_rdm1()[:nimp,:nimp].diagonal())
 
         fn = 'amplitudes.h5'
         feri = h5py.File(fn, 'w')
@@ -842,6 +842,7 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     from fcdmft.solver import mpiuccgf as uccgf
 
     if(verbose): print(">> In ucc_gf()");
+    mf.verbose = verbose
         
     if ao_orbs is None:
         nmo = mf.mo_coeff[0].shape[0]
@@ -872,11 +873,6 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     mycc.diis_space = 15
     mycc.max_cycle = 200
     if rank == 0:
-        # key part
-        print("\n???\n")
-        print(np.shape(mycc.mo_coeff))
-        print(np.shape(mycc._scf._eri))
-        eris = mycc.ao2mo(mycc.mo_coeff)
         mycc.kernel()
         if mycc.converged is False:
             log = logger.Logger(sys.stdout, 4)
@@ -895,11 +891,11 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
                 ddm = dm_cc_cas - dm_low_cas[s]
                 ddm = np.dot(no_coeff[s], np.dot(ddm, no_coeff[s].T))
                 dm_ao[s] = dm_low[s] + ddm
-        logger.info(mf, 'CC Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+        logger.info(mf, ' - CC Nelec_up = %.2f, Nelec_dn = %.2f, Nelec = %.2f',
                     np.trace(dm_ao[0][:nimp,:nimp]),np.trace(dm_ao[1][:nimp,:nimp]),
                     np.trace(dm_ao[0][:nimp,:nimp])+np.trace(dm_ao[1][:nimp,:nimp]))
-        logger.info(mf, 'CC 1-RDM up diag = \n %s', dm_ao[0][:nimp,:nimp].diagonal())
-        logger.info(mf, 'CC 1-RDM dn diag = \n %s', dm_ao[1][:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC 1-RDM up diag = \n %s', dm_ao[0][:nimp,:nimp].diagonal())
+        logger.info(mf, ' - CC 1-RDM dn diag = \n %s', dm_ao[1][:nimp,:nimp].diagonal())
 
         fn = 'amplitudes.h5'
         feri = h5py.File(fn, 'w')

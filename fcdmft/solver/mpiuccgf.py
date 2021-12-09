@@ -432,8 +432,7 @@ class UCCGF(object):
                 solver = gmres.GMRES(matr_multiply, b_vector_ao, x0, diag_w, tol=self.tol)
                 cput1 = (time.process_time(), time.perf_counter())
                 sol = solver.solve().reshape(-1)
-                cput1 = logger.timer(self, 'IPGF orbital p = %d/%d, freq w = %d/%d (%d iterations) @ Rank %d'%(
-                    ip+1,len(ps),iomega+1,len(omega_list),solver.niter,rank), *cput1)
+                #cput1 = logger.timer(self, 'IPGF orbital p = %d/%d, freq w = %d/%d (%d iterations) @ Rank %d'%(ip+1,len(ps),iomega+1,len(omega_list),solver.niter,rank), *cput1)
                 x0 = sol
 
                 sol1, sol2 = vector_to_amplitudes_ip(sol, (nmoa,nmob), (nocca,noccb))
@@ -530,8 +529,7 @@ class UCCGF(object):
                 solver = gmres.GMRES(matr_multiply, b_vector_ao, x0, diag_w, tol=self.tol)
                 cput1 = (time.process_time(), time.perf_counter())
                 sol = solver.solve().reshape(-1)
-                cput1 = logger.timer(self, 'EAGF orbital q = %d/%d, freq w = %d/%d (%d iterations) @ Rank %d'%(
-                    ip+1,len(ps),iomega+1,len(omega_list),solver.niter,rank), *cput1)
+                #cput1 = logger.timer(self, 'EAGF orbital q = %d/%d, freq w = %d/%d (%d iterations) @ Rank %d'%(ip+1,len(ps),iomega+1,len(omega_list),solver.niter,rank), *cput1)
                 x0 = sol
 
                 sol1, sol2 = vector_to_amplitudes_ea(sol, (nmoa,nmob), (nocca,noccb))
