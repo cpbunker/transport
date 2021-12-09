@@ -130,9 +130,9 @@ def kernel(energies, iE, SR_1e, SR_2e, chem_pot, dm_SR, LL, RL, n_bath_orbs, sol
 
         # get MBGF
         if( spin == 1):
-            MBGF = dmft.dmft_solver.cc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+            MBGF = dmft.dmft_solver.cc_gf(meanfield, energies, iE, cas = False, nimp = n_imp_orbs, verbose = verbose);
         if( spin == 2):
-            MBGF = dmft.dmft_solver.ucc_gf(meanfield, energies, iE, cas = False, verbose = verbose);
+            MBGF = dmft.dmft_solver.ucc_gf(meanfield, energies, iE, cas = False, nimp = n_imp_orbs, verbose = verbose);
 
     elif(solver == 'fci'):
 

@@ -30,8 +30,8 @@ nimp = 1; # number of impurities
 
 # anderson dot
 Vg = -0.5;
-mu = 0.0; # dot chem potential
-U = 0.4;
+mu = -0.2; # dot chem potential
+U = 0.5;
 h1e = np.array([[[Vg]],[[Vg]]]); # on site energy
 g2e = np.zeros((3,1,1,1,1)); # aa, ab, bb parts
 g2e[2][0,0,0,0] += U; # coulomb
@@ -66,7 +66,7 @@ kBT = 0.0;
 
 # run kernel for MBGF
 MBGF = fcdmft.kernel(Es, iE, h1e, g2e, mu, dm0, LLphys, RLphys,
-                nbo, solver='mf',verbose=verbose);
+                nbo, solver='cc',verbose=verbose);
 
 #### 3: use meir wingreen formula
 

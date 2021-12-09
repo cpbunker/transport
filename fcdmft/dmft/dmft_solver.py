@@ -842,8 +842,7 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     from fcdmft.solver import mpiuccgf as uccgf
 
     if(verbose): print(">> In ucc_gf()");
-    assert False;
-    mf.verbose = 0
+    mf.verbose = verbose
         
     if ao_orbs is None:
         nmo = mf.mo_coeff[0].shape[0]
@@ -874,11 +873,6 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
     mycc.diis_space = 15
     mycc.max_cycle = 200
     if rank == 0:
-        # key part
-        print("\n???\n")
-        print(np.shape(mycc.mo_coeff))
-        print(np.shape(mycc._scf._eri))
-        eris = mycc.ao2mo(mycc.mo_coeff)
         mycc.kernel()
         if mycc.converged is False:
             log = logger.Logger(sys.stdout, 4)
@@ -897,7 +891,7 @@ def ucc_gf(mf, freqs, delta, ao_orbs=None, gmres_tol=1e-4, nimp=None,
                 ddm = dm_cc_cas - dm_low_cas[s]
                 ddm = np.dot(no_coeff[s], np.dot(ddm, no_coeff[s].T))
                 dm_ao[s] = dm_low[s] + ddm
-        logger.info(mf, ' - CC Nelec_up = %s, Nelec_dn = %s, Nelec = %s',
+        logger.info(mf, ' - CC Nelec_up = %.2f, Nelec_dn = %.2f, Nelec = %.2f',
                     np.trace(dm_ao[0][:nimp,:nimp]),np.trace(dm_ao[1][:nimp,:nimp]),
                     np.trace(dm_ao[0][:nimp,:nimp])+np.trace(dm_ao[1][:nimp,:nimp]))
         logger.info(mf, ' - CC 1-RDM up diag = \n %s', dm_ao[0][:nimp,:nimp].diagonal())
