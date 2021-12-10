@@ -30,6 +30,9 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     assert( isinstance(th, np.ndarray));
     assert( isinstance(qi, np.ndarray));
     assert( len(qi) == np.shape(h[0])[0] );
+    for hi in [0, -1]: # check that RL and LL hams are diagonal
+        isdiag = h[hi] - np.diagflat(np.diagonal(h[hi]))
+        assert(not np.any(isdiag));
 
     # unpack
     N = len(h) - 2; # num scattering region sites

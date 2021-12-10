@@ -3,10 +3,17 @@ Christian Bunker
 M^2QM at UF
 October 2021
 
-Steady state transport of a single electron through a one dimensional wire
-Part of the wire is scattering region, where the electron spin degrees of
-freedom can interact with impurity spin degrees of freedom
-In this case, impurities follow eric's paper
+Quasi 1 body transmission through spin impurities project, part 3:
+Single electron incident on two identical spin 1 impurities, following Eric's paper
+NB impurities have more complicated dynamics than in cicc case:
+- on site spin anisotropy
+- isotropic exchange interaction between them
+
+wfm.py
+- Green's function solution to transmission of incident plane wave
+- left leads, right leads infinite chain of hopping tl treated with self energy
+- in the middle is a scattering region, hop on/off with th 
+- in SR the spin degrees of freedom of the incoming electron and spin impurities are coupled 
 '''
 
 from transport import wfm, fci_mod, ops
@@ -42,25 +49,30 @@ dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product sta
 dets32 = [[0,2,6],[0,3,5],[1,2,5]]; # total spin 3/2 subspace
 
 # source
-sourcei = 9; #| down, 1, 1 > = [1 2 5]
-source = np.zeros(len(dets));
+sourcei = 2; #| down, 1, 1 > = [1 2 5]
+source = np.zeros(len(dets32));
 source[sourcei] = 1;
 source_str = "|";
-for si in dets[sourcei]: source_str += state_strs[si];
+for si in dets32[sourcei]: source_str += state_strs[si];
 source_str += ">";
 print("\nSource:\n"+source_str);
 
 # entangled pair
-pair = (1,3); #|up, 1, 0> = [0 2 6] and |up,0,1> = [0,3,5]
+pair = (0,1); #|up, 1, 0> = [0 2 6] and |up,0,1> = [0,3,5]
 if(verbose):
     print("\nEntangled pair:");
     pair_strs = [];
     for pi in pair:
         pair_str = "|";
-        for si in dets[pi]: pair_str += state_strs[si];
+        for si in dets32[pi]: pair_str += state_strs[si];
         pair_str += ">";
         print(pair_str);
         pair_strs.append(pair_str);
+if(verbose): print(" - Checking that states of interest are diagonal in leads");
+h1e_JK0, g2e_JK0 = ops.h_switzer(D, JH, 0, 0);
+hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
+hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
+print(hSR_JK0);
 
 # fix energy near bottom of band
 Energy = -2*tl + 0.5;
@@ -70,14 +82,12 @@ ka = np.arccos(Energy/(-2*tl));
 h1e, g2e = ops.h_switzer(D, JH, JK1, JK2);
 
 # convert to many body form
-h_SR = fci_mod.single_to_det(h1e,g2e, species, states);
+hSR = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
+if(verbose): print("\nUnentangled hamiltonian\n", hSR);
 
 # entangle the me up states into eric's me, s12, m12> = up, 2, 1> state
-h_SR = wfm.utils.entangle(h_SR, *pair);
-if(verbose > 4):
-    h_SR_32 = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
-    h_SR_32 = wfm.utils.entangle(h_SR_32, 0, 1);
-    print("\n- Entangled hamiltonian\n", h_SR_32);
+hSR = wfm.utils.entangle(hSR, *pair);
+if(verbose): print("\nEntangled hamiltonian\n", hSR);
 
 # iter over N
 Nmax = 80
@@ -87,12 +97,12 @@ for N in Nvals:
 
     # package as block hams 
     # number of blocks depends on N
-    hblocks = [np.zeros_like(h_SR)]
-    tblocks = [-tl*np.eye(*np.shape(h_SR)) ];
+    hblocks = [np.zeros_like(hSR)]
+    tblocks = [-tl*np.eye(np.shape(hSR)[0]) ];
     for Ni in range(N):
-        hblocks.append(np.copy(h_SR));
-        tblocks.append(-tl*np.eye(*np.shape(h_SR)) );
-    hblocks.append(np.zeros_like(h_SR) );
+        hblocks.append(np.copy(hSR));
+        tblocks.append(-tl*np.eye(np.shape(hSR)[0]) );
+    hblocks.append(np.zeros_like(hSR) );
     hblocks = np.array(hblocks);
     tblocks = np.array(tblocks);
 
@@ -102,7 +112,7 @@ for N in Nvals:
 # plot
 Tvals = np.array(Tvals);
 fig, ax = plt.subplots();
-ax.scatter(Nvals, Tvals[:,sourcei], marker = 's', label = "$|d>$");
+ax.scatter(Nvals, Tvals[:,sourcei], marker = 's', label = "$|i>$");
 ax.scatter(Nvals, Tvals[:,pair[0]], marker = 's', label = "$|+>$");
 ax.scatter(Nvals, Tvals[:,pair[1]], marker = 's', label = "$|->$");
 

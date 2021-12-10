@@ -3,7 +3,8 @@ Christian Bunker
 M^2QM at UF
 September 2021
 
-Electron scattering off of two localized spin impurities
+Quasi 1 body transmission through spin impurities project, part 0:
+Scattering of single electron off of two localized spin-1/2 impurities
 Following cicc, imp spins are confined to single sites, separated by x0
     imp spins can flip
     e-imp interactions treated by (effective) J Se dot Si

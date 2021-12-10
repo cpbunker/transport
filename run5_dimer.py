@@ -20,13 +20,13 @@ import itertools
 import sys
 import time
 
-#### setup
-
-# top level
+#### top level
 #np.set_printoptions(precision = 4, suppress = True);
 plt.style.use("seaborn-dark-palette");
 verbose = 5;
 kalims = (0, np.pi/4);
+
+#### setup
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -36,17 +36,6 @@ state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_"
 dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
 dets32 = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]; # total spin 3/2 subspace
 dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
-
-# initialize source vector
-sourcei = 16; # |down, 3/2, 3/2 >
-pair = (1,4); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
-assert(sourcei >= 0 and sourcei < len(dets));
-source = np.zeros(len(dets));
-source[sourcei] = 1;
-source_str = "|";
-for si in dets[sourcei]: source_str += state_strs[si];
-source_str += ">";
-print("\nSource:\n"+source_str);
 
 # tight binding params
 tl = 0.005; # lead hopping, in Hartree
@@ -63,11 +52,22 @@ DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0.031/Ha2meV;
 
-#### get data for all entangled state pairs, across physical param space sweep
+# initialize source vector
+sourcei = 16; # |down, 3/2, 3/2 >
+assert(sourcei >= 0 and sourcei < len(dets));
+source = np.zeros(len(dets));
+source[sourcei] = 1;
+source_str = "|";
+for si in dets[sourcei]: source_str += state_strs[si];
+source_str += ">";
+if(verbose): print("\nSource:\n"+source_str);
+if(verbose): print(" - Checking that source is an eigenstate when JK's = 0");
+h1e, g2e = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
+_ = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest=[dets[sourcei]]);
+assert False;
 
-# sweep over entangled pairs
-start = time.time()
-
+# initialize pair
+pair = (1,4); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
 if(verbose):
     print("\nEntangled pair:");
     pair_strs = [];
@@ -79,6 +79,7 @@ if(verbose):
         pair_strs.append(pair_str);
 
 # sweep over JK
+start = time.time()
 JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
 for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
@@ -91,6 +92,7 @@ for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         if Coi == 0: JKO = JK; # J S dot sigma is onsite only
         else: JKT = JK;
         params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+        params = 1, 0, 0, 0, 0, 0, 0, 0
         
         # construct second quantized ham
         h1e, g2e = wfm.utils.h_dimer_2q(params); 
@@ -99,9 +101,10 @@ for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
         h_SR = wfm.utils.entangle(h_SR, *pair);
         if(verbose > 4):
-            h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+            h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = [dets[sourcei]]);
+            print("\nUnentangled hamiltonian\n", h_SR_sub);
             h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
-            print("\n- Entangled hamiltonian\n", h_SR_sub);
+            print("\nEntangled hamiltonian\n", h_SR_sub);
 
         # hopping between sites
         V_SR = td*np.eye(np.shape(h_SR)[0])
@@ -111,6 +114,7 @@ for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         if(Coi > 0): tblocks.append(np.copy(V_SR));
 
     # get data
+    assert False
     kavals, Tvals = wfm.Data(source, hblocks, tblocks, th, tl, kalims )
 
     # plot Tvals vs N
@@ -119,7 +123,7 @@ for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         # first plot is just source and entangled pair
         fig, axes = plt.subplots(2, sharex = True);
         axes[0].set_title(" $t_l$ = "+str(tl));
-        axes[0].scatter(kavals/np.pi,Tvals[:,sourcei], marker = 's', label = "$|d>$");
+        axes[0].scatter(kavals/np.pi,Tvals[:,sourcei], marker = 's', label = "$|i>$");
         axes[0].scatter(kavals/np.pi,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
         axes[0].scatter(kavals/np.pi,Tvals[:,pair[1]], marker = 's', label = "$|->$");
         axes[0].legend(loc = 'upper right');
