@@ -35,12 +35,13 @@ states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
 hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
 
 # leads and zeeman splitting
-hzeeman = np.array([[2*Delta/2, 0, 0, 0],
-                [0,0.02, 0, 0],
-                [0, 0, 2*Delta/2, 0],
-                [0, 0, 0,0.02]]); # zeeman splitting
+hzeeman = np.array([[Delta, 0, 0, 0],
+                [0,0, 0, 0],
+                [0, 0, Delta, 0],
+                [0, 0, 0, 0]]); # zeeman splitting
 hLL = np.copy(hzeeman);
 hRL = np.copy(hzeeman);
+hSR += hzeeman; # zeeman splitting is everywhere
 
 # source = up electron, down impurity
 source = np.zeros(np.shape(hSR)[0]);

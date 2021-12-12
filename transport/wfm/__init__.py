@@ -33,6 +33,9 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     for hi in [0, -1]: # check that RL and LL hams are diagonal
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi]))
         assert(not np.any(isdiag));
+    for i in range(len(qi)): # check source mu = 0
+        if(qi[i] != 0):
+            assert(h[0,i,i] == 0);
 
     # unpack
     N = len(h) - 2; # num scattering region sites
@@ -143,10 +146,10 @@ def Hprime(h, th, tl, E, verbose = 0):
     # self energies at LL
     # need a self energy for each LL boundary condition
     for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[0][Vi,Vi]; assert(V == 0);
+        V = h[0][Vi,Vi];
         lamL = (E-V)/(-2*tl); 
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
-        SigmaL = -tl/LambdaLminus; print(E, SigmaL);
+        SigmaL = -tl/LambdaLminus; 
         Hp[Vi,Vi] = SigmaL;
 
     # self energies at RL
@@ -154,7 +157,7 @@ def Hprime(h, th, tl, E, verbose = 0):
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
-        SigmaR = -tl*LambdaRplus; print(E, SigmaR);
+        SigmaR = -tl*LambdaRplus;
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
     
     if verbose > 3: print("\nH' = \n",Hp);
@@ -231,7 +234,7 @@ def Data(source, h_LL, V_hyb, h_SR, V_SR, h_RL, tl, lims, numpts = 21, retE = Tr
         Evals = np.linspace(lims[0], lims[1], numpts, dtype = complex);
         Tvals = [];
         for Energy in Evals:
-            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source, verbose = 0));
+            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));
         Tvals = np.array(Tvals);
         return Evals, Tvals;
 
