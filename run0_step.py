@@ -25,7 +25,8 @@ verbose = 5;
 
 # tight binding params
 tl = 1.0;
-Vb = 0.2; # barrier
+Vb = -0.2; # barrier
+# still don't understand completely
 
 # blocks and inter block hopping
 hSR = np.array([[Vb]]);

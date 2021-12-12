@@ -36,11 +36,7 @@ dets32 = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]; # total spin 3/2 subspace
 dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # tight binding params
-tl = 0.005; # lead hopping, in Hartree
-th = 0.004; # SR hybridization
-td = 0.003;  # hopping between imps
-epsO = -0.5; # octahedral Co onsite energy
-epsT = -1.0; # tetrahedral Co onsite energy
+tl = 0.05; # lead hopping, in Hartree
 
 # Ab initio params, in meV:
 Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
@@ -63,7 +59,7 @@ if(verbose): print(" - Checking that source is an eigenstate when JK's = 0");
 h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
 hSR_JK0 = wfm.utils.entangle(hSR_JK0, 0, 1);
-assert False;
+# do incident potential energy later
 
 # initialize pair
 pair = (1,4); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
@@ -80,75 +76,89 @@ if(verbose):
 # sweep over JK
 start = time.time()
 JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
-for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
+print(JKreson);
+
+for JK in [10*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
     # physics of scattering region -> array of [H at octo, H at tetra]
     hblocks, tblocks = [], []; # lists to hold on site and hopping blocks in the SR
-    for Coi in range(2):
 
-        # define all physical params
-        JKO, JKT = 0, 0;
-        if Coi == 0: JKO = JK; # J S dot sigma is onsite only
-        else: JKT = JK;
-        params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-        params = 1, 0, 0, 0, 0, 0, 0, 0
-        
-        # construct second quantized ham
-        h1e, g2e = wfm.utils.h_dimer_2q(params); 
+    # kondo interaction terms
+    JKO, JKT = JK, JK
+    params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+    OmegaR = np.power((np.sqrt(6)/4)*(JKO + JKT),2) + np.power(3*Jx/4-3*Jz/4-(1/2)*(DO+DT)+(5/8)*(JKO + JKT),2);
+    OmegaR = np.sqrt(OmegaR)*tl;
+    print(OmegaR)
+    print("\nRabi period = ", 2*np.pi/OmegaR/2);
+    
+    # construct second quantized ham
+    h1e, g2e = wfm.utils.h_dimer_2q(params); 
 
-        # construct h_SR (determinant basis)
-        h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
-        h_SR = wfm.utils.entangle(h_SR, *pair);
-        if(verbose > 4):
-            h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = [dets[sourcei]]);
-            print("\nUnentangled hamiltonian\n", h_SR_sub);
-            h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
-            print("\nEntangled hamiltonian\n", h_SR_sub);
+    # construct h_SR (determinant basis)
+    hSR = fci_mod.single_to_det(h1e, g2e, species, states);
+    hSR = wfm.utils.entangle(hSR, *pair);
+    if(verbose > 4):
+        hSR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+        print("\nUnentangled hamiltonian\n", hSR_sub);
+        hSR_sub = wfm.utils.entangle(hSR_sub, 0, 1);
+        print("\nEntangled hamiltonian\n", hSR_sub);
 
-        # hopping between sites
-        V_SR = td*np.eye(np.shape(h_SR)[0])
-        
-        # add to blocks list
-        hblocks.append(np.copy(h_SR));
-        if(Coi > 0): tblocks.append(np.copy(V_SR));
+    # fix energy near bottom of band
+    Energy = -1.9995*tl;
+    ka = np.arccos(Energy/(-2*tl));
 
-    # get data
-    assert False
-    kavals, Tvals = wfm.Data(source, hblocks, tblocks, th, tl, kalims )
+    # iter over N
+    Nmax = 10
+    Nvals = np.linspace(1,Nmax,min(Nmax,20),dtype = int);
+    Tvals = [];
+    for N in Nvals:
 
-    # plot Tvals vs N
-    if(verbose > 3):
+        # package as block hams 
+        # number of blocks depends on N
+        hblocks = [np.zeros_like(hSR)]
+        tblocks = [-tl*np.eye(np.shape(hSR)[0]) ];
+        for Ni in range(N):
+            hblocks.append(np.copy(hSR));
+            tblocks.append(-tl*np.eye(np.shape(hSR)[0]) );
+        hblocks.append(np.zeros_like(hSR) );
+        hblocks = np.array(hblocks);
+        tblocks = np.array(tblocks);
 
-        # first plot is just source and entangled pair
-        fig, axes = plt.subplots(2, sharex = True);
-        axes[0].set_title(" $t_l$ = "+str(tl));
-        axes[0].scatter(kavals/np.pi,Tvals[:,sourcei], marker = 's', label = "$|i>$");
-        axes[0].scatter(kavals/np.pi,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
-        axes[0].scatter(kavals/np.pi,Tvals[:,pair[1]], marker = 's', label = "$|->$");
-        axes[0].legend(loc = 'upper right');
-        
-        # second plot is contamination
-        contamination = np.zeros_like(Tvals[:,0]);
-        for contami in range(len(dets)):
-            if((contami not in pair) and (dets[contami][0] != dets[sourcei][0])):
-                contamination += Tvals[:, contami];
-        contamination = contamination/(contamination+Tvals[:,pair[0]]); 
-        axes[1].scatter(kavals/np.pi, contamination, marker = 's', color = "grey");
-        
-        # format
-        for ax in axes:
-            ax.minorticks_on();
-            ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-            ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        axes[0].set_xlabel("$ka/\pi$");
-        axes[0].set_ylabel("$T$");
-        axes[1].set_ylabel("Contamination");
-        plt.show();
+        # coefs
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+
+    Tvals = np.array(Tvals);
+    
+    # first plot is just source and entangled pair
+    fig, axes = plt.subplots(2, sharex = True);
+    axes[0].set_title( "$t_l$ = "+str(tl)+" Ha, $E$ = "+str(Energy/tl)+"$t_l$ = "+str(int(100*(Energy+2*tl)*Ha2meV)/100)+" meV, $J_K$ = "+str(int(100*Ha2meV*JK)/100)+" meV");
+    axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = "$|i>$");
+    axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
+    axes[0].scatter(Nvals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
+    axes[0].legend(loc = 'upper right');
+    
+    # second plot is contamination
+    contamination = np.zeros_like(Tvals[:,0]);
+    for contami in range(len(dets)):
+        if((contami not in pair) and (dets[contami][0] != dets[sourcei][0])):
+            contamination += Tvals[:, contami];
+    contamination = contamination/(contamination+Tvals[:,pair[0]]); 
+    axes[1].scatter(Nvals, contamination, marker = 's', color = "grey");
+    
+    # format
+    for ax in axes:
+        ax.minorticks_on();
+        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    axes[0].set_xlabel("$N$");
+    axes[0].set_ylabel("$T$");
+    axes[1].set_ylabel("Contamination");
+    plt.show();
 
 #### save data
 fname = "dat/dimer/"+str(source_str[1:-1]);
 print("Saving data to "+fname);
-np.save(fname, np.append(Tvals, kavals) );
+np.save(fname, np.append(Tvals, Nvals) );
 stop = time.time();
 print("Elapsed time = ", (stop - start)/60, " minutes.");
 

@@ -78,7 +78,7 @@ for JK1 in JKvals:
         JK = (JK1 + JK2)/2;
         DeltaK = JK1 - JK2;
         OmegaR = np.sqrt(JK*JK + (1/4)*np.power(D - (3/2)*JK,2)); # rabi freq
-        print(OmegaR, 2*np.pi/OmegaR);3
+        print("\nRabi period = ", 2*np.pi/OmegaR/2);
 
         # 2nd qu'd ham
         h1e, g2e = ops.h_switzer(D, JH, JK1, JK2);
@@ -92,7 +92,7 @@ for JK1 in JKvals:
         if(verbose): print("\nEntangled hamiltonian\n", hSR);
 
         # fix energy near bottom of band
-        Energy = -2*tl + 0.5;
+        Energy = -1.5*tl;
         ka = np.arccos(Energy/(-2*tl));
 
         # iter over N
