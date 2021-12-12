@@ -36,7 +36,7 @@ dets32 = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]; # total spin 3/2 subspace
 dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # tight binding params
-tl = 0.05; # lead hopping, in Hartree
+tl = 1; # lead hopping, in Hartree
 
 # Ab initio params, in meV:
 Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
@@ -78,7 +78,7 @@ start = time.time()
 JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
 print(JKreson);
 
-for JK in [10*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
+for JK in [5*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
     # physics of scattering region -> array of [H at octo, H at tetra]
     hblocks, tblocks = [], []; # lists to hold on site and hopping blocks in the SR
@@ -103,38 +103,35 @@ for JK in [10*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         hSR_sub = wfm.utils.entangle(hSR_sub, 0, 1);
         print("\nEntangled hamiltonian\n", hSR_sub);
 
-    # fix energy near bottom of band
-    Energy = -1.9995*tl;
-    ka = np.arccos(Energy/(-2*tl));
+    # interaction as gaussian centered at N0 with char length a
+    NSR = 9; # total num sites in SR
+    N0 = 5; # site where interaction is peaked
+    hblocks = [np.zeros_like(hSR)]; # mu_LL = 0
+    tblocks = [-tl*np.eye(np.shape(hSR)[0]) ]; # LL to SR hopping
+    for N in range(1,NSR+1):
+        pref = np.exp(-np.power(N-N0,2)); # gaussian of char length a
+        pref = 1;
+        hblocks.append(pref*np.copy(hSR));
+        tblocks.append(-tl*np.eye(np.shape(hSR)[0]) ); # inter SR hopping
+    hblocks.append(np.zeros_like(hSR) );
+    hblocks = np.array(hblocks);
+    tblocks = np.array(tblocks);
 
-    # iter over N
-    Nmax = 10
-    Nvals = np.linspace(1,Nmax,min(Nmax,20),dtype = int);
+    # iter over energy
+    #Energy = -1.9999*tl;
+    Elims = 0.01,0.2; # in meV
+    Evals = np.linspace(*Elims, 10);
     Tvals = [];
-    for N in Nvals:
-
-        # package as block hams 
-        # number of blocks depends on N
-        hblocks = [np.zeros_like(hSR)]
-        tblocks = [-tl*np.eye(np.shape(hSR)[0]) ];
-        for Ni in range(N):
-            hblocks.append(np.copy(hSR));
-            tblocks.append(-tl*np.eye(np.shape(hSR)[0]) );
-        hblocks.append(np.zeros_like(hSR) );
-        hblocks = np.array(hblocks);
-        tblocks = np.array(tblocks);
-
-        # coefs
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
-
+    for Energy in Evals:
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, (Energy/Ha2meV)-2*tl, source));
     Tvals = np.array(Tvals);
     
     # first plot is just source and entangled pair
     fig, axes = plt.subplots(2, sharex = True);
-    axes[0].set_title( "$t_l$ = "+str(tl)+" Ha, $E$ = "+str(Energy/tl)+"$t_l$ = "+str(int(100*(Energy+2*tl)*Ha2meV)/100)+" meV, $J_K$ = "+str(int(100*Ha2meV*JK)/100)+" meV");
-    axes[0].scatter(Nvals,Tvals[:,sourcei], marker = 's', label = "$|i>$");
-    axes[0].scatter(Nvals,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
-    axes[0].scatter(Nvals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
+    axes[0].set_title( "$t_l$ = "+str(tl)+" Ha, $J_K$ = "+str(int(100*Ha2meV*JK)/100)+" meV");
+    axes[0].scatter(Evals,Tvals[:,sourcei], marker = 's', label = "$|i>$");
+    axes[0].scatter(Evals,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
+    axes[0].scatter(Evals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
     axes[0].legend(loc = 'upper right');
     
     # second plot is contamination
@@ -143,14 +140,14 @@ for JK in [10*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
         if((contami not in pair) and (dets[contami][0] != dets[sourcei][0])):
             contamination += Tvals[:, contami];
     contamination = contamination/(contamination+Tvals[:,pair[0]]); 
-    axes[1].scatter(Nvals, contamination, marker = 's', color = "grey");
+    axes[1].scatter(Evals, contamination, marker = 's', color = "grey");
     
     # format
     for ax in axes:
         ax.minorticks_on();
         ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
         ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    axes[0].set_xlabel("$N$");
+    axes[1].set_xlabel("$E$ (meV)");
     axes[0].set_ylabel("$T$");
     axes[1].set_ylabel("Contamination");
     plt.show();
@@ -158,7 +155,7 @@ for JK in [10*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 #### save data
 fname = "dat/dimer/"+str(source_str[1:-1]);
 print("Saving data to "+fname);
-np.save(fname, np.append(Tvals, Nvals) );
+np.save(fname, np.append(Tvals, Evals) );
 stop = time.time();
 print("Elapsed time = ", (stop - start)/60, " minutes.");
 
