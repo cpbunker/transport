@@ -110,7 +110,6 @@ for JK in [5*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
     tblocks = [-tl*np.eye(np.shape(hSR)[0]) ]; # LL to SR hopping
     for N in range(1,NSR+1):
         pref = np.exp(-np.power(N-N0,2)); # gaussian of char length a
-        pref = 1;
         hblocks.append(pref*np.copy(hSR));
         tblocks.append(-tl*np.eye(np.shape(hSR)[0]) ); # inter SR hopping
     hblocks.append(np.zeros_like(hSR) );
@@ -119,7 +118,7 @@ for JK in [5*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
     # iter over energy
     #Energy = -1.9999*tl;
-    Elims = 0.01,0.2; # in meV
+    Elims = 0.001,0.01; # in meV
     Evals = np.linspace(*Elims, 10);
     Tvals = [];
     for Energy in Evals:
