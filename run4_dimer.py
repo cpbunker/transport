@@ -3,11 +3,9 @@ Christian Bunker
 M^2QM at UF
 October 2021
 
-Steady state transport of a single electron through a one dimensional wire
-Part of the wire is scattering region, where the electron spin degrees of
-freedom can interact with impurity spin degrees of freedom
-
-Impurity hamiltonians calculated from dft, Jie-Xiang's Co dimer manuscript
+Quasi 1 body transmission through spin impurities project, part 3:
+Cobalt dimer modeled as two spin-3/2 impurities mo
+Spin interaction parameters calculated from dft, Jie-Xiang's Co dimer manuscript
 '''
 
 from transport import fci_mod, wfm
@@ -62,8 +60,9 @@ for si in dets[sourcei]: source_str += state_strs[si];
 source_str += ">";
 if(verbose): print("\nSource:\n"+source_str);
 if(verbose): print(" - Checking that source is an eigenstate when JK's = 0");
-h1e, g2e = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
-_ = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest=[dets[sourcei]]);
+h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
+hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
+hSR_JK0 = wfm.utils.entangle(hSR_JK0, 0, 1);
 assert False;
 
 # initialize pair

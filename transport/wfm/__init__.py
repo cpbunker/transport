@@ -140,14 +140,13 @@ def Hprime(h, th, tl, E, verbose = 0):
 
     # add self energies to hamiltonian
     Hp = Hmat(h, th, verbose = verbose); # regular ham from SR on site blocks h and hop blocks th
-
     # self energies at LL
     # need a self energy for each LL boundary condition
     for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tl);
+        V = h[0][Vi,Vi]; assert(V == 0);
+        lamL = (E-V)/(-2*tl); 
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
-        SigmaL = -tl/LambdaLminus;
+        SigmaL = -tl/LambdaLminus; print(E, SigmaL);
         Hp[Vi,Vi] = SigmaL;
 
     # self energies at RL
@@ -155,7 +154,7 @@ def Hprime(h, th, tl, E, verbose = 0):
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
-        SigmaR = -tl*LambdaRplus;
+        SigmaR = -tl*LambdaRplus; print(E, SigmaR);
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
     
     if verbose > 3: print("\nH' = \n",Hp);
@@ -188,7 +187,7 @@ def Green(h, th, tl, E, verbose = 0):
 ##################################################################################
 #### wrappers
 
-def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
+def Data(source, h_LL, V_hyb, h_SR, V_SR, h_RL, tl, lims, numpts = 21, retE = True, verbose = 0):
     '''
     Given a LL + SR + RL wave function matching system, defined by
     - blocks h_SR[i] on the ith site of the SR
@@ -197,26 +196,30 @@ def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
     - hopping tl in the leads
 
     construct the transmission coefficients for an incident electron defined by source
-    for all ka in kalims
+    for all ka in kalims or energy in Elims
+
+    Other args:
+    - numpts, int, how many x axis vals
+    - Energy, bool, tells whether to do vs ka or vs E
     '''
 
     # check inputs
     assert(np.shape(source)[0] == np.shape(h_SR[0])[0]);
+    assert( np.shape(h_LL) == np.shape(h_SR[0]));
     assert(len(h_SR) == 1 + len(V_SR));
-    assert(np.shape(h_SR[0]) == np.shape(V_SR[0]));
 
     # unpack
     N_SR = len(h_SR); # number of sites in the scattering region
 
     # package as block hams 
-    hblocks = [np.zeros_like(h_SR[0])] # ie sets mu=0 in LL
-    tblocks = [-th*np.eye(*np.shape(h_SR[0]))]; # hopping from LL to SR
+    hblocks = [h_LL] # sets mu in LL
+    tblocks = [V_hyb]; # hopping from LL to SR
     hblocks.append(h_SR[0]); # site 1 in SR
     for n in range(1,N_SR):
         hblocks.append(h_SR[n]); # site n in SR, n=2...n=N_SR \
         tblocks.append(V_SR[n-1]); # V_SR[n] gives hopping from nth to n+1th site
-    hblocks.append(np.zeros_like(h_SR[0])); # ie sets mu=0 in RL
-    tblocks.append(-th*np.eye(*np.shape(h_SR[0]))); # hopping from SR to RL
+    hblocks.append(h_RL); # sets mu in RL
+    tblocks.append(V_hyb); # hopping from SR to RL
     hblocks = np.array(hblocks);
     tblocks = np.array(tblocks);
     if(verbose):
@@ -224,20 +227,22 @@ def Data(source, h_SR, V_SR, th, tl, kalims, verbose = 0):
         print(" - th = ", -tblocks[0,0,0]);
         print(" - V = ", -tblocks[1,0,0]);
 
-    # iter over ka
-    kavals = np.linspace(*kalims, 21);
-    Tvals = [];
-    for ka in kavals:
+    if retE: # iter over energy
+        Evals = np.linspace(lims[0], lims[1], numpts, dtype = complex);
+        Tvals = [];
+        for Energy in Evals:
+            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source, verbose = 0));
+        Tvals = np.array(Tvals);
+        return Evals, Tvals;
 
-        # transmission coefs
-        Energy = -2*tl*np.cos(ka); # tight binding band
-        if(verbose > 4 and ka == kalims[-1]):
-            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source, verbose = verbose));
-        else:
-            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));
-        
-    Tvals = np.array(Tvals);
-    return kavals, Tvals;
+    else:
+        kavals = np.linspace(lims[0], lims[1], numpts, dtype = complex);
+        Tvals = [];
+        for ka in kavals:
+            Energy = -2*tl*np.cos(ka);
+            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));           
+        Tvals = np.array(Tvals);
+        return kavals, Tvals;
 
 ##################################################################################
 #### test code

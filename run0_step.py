@@ -27,38 +27,27 @@ verbose = 5;
 tl = 1.0;
 Vb = 0.2; # barrier
 
-# scattering region physics
+# blocks and inter block hopping
 hSR = np.array([[Vb]]);
-
-# lead physics
 hLL = 0*np.eye(np.shape(hSR)[0]);
+Vhyb = -tl*np.eye(np.shape(hSR)[0]);
+VSR = [];
 hRL = Vb*np.eye(np.shape(hSR)[0]);
+print(hLL, "\n", hSR, "\n", hRL);
 
 # source
 source = np.zeros(np.shape(hSR)[0]);
 source[0] = 1;
 
-# package together hamiltonian blocks
-hblocks = np.array([hLL, hSR, hRL]);
-
-# construct hopping
-tblocks = np.array([-tl*np.eye(np.shape(hSR)[0]),-tl*np.eye(np.shape(hSR)[0])]);
-if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
-
 # sweep over range of energies
 # def range
-Emin, Emax = -2*tl, -1.5*tl;
-numE = 10;
-Evals = np.linspace(Emin, Emax, numE, dtype = complex);
-Tvals = [];
-for Ei in range(len(Evals) ):
-    Tvals.append(wfm.kernel(hblocks, tblocks, tl, Evals[Ei], source));
-Tvals = np.array(Tvals);
-print(">>>",np.shape(Tvals));
+Elims = np.array([-2*tl,-1*tl]);
+Evals, Tvals = wfm.Data(source, hLL, Vhyb, [hSR], VSR, hRL, tl, Elims, verbose = verbose);
 
 # plot Tvals vs E
 fig, ax = plt.subplots();
-ax.scatter(Evals + 2*tl,Tvals[:,0], marker = 's',label = "$T$");
+ax.scatter(Evals + 2*tl,np.real(Tvals[:,0]), marker = 's');
+#ax.scatter(Evals + 2*tl,np.imag(Tvals[:,0]), marker = 's');
 
 # format and show
 #ax.set_ylim(0.0,0.25);
