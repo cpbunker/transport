@@ -26,7 +26,7 @@ verbose = 5;
 
 # tight binding params
 tl = 1.0;
-Jeff = 0.0;
+Jeff = 0.2;
 Delta = 0.04; # zeeman splitting on imp
 
 # 2nd qu'd operator for S dot s
@@ -57,24 +57,25 @@ if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
 
 # sweep over range of energies
 # def range
-Emin, Emax = -1.99*tl, 2*Delta*tl - 2*tl
-numE = 40;
+Emin, Emax = -1.999*tl, 2*abs(Delta)*tl - 2*tl
+numE = 20;
 Evals = np.linspace(Emin, Emax, numE, dtype = complex);
 Tvals = [];
-for Ei in range(len(Evals) ):
+for E in Evals:
     Tvals.append(wfm.kernel(hblocks, tblocks, tl, Evals[Ei], source));
 
 # plot Tvals vs E
 Tvals = np.array(Tvals);
 fig, ax = plt.subplots();
 ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
-ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's',label = "$T_{flip}$");
+sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's',label = "$T_{flip}$");
 
 # menezes prediction in the continuous case
 # all the definitions, vectorized funcs of E
 kappa = np.lib.scimath.sqrt(Evals);
 jprime = Jeff/(4*kappa);
-l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)), label = "Predicted");
+l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
+ label = "Predicted");
 
 # format and plot
 ax.minorticks_on();

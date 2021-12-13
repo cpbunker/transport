@@ -26,7 +26,7 @@ import itertools
 # top level
 plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 5;
+verbose = 3;
 
 # def particles and their single particle states
 species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-3/2, spin-3/2
@@ -59,55 +59,59 @@ if(verbose):
 
 # phys params
 tl = 1.0; # hopping >> other params
-D1 = -0.06
-D2 = -0.06;
-
-# check lead eigenstates
-if(verbose): print(" - Checking that states of interest are diagonal in leads");
-h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, 0, 0, 0);
-hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
-hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
-print(hSR_JK0);
+th = 1.0;
+td = 1.0;
 
 # iter over params
-params0 = 1,1,-1,-1; # th, td, eps1, eps2
-for params in wfm.utils.sweep_param_space(params0, 1.0, 7):
+#params0 = 1,1,-1,-1; # th, td, eps1, eps2
+#for params in wfm.utils.sweep_param_space(params0, 1.0, 7):
+for D1 in [0.1,0.2,0.5,1.0,1.5,2.0]:
+    D2 = D1;
 
     # iter over Kondo strength
-    for JK1 in [-5*abs(D1)]:
+    for JK1 in [2*D1/3]:
+        JK2 = JK1;
+
+        # check lead eigenstates
+        h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, 0, 0, 0);
+        hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
+        hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
+        if(verbose): print("JK1 = JK2 = 0 hamiltonian\n",hSR_JK0);
 
         # physics of scattering region -> array of [H at octo, H at tetra]
-        JK2 = JK1;
         hblocks, tblocks = [], []; # on site and hopping blocks in the SR
         for impi in range(2):
             if impi == 0: # on imp 1
-                h1e, g2e = wfm.utils.h_switzer(D1, 0, 0, JK1, 0);
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK1, 0);
             else:
-                h1e, g2e = wfm.utils.h_switzer(0, D2, 0, 0, JK2);
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, 0, JK2);
 
             # convert to many body form
             h = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
 
             # entangle the me up states into eric's me, s12, m12> = up, 2, 1> state
             h = wfm.utils.entangle(h, *pair);
-            if(verbose): print("\nEntangled hamiltonian\n", h);
+            if(verbose>3): print("\nEntangled hamiltonian\n", h);
 
             # add to list
             if(impi == 0):
-                hblocks.append(np.zeros_like(h));
-                tblocks.append(-th*np.eye(np.shape(h)[0]))
-                tblocks.append(-td*np.eye(np.shape(h)[0]));
-            hblocks.append(h)
+                hblocks.append(np.copy(hSR_JK0)); # LL eigenstates
+                tblocks.append(-th*np.eye(np.shape(h)[0])); # hop onto imp 1
+                tblocks.append(-td*np.eye(np.shape(h)[0])); # hop onto imp 2
+            hblocks.append(h);
+        del h, impi, h1e, g2e;
 
         # finish list
-        tblocks.append(-td*np.eye(np.shape(h)[0]));
-        hblocks.append(np.zeros_like(h) );
+        tblocks.append(-td*np.eye(np.shape(hSR_JK0)[0])); # hop onto RL
+        hblocks.append(np.copy(hSR_JK0)); # RL eigenstates
         hblocks = np.array(hblocks);
         tblocks = np.array(tblocks);
-        #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
-        print(td, th);
+        for blocki in range(len(hblocks)): # set mu_LL = 0
+            hblocks[blocki] -= hSR_JK0[sourcei,sourcei]*np.eye(np.shape(hblocks[blocki])[0])
+        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+
         # iter over E
-        Elims = -1.999*tl, -1.9*tl;
+        Elims = (-2)*tl, (-1.7)*tl;
         Evals = np.linspace(*Elims, 40);
         Tvals = [];
         for Energy in Evals:
@@ -124,7 +128,7 @@ for params in wfm.utils.sweep_param_space(params0, 1.0, 7):
         #ax.set_title("Transmission at resonance, $J_K = 2D/3$");
         ax.set_ylabel("$T$");
         ax.set_xlabel("$E + 2t_l$");
-        #ax.set_ylim(0.0,1.05);
+        ax.set_ylim(0.0,1.05);
         plt.legend();
         ax.minorticks_on();
         ax.grid(which='major', color='#DDDDDD', linewidth=0.8);

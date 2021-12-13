@@ -60,7 +60,7 @@ def kernel(h, th, tl, E, qi, verbose = 0):
         SigmaR.append( -tl*LambdaRplus);
 
     # check self energies
-    #print(">>>>",tl,E-V,SigmaR[0]);
+    #print(">>>>",tl,E,np.diagonal(h[0]), np.diagonal(h[-1]),SigmaR[0]);
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function
@@ -168,8 +168,11 @@ def Hprime(h, th, tl, E, verbose = 0):
         SigmaRs.append(SigmaR);
     del lamR, LambdaRplus, SigmaR;
     
+    SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
     if verbose > 3: print("\nH' = \n",Hp);
     if verbose > 3: print("SigmaL, SigmaR = ",SigmaLs, SigmaRs);
+    if verbose > 3: print("ka_R = ",np.imag(SigmaRs)/tl );
+    if verbose > 3: print("KE_r = ",-2*tl*np.cos(np.imag(SigmaRs)/tl) );
     return Hp;
 
 

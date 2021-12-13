@@ -63,6 +63,8 @@ def Hprime(h, t, E, verbose = 0):
     
     if verbose > 3: print("\nH' = \n",Hp);
     if verbose > 3: print("SigmaL, SigmaR = ",SigmaL, SigmaR);
+    if verbose > 3: print("ka_R = ",np.imag(SigmaR)/t );
+    if verbose > 3: print("KE_r = ",-2*t*np.cos(np.imag(SigmaR)/t) );
     return Hp;
 
 
