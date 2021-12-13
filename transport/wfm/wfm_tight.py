@@ -60,9 +60,9 @@ def Hprime(h, t, E, verbose = 0):
     SigmaR = -t*LambdaRplus;
     Hp[0,0] += SigmaL;
     Hp[N+1,N+1] += SigmaR;
-    if verbose: print(SigmaL, SigmaR);
     
     if verbose > 3: print("\nH' = \n",Hp);
+    if verbose > 3: print("SigmaL, SigmaR = ",SigmaL, SigmaR);
     return Hp;
 
 

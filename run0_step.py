@@ -14,6 +14,7 @@ wfm.py
 '''
 
 from transport import wfm, fci_mod, ops
+from transport.wfm import wfm_tight
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ verbose = 5;
 
 # tight binding params
 tl = 1.0;
-Vb = -0.2; # barrier
+Vb = 0.1; # barrier
 # still don't understand completely
 
 # blocks and inter block hopping
@@ -34,21 +35,40 @@ hLL = 0*np.eye(np.shape(hSR)[0]);
 Vhyb = -tl*np.eye(np.shape(hSR)[0]);
 VSR = [];
 hRL = Vb*np.eye(np.shape(hSR)[0]);
-print(hLL, "\n", hSR, "\n", hRL);
+hblocks = np.array([hLL, hSR, hRL]);
+tblocks = np.array([np.copy(Vhyb), np.copy(Vhyb)])
+if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
 # source
 source = np.zeros(np.shape(hSR)[0]);
 source[0] = 1;
 
 # sweep over range of energies
-# def range
-Elims = np.array([-2*tl,-1*tl]);
-Evals, Tvals = wfm.Data(source, hLL, Vhyb, [hSR], VSR, hRL, tl, Elims, verbose = verbose);
+Elims = np.array([-2*tl,-1.7*tl]);
+Es = np.linspace(Elims[0], Elims[1], 20, dtype = complex);
+Esplus = np.real(Es + 2*tl);
+
+# test with wfm discrete
+Ts = []
+for E in Es:
+    Ts.append(wfm_tight.Tcoef(np.array([hLL[0,0],hSR[0,0],hRL[0,0]]), tl, E, verbose =verbose));
+plt.scatter(Esplus, np.real(Ts), marker = 's');
+plt.scatter(Esplus, np.imag(Ts), marker = 's');
+plt.plot(Esplus, 4*np.lib.scimath.sqrt(Esplus*(Esplus-Vb))/np.power(np.lib.scimath.sqrt(Esplus) + np.lib.scimath.sqrt(Esplus - Vb),2));
+plt.show();
+
+# now do with actual wfm
+Tvals = [];
+for E in Es:
+    Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, verbose = verbose));
+Tvals = np.array(Tvals);
 
 # plot Tvals vs E
+print(np.shape(Tvals))
 fig, ax = plt.subplots();
-ax.scatter(Evals + 2*tl,np.real(Tvals[:,0]), marker = 's');
-#ax.scatter(Evals + 2*tl,np.imag(Tvals[:,0]), marker = 's');
+ax.scatter(Esplus,np.real(Tvals[:,0]), marker = 's');
+ax.scatter(Esplus,np.imag(Tvals[:,0]), marker = 's');
+ax.plot(Esplus, 4*np.lib.scimath.sqrt(Esplus*(Esplus-Vb))/np.power(np.lib.scimath.sqrt(Esplus) + np.lib.scimath.sqrt(Esplus - Vb),2));
 
 # format and show
 #ax.set_ylim(0.0,0.25);

@@ -14,6 +14,7 @@ wfm.py
 '''
 
 from transport import wfm, fci_mod, ops
+from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ Delta = 0.04; # zeeman splitting on imp
 
 # 2nd qu'd operator for S dot s
 h1e = np.zeros((4,4))
-g2e = ops.h_kondo_2e(Jeff, 0.5); # J, spin
+g2e = wfm.utils.h_kondo_2e(Jeff, 0.5); # J, spin
 states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
 hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
 

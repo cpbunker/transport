@@ -123,7 +123,7 @@ def Hmat(h, t, verbose = 0):
                     elif(sitei+1 == sitej): # input from t to upper diag
                         H[ovi, ovj] += t[sitei][loci, locj];                
 
-    if verbose > 3: print("\nH_SR[0] = \n",np.real(H[n_loc_dof:2*n_loc_dof,n_loc_dof:2*n_loc_dof]));
+    if verbose > 3: print("\nH = \n",H);
     return H; 
 
 
@@ -143,24 +143,32 @@ def Hprime(h, th, tl, E, verbose = 0):
 
     # add self energies to hamiltonian
     Hp = Hmat(h, th, verbose = verbose); # regular ham from SR on site blocks h and hop blocks th
+    
     # self energies at LL
     # need a self energy for each LL boundary condition
+    SigmaLs = [];
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[0][Vi,Vi];
         lamL = (E-V)/(-2*tl); 
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
         SigmaL = -tl/LambdaLminus; 
-        Hp[Vi,Vi] = SigmaL;
+        Hp[Vi,Vi] += SigmaL;
+        SigmaLs.append(SigmaL);
+    del lamL, LambdaLminus, SigmaL
 
     # self energies at RL
+    SigmaRs = [];
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
         SigmaR = -tl*LambdaRplus;
-        Hp[Vi-n_loc_dof,Vi-n_loc_dof] = SigmaL;
+        Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
+        SigmaRs.append(SigmaR);
+    del lamR, LambdaRplus, SigmaR;
     
     if verbose > 3: print("\nH' = \n",Hp);
+    if verbose > 3: print("SigmaL, SigmaR = ",SigmaLs, SigmaRs);
     return Hp;
 
 

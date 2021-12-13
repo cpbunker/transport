@@ -64,7 +64,7 @@ if(verbose):
         print(pair_str);
         pair_strs.append(pair_str);
 if(verbose): print(" - Checking that states of interest are diagonal in leads");
-h1e_JK0, g2e_JK0 = ops.h_switzer(D, JH, 0, 0);
+h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D, JH, 0, 0);
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
 hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
 print(hSR_JK0);
@@ -81,7 +81,7 @@ for JK1 in JKvals:
         print("\nRabi period = ", 2*np.pi/OmegaR/2);
 
         # 2nd qu'd ham
-        h1e, g2e = ops.h_switzer(D, JH, JK1, JK2);
+        h1e, g2e = wfm.utils.h_switzer(D, JH, JK1, JK2);
 
         # convert to many body form
         hSR = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
