@@ -56,27 +56,29 @@ if(verbose):
         pair_str += ">";
         print(pair_str);
         pair_strs.append(pair_str);
+
+# phys params
+tl = 1.0; # hopping >> other params
+th = 1.0;
+td = 1.0;
+D1 = -0.06
+D2 = -0.06;
+
+# check lead eigenstates
 if(verbose): print(" - Checking that states of interest are diagonal in leads");
-h1e_JK0, g2e_JK0 = ops.h_switzer(D, JH, 0, 0);
+h1e_JK0, g2e_JK0 = ops.h_switzer(D1, D2, 0, 0, 0);
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
 hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
 print(hSR_JK0);
 
-# tight binding params
-tl = 1.0; # hopping >> other params
-th = 0.2;
-td = 0.2;
+# iter oer params
+for td in np.linspace(0.3,0.9,2):
+    for th in np.linspace(0.3,0.9,2):
 
-# imourity spin interactions
-D1 = -0.06
-D2 = -0.06;
-
-# iter over JK1, JK2
-JKvals = [-2*D1];
-for JK1 in JKvals:
-    for JK2 in [JK1]:
+        JK1 = -5*abs(D1)
 
         # physics of scattering region -> array of [H at octo, H at tetra]
+        JK2 = JK1;
         hblocks, tblocks = [], []; # on site and hopping blocks in the SR
         for impi in range(2):
             if impi == 0: # on imp 1
@@ -93,7 +95,7 @@ for JK1 in JKvals:
 
             # add to list
             if(impi == 0):
-                hblocks.append(zeros_like(h));
+                hblocks.append(np.zeros_like(h));
                 tblocks.append(-th*np.eye(np.shape(h)[0]))
                 tblocks.append(-td*np.eye(np.shape(h)[0]));
             hblocks.append(h)
@@ -103,9 +105,10 @@ for JK1 in JKvals:
         hblocks.append(np.zeros_like(h) );
         hblocks = np.array(hblocks);
         tblocks = np.array(tblocks);
-
+        #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+        print(td, th);
         # iter over E
-        Elims = -1.99*tl, -1.5*tl;
+        Elims = -1.999*tl, -1.9*tl;
         Evals = np.linspace(*Elims, 40);
         Tvals = [];
         for Energy in Evals:

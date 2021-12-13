@@ -498,7 +498,7 @@ def h_kondo_2e(J,s2):
     return h;
 
 
-def h_switzer(D, JH, JK1, JK2):
+def h_switzer(D1, D2, JH, JK1, JK2):
     '''
     Eric's model for spin coupling of itinerant spin 1/2 to two spin 1
     impurities, in second quantized form
@@ -508,10 +508,10 @@ def h_switzer(D, JH, JK1, JK2):
     g = np.zeros((8,8,8,8));
 
     # spin anisotropy
-    h[2,2] = D;
-    h[4,4] = D;
-    h[5,5] = D;
-    h[7,7] = D;
+    h[2,2] = D1;
+    h[4,4] = D1;
+    h[5,5] = D2;
+    h[7,7] = D2;
 
     # heisenberg
     g[2,3,6,5] += JH;
