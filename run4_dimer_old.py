@@ -13,6 +13,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import itertools
 
 import sys
@@ -80,46 +81,48 @@ print(JKreson);
 
 for JK in [5*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
-    # physics of scattering region -> array of [H at octo, H at tetra]
-    hblocks, tblocks = [], []; # lists to hold on site and hopping blocks in the SR
+    # on site and hopping blocks in the SR
+    hblocks, tblocks = [], []; 
+    hblocks = [np.zeros((len(dets),len(dets)))]; # mu_LL = 0
+    tblocks = [-tl*np.eye(len(dets)) ]; # LL to SR hopping
 
-    # kondo interaction terms
-    JKO, JKT = JK, JK
-    params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-    OmegaR = np.power((np.sqrt(6)/4)*(JKO + JKT),2) + np.power(3*Jx/4-3*Jz/4-(1/2)*(DO+DT)+(5/8)*(JKO + JKT),2);
-    OmegaR = np.sqrt(OmegaR)*tl;
-    print(OmegaR)
-    print("\nRabi period = ", 2*np.pi/OmegaR/2);
-    
-    # construct second quantized ham
-    h1e, g2e = wfm.utils.h_dimer_2q(params); 
-
-    # construct h_SR (determinant basis)
-    hSR = fci_mod.single_to_det(h1e, g2e, species, states);
-    hSR = wfm.utils.entangle(hSR, *pair);
-    if(verbose > 4):
-        hSR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
-        print("\nUnentangled hamiltonian\n", hSR_sub);
-        hSR_sub = wfm.utils.entangle(hSR_sub, 0, 1);
-        print("\nEntangled hamiltonian\n", hSR_sub);
-
-    # interaction as gaussian centered at N0 with char length a
-    NSR = 9; # total num sites in SR
-    N0 = 5; # site where interaction is peaked
-    hblocks = [np.zeros_like(hSR)]; # mu_LL = 0
-    tblocks = [-tl*np.eye(np.shape(hSR)[0]) ]; # LL to SR hopping
+    # Kondo interaction centered at N0 
+    NSR = 35; # total num sites in SR
+    N0_oct, N0_tet = 12, 24; # site where interaction is peaked
+    char_l = 6; # char length of gaussian, ie where it drops off to 1/e
+    KOs, KTs = [], [];
     for N in range(1,NSR+1):
-        pref = np.exp(-np.power(N-N0,2)); # gaussian of char length a
-        hblocks.append(pref*np.copy(hSR));
+        
+        # modulate kondo interaction terms as gaussian of char length
+        JKO, JKT = JK*np.exp(-np.power((N-N0_oct)/char_l,2)), JK*np.exp(-np.power((N-N0_tet)/char_l,2))
+        params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+        OmegaR = np.power((np.sqrt(6)/4)*(JKO + JKT),2) + np.power(3*Jx/4-3*Jz/4-(1/2)*(DO+DT)+(5/8)*(JKO + JKT),2);
+        OmegaR = np.sqrt(OmegaR)*tl;
+        
+        # construct second quantized ham
+        h1e, g2e = wfm.utils.h_dimer_2q(params); 
+
+        # construct h_SR (determinant basis)
+        hSR = fci_mod.single_to_det(h1e, g2e, species, states);
+        hSR = wfm.utils.entangle(hSR, *pair);
+        hblocks.append(np.copy(hSR));
         tblocks.append(-tl*np.eye(np.shape(hSR)[0]) ); # inter SR hopping
-    hblocks.append(np.zeros_like(hSR) );
+        if(verbose > 4 and N==1):
+            hSR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+            print("\nUnentangled hamiltonian\n", hSR_sub);
+            hSR_sub = wfm.utils.entangle(hSR_sub, 0, 1);
+            print("\nEntangled hamiltonian\n", hSR_sub);
+        KOs.append(JKO/JK)
+        KTs.append(JKT/JK)
+
+    # finish blocks
+    hblocks.append(np.zeros((len(dets),len(dets))) );
     hblocks = np.array(hblocks);
     tblocks = np.array(tblocks);
 
     # iter over energy
-    #Energy = -1.9999*tl;
-    Elims = 0.001,0.01; # in meV
-    Evals = np.linspace(*Elims, 10);
+    Elims = 0.001,0.1; # in meV
+    Evals = np.linspace(*Elims, 40);
     Tvals = [];
     for Energy in Evals:
         Tvals.append(wfm.kernel(hblocks, tblocks, tl, (Energy/Ha2meV)-2*tl, source));
@@ -127,19 +130,29 @@ for JK in [5*DO]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
     
     # first plot is just source and entangled pair
     fig, axes = plt.subplots(2, sharex = True);
-    axes[0].set_title( "$t_l$ = "+str(tl)+" Ha, $J_K$ = "+str(int(100*Ha2meV*JK)/100)+" meV");
+    axes[0].set_title( "$J_K$ = "+str(int(100*Ha2meV*JK)/100)+" meV");
     axes[0].scatter(Evals,Tvals[:,sourcei], marker = 's', label = "$|i>$");
     axes[0].scatter(Evals,Tvals[:,pair[0]], marker = 's', label = "$|+>$");
-    axes[0].scatter(Evals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
-    axes[0].legend(loc = 'upper right');
+    #axes[0].scatter(Evals,Tvals[:,pair[1]], marker = 's', label = "$|->$");
+    #axes[0].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
+    axes[0].legend(loc = "upper right")
+    axes[0].set_ylim(0,0.8);
     
     # second plot is contamination
     contamination = np.zeros_like(Tvals[:,0]);
     for contami in range(len(dets)):
-        if((contami not in pair) and (dets[contami][0] != dets[sourcei][0])):
+        if((contami != pair[0]) and (dets[contami][0] != dets[sourcei][0])):
             contamination += Tvals[:, contami];
     contamination = contamination/(contamination+Tvals[:,pair[0]]); 
     axes[1].scatter(Evals, contamination, marker = 's', color = "grey");
+
+    # inset of contam in Jk vs dist plot
+    axins = inset_axes(axes[1], width="40%", height="40%");
+    dist = np.array(range(1,NSR+1))*0.374 # in angstrom
+    axins.plot(dist, KOs);
+    axins.plot(dist, KTs);
+    axins.set_xlabel("$d\, (\AA)$");
+    axins.set_ylabel("$J_K$");
     
     # format
     for ax in axes:

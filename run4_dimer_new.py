@@ -83,7 +83,7 @@ JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
 for JK in [JKreson]: # np.linspace(JKreson*(1-0.25), JKreson*(1+0.25),7):
 
     # physics of scattering region -> array of [H at octo, H at tetra]
-    hblocks, tblocks = [], []; # lists to hold on site and hopping blocks in the SR
+    hblocks, tblocks = [], []; # on site and hopping blocks in the SR
     for Coi in range(2):
 
         # define all physical params
