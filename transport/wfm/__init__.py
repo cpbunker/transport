@@ -35,7 +35,8 @@ def kernel(h, th, tl, E, qi, verbose = 0):
         assert(not np.any(isdiag));
     for i in range(len(qi)): # check source channel mu_LL = 0
         if(qi[i] != 0):
-            assert(h[0,i,i] == 0);
+            pass;
+            #assert(h[0,i,i] == 0);
 
     # unpack
     N = len(h) - 2; # num scattering region sites

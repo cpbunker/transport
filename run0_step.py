@@ -31,7 +31,7 @@ Vb = 0.1; # barrier
 
 # blocks and inter block hopping
 hSR = np.array([[Vb]]);
-hLL = 0*np.eye(np.shape(hSR)[0]);
+hLL = Vb*np.eye(np.shape(hSR)[0]);
 Vhyb = -tl*np.eye(np.shape(hSR)[0]);
 VSR = [];
 hRL = Vb*np.eye(np.shape(hSR)[0]);

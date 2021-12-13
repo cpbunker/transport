@@ -26,7 +26,7 @@ verbose = 5;
 
 # tight binding params
 tl = 1.0;
-Jeff = 0.2;
+Jeff = 0.0;
 Delta = 0.04; # zeeman splitting on imp
 
 # 2nd qu'd operator for S dot s
@@ -57,8 +57,8 @@ if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
 
 # sweep over range of energies
 # def range
-Emin, Emax = -1.99*tl, -1.9*tl;
-numE = 20;
+Emin, Emax = -1.99*tl, 2*Delta*tl - 2*tl
+numE = 40;
 Evals = np.linspace(Emin, Emax, numE, dtype = complex);
 Tvals = [];
 for Ei in range(len(Evals) ):
