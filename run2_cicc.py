@@ -219,7 +219,7 @@ if False: # plot above
 #################################################################
 #### fixed N
 
-if True:
+if False:
 
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
@@ -267,7 +267,56 @@ if True:
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.legend();
-    plt.show()
+    plt.show();
+
+
+if True: # adjacent imps with modified hopping between
     
+    # tight binding params
+    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
+    td = 0.4;
+    Vg = 5;
+    Jeff = 2*tl*tl/Vg/2; # eff heisenberg
+
+    ka0 = np.pi*np.sqrt(td/tl); # val of ka (dimensionless) s.t. kx0 = pi
+    E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
+                                    # measured from bottom of the band!!
+    rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho))
+
+    # diagnostic
+    if(verbose):
+        print("\nCiccarello inputs")
+        print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
+        print(" - ka0 = ",ka0);
+        print("- rho*J*a = ", rhoJa);
+    # choose boundary condition
+    source = np.zeros(8);
+    source[1] = 1/np.sqrt(2);
+    source[2] = -1/np.sqrt(2);
+
+    # construct blocks of hamiltonian
+    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, td, 0, 1, 2);
+    #hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis=0);
+    #hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis=0);
+    if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
+
+    # get data
+    kalims = 0.0*ka0,3*ka0;
+    kavals, Tvals = wfm.Data(source, np.zeros_like(hblocks[0]),-tl*np.eye(np.shape(hblocks[0])[0]),
+                             hblocks, tblocks, np.zeros_like(hblocks[0]), tl, kalims, retE = False, verbose = verbose)
+    Ttotals = np.sum(Tvals, axis = 1);
     
+    # plot data
+    fig, ax = plt.subplots();
+    ax.plot(kavals/ka0, Ttotals, label = "$\\rho Ja(kNa = \pi)$ = "+str(int(100*rhoJa)/100));
+
+    # format and show
+    ax.set_xlabel("$ka/ka'0$");
+    ax.set_ylabel("$T$");
+    ax.set_ylim(0,1);
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    plt.legend();
+    plt.show();
     

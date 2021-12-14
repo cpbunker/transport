@@ -17,6 +17,11 @@ import itertools
 
 import sys
 import time
+J=0
+Jz=1
+x = np.array([[Jz/4-Jz/4,0,J/2],[0,-Jz/4+Jz/4,J/2],[J/2,J/2,-Jz/4-Jz/4]]);
+print(wfm.utils.entangle(x,0,1));
+assert False
 
 #### top level
 #np.set_printoptions(precision = 4, suppress = True);
