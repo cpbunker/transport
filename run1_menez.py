@@ -27,7 +27,7 @@ verbose = 5;
 # tight binding params
 tl = 1.0;
 Jeff = 0.2;
-Delta = 0.04; # zeeman splitting on imp
+Delta = 0.02; # zeeman splitting on imp
 
 # 2nd qu'd operator for S dot s
 h1e = np.zeros((4,4))
@@ -57,12 +57,12 @@ if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
 
 # sweep over range of energies
 # def range
-Emin, Emax = -1.999*tl, 2*abs(Delta)*tl - 2*tl
+Emin, Emax = -1.999*tl, -1.9*tl
 numE = 20;
 Evals = np.linspace(Emin, Emax, numE, dtype = complex);
 Tvals = [];
 for E in Evals:
-    Tvals.append(wfm.kernel(hblocks, tblocks, tl, Evals[Ei], source));
+    Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
 
 # plot Tvals vs E
 Tvals = np.array(Tvals);
@@ -83,6 +83,7 @@ ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
 ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
 ax.set_xlabel("$E+2t_l $");
 ax.set_ylabel("$T$");
+ax.set_ylim(0,1.05);
 ax.set_title("Up electron scattering from down impurity");
 ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
 plt.show();

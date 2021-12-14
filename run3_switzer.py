@@ -59,20 +59,20 @@ if(verbose):
 
 # phys params
 tl = 1.0; # hopping >> other params
-th = 1.0;
-td = th;
+th = tl;
+tp = 0.4; # hyb btwn impurities
 
 # iter over params
 #params0 = 1,1,-1,-1; # th, td, eps1, eps2
 #for params in wfm.utils.sweep_param_space(params0, 1.0, 7):
-for D1 in [0.3,0.5,1.0,1.5,2.0,2.5]:
+for D1 in [0.1,0.2,0.3]:
     D2 = D1;
 
     # iter over Kondo strength
     for JK1 in [D1/3,2*D1/3,D1]:
         JK2 = JK1;
 
-        # check lead eigenstates
+        # lead eigenstates
         h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, 0, 0, 0);
         hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
         hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
@@ -98,12 +98,12 @@ for D1 in [0.3,0.5,1.0,1.5,2.0,2.5]:
             if(impi == 0):
                 hblocks.append(np.copy(hSR_JK0)); # LL eigenstates
                 tblocks.append(-th*np.eye(np.shape(h)[0])); # hop onto imp 1
-                tblocks.append(-td*np.eye(np.shape(h)[0])); # hop onto imp 2
+                tblocks.append(-tp*np.eye(np.shape(h)[0])); # hop onto imp 2
             hblocks.append(h);
         del h, impi, h1e, g2e;
 
         # finish list
-        tblocks.append(-td*np.eye(np.shape(hSR_JK0)[0])); # hop onto RL
+        tblocks.append(-th*np.eye(np.shape(hSR_JK0)[0])); # hop onto RL
         hblocks.append(np.copy(hSR_JK0)); # RL eigenstates
         hblocks = np.array(hblocks);
         tblocks = np.array(tblocks);
@@ -112,8 +112,12 @@ for D1 in [0.3,0.5,1.0,1.5,2.0,2.5]:
         if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
         # iter over E
-        Elims = (-2)*tl, (-1.9)*tl;
-        Evals = np.linspace(*Elims, 40);
+        #Elims = (-2)*tl, (-1.9)*tl;
+        #Evals = np.linspace(*Elims, 40);
+        ka0 = np.pi*np.sqrt(tp/tl); # val of ka s.t. ka' = pi
+        kalims = 0, 5*ka0;
+        kavals = np.linspace(*kalims, 99);
+        Evals = -2*tl*np.cos(kavals);
         Tvals = [];
         for Energy in Evals:
             Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
@@ -121,16 +125,16 @@ for D1 in [0.3,0.5,1.0,1.5,2.0,2.5]:
 
         # plot
         fig, ax = plt.subplots();
-        ax.scatter(Evals+2*tl, Tvals[:,sourcei], marker = 's', label = "$|i\,>$");
-        ax.scatter(Evals+2*tl, Tvals[:,pair[0]], marker = 's', label = "$|+>$");
-        ax.scatter(Evals+2*tl, Tvals[:,pair[1]], marker = 's', label = "$|->$");
+        ax.scatter(kavals/ka0, Tvals[:,sourcei], marker = 's', label = "$|i\,>$");
+        ax.scatter(kavals/ka0, Tvals[:,pair[0]], marker = 's', label = "$|+>$");
+        ax.scatter(kavals/ka0, Tvals[:,pair[1]], marker = 's', label = "$|->$");
 
         # format
         #ax.set_title("Transmission at resonance, $J_K = 2D/3$");
         ax.set_ylabel("$T$");
         ax.set_xlabel("$E + 2t_l$");
         ax.set_title(str(D1)+", "+str(JK1)+", "+str(np.sqrt(JK1*JK1+np.power(D1-3*JK1/2,2)/4)));
-        ax.set_ylim(0.0,1.05);
+        #ax.set_ylim(0.0,1.05);
         plt.legend();
         ax.minorticks_on();
         ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
