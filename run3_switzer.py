@@ -115,8 +115,8 @@ for D1 in [0.1,0.2,0.3]:
         #Elims = (-2)*tl, (-1.9)*tl;
         #Evals = np.linspace(*Elims, 40);
         ka0 = np.pi*np.sqrt(tp/tl); # val of ka s.t. ka' = pi
-        kalims = 0, 5*ka0;
-        kavals = np.linspace(*kalims, 99);
+        kalims = 0, np.pi;
+        kavals = np.linspace(*kalims, 49);
         Evals = -2*tl*np.cos(kavals);
         Tvals = [];
         for Energy in Evals:
@@ -125,9 +125,9 @@ for D1 in [0.1,0.2,0.3]:
 
         # plot
         fig, ax = plt.subplots();
-        ax.scatter(kavals/ka0, Tvals[:,sourcei], marker = 's', label = "$|i\,>$");
-        ax.scatter(kavals/ka0, Tvals[:,pair[0]], marker = 's', label = "$|+>$");
-        ax.scatter(kavals/ka0, Tvals[:,pair[1]], marker = 's', label = "$|->$");
+        ax.scatter(kavals/np.pi, Tvals[:,sourcei], marker = 's', label = "$|i\,>$");
+        ax.scatter(kavals/np.pi, Tvals[:,pair[0]], marker = 's', label = "$|+>$");
+        ax.scatter(kavals/np.pi, Tvals[:,pair[1]], marker = 's', label = "$|->$");
 
         # format
         #ax.set_title("Transmission at resonance, $J_K = 2D/3$");

@@ -239,7 +239,7 @@ def Data(source, h_LL, V_hyb, h_SR, V_SR, h_RL, tl, lims, numpts = 21, retE = Tr
     if(verbose):
         print(" - tl = ", tl);
         print(" - th = ", -tblocks[0,0,0]);
-        print(" - V = ", -tblocks[1,0,0]);
+        print(" - t' = ", -tblocks[1,0,0]);
 
     if retE: # iter over energy
         Evals = np.linspace(lims[0], lims[1], numpts, dtype = complex);

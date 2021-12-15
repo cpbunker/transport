@@ -135,6 +135,9 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
     - i2, int, site of 2nd imp
     - Nsites, int, total num sites in SR
     '''
+
+    # check inputs
+    assert(i1 < i2 and i2 < Nsites);
     
     # heisenberg interaction matrices
     Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
