@@ -21,6 +21,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import itertools
 
 # top level
@@ -57,10 +58,118 @@ if(verbose):
         print(pair_str);
         pair_strs.append(pair_str);
 
-# phys params
-tl = 1.0; # hopping >> other params
-th = tl;
-tp = 0.4; # hyb btwn impurities
+#########################################################
+#### plots in N_SR = 2 regime
+
+if True: # fig 6 ie T vs rho J a
+
+    # siam inputs
+    tl = 1.0;
+    th = 1.0;
+    tp = 1.0;
+
+    # eric inputs
+    D1 = -0.001;
+    D2 = -0.001;
+
+    # lead eigenstates
+    h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, 0, 0, 0);
+    hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
+    hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
+    if(verbose): print("JK1 = JK2 = 0 hamiltonian\n",hSR_JK0);
+    hSR_JK0 = np.diagflat(np.diagonal(hSR_JK0)); # force diagonal
+
+    # iter over Kondo strength
+    for JK1 in np.array([0.1]):
+        JK2 = JK1;
+
+        # iter over rhoJ, getting T
+        Tvals = [];
+        rhoJvals = np.linspace(0.05,2.5,40);
+        Erhovals = JK1*JK1/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+        for rhoJa in rhoJvals:
+
+            # energy and K fixed by J, rhoJ
+            E_rho = JK1*JK1/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+                                                    # this E is measured from bottom of band !!!
+            k_rho = np.arccos((E_rho-2*tl)/(-2*tl));
+            print("E, E - 2t, JK1, E/JK1 = ",E_rho, E_rho -2*tl, JK1, E_rho/JK1);
+            print("ka = ",k_rho);
+            print("rhoJa = ", abs(JK1/np.pi)/np.sqrt(E_rho*tl));
+            E_rho = E_rho - 2*tl; # measure from mu
+            kx0 = 0*np.pi;
+
+
+            # physics of scattering region -> array of [H at octo, H at tetra]
+            hblocks, tblocks = [], []; # on site and hopping blocks in the SR
+            for impi in range(2):
+                if impi == 0: # on imp 1
+                    h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK1, 0);
+                else: # on imp 2
+                    h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, 0, JK2);
+
+                # convert to many body form
+                h = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
+
+                # entangle the me up states into eric's me, s12, m12> = up, 2, 1> state
+                h = wfm.utils.entangle(h, *pair);
+                if(verbose>3): print("\nEntangled hamiltonian\n", h);
+
+                # add to list
+                if(impi == 0):
+                    hblocks.append(np.copy(hSR_JK0)); # LL eigenstates
+                    tblocks.append(-th*np.eye(np.shape(h)[0])); # hop onto imp 1
+                    tblocks.append(-tp*np.eye(np.shape(h)[0])); # hop onto imp 2
+                hblocks.append(h);
+
+            # end loop over impi
+            del h, impi, h1e, g2e; 
+
+            # finish blocks
+            tblocks.append(-th*np.eye(np.shape(hSR_JK0)[0])); # hop onto RL
+            hblocks.append(np.copy(hSR_JK0)); # RL eigenstates
+            hblocks = np.array(hblocks);
+            tblocks = np.array(tblocks);
+            for blocki in range(len(hblocks)): # set mu_LL = 0
+                hblocks[blocki] -= hSR_JK0[sourcei,sourcei]*np.eye(np.shape(hblocks[blocki])[0])
+            #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+
+            # get T from this setup
+            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho, source));
+
+        # plot
+        fig, ax = plt.subplots();
+        for el in range(3): ax.plot([-1],[-1]);
+        Tvals = np.array(Tvals);
+        ax.plot(rhoJvals, Tvals[:,2], label = "$|i\,>$");
+        ax.plot(rhoJvals, Tvals[:,0], label = "$|+>$");
+        ax.legend(loc = "upper left");
+        
+        # inset
+        rhoEvals = JK1*JK1/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+        axins = inset_axes(ax, width="40%", height="40%");
+        for el in range(4): axins.plot([-1],[-1]);
+        axins.plot(rhoEvals,Tvals[:,0]);
+        axins.set_xlabel("$E+2*t_l$");
+        axins.set_ylabel("$T_+$");
+        axins.set_xlim(-0.01,0.4);
+        axins.set_ylim(0,0.15);
+
+        # format
+        ax.set_xlabel("$\\rho\,J a$");
+        ax.set_ylabel("$T$");
+        ax.set_xlim(0.05,2.5);
+        ax.set_ylim(0,1.05);
+        ax.minorticks_on();
+        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+        plt.show();
+        raise(Exception);
+
+        # continue iter over JK
+
+    # done
+    raise(Exception);
 
 # iter over params
 #params0 = 1,1,-1,-1; # th, td, eps1, eps2

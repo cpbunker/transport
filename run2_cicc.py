@@ -18,6 +18,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import sys
 
 # top level
@@ -286,7 +287,7 @@ if False: # plot fig 2b data
 ##################################################################################
 #### N_SR = 2 calcs
 
-if True: # vary kx0 by varying Vgate
+if False: # vary kx0 by varying Vgate
     
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
@@ -294,7 +295,7 @@ if True: # vary kx0 by varying Vgate
 
     # cicc quantitites
     N_SR = 2;
-    factor = 1000;
+    factor = 100;
     ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -314,7 +315,7 @@ if True: # vary kx0 by varying Vgate
     spinstate = "psimin";
 
     # get data
-    kalims = (0.0*ka0,(factor/10)*ka0); # first 1/10th of the zone
+    kalims = (0.0*ka0,(factor/1)*ka0); # first 1/10th of the zone
     kavals = np.linspace(*kalims, 499);
     Vgvals =  -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
     Tvals = [];
@@ -322,7 +323,7 @@ if True: # vary kx0 by varying Vgate
 
         # construct blocks of hamiltonian
         # now need to have 0's on each end !!!
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl*0.4, 1, N_SR, N_SR+2);
         for blocki in range(len(hblocks)): # add Vg in SR
             if(blocki > 0 and blocki < N_SR + 1): # if in SR
                 hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
@@ -386,88 +387,74 @@ if False: # vary kx0 by varing k at fixed N, t' != t
     assert False;
     
 
-if False: # fig 6
+if True: # fig 6
 
     # siam inputs
     tl = 1.0;
-    Vg = 20;
-    Jeff = 2*tl*tl/Vg; # eff heisenberg strength fixed
+    Jeff = 0.1;
 
     # choose boundary condition
     source = np.zeros(8); # incident up, imps = down, down
-    source[3] = 1;
-    spinstate = "abb"
-
-    # cicc inputs
-    alat = 1.0; # should always cancel for E and kx0
-    m = 1/(2*alat*alat*tl);
+    source[4] = 1;
+    spinstate = "baa"
 
     # iter over rhoJ, getting T
     Tvals = [];
-    rhoJvals = np.linspace(0.5,5.5,44)
-    for rhoJ_int in rhoJvals:
+    rhoJvals = np.linspace(0.05,2.5,40)
+    for rhoJa in rhoJvals:
 
         # energy and K fixed by J, rhoJ
-        E_rho = Jeff*Jeff/(rhoJ_int*rhoJ_int*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+        E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                                 # this E is measured from bottom of band !!!
-        k_rho = wfm.k_disp(E_rho-2*tl, alat, tl); # input E measured from 0 by -2*tl
-        assert(abs((E_rho - 2*tl) - wfm.E_disp(k_rho,alat, tl) ) <= 1e-8 ); # check by getting back energy measured from bottom of band
+        k_rho = np.arccos((E_rho-2*tl)/(-2*tl));
         print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
-        print("k*a = ",k_rho*alat);
-        print("rho*J = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
+        print("ka = ",k_rho);
+        print("rhoJa = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
         E_rho = E_rho - 2*tl; # measure from mu
         
         # location of impurities, fixed by kx0 = pi
-        kx0 = np.pi;
-        N0 = int(kx0/(k_rho*alat));
+        kx0 = 0*np.pi;
+        N0 = max(1,int(kx0/(k_rho)));
         if verbose: print("N0 = ",N0);
 
         # construct hams
         i1, i2 = 1, 1+N0;
         Nsites = i2+2; # 1 lead site on each side
         print("i1, i2, Nsites = ",i1, i2, Nsites)
-        hmats, tmats = wfm.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
-        Tvals.append(list(wfm.Tcoef(hmats, tmats, tl, E_rho , source)) );
-
-    # save results
-    Tvals = np.array(Tvals); # rows are diff rhoJ vals
-    info = np.zeros_like(rhoJvals);
-    info[0], info[1], info[2], info[3] = tl, Jeff, N0, kx0; # save info we need
-    data = [info, rhoJvals]; # now want each column of data to be a rhoJ val
-    for Ti in range(np.shape(Tvals)[1]): # all dofs
-        data.append(Tvals[:,Ti]); # row of one dof, but each column is diff rhoJ
-    # save data
-    fname = "dat/cicc_eff/fig6/"
-    fname +="gf_"+spinstate+"_kx0"+str(kx0)[:4]+".npy";
-    np.save(fname,np.array(data));
-    if verbose: print("Saved data to "+fname);
-
-    # load data
-    fname = sys.argv[1]
-    if verbose: print("Loading data from "+fname);
-    data = np.load(fname);
-    info = data[0];
-    tl, Jeff, N0, kx0 = info[0], info[1], info[2], info[3];
-    rhoJvals = data[1];
-    Tvals = data[2:];
-    Tup = Tvals[0] + Tvals[1] + Tvals[2] + Tvals[3];
-    Tdown = Tvals[4] + Tvals[5] + Tvals[6] + Tvals[7];
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
 
     # plot
     fig, ax = plt.subplots();
-    ax.scatter(rhoJvals, Tup, marker = 's', label = "$T_{up}$");
-    ax.scatter(rhoJvals, Tdown, marker = 's', label = "$T_{down}$");
+    for el in range(3): ax.plot([-1],[-1]);
+    Tvals = np.array(Tvals);
+    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$");
+    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
+    ax.legend(loc = "upper left");
+
+    # inset
+    rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+    axins = inset_axes(ax, width="40%", height="40%");
+    for el in range(4): axins.plot([-1],[-1]);
+    axins.plot(rhoEvals,Tvals[:,1]);
+    axins.set_xlabel("$E+2*t_l$");
+    axins.set_ylabel("$T_+$");
+    axins.set_xlim(-0.01,0.4);
+    axins.set_ylim(0,0.15);
+
+    # format
     ax.set_xlabel("$\\rho\,J a$");
     ax.set_ylabel("$T$");
-    #ax.set_title("Fig. 6");
-    #ax.set_ylim(0.0,0.25);
-    ax.legend();
+    ax.set_xlim(0.05,2.5);
+    ax.set_ylim(0,1.05);
     ax.minorticks_on();
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
     ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
     plt.show();
+    raise(Exception);
+    
 
 
 
