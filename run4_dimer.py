@@ -89,8 +89,9 @@ hRL = np.copy(hLL);
 
 if True: # fig 6 ie T vs rho J a
 
-    # sweep over JK
-    for JK in DO*np.array([1.5,2.5,3.5,4.5]):
+    # plot at diff JK
+    fig, ax = plt.subplots();
+    for JK in DO*np.array([1.5,2.5,3.65,4.5,5.5]):
 
         # 2 site SR
         hblocks, tblocks = [hLL], [-th*np.eye(np.shape(hLL)[0])]; # on site and hopping blocks in the SR
@@ -148,33 +149,22 @@ if True: # fig 6 ie T vs rho J a
             Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho -2*tl, source));
             
         # plot
-        fig, ax = plt.subplots();
-        for el in range(3): ax.plot([-1],[-1]);
         Tvals = np.array(Tvals);
-        ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$");
-        ax.plot(rhoJvals, Tvals[:,pair[0]], label = "$|+>$");
-        ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$");
-        ax.legend(loc = "upper left");
-        
-        # inset
-        axins = inset_axes(ax, width="40%", height="40%");
-        for el in range(4): axins.plot([-1],[-1]);
-        axins.plot(Erhovals/tl,Tvals[:,pair[0]]);
-        axins.set_xlabel("$E+2*t_l$");
-        axins.set_ylabel("$T_+$");
-        axins.set_xlim(0,0.01);
-        axins.set_ylim(0.0,0.15);
+        #ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$");
+        ax.plot(rhoJvals, Tvals[:,pair[0]], label = int(100*JK/DO)/100);
+        #ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$");
 
-        # format
-        ax.set_xlabel("$\\rho\,J a$");
-        ax.set_ylabel("$T$");
-        ax.set_title(JK/DO)
-        ax.set_xlim(min(rhoJvals),max(rhoJvals));
-        #ax.set_ylim(0,1.05);
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        plt.show();
+    # end sweep over JK
+    # format and show
+    ax.set_xlabel("$\\rho\,J a$");
+    ax.set_ylabel("$T_+$");
+    ax.set_xlim(min(rhoJvals),max(rhoJvals));
+    ax.set_ylim(0,0.2);
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    ax.legend(title = "$J_K /D_O$ = ",loc = "upper right");
+    plt.show();
 
 
 
