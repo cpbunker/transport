@@ -26,97 +26,187 @@ verbose = 5;
 
 # tight binding params
 tl = 1.0;
-Jeff = 0.2;
-Delta = 0.02; # zeeman splitting on imp
+th = 1.0;
+Delta = 0.0; # zeeman splitting on imp
 
-# 2nd qu'd operator for S dot s
-h1e = np.zeros((4,4))
-g2e = wfm.utils.h_kondo_2e(Jeff, 0.5); # J, spin
-states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
-hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
+if False: # sigma dot S
 
-# leads and zeeman splitting
-hzeeman = np.array([[Delta, 0, 0, 0],
-                [0,0, 0, 0],
-                [0, 0, Delta, 0],
-                [0, 0, 0, 0]]); # zeeman splitting
-hLL = np.copy(hzeeman);
-hRL = np.copy(hzeeman);
-hSR += hzeeman; # zeeman splitting is everywhere
+    fig, ax = plt.subplots();
+    for Jeff in [0.1,0.2,0.4]:
 
-# source = up electron, down impurity
-source = np.zeros(np.shape(hSR)[0]);
-source[1] = 1;
+        # 2nd qu'd operator for S dot s
+        h1e = np.zeros((4,4))
+        g2e = wfm.utils.h_kondo_2e(Jeff, 0.5); # J, spin
+        states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
+        hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
 
-# package together hamiltonian blocks
-hblocks = np.array([hLL, hSR, hRL]);
+        # leads and zeeman splitting
+        hzeeman = np.array([[Delta, 0, 0, 0],
+                        [0,0, 0, 0],
+                        [0, 0, Delta, 0],
+                        [0, 0, 0, 0]]); # zeeman splitting
+        hLL = np.copy(hzeeman);
+        hRL = np.copy(hzeeman);
+        hSR += hzeeman; # zeeman splitting is everywhere
 
-# construct hopping
-tblocks = np.array([-tl*np.eye(*np.shape(hSR)),-tl*np.eye(*np.shape(hSR))]);
-if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+        # source = up electron, down impurity
+        source = np.zeros(np.shape(hSR)[0]);
+        source[1] = 1;
 
-# sweep over range of energies
-# def range
-Emin, Emax = -1.999*tl, -1.9*tl
-numE = 20;
-Evals = np.linspace(Emin, Emax, numE, dtype = complex);
-Tvals = [];
-for E in Evals:
-    Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+        # package together hamiltonian blocks
+        hblocks = np.array([hLL, hSR, hRL]);
+        tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
+        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
-# plot Tvals vs E
-Tvals = np.array(Tvals);
-fig, ax = plt.subplots();
-ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
-sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's',label = "$T_{flip}$");
+        # sweep over range of energies
+        # def range
+        Emin, Emax = -1.999*tl, -1.8*tl
+        numE = 30;
+        Evals = np.linspace(Emin, Emax, numE, dtype = complex);
+        Tvals = [];
+        for E in Evals:
+            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
 
-# menezes prediction in the continuous case
-# all the definitions, vectorized funcs of E
-kappa = np.lib.scimath.sqrt(Evals);
-jprime = Jeff/(4*kappa);
-l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
- label = "Predicted");
+        # plot Tvals vs E
+        Tvals = np.array(Tvals);
+        #ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
+        sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's');
 
-# format and plot
-ax.minorticks_on();
-ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-ax.set_xlabel("$E+2t_l $");
-ax.set_ylabel("$T$");
-ax.set_ylim(0,1.05);
-ax.set_title("Up electron scattering from down impurity");
-ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
-plt.show();
+        # menezes prediction in the continuous case
+        # all the definitions, vectorized funcs of E
+        kappa = np.lib.scimath.sqrt(Evals);
+        jprime = Jeff/(4*kappa);
+        l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
+         label = "$J/t$ = "+str(Jeff));
+
+    # format and plot
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    ax.set_xlabel("$E+2t_l $");
+    ax.set_ylabel("$T_{down}$");
+    ax.set_xlim(0,0.2);
+    ax.set_ylim(0,0.2);
+    if(Delta): ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
+    else: ax.legend();
+    plt.show();
 
 
 
-if(False): # hubbard that downfolds into J
+if True: # 2 site hubbard that downfolds into J sigma dot S
 
-    # scattering region, Vg and U on second level only
-    h_SR = np.array([[0,0,-tl,tl,0,0], # up down, -
-                     [0,-Vg,0, 0,0,0], # up, up
-                     [-tl,0,-Vg, 0,0,-tl], # up, down
-                     [tl,0, 0, -Vg,0, tl], # down, up
-                     [0,0,0,0,0,0],    # down, down
-                     [0,0,-tl,tl,0,U-2*Vg]]); # -, up down
-                     
+    # add'l physical terms
+    Vg = 10;
+    U = 100.0;
+    Jeff = 2*th*th*U/((U-Vg)*Vg);
+
+    # SR physics
+    hSR = np.array([[0,0,-th,th,0,0], # up down, -
+                    [0,Vg,0, 0,0,0], # up, up
+                   [-th,0,Vg, 0,0,-th], # up, down (source)
+                    [th,0, 0, Vg,0, th], # down, up
+                    [0, 0, 0,  0,Vg,0],    # down, down
+                    [0,0,-th,th,0,U+2*Vg]]); # -, up down
 
     # leads also have gate voltage
-    h_LL = -Vg*np.eye(*np.shape(h_SR));
-    h_LL[0,0] = 0;
-    h_RL = -Vg*np.eye(*np.shape(h_SR));
-    h_RL[0,0] = 0;
+    hLL = Vg*np.eye(*np.shape(hSR));
+    hLL[0,0] = 0;
+    hRL = Vg*np.eye(*np.shape(hSR));
+    hRL[0,0] = 0;
 
-    # shift by gate voltage
-    h_LL += Vg*np.eye(*np.shape(h_LL));
-    h_SR += Vg*np.eye(*np.shape(h_SR));
-    h_RL += Vg*np.eye(*np.shape(h_RL));
+    # shift by gate voltage so source is at zero
+    hLL += -Vg*np.eye(*np.shape(hLL));
+    hSR += -Vg*np.eye(*np.shape(hSR));
+    hRL += -Vg*np.eye(*np.shape(hRL));
+
+    # package together hamiltonian blocks
+    hblocks = np.array([hLL, hSR, hRL]);
+    tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
+    if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
     # source = up electron, down impurity
-    source = np.zeros(np.shape(h_SR)[0]);
+    source = np.zeros(np.shape(hSR)[0]);
     source[2] = 1;
-    flipi = 3;
-   
+    
+    # sweep over range of energies
+    # def range
+    Emin, Emax = -1.999*tl, -1.8*tl
+    numE = 30;
+    Evals = np.linspace(Emin, Emax, numE, dtype = complex);
+    Tvals = [];
+    for E in Evals:
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+
+    # plot Tvals vs E
+    fig, ax = plt.subplots();
+    Tvals = np.array(Tvals);
+    ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's');
+
+    # menezes prediction in the continuous case
+    # all the definitions, vectorized funcs of E
+    kappa = np.lib.scimath.sqrt(Evals);
+    jprime = Jeff/(4*kappa);
+    ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
+     label = "$J/t$ = "+str(int(100*Jeff)/100)); 
+
+    # format and plot
+    ax.minorticks_on();
+    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+    ax.set_xlabel("$E+2t_l $");
+    ax.set_ylabel("$T_{down}$");
+    ax.set_xlim(0,0.2);
+    ax.set_ylim(0,0.2);
+    if(Delta): ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
+    else: ax.legend();
+    plt.show();
+
+
+
+
+if False: # onsite U downfolds into J sigma dot S
+
+    # add'l physical terms
+    Vg = -0.1;
+    U = 4.0;
+    # 1 site SR
+    # first quantum num is spin of the incident e (up/down)
+    # second is spin of imp e (up/down)
+    # third is whether imp e is in SR or not (yes/no)
+    h_SR = np.array([[-Vg,0,0,0,0], # up up no
+                     [0,-Vg,0,0,-th], # up down no
+                     [0,0,-Vg,0,-th], # down up no
+                     [0,0,0,-Vg,0],    # down down no
+                     [0,-th,-th,0,U-2*Vg]]); # up down yes
+
+    # source = up electron, down impurity
+    source = np.zeros(np.shape(hSR)[0]);
+    source[4] = 1;
+
+    # package together hamiltonian blocks
+    hblocks = np.array([np.zeros_like(hSR), hSR, np.zeros_like(hSR)]);
+    tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
+    if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+
+    # sweep over range of energies
+    # def range
+    Emin, Emax = -1.999*tl, -1.8*tl
+    numE = 30;
+    Evals = np.linspace(Emin, Emax, numE, dtype = complex);
+    Tvals = [];
+    for E in Evals:
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+
+    # plot Tvals vs E
+    Tvals = np.array(Tvals);
+    sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's');
+
+    # menezes prediction in the continuous case
+    # all the definitions, vectorized funcs of E
+    kappa = np.lib.scimath.sqrt(Evals);
+    jprime = Jeff/(4*kappa);
+    l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
+     label = "$J/t$ = "+str(Jeff)); 
 
 
 
