@@ -49,6 +49,7 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0.031/Ha2meV;
+JKreson = (4/5)*((DO+DT) - (3/4)*Jx + (3/4)*Jz);
 
 # initialize source vector
 sourcei = 16; # |down, 3/2, 3/2 >
@@ -87,7 +88,7 @@ hRL = np.copy(hLL);
 #########################################################
 #### plots in N_SR = 2 regime
 
-if True: # fig 6 ie T vs rho J a
+if False: # fig 6 ie T vs rho J a
 
     # plot at diff JK
     fig, ax = plt.subplots();
@@ -151,7 +152,7 @@ if True: # fig 6 ie T vs rho J a
         # plot
         Tvals = np.array(Tvals);
         #ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$");
-        ax.plot(rhoJvals, Tvals[:,pair[0]], label = int(100*JK/DO)/100);
+        ax.plot(rhoJvals, Tvals[:,pair[0]], label = str(JK/JKreson)+" "+str(JK/DO));
         #ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$");
 
     # end sweep over JK
@@ -177,11 +178,10 @@ if True: # fig 6 ie T vs rho J a
 
             
 
-if False: #plot vs energy
+if True: #plot vs energy
     
     # sweep over JK
-    JKreson = (4/5)*(DO - (3/4)*Jx + (3/4)*Jz);
-    for JK in np.linspace(DO,5*DO,9):
+    for JK in DO*np.array([1.0]):
 
         # physics of scattering region -> array of [H at octo, H at tetra]
         hblocks, tblocks = [], []; # on site and hopping blocks in the SR
@@ -216,32 +216,31 @@ if False: #plot vs energy
 
         # get data
         Elims = -1.9999*tl, -1.99*tl;
-        kavals, Tvals = wfm.Data(source, hLL, -th*np.eye(np.shape(hLL)[0]),
+        Evals, Tvals = wfm.Data(source, hLL, -th*np.eye(np.shape(hLL)[0]),
                         hblocks, tblocks, hRL, tl, Elims, numpts = 99, retE = True);
 
         # first plot is just source and entangled pair
-        fig, axes = plt.subplots(2, sharex = True);
-        axes[0].set_title(JK/DO);
-        axes[0].plot(kavals/tl,Tvals[:,sourcei], label = "$|i>$");
-        axes[0].plot(kavals/tl,Tvals[:,pair[0]], label = "$|+>$");
-        axes[0].legend(loc = 'upper right');
+        fig, ax = plt.subplots();
+        #ax.plot(Evals/tl+2,Tvals[:,sourcei], label = "$|i>$");
+        ax.plot(Evals/tl+2,Tvals[:,pair[0]], label = "$|+>$");
         
         # second plot is contamination
         contamination = np.zeros_like(Tvals[:,0]);
         for contami in range(len(dets)):
             if((contami != pair[0]) and (dets[contami][0] != dets[sourcei][0])):
                 contamination += Tvals[:, contami];
-        contamination = contamination/(contamination+Tvals[:,pair[0]]); 
-        axes[1].plot(kavals/tl, contamination, color = "grey");
+        #contamination = contamination/(contamination+Tvals[:,pair[0]]); 
+        ax.plot(Evals/tl+2, contamination, color = "black", label = "Contam.");
         
         # format
-        for ax in axes:
-            ax.minorticks_on();
-            ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-            ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        axes[0].set_xlabel("$ka/\pi$");
-        axes[0].set_ylabel("$T$");
-        axes[1].set_ylabel("Contamination");
+        ax.set_xlim(min(Evals/tl+2), max(Evals/tl+2));
+        ax.set_ylim(0,0.1);
+        ax.minorticks_on();
+        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
+        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
+        ax.set_xlabel("$E+2t_l$");
+        ax.set_ylabel("$T$");
+        ax.legend(loc = 'upper right');
         plt.show();
 
 
