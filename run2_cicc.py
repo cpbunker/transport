@@ -23,7 +23,7 @@ import sys
 
 # top level
 plt.style.use('seaborn-dark-palette');
-#np.set_printoptions(precision = 4, suppress = True);
+np.set_printoptions(precision = 4, suppress = True);
 verbose = 5
 
 
@@ -83,7 +83,7 @@ if False: # original version of 2b (varying x0 by varying N)
     fname +="N_rhoJa"+str(int(rhoJa))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
-    assert False;
+    raise(Exception);
 
 
 if False: # vary kx0 by varing k at fixed N
@@ -135,7 +135,7 @@ if False: # vary kx0 by varing k at fixed N
     fname +="ka_rhoJa"+str(int(rhoJa))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
-    assert False;
+    raise(Exception);
     
 
 if False: # vary kx0 by varying t', N and ka fixed
@@ -185,7 +185,7 @@ if False: # vary kx0 by varying t', N and ka fixed
     Ttotals = np.sum(Tvals, axis = 1);
     plt.plot(kapvals*(N_SR - 1)/np.pi, Ttotals);
     plt.show();
-    assert False;
+    raise(Exception);
 
 
 if False: # vary kx0 by varying Vgate
@@ -245,7 +245,7 @@ if False: # vary kx0 by varying Vgate
     fname +="mu_rhoJa"+str(int(rhoJa))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
-    assert False;
+    raise(Exception);
     
         
 if False: # plot fig 2b data
@@ -337,7 +337,7 @@ if False: # vary kx0 by varying Vgate
     Ttotals = np.sum(Tvals, axis = 1);
     plt.plot(kavals/np.pi, Ttotals);
     plt.show();
-    assert False;
+    raise(Exception);
 
 
 if False: # vary kx0 by varing k at fixed N, t' != t
@@ -384,10 +384,10 @@ if False: # vary kx0 by varing k at fixed N, t' != t
     plt.plot(kavals*(N_SR-1)/np.pi, Ttotals);
     plt.axvline(ka0*(N_SR-1)/np.pi);
     plt.show();
-    assert False;
+    raise(Exception);
     
 
-if True: # fig 6
+if False: # fig 6
 
     # siam inputs
     tl = 1.0;
@@ -467,31 +467,58 @@ if True: # fig 6
 
 
 
-
-
-
-
-
-
 #################################################################
-#### trash
+#### misc
 
-if False:
+if True: # resonant Rabi with Jz = 0
+
+    # tight binding params
+    tl = 1.0;
+    Jeff = 0.4;
+
+    # cicc inputs
+    rhoJa = 0.5; # integer that cicc param rho*J is set equal to
+    E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+                                            # this E is measured from bottom of band !!!
+    k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
+    assert(abs((E_rho - 2*tl) - -2*tl*np.cos(k_rho)) <= 1e-8 ); # check by getting back energy measured from bottom of band
+    print("E = ",E_rho,"\nka = ",k_rho,"\nE/J = ",E_rho/Jeff,"\nrho*J = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
+
+    Omega = k_rho*Jeff/(2*E_rho);
+    Jtau = np.arccos(np.power(1+Omega*Omega,-1/2));
+    print("Omega = ",Omega,"\nJtau = ",Jtau);
     
-    # plot data
-    ax.plot(kavals*N_SR/np.pi, Ttotals, label = "$\\rho Ja $ = "+str(int(10*rhoJa)/10));
+    # choose boundary condition
+    source = np.zeros(8);
+    source[4] = 1; # down up up
+    
+    # mesh of x0s (= N0s * alat)
+    kx0max = 1.0*np.pi;
+    N0max = int(kx0max/(k_rho)); # a = 1
+    print("N0max = ",N0max);
+    N0vals = np.linspace(0, N0max, 49, dtype = int); # always integer
 
-    # format and show
-    ax.set_xlabel("$kNa/\pi$");
-    ax.set_ylabel("$T$");
-    ax.set_ylim(0,1.05);
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.legend(loc = "upper left");
+    # iter over all the differen impurity spacings, get transmission
+    Tvals = []
+    for N0 in N0vals:
+
+        # construct hams
+        hblocks, tblocks = wfm.utils.h_cicc_hacked(Jeff, tl, N0+2);
+        
+        # get T from this setup
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+
+    # plot
+    Tvals = np.array(Tvals);
+    fig, axes = plt.subplots(2);
+    axes[0].plot(N0vals, Tvals[:,4], label = "$|i\,>$");
+    axes[0].plot(N0vals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
+    axes[0].set_xlabel("$k(N-1)a/\pi$");
+    #axes[1].plot(np.arccos(np.power(1+np.power(k_rho,2),-1/2)), Tvals[:,1]+Tvals[:,2]);
+    plt.legend();
     plt.show();
-
-    # save results
+    raise(Exception);
+        
 
 
 if False: # vary kx0 by varying t'

@@ -118,7 +118,7 @@ def sweep_param_space(ps, d, n):
 ##################################################################################
 #### functions specific to a model
 
-def h_cicc_eff(J, t, i1, i2, Nsites):
+def h_cicc_eff(J, t, i1, i2, Nsites, Jz = True):
     '''
     construct hams
     formalism works by
@@ -134,6 +134,7 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
     = i1, int, site of 1st imp
     - i2, int, site of 2nd imp
     - Nsites, int, total num sites in SR
+    - Jz, bool, whether to include diagonal (Jz Se^z Si^z) terms
     '''
 
     # check inputs
@@ -176,6 +177,43 @@ def h_cicc_eff(J, t, i1, i2, Nsites):
     tblocks = np.array(tblocks);
 
     return h_cicc, tblocks;
+
+def h_cicc_hacked(J,t,N):
+    
+    # heisenberg interaction matrices
+    Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
+                        [0,1,0,0,0,0,0,0],
+                        [0,0,-1,0,2,0,0,0],
+                        [0,0,0,-1,0,2,0,0],
+                        [0,0,2,0,-1,0,0,0],
+                        [0,0,0,2,0,-1,0,0],
+                        [0,0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,0,1] ]);
+
+    Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
+                        [0,-1,0,0,2,0,0,0],
+                        [0,0,1,0,0,0,0,0],
+                        [0,0,0,-1,0,0,2,0],
+                        [0,2,0,0,-1,0,0,0],
+                        [0,0,0,0,0,1,0,0],
+                        [0,0,0,2,0,0,-1,0],
+                        [0,0,0,0,0,0,0,1] ]);
+
+    Se_dot_S1 += (-1)*np.diagflat(np.diagonal(Se_dot_S1));
+    Se_dot_S2 += (-1)*np.diagflat(np.diagonal(Se_dot_S2));
+
+    h_cicc =[];
+    for sitei in range(N): # iter over all sites
+        if(sitei > 0 and sitei < N - 1):
+            h_cicc.append(Se_dot_S1 + Se_dot_S2);
+        else:
+            h_cicc.append(np.zeros_like(Se_dot_S1) );
+
+    tblocks = []
+    for sitei in range(N-1):
+        tblocks.append(-t*np.eye(*np.shape(Se_dot_S1)) );
+
+    return np.array(h_cicc), np.array(tblocks);
 
 
 def h_kondo_2e(J,s2):
