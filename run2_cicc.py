@@ -272,12 +272,11 @@ if True: # plot fig 2b data
     # format and show
     axes[0].set_xlim(0.0,2.1);
     axes[0].set_ylim(0.0,1.05);
-    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "large");
-    axes[0].set_ylabel("$T$", fontsize = "large");
-    for myint in [0,1,2]:
-        axes[0].axvline(myint, color = "grey");
+    axes[0].set_xticks([0,1,2]);
+    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "xx-large");
+    axes[0].set_ylabel("$T$", fontsize = "xx-large");
     plt.legend(loc = "upper left", fontsize = "large");
-    plt.savefig("fig2b");
+    plt.savefig("my_fig_2a");
 
 
 ##################################################################################
