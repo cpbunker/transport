@@ -273,8 +273,8 @@ if True: # plot fig 2b data
     axes[0].set_xlim(0.0,2.1);
     axes[0].set_ylim(0.0,1.05);
     axes[0].set_xticks([0,1,2]);
-    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "xx-large");
-    axes[0].set_ylabel("$T$", fontsize = "xx-large");
+    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "x-large");
+    axes[0].set_ylabel("$T$", fontsize = "x-large");
     plt.legend(loc = "upper left", fontsize = "large");
     plt.savefig("my_fig_2a");
 
@@ -382,7 +382,7 @@ if False: # vary kx0 by varing k at fixed N, t' != t
     raise(Exception);
     
 
-if False: # fig 6
+if True: # cicc fig 6 / my fig 3
 
     # siam inputs
     tl = 1.0;
@@ -427,27 +427,24 @@ if False: # fig 6
     Tvals = np.array(Tvals);
     ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$");
     ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
-    ax.legend(loc = "upper left");
+    ax.legend(loc = "upper left", fontsize = "large");
 
     # inset
     rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
     axins = inset_axes(ax, width="40%", height="40%");
     for el in range(4): axins.plot([-1],[-1]);
     axins.plot(rhoEvals,Tvals[:,1]);
-    axins.set_xlabel("$E+2*t_l$");
-    axins.set_ylabel("$T_+$");
+    axins.set_xlabel("$E+2*t_l$", fontsize = "x-large");
+    axins.set_ylabel("$T_+$", fontsize = "x-large");
     axins.set_xlim(-0.01,0.4);
     axins.set_ylim(0,0.15);
 
     # format
-    ax.set_xlabel("$\\rho\,J a$");
-    ax.set_ylabel("$T$");
+    ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+    ax.set_ylabel("$T$", fontsize = "x-large");
     ax.set_xlim(0.05,2.5);
     ax.set_ylim(0,1.05);
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.show();
+    plt.savefig("my_fig_3");
     raise(Exception);
     
 
