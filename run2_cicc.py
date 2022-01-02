@@ -248,7 +248,7 @@ if False: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -282,7 +282,7 @@ if True: # plot fig 2b data
 ##################################################################################
 #### N_SR = 2 calcs
 
-if False: # vary kx0 by varying Vgate
+if True: # vary kx0 by varying Vgate, at low energy
     
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
@@ -290,7 +290,7 @@ if False: # vary kx0 by varying Vgate
 
     # cicc quantitites
     N_SR = 2;
-    factor = 100;
+    factor = 100; # reduces energy so we stay in bottom of band
     ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -331,7 +331,7 @@ if False: # vary kx0 by varying Vgate
     # plot
     Ttotals = np.sum(Tvals, axis = 1);
     plt.plot(kavals/np.pi, Ttotals);
-    plt.show();
+    plt.savefig("my_fig_2d");
     raise(Exception);
 
 

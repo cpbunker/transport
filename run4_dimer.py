@@ -157,14 +157,11 @@ if False: # fig 6 ie T vs rho J a
 
     # end sweep over JK
     # format and show
-    ax.set_xlabel("$\\rho\,J a$");
-    ax.set_ylabel("$T_+$");
+    ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+    ax.set_ylabel("$T_+$", fontsize = "x-large");
     ax.set_xlim(min(rhoJvals),max(rhoJvals));
     ax.set_ylim(0,0.2);
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    ax.legend(title = "$J_K /D_O$ = ",loc = "upper right");
+    ax.legend(title = "$J_K /D_O$ = ",loc = "upper right", fontsize = "large");
     plt.show();
 
 
@@ -235,12 +232,9 @@ if True: #plot vs energy
         # format
         ax.set_xlim(min(Evals/tl+2), max(Evals/tl+2));
         ax.set_ylim(0,0.1);
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        ax.set_xlabel("$E+2t_l$");
-        ax.set_ylabel("$T$");
-        ax.legend(loc = 'upper right');
+        ax.set_xlabel("$E+2t_l$", fontsize = "x-large");
+        ax.set_ylabel("$T$", fontsize = "x-large");
+        ax.legend(loc = 'upper right', fontsize = "large");
         plt.show();
 
 

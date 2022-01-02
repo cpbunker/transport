@@ -143,27 +143,24 @@ if True: # fig 6 ie T vs rho J a
         Tvals = np.array(Tvals);
         ax.plot(rhoJvals, Tvals[:,2], label = "$|i\,>$");
         ax.plot(rhoJvals, Tvals[:,0], label = "$|+>$");
-        ax.legend(loc = "upper left");
+        ax.legend(loc = "upper left", fontsize = "large");
         
         # inset
         rhoEvals = JK1*JK1/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
         axins = inset_axes(ax, width="40%", height="40%");
         for el in range(4): axins.plot([-1],[-1]);
         axins.plot(rhoEvals,Tvals[:,0]);
-        axins.set_xlabel("$E+2*t_l$");
-        axins.set_ylabel("$T_+$");
+        axins.set_xlabel("$E+2*t_l$", fontsize = "x-large");
+        axins.set_ylabel("$T_+$", fontsize = "x-large");
         axins.set_xlim(-0.01,0.4);
         axins.set_ylim(0,0.15);
 
         # format
-        ax.set_xlabel("$\\rho\,J a$");
-        ax.set_ylabel("$T$");
+        ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+        ax.set_ylabel("$T$", fontsize = "x-large");
         ax.set_xlim(0.05,2.5);
         ax.set_ylim(0,1.05);
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        plt.show();
+        plt.savefig("my_fig_4");
         raise(Exception);
 
         # continue iter over JK
