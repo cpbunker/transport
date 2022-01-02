@@ -57,7 +57,7 @@ if False: # original version of 2b (varying x0 by varying N)
     kx0max = 2.1*np.pi;
     N0max = int(kx0max/(k_rho)); # a = 1
     if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(1, N0max, 49, dtype = int); # always integer
+    N0vals = np.linspace(2, N0max, 49, dtype = int); # always integer
     kx0vals = k_rho*N0vals; # a = 1
 
     # iter over all the differen impurity spacings, get transmission
@@ -248,7 +248,7 @@ if False: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -270,18 +270,14 @@ if False: # plot fig 2b data
         axes[0].plot(kNavals/np.pi, Ttotals, label = "$\\rho  \, J a= $"+str(int(rhoJa)));
 
     # format and show
-    #axes[0].axvline(np.pi, color = "black", linestyle = "dashed");
-    #axes[0].axvline(2*np.pi, color = "black", linestyle = "dashed");
     axes[0].set_xlim(0.0,2.1);
     axes[0].set_ylim(0.0,1.05);
-    axes[0].set_xlabel("$k'a(N-1)/\pi$");
-    axes[0].set_ylabel("$T$");
-    for ax in axes:
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    plt.legend(loc = "upper left");
-    plt.show();
+    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "large");
+    axes[0].set_ylabel("$T$", fontsize = "large");
+    for myint in [0,1,2]:
+        axes[0].axvline(myint, color = "grey");
+    plt.legend(loc = "upper left", fontsize = "large");
+    plt.savefig("fig2b");
 
 
 ##################################################################################
@@ -463,14 +459,10 @@ if False: # fig 6
 
 
 
-
-
-
-
 #################################################################
 #### misc
 
-if True: # resonant Rabi with Jz = 0
+if False: # resonant Rabi with Jz = 0
 
     # tight binding params
     tl = 1.0;
