@@ -18,6 +18,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import sys
 
@@ -248,7 +249,7 @@ if False: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -282,7 +283,7 @@ if True: # plot fig 2b data
 ##################################################################################
 #### N_SR = 2 calcs
 
-if False: # vary kx0 by varying Vgate, at low energy
+if True: # vary kx0 by varying Vgate, at low energy
     
     # incident state
     theta_param = np.pi/4;
@@ -333,44 +334,51 @@ if False: # vary kx0 by varying Vgate, at low energy
     Ttotals = np.sum(Tvals, axis = 1);
 
     # plot
-    fig = plt.figure();
-    ax = fig.add_subplot(projection = "3d");
+    fig, axes = plt.subplots(2)
     axes[0].plot(kavals/np.pi, Ttotals);
     axes[1].plot(Vgvals, Ttotals);
+    axes[1].axvline(Energy);
     axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
     plt.savefig("my_fig_2d");
 
     # vary theta at Vg = E (k'a = 0) resonance to show detection
     myVg = Energy
-    thetavals = np.linspace(0, 2*np.pi, 499);
-    Tvals = [];
-    for thetaval in thetavals:
+    thetavals = np.linspace(0, 2*np.pi, 49);
+    phivals = np.linspace(0, 2*np.pi, 49);
+    Ttotals = np.zeros((len(thetavals), len(phivals)));
+
+    # iter over entanglement space
+    for ti in range(len(thetavals)):
+        for pi in range(len(phivals)):
+
+            thetaval = thetavals[ti];
+            phival = phivals[pi];
 	
-        source = np.zeros(8);
-        source[1] = np.cos(thetaval);
-        source[2] = np.sin(thetaval);
+            source = np.zeros(8, dtype = complex);
+            source[1] = np.cos(thetaval);
+            source[2] = np.sin(thetaval)*np.exp(complex(0,phival));
 
-        # construct blocks of hamiltonian
-        # now need to have 0's on each end !!!
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
-        for blocki in range(len(hblocks)): # add Vg in SR
-            if(blocki > 0 and blocki < N_SR + 1): # if in SR
-                hblocks[blocki] += myVg*np.eye(np.shape(hblocks[0])[0])
+            # construct blocks of hamiltonian
+            # now need to have 0's on each end !!!
+            hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+            for blocki in range(len(hblocks)): # add Vg in SR
+                if(blocki > 0 and blocki < N_SR + 1): # if in SR
+                    hblocks[blocki] += myVg*np.eye(np.shape(hblocks[0])[0])
 
-        # get data
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
-    Tvals = np.array(Tvals);
-    Ttotals = np.sum(Tvals, axis = 1);
+            # get data
+            Ttotals[ti, pi] = sum(wfm.kernel(hblocks, tblocks, tl, Energy, source));
 
     # plot
-    fig, ax = plt.subplots(projection = "3d");
-    ax.plot_surface(thetavals/np.pi, Ttotals);
+    fig = plt.figure();
+    ax = fig.add_subplot(projection = "3d");
+    ax.plot_surface(thetavals/np.pi, phivals/np.pi, Ttotals, cmap = cm.coolwarm);
     ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
-    ax.set_ylabel("$T$", fontsize = "x-large");
+    ax.set_ylabel("$\phi/np.pi$", fontsize = "x-large");
     ax.set_xticks([0,1,2]);
+    ax.set_yticks([0,1,2]);
     ax.set_xlim(0,2);
-    ax.set_ylim(0,1.05);
+    ax.set_ylim(0,2);
     plt.savefig("my_fig_2d_new");
     raise(Exception);
 

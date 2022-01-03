@@ -66,7 +66,7 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     G = Green(h, th, tl, E, verbose = verbose);
 
     # coefs
-    qivector = np.zeros(np.shape(G)[0]); # go from block space to full space
+    qivector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
     for j in range(len(qi)):
         qivector[j] = qi[j]; # fill from block space
     Gqi = np.dot(G, qivector);
