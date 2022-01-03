@@ -216,8 +216,8 @@ if False: # vary kx0 by varying Vgate
 
     # get data
     kalims = (0.0*ka0,2.1*ka0);
-    kavals = np.linspace(*kalims, 9);
-    Vgvals = E_rho - tl*kavals*kavals;
+    kavals = np.linspace(*kalims, 49);
+    Vgvals = E_rho + 2*tl*np.cos(kavals);
     Tvals = [];
     for Vg in Vgvals:
 
@@ -242,13 +242,13 @@ if False: # vary kx0 by varying Vgate
         data.append(Tvals[:,Ti]); # data has columns of kaval, corresponding T vals
     # save data
     fname = "dat/cicc/"+spinstate+"/";
-    fname +="mu_rhoJa"+str(int(rhoJa))+".npy";
+    fname +="Vg_rhoJa"+str(int(rhoJa))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
     raise(Exception);
     
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -276,26 +276,35 @@ if False: # plot fig 2b data
     axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
     plt.legend(loc = "upper left", fontsize = "large");
-    plt.savefig("my_fig_2a");
-
+    plt.savefig("my_fig_2c");
+    raise(Exception);
 
 ##################################################################################
 #### N_SR = 2 calcs
 
-if True: # vary kx0 by varying Vgate, at low energy
+if False: # vary kx0 by varying Vgate, at low energy
     
+    # incident state
+    theta_param = np.pi/4;
+    phi_param = 3*np.pi/2;
+    source = np.zeros(8);
+    source[1] = np.cos(theta_param);
+    source[2] = np.sin(theta_param);
+    spinstate = "psimin";
+
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
     Jeff = 0.1; # eff heisenberg
 
     # cicc quantitites
     N_SR = 2;
-    factor = 100; # reduces energy so we stay in bottom of band
+    factor = 200; # reduces energy so we stay in bottom of band
     ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
                                     # measured from bottom of the band!!
     rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho));
+    Energy = -2*tl*np.cos(ka0); # incident energy
 
     # diagnostic
     if(verbose):
@@ -303,35 +312,66 @@ if True: # vary kx0 by varying Vgate, at low energy
         print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
         print(" - ka0 = ",ka0);
         print("- rho*J*a = ", rhoJa);
-    # choose boundary condition
-    source = np.zeros(8);
-    source[1] = 1/np.sqrt(2);
-    source[2] = -1/np.sqrt(2);
-    spinstate = "psimin";
 
     # get data
-    kalims = (0.0*ka0,(factor/1)*ka0); # first 1/10th of the zone
-    kavals = np.linspace(*kalims, 499);
+    kalims = (0.0*ka0,(factor/10)*ka0); # first 1/10th of the zone
+    kavals = np.linspace(*kalims, 99);
     Vgvals =  -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
     Tvals = [];
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
         # now need to have 0's on each end !!!
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl*0.4, 1, N_SR, N_SR+2);
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
         for blocki in range(len(hblocks)): # add Vg in SR
             if(blocki > 0 and blocki < N_SR + 1): # if in SR
                 hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
                 
         # get data
-        Energy = -2*tl*np.cos(ka0);
         Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
     Tvals = np.array(Tvals);
+    Ttotals = np.sum(Tvals, axis = 1);
 
     # plot
-    Ttotals = np.sum(Tvals, axis = 1);
-    plt.plot(kavals/np.pi, Ttotals);
+    fig = plt.figure();
+    ax = fig.add_subplot(projection = "3d");
+    axes[0].plot(kavals/np.pi, Ttotals);
+    axes[1].plot(Vgvals, Ttotals);
+    axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
+    axes[0].set_ylabel("$T$", fontsize = "x-large");
     plt.savefig("my_fig_2d");
+
+    # vary theta at Vg = E (k'a = 0) resonance to show detection
+    myVg = Energy
+    thetavals = np.linspace(0, 2*np.pi, 499);
+    Tvals = [];
+    for thetaval in thetavals:
+	
+        source = np.zeros(8);
+        source[1] = np.cos(thetaval);
+        source[2] = np.sin(thetaval);
+
+        # construct blocks of hamiltonian
+        # now need to have 0's on each end !!!
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+        for blocki in range(len(hblocks)): # add Vg in SR
+            if(blocki > 0 and blocki < N_SR + 1): # if in SR
+                hblocks[blocki] += myVg*np.eye(np.shape(hblocks[0])[0])
+
+        # get data
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+    Tvals = np.array(Tvals);
+    Ttotals = np.sum(Tvals, axis = 1);
+
+    # plot
+    fig, ax = plt.subplots(projection = "3d");
+    ax.plot_surface(thetavals/np.pi, Ttotals);
+    ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
+    ax.set_ylabel("$T$", fontsize = "x-large");
+    ax.set_xticks([0,1,2]);
+    ax.set_xlim(0,2);
+    ax.set_ylim(0,1.05);
+    plt.savefig("my_fig_2d_new");
     raise(Exception);
 
 
