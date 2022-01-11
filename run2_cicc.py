@@ -189,14 +189,14 @@ if False: # vary kx0 by varying t', N and ka fixed
     raise(Exception);
 
 
-if False: # vary kx0 by varying Vgate
+if True: # vary kx0 by varying Vgate
     
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
     Jeff = 0.1; # eff heisenberg
 
     # cicc quantitites
-    N_SR = 100;
+    N_SR = 988;
     ka0 = np.pi/(N_SR - 1); # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -217,7 +217,7 @@ if False: # vary kx0 by varying Vgate
 
     # get data
     kalims = (0.0*ka0,2.1*ka0);
-    kavals = np.linspace(*kalims, 49);
+    kavals = np.linspace(*kalims, 199);
     Vgvals = E_rho + 2*tl*np.cos(kavals);
     Tvals = [];
     for Vg in Vgvals:
@@ -249,7 +249,7 @@ if False: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -277,13 +277,13 @@ if False: # plot fig 2b data
     axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
     plt.legend(loc = "upper left", fontsize = "large");
-    plt.savefig("my_fig_2c");
+    plt.show();
     raise(Exception);
 
 ##################################################################################
 #### N_SR = 2 calcs
 
-if True: # vary kx0 by varying Vgate, at low energy
+if False: # vary kx0 by varying Vgate, at low energy
     
     # incident state
     theta_param = np.pi/4;
@@ -340,7 +340,7 @@ if True: # vary kx0 by varying Vgate, at low energy
     axes[1].axvline(Energy);
     axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
-    plt.savefig("my_fig_2d");
+    plt.show();
 
     # vary theta at Vg = E (k'a = 0) resonance to show detection
     myVg = Energy
@@ -379,7 +379,7 @@ if True: # vary kx0 by varying Vgate, at low energy
     ax.set_yticks([0,1,2]);
     ax.set_xlim(0,2);
     ax.set_ylim(0,2);
-    plt.savefig("my_fig_2d_new");
+    plt.show();
     raise(Exception);
 
 
