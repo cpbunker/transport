@@ -137,59 +137,9 @@ if False: # vary kx0 by varing k at fixed N
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
     raise(Exception);
-    
-
-if False: # vary kx0 by varying t', N and ka fixed
-    
-    # tight binding params
-    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
-    Jeff = 0.1; # eff heisenberg
-
-    # cicc quantitites
-    N_SR = 100;
-    kap0 = np.pi/(N_SR - 1); # a' is length defined by hopping t' btwn imps
-                            # ka' = ka'0 = ka0 when t' = t so a' = a
-    E_rho = 2*tl-2*tl*np.cos(kap0); # energy of ka0 wavevector, which determines rhoJa
-                                    # measured from bottom of the band!!
-    rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho));
-
-    # diagnostic
-    if(verbose):
-        print("\nCiccarello inputs")
-        print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
-        print(" - ka'0 = ",kap0);
-        print("- rho*J*a = ", rhoJa);
-    # choose boundary condition
-    source = np.zeros(8);
-    source[1] = 1/np.sqrt(2);
-    source[2] = -1/np.sqrt(2);
-    spinstate = "psimin";
-
-    # get data
-    kaplims = (0.95*kap0,1.05*kap0);
-    kapvals = np.linspace(*kaplims, 9);
-    tpvals = tl*kap0*kap0/(kapvals*kapvals);
-    Tvals = [];
-    for tpi in range(len(tpvals)):
-
-        # construct blocks of hamiltonian
-        # now need to have 0's on each end !!!
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tpvals[tpi], 1, N_SR, N_SR+2);
-        #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
-
-        # get data
-        Energy = -2*tl*np.cos(kap0);
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
-    Tvals = np.array(Tvals);
-
-    # plot
-    Ttotals = np.sum(Tvals, axis = 1);
-    plt.plot(kapvals*(N_SR - 1)/np.pi, Ttotals);
-    plt.show();
-    raise(Exception);
 
 
-if True: # vary kx0 by varying Vgate
+if False: # vary kx0 by varying Vgate
     
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
@@ -249,7 +199,7 @@ if True: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -281,7 +231,7 @@ if True: # plot fig 2b data
     raise(Exception);
 
 ##################################################################################
-#### N_SR = 2 calcs
+#### molecular dimer rgime (N = 2 fixed)
 
 if False: # vary kx0 by varying Vgate, at low energy
     
@@ -299,7 +249,7 @@ if False: # vary kx0 by varying Vgate, at low energy
 
     # cicc quantitites
     N_SR = 2;
-    factor = 200; # reduces energy so we stay in bottom of band
+    factor = 99; # reduces energy so we stay in bottom of band
     ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -383,54 +333,70 @@ if False: # vary kx0 by varying Vgate, at low energy
     raise(Exception);
 
 
-if False: # vary kx0 by varing k at fixed N, t' != t
+if False: # vary kx0 by varing Vg, t' != t
+
+    # incident state
+    theta_param = 3*np.pi/4;
+    phi_param = 0*np.pi/2;
+    source = np.zeros(8);
+    source[1] = np.cos(theta_param);
+    source[2] = np.sin(theta_param);
+    spinstate = "psimin";
 
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
-    Jeff = 0.1;
-    tp = 0.9
+    Jeff = 0.1; # eff heisenberg
 
-    # choose boundary condition
-    source = np.zeros(8);
-    source[1] = 1/np.sqrt(2);
-    source[2] = -1/np.sqrt(2);
-    spinstate = "psimin";
-
-    # cicc inputs
-    N_SR = 179 #100,199,989; # num sites in SR
-                # N_SR = 99, J = 0.1 gives rhoJa \approx 1, Na \approx 20 angstrom
-    kap0 = np.pi/(N_SR-1); # val of ka' (dimensionless) s.t. ka'(N_SR-1)=pi
-    ka0 = kap0*np.sqrt(tp/tl)
+    # cicc quantitites
+    N_SR = 2;
+    factor = 99; # reduces energy so we stay in bottom of band
+    ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
+                            # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
                                     # measured from bottom of the band!!
-    rhoJap = Jeff/(np.pi*np.sqrt(tp*E_rho))
+    rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho));
+    Energy = -2*tl*np.cos(ka0); # incident energy
 
     # diagnostic
     if(verbose):
         print("\nCiccarello inputs")
         print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
         print(" - ka0 = ",ka0);
-        print("- rho*J*a = ", rhoJap);
+        print("- rho*J*a = ", rhoJa);
 
-    # construct blocks of hamiltonian
-    # num sites in SR, imps will be located at site 0, N_SR-1
-    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
-        
     # get data
-    # wfm.Data(): tblocks is hopping in SR, then th = hopping onto SR, then tl = in leads
-    kalims = (0.0*ka0,(N_SR-1)*ka0/5);
-    kavals, Tvals = wfm.Data(source, np.zeros_like(hblocks[0]),-tl*np.eye(np.shape(hblocks[0])[0]),
-                         hblocks, tblocks, np.zeros_like(hblocks[0]), tl, kalims, numpts = 49, retE = False, verbose = verbose);
+    kalims = (0.0*ka0,(factor/10)*ka0); # first 1/10th of the zone
+    kavals = np.linspace(*kalims, 99);
+    Vgvals =  -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
+    Tvals = [];
+    for Vg in Vgvals:
 
-    #
+        # construct blocks of hamiltonian
+        # now need to have 0's on each end !!!
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+        for blocki in range(len(hblocks)): # add Vg in SR
+            if(blocki > 0 and blocki < N_SR + 1): # if in SR
+                hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
+                
+        # get data
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+    Tvals = np.array(Tvals);
     Ttotals = np.sum(Tvals, axis = 1);
-    plt.plot(kavals*(N_SR-1)/np.pi, Ttotals);
-    plt.axvline(ka0*(N_SR-1)/np.pi);
-    plt.show();
-    raise(Exception);
-    
 
-if True: # cicc fig 6 / my fig 3
+    # plot
+    fig, axes = plt.subplots(2)
+    axes[0].plot(kavals/np.pi, Ttotals);
+    axes[1].plot(Vgvals, Ttotals);
+    axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
+    axes[0].set_ylabel("$T$", fontsize = "x-large");
+    plt.show();
+
+
+
+
+plot_6_resonant = True;
+
+if plot_6_resonant: # cicc fig 6 (N = 2 still)
 
     # siam inputs
     tl = 1.0;
@@ -463,7 +429,6 @@ if True: # cicc fig 6 / my fig 3
         # construct hams
         i1, i2 = 1, 1+N0;
         Nsites = i2+2; # 1 lead site on each side
-        print("i1, i2, Nsites = ",i1, i2, Nsites)
         hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
 
         # get T from this setup
@@ -471,19 +436,16 @@ if True: # cicc fig 6 / my fig 3
 
     # plot
     fig, ax = plt.subplots();
-    for el in range(3): ax.plot([-1],[-1]);
     Tvals = np.array(Tvals);
-    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$");
-    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
+    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "y");
+    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "indigo");
     ax.legend(loc = "upper left", fontsize = "large");
 
     # inset
     rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
-    axins = inset_axes(ax, width="40%", height="40%");
-    for el in range(4): axins.plot([-1],[-1]);
-    axins.plot(rhoEvals,Tvals[:,1]);
-    axins.set_xlabel("$E+2*t_l$", fontsize = "x-large");
-    axins.set_ylabel("$T_+$", fontsize = "x-large");
+    axins = inset_axes(ax, width="50%", height="50%");
+    axins.plot(rhoEvals,Tvals[:,1], color = "indigo");
+    axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
     axins.set_xlim(-0.01,0.4);
     axins.set_ylim(0,0.15);
 
@@ -492,21 +454,11 @@ if True: # cicc fig 6 / my fig 3
     ax.set_ylabel("$T$", fontsize = "x-large");
     ax.set_xlim(0.05,2.5);
     ax.set_ylim(0,1.05);
-    plt.savefig("my_fig_3");
-    raise(Exception);
-    
+    if not plot_6_resonant:
+        plt.show();
 
 
-
-
-
-
-
-
-#################################################################
-#### misc
-
-if False: # resonant Rabi with Jz = 0
+if plot_6_resonant: # add fig 6 data at switching resonance (Jz = 0)
 
     # tight binding params
     tl = 1.0;
@@ -546,71 +498,74 @@ if False: # resonant Rabi with Jz = 0
 
     # plot
     Tvals = np.array(Tvals);
-    fig, axes = plt.subplots(2);
-    axes[0].plot(N0vals, Tvals[:,4], label = "$|i\,>$");
-    axes[0].plot(N0vals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
-    axes[0].set_xlabel("$k(N-1)a/\pi$");
-    #axes[1].plot(np.arccos(np.power(1+np.power(k_rho,2),-1/2)), Tvals[:,1]+Tvals[:,2]);
-    plt.legend();
-    plt.show();
-    raise(Exception);
-        
-
-
-if False: # vary kx0 by varying t'
-    
-    # tight binding params
-    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
-    tp = 0.8; # hyb between imps
-    Jeff = 0.1; # eff heisenberg
-
-    # cicc quantitites
-    
-    for Np in [8,6,2,1]:
-        fig, ax = plt.subplots();
-        kaN = np.pi/Np
-        ka0 = kaN*np.sqrt(tp/tl); # val of ka s.t. ka' = pi
-                                    # a' is length defined by hopping t' btwn imps
-        E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
-                                        # measured from bottom of the band!!
-        rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho));
-
-        # diagnostic
-        if(verbose):
-            print("\nCiccarello inputs")
-            print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
-            print(" - ka0 = ",ka0);
-            print("- rho*J*a = ", rhoJa);
-        # choose boundary condition
-        source = np.zeros(8);
-        source[1] = 1/np.sqrt(2);
-        source[2] = -1/np.sqrt(2);
-
-        # construct blocks of hamiltonian
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, Np, Np+1);
-        #hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis=0);
-        #hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis=0);
-        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
-
-        # get data
-        kalims = (0*kaN,np.pi);
-        kavals, Tvals = wfm.Data(source, np.zeros_like(hblocks[0]),-tl*np.eye(np.shape(hblocks[0])[0]),
-                                 hblocks, tblocks, np.zeros_like(hblocks[0]), tl, kalims, numpts = 49, retE = False, verbose = verbose)
-        Ttotals = np.sum(Tvals, axis = 1);
-        kapvals = kavals*np.sqrt(tl/tp); # convert ka to ka'
-        
-        # plot data
-        ax.plot(kavals/np.pi, Ttotals, label = Np);#"$\\rho Ja$ = "+str(int(10*rhoJa)/10));
-        #if tp == 1.0: ax.axvline(Np*np.sqrt(tl/tp)/np.pi, linestyle = "dashed", color = "black", label = "$kNa'=\pi$");
-
-        # format and show
-        ax.set_xlabel("$ka/\pi$");
-        ax.set_ylabel("$T$");
-        ax.set_ylim(0,1.05);
-        ax.set_title(Np);
-        ax.minorticks_on();
-        ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-        ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-        plt.legend(loc = "upper left");
+    if not plot_6_resonant:
+        fig, axes = plt.subplots(2);
+        axes[0].plot(N0vals, Tvals[:,4], label = "$|i\,>$");
+        axes[0].plot(N0vals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
+        axes[0].set_xlabel("$k(N-1)a/\pi$");
+        #axes[1].plot(np.arccos(np.power(1+np.power(k_rho,2),-1/2)), Tvals[:,1]+Tvals[:,2]);
+        plt.legend();
         plt.show();
+
+    # siam inputs
+    tl = 1.0;
+    Jeff = 0.1;
+
+    # choose boundary condition
+    source = np.zeros(8); # incident up, imps = down, down
+    source[4] = 1;
+    spinstate = "baa"
+
+    # iter over rhoJ, getting T
+    Tvals = [];
+    rhoJvals = np.linspace(0.05,2.5,40)
+    for rhoJa in rhoJvals:
+
+        # energy and K fixed by J, rhoJ
+        E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+                                                # this E is measured from bottom of band !!!
+        k_rho = np.arccos((E_rho-2*tl)/(-2*tl));
+        print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
+        print("ka = ",k_rho);
+        print("rhoJa = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
+        E_rho = E_rho - 2*tl; # measure from mu
+        
+        # location of impurities, fixed by kx0 = pi
+        kx0 = 0*np.pi;
+        N0 = max(1,int(kx0/(k_rho)));
+        if verbose: print("N0 = ",N0);
+
+        # construct hams
+        i1, i2 = 1, 1+N0;
+        Nsites = i2+2; # 1 lead site on each side
+        hblocks, tblocks = wfm.utils.h_cicc_hacked(Jeff, tl, Nsites, dimer = True);
+
+        # get T from this setup
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+
+    # plot
+    if not plot_6_resonant:
+        fig, ax = plt.subplots();
+        axins = inset_axes(ax, width="50%", height="50%");
+    Tvals = np.array(Tvals);
+    ax.plot(rhoJvals, Tvals[:,4], color = "y", linestyle = "dashed");
+    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], color = "indigo", linestyle = "dashed");
+    ax.legend(loc = "upper left", fontsize = "large");
+
+    # inset
+    rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+    axins.plot(rhoEvals,Tvals[:,1], color = "indigo", linestyle = "dashed");
+    axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
+    xlim, ylim = (0,0.01), (0.05,0.15);
+    axins.set_xlim(*xlim);
+    axins.set_xticks([*xlim]);
+    axins.set_ylim(*ylim);
+    axins.set_yticks([*ylim]);
+
+    # format
+    ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+    ax.set_ylabel("$T$", fontsize = "x-large");
+    ax.set_xlim(0.05,2.5);
+    ax.set_ylim(0,1.05);
+    plt.show();
     
