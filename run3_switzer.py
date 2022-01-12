@@ -69,8 +69,8 @@ if True: # fig 6 ie T vs rho J a
     tp = 1.0;
 
     # eric inputs
-    JK1, JK2 = 0.1, 0.1;
-    for D1 in [JK1/2,JK1,3*JK1/2,2*JK1]:
+    JK1, JK2 = 0.01, 0.01;
+    for D1 in [JK1/100]: # -abs(JK1/2)*np.array(range(1,9)):
         D2 = D1;
 
         # lead eigenstates
@@ -79,22 +79,20 @@ if True: # fig 6 ie T vs rho J a
         hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
         hSR_JK0 = np.diagflat(np.diagonal(hSR_JK0)); # force diagonal
         if(verbose): print("JK1 = JK2 = 0 hamiltonian\n",hSR_JK0);
-        hSR_JK0 = np.zeros_like(hSR_JK0);
 
         # physics of scattering region -> array of [H at octo, H at tetra]
         hblocks, tblocks = [], []; # on site and hopping blocks in the SR
         for impi in range(2):
             if impi == 0: # on imp 1
-                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK1, JK2);
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK1, 0);
             else: # on imp 2
-                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK1, JK2);
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, 0, JK2);
 
             # convert to many body form
             h = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
 
             # entangle the me up states into eric's me, s12, m12> = up, 2, 1> state
             h = wfm.utils.entangle(h, *pair);
-            if(verbose>3): print("\nEntangled hamiltonian\n", h);
 
             # add to list
             if(impi == 0):
@@ -111,8 +109,8 @@ if True: # fig 6 ie T vs rho J a
         hblocks.append(np.copy(hSR_JK0)); # RL eigenstates
         hblocks = np.array(hblocks);
         tblocks = np.array(tblocks);
-        for blocki in [1,2]: # set mu_LL = 0 for source channel
-            hblocks[blocki] -= hblocks[2][2,2]*np.eye(np.shape(hblocks[blocki])[0])
+        for blocki in range(len(hblocks)): # set mu_LL = 0 for source channel
+            hblocks[blocki] -= hSR_JK0[sourcei,sourcei]*np.eye(np.shape(hblocks[blocki])[0])
         if (verbose):
             print("\nD1 = ",D1,", JK1 = ",JK1,", H[0,0] = ",D1+JK1/2,"H[2,2] = ",D1+JK1/2+D1 - JK1*3/2);
             print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
@@ -145,15 +143,15 @@ if True: # fig 6 ie T vs rho J a
         
         # inset
         rhoEvals = JK1*JK1/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
-        axins = inset_axes(ax, width="40%", height="40%");
+        axins = inset_axes(ax, width="50%", height="30%", loc = "upper right");
         axins.plot(rhoEvals,Tvals[:,0], color = "indigo");
         axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
-        xlim, ylim = (0,0.01), (0.05,0.15);
+        xlim, ylim = (-0.000005,0.001), (0.0,1.0);
         axins.set_xlim(*xlim);
-        axins.set_xticks([*xlim]);
+        axins.set_xticks([0,0.001]);
         axins.set_ylim(*ylim);
         axins.set_yticks([*ylim]);
-
+        
         # format
         ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
         ax.set_ylabel("$T$", fontsize = "x-large");
