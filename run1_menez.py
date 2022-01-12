@@ -93,7 +93,7 @@ if False: # sigma dot S
 
 
 
-if True: # 2 site hubbard that downfolds into J sigma dot S
+if False: # 2 site hubbard that downfolds into J sigma dot S
 
     # add'l physical terms
     Vg = 10;
@@ -164,49 +164,55 @@ if True: # 2 site hubbard that downfolds into J sigma dot S
 
 
 
-if False: # onsite U downfolds into J sigma dot S
+if True: # onsite U 
 
     # add'l physical terms
     Vg = -0.1;
-    U = 4.0;
-    # 1 site SR
-    # first quantum num is spin of the incident e (up/down)
-    # second is spin of imp e (up/down)
-    # third is whether imp e is in SR or not (yes/no)
-    h_SR = np.array([[-Vg,0,0,0,0], # up up no
-                     [0,-Vg,0,0,-th], # up down no
-                     [0,0,-Vg,0,-th], # down up no
-                     [0,0,0,-Vg,0],    # down down no
-                     [0,-th,-th,0,U-2*Vg]]); # up down yes
+    U = 0.2;
+    Jeff = 2*(Vg+U);
+
+    # imp ham
+    hSR = np.array([[ Vg + U, Vg+U],
+                     [Vg+U, Vg + U]]);
+
+    # hybridization to imp
+    V_hyb = -th*np.array([[1,0],
+                          [0,1]]);   
 
     # source = up electron, down impurity
     source = np.zeros(np.shape(hSR)[0]);
-    source[4] = 1;
+    source[0] = 1;
 
     # package together hamiltonian blocks
     hblocks = np.array([np.zeros_like(hSR), hSR, np.zeros_like(hSR)]);
-    tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
+    tblocks = np.array([np.copy(V_hyb), np.copy(V_hyb)])
     if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
     # sweep over range of energies
     # def range
-    Emin, Emax = -1.999*tl, -1.8*tl
-    numE = 30;
+    Emin, Emax = -1.999*tl, -1.5*tl
+    numE = 99;
     Evals = np.linspace(Emin, Emax, numE, dtype = complex);
     Tvals = [];
     for E in Evals:
         Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
-
-    # plot Tvals vs E
     Tvals = np.array(Tvals);
-    sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's');
+    
+    # plot Tvals vs E
+    fig, ax = plt.subplots();
+    ax.plot(Evals + 2*tl,Tvals[:,0], label = "up");
+    ax.plot(Evals + 2*tl,Tvals[:,1], label = "down");
 
     # menezes prediction in the continuous case
     # all the definitions, vectorized funcs of E
     kappa = np.lib.scimath.sqrt(Evals);
     jprime = Jeff/(4*kappa);
-    l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
-     label = "$J/t$ = "+str(Jeff)); 
+    ax.plot(Evals+2*tl, Jeff*Jeff/(16*(Evals+2*tl)), label = "$J/t$ = "+str(Jeff));
+
+    # format and show
+    ax.set_xlim(Emin+2*tl, Emax+2*tl);
+    plt.legend();
+    plt.show();
 
 
 
