@@ -146,7 +146,7 @@ if False: # vary kx0 by varying Vgate
     Jeff = 0.1; # eff heisenberg
 
     # cicc quantitites
-    N_SR = 988;
+    N_SR = 199 #988;
     ka0 = np.pi/(N_SR - 1); # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -167,8 +167,8 @@ if False: # vary kx0 by varying Vgate
 
     # get data
     kalims = (0.0*ka0,2.1*ka0);
-    kavals = np.linspace(*kalims, 199);
-    Vgvals = E_rho + 2*tl*np.cos(kavals);
+    kavals = np.linspace(*kalims, 299);
+    Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
     Tvals = [];
     for Vg in Vgvals:
 
@@ -199,7 +199,7 @@ if False: # vary kx0 by varying Vgate
     raise(Exception);
     
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -216,6 +216,7 @@ if False: # plot fig 2b data
 
         # convert T
         Ttotals = np.sum(Tvals, axis = 0);
+        print(">>>",np.shape(Ttotals));
 
         # plot
         axes[0].plot(kNavals/np.pi, Ttotals, label = "$\\rho  \, J a= $"+str(int(rhoJa)));
