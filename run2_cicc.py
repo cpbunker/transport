@@ -197,7 +197,7 @@ if False: # vary kx0 by varing k at fixed N
     if verbose: print("Saved data to "+fname);
     raise(Exception);
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -346,108 +346,6 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     ax.set_zlim(0,1);
     ax.set_zticks([0.5,1]);
     print(tl, th, tp, myVg);
-    plt.show();
-    raise(Exception);
-
-# will delete in next commit
-if False: # vary k'x0 by varying Vg for low energy \Psi^-
-    
-    # incident state
-    theta_param = 3*np.pi/4;
-    phi_param = 0;
-    source = np.zeros(8);
-    source[1] = np.cos(theta_param);
-    source[2] = np.sin(theta_param);
-    spinstate = "psimin";
-
-    # tight binding params
-    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
-    Jeff = 0.1; # eff heisenberg
-
-    # cicc quantitites
-    N_SR = 2;
-    factor = 100; # reduces energy so we stay in bottom of band
-    ka0 = np.pi/(N_SR - 1)/factor; # a' is length defined by hopping t' btwn imps
-                            # ka' = ka'0 = ka0 when t' = t so a' = a
-    E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
-                                    # measured from bottom of the band!!
-    rhoJa = Jeff/(np.pi*np.sqrt(tl*E_rho));
-
-    # diagnostic
-    if(verbose):
-        print("\nCiccarello inputs")
-        print(" - E, J, E/J = ",E_rho, Jeff, E_rho/Jeff);
-        print(" - ka0/pi = ",ka0/np.pi);
-        print("- rho*J*a = ", rhoJa);
-
-    # get data
-    kalims = (0.0*ka0,(factor/2)*ka0); # first 1/10th of the zone
-    kavals = np.linspace(*kalims, 99);
-    Vgvals =  -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
-    Tvals = [];
-    for Vg in Vgvals:
-
-        # construct blocks of hamiltonian
-        # lead blocks and Vhybs not filled yet !
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
-        for blocki in range(len(hblocks)): # add Vg in SR
-            if(blocki > 0 and blocki < N_SR + 1): # if in SR
-                hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
-                
-        # get data
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, -2*tl*np.cos(ka0), source));
-    Tvals = np.array(Tvals);
-    Ttotals = np.sum(Tvals, axis = 1);
-
-    # plot
-    fig, axes = plt.subplots(2)
-    axes[0].plot(kavals/np.pi, Ttotals);
-    axes[1].plot(Vgvals, Ttotals);
-    axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
-    axes[0].set_ylabel("$T$", fontsize = "x-large");
-    plt.show();
-
-    #### vary theta, phi
-    #### -> detection !
-    myVg = -2*tl*np.cos(ka0) + 2*tl;
-    thetavals = np.linspace(0, np.pi, 49);
-    phivals = np.linspace(0, np.pi, 49);
-    Ttotals = np.zeros((len(thetavals), len(phivals)));
-
-    # construct blocks of hamiltonian
-    # now need to have 0's on each end !!!
-    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
-    for blocki in range(len(hblocks)): # add Vg in SR
-        if(blocki > 0 and blocki < N_SR + 1): # if in SR
-            hblocks[blocki] += myVg*np.eye(np.shape(hblocks[0])[0])
-
-    # iter over entanglement space
-    for ti in range(len(thetavals)):
-        for pi in range(len(phivals)):
-
-            thetaval = thetavals[ti];
-            phival = phivals[pi];
-	
-            source = np.zeros(8, dtype = complex);
-            source[1] = np.cos(thetaval);
-            source[2] = np.sin(thetaval)*np.exp(complex(0,phival));
-
-            # get data
-            Ttotals[ti, pi] = sum(wfm.kernel(hblocks, tblocks, tl, -2*tl*np.cos(ka0), source));
-
-    # plot
-    fig = plt.figure();
-    ax = fig.add_subplot(projection = "3d");
-    thetavals, phivals = np.meshgrid(thetavals, phivals);
-    ax.plot_surface(thetavals/np.pi, phivals/np.pi, Ttotals.T, cmap = cm.coolwarm);
-    ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
-    ax.set_ylabel("$\phi/\pi$", fontsize = "x-large");
-    ax.set_xlim(0,1);
-    ax.set_xticks([0,1/4,1/2,3/4,1]);
-    ax.set_ylim(0,1);
-    ax.set_yticks([0,1/4,1/2,3/4,1]);
-    ax.set_zlim(0.5,1);
-    ax.set_zticks([0.5,1]);
     plt.show();
     raise(Exception);
 
