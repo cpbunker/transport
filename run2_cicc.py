@@ -38,7 +38,7 @@ if False: # original version of 2b (varying x0 by varying N)
     Jeff = 0.1;
 
     # cicc inputs
-    rhoJa = 1.0; # integer that cicc param rho*J is set equal to
+    rhoJa = 10.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
@@ -232,7 +232,7 @@ if False: # plot fig 2b data
 ##################################################################################
 #### molecular dimer regime (N = 2 fixed)
 
-if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
+if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
     # incident state
     theta_param = 3*np.pi/4;
@@ -245,12 +245,12 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
     Jeff = 0.1; # eff heisenberg
-    th = 1.0
+    th = 0.7
     tp = 1.0
     N_SR = 2;
 
     factor = 100;
-    ka0 = (np.pi/(N_SR-1)/factor); # free space wavevector, should be << pi
+    ka0 =  np.pi/(N_SR - 1)/factor; # free space wavevector, should be << pi
                                     # increasing just broadens the Vg peak
     kpa0 = np.pi/(N_SR - 1)/factor; # wavevector in gated SR
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -267,7 +267,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     # get data
     kpalims = (0.0*kpa0,(factor/2)*kpa0); # k'a in first 1/2 of the zone
     kpavals = np.linspace(*kpalims, 99);
-    Vgvals =  -2*tl*np.cos(kpa0) + 2*tl*np.cos(kpavals);
+    Vgvals =  -2*tl*np.cos(ka0) + 2*tp*np.cos(kpavals);
     Tvals = [];
     for Vg in Vgvals:
 
@@ -294,13 +294,14 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     axes[1].plot(Vgvals, Ttotals);
     axes[0].set_xlabel("$k'a/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
+    axes[1].axvline(-2*tl*np.cos(ka0) + 2*tp, color = "black");
     plt.show();
     del Vg, Tvals, Ttotals, fig, axes;
 
     #### vary theta, phi
     #### -> detection !
     if((th == tl) and (tp == tl)):
-        myVg = -2*np.cos(ka0) + 2*tl;
+        myVg = -2*tl*np.cos(ka0) + 2*tp;
     else:
         myVg = -0.80
     thetavals = np.linspace(0, np.pi, 49);
@@ -353,7 +354,6 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
 # in dimer case, compare T vs rho J a peak under resonant
 plot_6_resonant = False;
-
 if plot_6_resonant: # cicc fig 6 (N = 2 still)
 
     # siam inputs
