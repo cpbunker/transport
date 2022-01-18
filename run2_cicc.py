@@ -245,7 +245,7 @@ if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
     Jeff = 0.1; # eff heisenberg
-    th = 0.7
+    th = 1.0
     tp = 1.0
     N_SR = 2;
 
@@ -345,7 +345,7 @@ if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     ax.set_ylim(0,1);
     ax.set_yticks([0,1/4,1/2,3/4,1]);
     ax.set_zlim(0,1);
-    ax.set_zticks([0.5,1]);
+    ax.set_zticks([0,1]);
     print(tl, th, tp, myVg);
     plt.show();
     raise(Exception);
