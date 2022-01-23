@@ -29,7 +29,7 @@ verbose = 5
 
 
 ##################################################################################
-#### data and plots for cicc Fig 2b
+#### data and plots for cicc Fig 2b (transparency)
     
 if False: # original version of 2b (varying x0 by varying N)
 
@@ -66,6 +66,7 @@ if False: # original version of 2b (varying x0 by varying N)
     for N0 in N0vals:
 
         # construct hams
+        # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
         hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N0, N0+2);
 
         # get T from this setup
@@ -120,7 +121,7 @@ if False: # vary kx0 by varying Vgate
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
-        # now need to have 0's on each end !!!
+        # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
         hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
         for blocki in range(len(hblocks)): # add Vg in SR
             if(blocki > 0 and blocki < N_SR + 1): # if in SR
@@ -174,14 +175,11 @@ if False: # vary kx0 by varing k at fixed N
         print("- rho*J*a = ", rhoJa);
 
     # construct blocks of hamiltonian
-    # num sites in SR, imps will be located at site 0, N_SR-1
-    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 0, N_SR-1, N_SR);
+    # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
+    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+    raise Exception("switch from Data() to kernel()")
         
-    # get data
-    # wfm.Data(): tblocks is hopping in SR, then th = hopping onto SR, then tl = in leads
-    kalims = (0.0*ka0,2.1*ka0);
-    kavals, Tvals = wfm.Data(source, np.zeros_like(hblocks[0]),-tl*np.eye(np.shape(hblocks[0])[0]),
-                         hblocks, tblocks, np.zeros_like(hblocks[0]), tl, kalims, numpts = 49, retE = False, verbose = verbose);
+
     
     # package into one array
     if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
@@ -232,7 +230,7 @@ if False: # plot fig 2b data
 ##################################################################################
 #### molecular dimer regime (N = 2 fixed)
 
-if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
+if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
     # incident state
     theta_param = 3*np.pi/4;
@@ -272,7 +270,7 @@ if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
-        # lead blocks and Vhybs not filled yet !
+        # t's vary, so have to construct hblocks, tblocks list by hand
         hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
         hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis = 0); # LL block
         hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis = 0); # RL block
@@ -351,8 +349,7 @@ if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     raise(Exception);
 
 
-
-# in dimer case, compare T vs rho J a peak under resonant
+# still in dimer case, compare T vs rho J a peak under resonant
 plot_6_resonant = False;
 if plot_6_resonant: # cicc fig 6 (N = 2 still)
 
@@ -385,9 +382,9 @@ if plot_6_resonant: # cicc fig 6 (N = 2 still)
         if verbose: print("N0 = ",N0);
 
         # construct hams
+        # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = 1, 1+N0;
-        Nsites = i2+2; # 1 lead site on each side
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, Nsites);
+        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, i2+2);
 
         # get T from this setup
         Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
@@ -433,30 +430,34 @@ if plot_6_resonant: # add fig 6 data at switching resonance (Jz = 0)
     Omega = k_rho*Jeff/(2*E_rho);
     Jtau = np.arccos(np.power(1+Omega*Omega,-1/2));
     print("Omega = ",Omega,"\nJtau = ",Jtau);
-    
-    # choose boundary condition
-    source = np.zeros(8);
-    source[4] = 1; # down up up
-    
-    # mesh of x0s (= N0s * alat)
-    kx0max = 1.0*np.pi;
-    N0max = int(kx0max/(k_rho)); # a = 1
-    print("N0max = ",N0max);
-    N0vals = np.linspace(0, N0max, 49, dtype = int); # always integer
 
-    # iter over all the differen impurity spacings, get transmission
-    Tvals = []
-    for N0 in N0vals:
-
-        # construct hams
-        hblocks, tblocks = wfm.utils.h_cicc_hacked(Jeff, tl, N0+2);
-        
-        # get T from this setup
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
-
-    # plot
-    Tvals = np.array(Tvals);
+    # modulate N, with both imps on all sites in SR, in the old way
     if not plot_6_resonant:
+        
+        # choose boundary condition
+        source = np.zeros(8);
+        source[4] = 1; # down up up
+        
+        # mesh of x0s (= N0s * alat)
+        kx0max = 1.0*np.pi;
+        N0max = int(kx0max/(k_rho)); # a = 1
+        print("N0max = ",N0max);
+        N0vals = np.linspace(0, N0max, 49, dtype = int); # always integer
+
+        # iter over all the differen impurity spacings, get transmission
+        Tvals = []
+        for N0 in N0vals:
+
+            # construct hams
+            # hacked = no Jz
+            # when dimer=False, puts both imp hams on all SR sites, as in old way
+            hblocks, tblocks = wfm.utils.h_cicc_hacked(Jeff, tl, N0+2, dimer = False);
+            
+            # get T from this setup
+            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+
+        # plot
+        Tvals = np.array(Tvals);
         fig, axes = plt.subplots(2);
         axes[0].plot(N0vals, Tvals[:,4], label = "$|i\,>$");
         axes[0].plot(N0vals, Tvals[:,1]+Tvals[:,2], label = "$|+>$");
@@ -464,6 +465,8 @@ if plot_6_resonant: # add fig 6 data at switching resonance (Jz = 0)
         #axes[1].plot(np.arccos(np.power(1+np.power(k_rho,2),-1/2)), Tvals[:,1]+Tvals[:,2]);
         plt.legend();
         plt.show();
+
+        del hblocks, tblocks;
 
     # siam inputs
     tl = 1.0;
@@ -501,7 +504,7 @@ if plot_6_resonant: # add fig 6 data at switching resonance (Jz = 0)
         # get T from this setup
         Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
 
-    # plot
+    # plot with and without Jz against rhoJa to compare
     if not plot_6_resonant:
         fig, ax = plt.subplots();
         axins = inset_axes(ax, width="50%", height="50%");

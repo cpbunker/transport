@@ -120,17 +120,12 @@ def sweep_param_space(ps, d, n):
 
 def h_cicc_eff(J, t, i1, i2, Nsites, Jz = True):
     '''
-    construct hams
-    formalism works by
-    1) having 3 by 3 block's each block is differant site for itinerant e
-          H_LL T    0
-          T    H_SR T
-          0    T    H_RL        T is hopping between leads and scattering region
-    2) all other dof's encoded into blocks
+    Construct tight binding blocks (each block has many body dofs) to implement
+    cicc model in quasi many body GF method
 
     Args:
     - J, float, eff heisenberg coupling
-    - t, float, hopping btwn sites
+    - t, float, hopping btwn sites - corresponds to t' in my setup
     = i1, int, site of 1st imp
     - i2, int, site of 2nd imp
     - Nsites, int, total num sites in SR
@@ -179,6 +174,9 @@ def h_cicc_eff(J, t, i1, i2, Nsites, Jz = True):
     return h_cicc, tblocks;
 
 def h_cicc_hacked(J,t,N, dimer = False):
+    '''
+    Version of h_cicc_eff
+    '''
 
     # J is anisotropic
     Jz = 0;

@@ -47,7 +47,7 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[0][Vi,Vi];
         lamL = (E-V)/(-2*tl);
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # reflected
         SigmaL.append( -tl/LambdaLminus);
 
     # self energies at RL
@@ -55,11 +55,10 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted
         SigmaR.append( -tl*LambdaRplus);
 
     # check self energies
-    #print(">>>>",tl,E,np.diagonal(h[0]), np.diagonal(h[-1]),SigmaR[0]);
     assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
 
     # green's function
@@ -150,7 +149,7 @@ def Hprime(h, th, tl, E, verbose = 0):
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[0][Vi,Vi];
         lamL = (E-V)/(-2*tl); 
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # incident
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # reflected
         SigmaL = -tl/LambdaLminus; 
         Hp[Vi,Vi] += SigmaL;
         SigmaLs.append(SigmaL);
@@ -161,7 +160,7 @@ def Hprime(h, th, tl, E, verbose = 0):
     for Vi in range(n_loc_dof): # iters over all bcs
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted wavevector
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted
         SigmaR = -tl*LambdaRplus;
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
         SigmaRs.append(SigmaR);
@@ -216,6 +215,8 @@ def Data(source, h_LL, V_hyb, h_SR, V_SR, h_RL, tl, lims, numpts = 21, retE = Tr
     - numpts, int, how many x axis vals
     - Energy, bool, tells whether to do vs ka or vs E
     '''
+
+    raise Exception("Deprecated");
 
     # check inputs
     assert(np.shape(source)[0] == np.shape(h_SR[0])[0]);
