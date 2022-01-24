@@ -195,7 +195,7 @@ if False: # vary kx0 by varing k at fixed N
     if verbose: print("Saved data to "+fname);
     raise(Exception);
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();

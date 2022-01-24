@@ -32,15 +32,12 @@ spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
-#dets32 = [[0,2,8],[0,3,7],[0,4,6],[1,2,7],[1,3,6]]; # total spin 3/2 subspace
 dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # tight binding params
 tl = 0.0056; # lead hopping, in Hartree
 th = 0.0056; # SR hybridization
 tp = 0.0056;  # hopping between imps
-#epsO = -0.5; # octahedral Co onsite energy
-#epsT = -1.0; # tetrahedral Co onsite energy
 
 # Ab initio params, in meV:
 Ha2meV = 27.211386*1000; # 1 hartree is 27 eV
@@ -49,9 +46,133 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0.031/Ha2meV;
-JKreson = (4/5)*((DO+DT) - (3/4)*Jx + (3/4)*Jz);
+JK = DT;
 
-# initialize source vector
+# simplify for now
+Jx, Jz = 0, 0;
+DO, DT, An = 0,0,0;
+
+# entangle pair
+pair = (0,1); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
+if(verbose):
+    print("\nEntangled pair:");
+    pair_strs = [];
+    for pi in pair:
+        pair_str = "|";
+        for si in dets52[pi]: pair_str += state_strs[si];
+        pair_str += ">";
+        print(pair_str);
+        pair_strs.append(pair_str);
+
+# lead eigenstates (JKO = JKT = 0)
+h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
+hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
+hSR_JK0 = wfm.utils.entangle(hSR_JK0, 0, 1);
+print("JK = 0 hamiltonian\n",hSR_JK0); # |i> decoupled when A=0
+leadEs, Udiag = np.linalg.eigh(hSR_JK0);
+hSR_JK0_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR_JK0, Udiag));
+print("diag JK = 0 hamiltonian\n",hSR_JK0_diag); # Udiag -> lead eigenstate basis
+
+#########################################################
+#### detection for N_SR = 2 regime
+
+# peak for psi^- state
+# vary kx0 by varying Vgate
+if True: 
+    
+    # tight binding params
+    tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
+
+    # cicc quantitites
+    N_SR = 200;
+    ka0 = np.pi/(N_SR - 1); # a' is length defined by hopping t' btwn imps
+                            # ka' = ka'0 = ka0 when t' = t so a' = a
+    E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
+                                    # measured from bottom of the band!!
+    rhoJa = JK/(np.pi*np.sqrt(tl*E_rho));
+
+    # diagnostic
+    if(verbose):
+        print("\nCiccarello inputs")
+        print(" - E, J, E/J = ",E_rho, JK, E_rho/JK);
+        print(" - ka0 = ",ka0);
+        print("- rho*J*a = ", rhoJa);
+        
+    # Psi^- boundary condition
+    source = np.zeros(3);
+    sourcei = 1;
+    source[sourcei] = 1;
+    spinstate = "psimin"
+
+    # construct LL
+    hLL = np.copy(hSR_JK0);
+    hLL += (-1)*hLL[sourcei,sourcei]*np.eye(np.shape(hLL)[0]); # const shift to set mu_LL = 0
+    hblocks, tblocks = [hLL], [-th*np.eye(np.shape(hLL)[0])];
+    if(verbose):
+        print("LL hamiltonian\n", hLL);
+
+    # construct SR
+    for Coi in range(1,N_SR+1): # add SR blocks as octo, tetra impurities
+
+        # define all physical params
+        JKO, JKT = 0, 0;
+        if Coi == 1: JKO = JK; # J S dot sigma is onsite only
+        elif Coi == N_SR: JKT = JK;     # so do JKO, then JKT
+        params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+        
+        # construct second quantized ham
+        h1e, g2e = wfm.utils.h_dimer_2q(params); 
+
+        # construct h_SR (determinant basis)
+        h_SR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+        h_SR = wfm.utils.entangle(h_SR, *pair);
+        hblocks.append(np.copy(h_SR));
+
+        # hopping between impurities
+        if(Coi > 1): tblocks.append(-tp*np.eye(np.shape(h_SR)[0]));
+
+    # construct RL
+    hRL = np.copy(hLL);
+    hblocks.append(hRL);
+    tblocks.append(-th*np.eye(np.shape(hLL)[0]));
+    hblocks, tblocks = np.array(hblocks), np.array(tblocks);
+    if(verbose):
+        print("RL hamiltonian\n", hRL);
+
+    # get data
+    kalims = (0.0*ka0,2.1*ka0);
+    kavals = np.linspace(*kalims, 299);
+    Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
+    Tvals = [];
+    for Vg in Vgvals:              
+        for blocki in range(len(hblocks)): # add Vg in SR
+            if(blocki > 0 and blocki < N_SR + 1): # ie if in SR
+                hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
+                
+        # get data
+        Energy = -2*tl*np.cos(ka0);
+        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+    Tvals = np.array(Tvals);
+
+    # package into one array
+    if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
+    info = np.zeros_like(kavals);
+    info[0], info[1], info[2], info[3] = tl, JK, rhoJa, ka0; # save info we need
+    data = [info, kavals*(N_SR-1)];
+    for Ti in range(np.shape(Tvals)[1]):
+        data.append(Tvals[:,Ti]); # data has columns of kaval, corresponding T vals
+    # save data
+    fname = "dat/dimer/"+spinstate+"/";
+    fname +="Vg_rhoJa"+str(int(rhoJa))+".npy";
+    np.save(fname,np.array(data));
+    if verbose: print("Saved data to "+fname);
+    raise(Exception);
+
+
+#########################################################
+####
+
+# initialize source vector in down, 3/2, 3/2 state
 sourcei = 16; # |down, 3/2, 3/2 >
 assert(sourcei >= 0 and sourcei < len(dets));
 source = np.zeros(len(dets));
@@ -60,33 +181,6 @@ source_str = "|";
 for si in dets[sourcei]: source_str += state_strs[si];
 source_str += ">";
 if(verbose): print("\nSource:\n"+source_str);
-
-# initialize pair
-pair = (1,4); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
-if(verbose):
-    print("\nEntangled pair:");
-    pair_strs = [];
-    for pi in pair:
-        pair_str = "|";
-        for si in dets[pi]: pair_str += state_strs[si];
-        pair_str += ">";
-        print(pair_str);
-        pair_strs.append(pair_str);
-
-# lead eigenstates
-h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
-hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
-hSR_JK0 = wfm.utils.entangle(hSR_JK0, 0, 1);
-print("JK = 0 hamiltonian\n",hSR_JK0);
-hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states);
-hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
-hLL = np.diagflat(np.diagonal(hSR_JK0)); # force diagonal
-hLL += (-1)*hLL[sourcei,sourcei]*np.eye(np.shape(hLL)[0]);
-hLL = np.zeros_like(hLL);
-hRL = np.copy(hLL);
-
-#########################################################
-#### plots in N_SR = 2 regime
 
 if False: # fig 6 ie T vs rho J a
 

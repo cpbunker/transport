@@ -32,7 +32,9 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     assert( len(qi) == np.shape(h[0])[0] );
     for hi in [0, -1]: # check that RL and LL hams are diagonal
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi]))
-        assert(not np.any(isdiag));
+        if(not np.any(isdiag)):
+            pass;
+            #raise Exception("Not diagonal\n"+str(h[hi]))
     for i in range(len(qi)): # check source channel mu_LL = 0
         if(qi[i] != 0):
             assert(h[0,i,i] == 0);
