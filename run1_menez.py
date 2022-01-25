@@ -29,7 +29,7 @@ tl = 1.0;
 th = 1.0;
 Delta = 0.0; # zeeman splitting on imp
 
-if True: # sigma dot S
+if False: # sigma dot S
 
     fig, ax = plt.subplots();
     for Jeff in [0.1,0.2,0.4]:
@@ -91,42 +91,48 @@ if True: # sigma dot S
     plt.show();
 
 
-if False: # full 2 site hubbard treatment (downfolds to S dot S)
+if True: # full 2 site hubbard treatment (downfolds to S dot S)
 
     # add'l physical terms
-    eps1 = 1;
-    eps2 = 31;
+    Vg = 17
     U = 100.0;
-    Jeff = 2*th*th*U/((U-(eps2-eps1))*(eps2-eps1));
+    Jeff = 2*th*th*U/((U-Vg)*Vg); # better for U >> Vg
+    print("Jeff = ",Jeff);
 
     # SR physics: site 1 is in chain, site 2 is imp with large U
-    hSR = np.array([[2*eps1,0,-th,th,0,0], # up down, -
-                    [0,eps1+eps2,0, 0,0,0], # up, up
-                   [-th,0,eps1+eps2, 0,0,-th], # up, down (source)
-                    [th,0, 0, eps1+eps2,0, th], # down, up
-                    [0, 0, 0,  0,eps1+eps2,0],    # down, down
-                    [0,0,-th,th,0,U+2*eps2]]); # -, up down
-    #hSR += Jeff/4*np.eye(np.shape(hSR)[0]);
+    hSR = np.array([[0,0,-th,th,0,0], # up down, -
+                    [0,Vg,0, 0,0,0], # up, up
+                   [-th,0,Vg, 0,0,-th], # up, down (source)
+                    [th,0, 0, Vg,0, th], # down, up
+                    [0, 0, 0,  0,Vg,0],    # down, down
+                    [0,0,-th,th,0,U+2*Vg]]); # -, up down
 
     # lead physics
-    hLL = (eps1+eps2)*np.eye(*np.shape(hSR));
-    hRL = (eps1+eps2)*np.eye(*np.shape(hSR));
-
-    # shift by gate voltage so source is at zero
-    hLL += -(eps1+eps2)*np.eye(*np.shape(hLL));
-    hSR += -(eps1+eps2)*np.eye(*np.shape(hSR));
-    hRL += -(eps1+eps2)*np.eye(*np.shape(hRL));
-    print("hLL = \n",hLL);
-    print("hSR = \n",hSR);
+    # leads also have gate voltage except 0th channel
+    hLL = Vg*np.eye(*np.shape(hSR));
+    hLL[0,0] = 0;
+    hRL = Vg*np.eye(*np.shape(hSR));
+    hRL[0,0] = 0;
 
     # do the downfolding explicitly
-    matA = hSR[2:4,2:4];
+    matA = np.array([[0, 0],[0,0]]);
     matB = np.array([[-th,-th],[th,th]]);
     matC = np.array([[-th,th],[-th,th]]);
-    matD = np.array([[2*eps1, 0],[0,U+2*eps2]]);
-    mat_downfolded = matA - np.dot(matB, np.dot(np.linalg.inv(matD), matC)); 
+    matD = np.array([[-Vg, 0],[0,U+Vg]]);
+    mat_downfolded = matA - np.dot(matB, np.dot(np.linalg.inv(matD), matC))  
     print("mat_df = \n",mat_downfolded);
-    assert False;
+    Jeff = 2*abs(mat_downfolded[0,0]);
+    print("Jeff = ",Jeff);
+    mat_downfolded += np.eye(2)*Jeff/4
+    print("mat_df = \n",mat_downfolded);
+
+    # shift by gate voltage so source is at zero
+    hLL += -Vg*np.eye(*np.shape(hLL));
+    hSR += -Vg*np.eye(*np.shape(hSR));
+    hSR[2,2] += (Jeff/4); hSR[3,3] += (Jeff/4); # cancel out the -1/4 I term
+    hRL += -Vg*np.eye(*np.shape(hRL));
+    print("hLL = \n",hLL);
+    print("hSR = \n",hSR);
 
     # package together hamiltonian blocks
     hblocks = np.array([hLL, hSR, hRL]);
@@ -155,7 +161,6 @@ if False: # full 2 site hubbard treatment (downfolds to S dot S)
     ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
 
     # format and plot
-    print("Jeff = ",Jeff);
     ax.set_xlim(0,0.2);
     ax.set_xticks([0,0.1,0.2]);
     ax.set_xlabel("$E+2t$");
