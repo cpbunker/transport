@@ -29,7 +29,7 @@ tl = 1.0;
 th = 1.0;
 Delta = 0.0; # zeeman splitting on imp
 
-if False: # sigma dot S
+if True: # sigma dot S
 
     fig, ax = plt.subplots();
     for Jeff in [0.1,0.2,0.4]:
@@ -60,13 +60,16 @@ if False: # sigma dot S
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.999*tl, -1.8*tl
+        Emin, Emax = -1.99*tl, -1.8*tl
         numE = 30;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals = [];
         for E in Evals:
-            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
-
+            if(Jeff == 0.1 and E == Evals[5]):
+                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, verbose = verbose));
+            else:
+                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+                
         # plot Tvals vs E
         Tvals = np.array(Tvals);
         #ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
@@ -74,50 +77,56 @@ if False: # sigma dot S
 
         # menezes prediction in the continuous case
         # all the definitions, vectorized funcs of E
-        kappa = np.lib.scimath.sqrt(Evals);
+        kappa = np.lib.scimath.sqrt(np.linspace(-1.9999, Emax, numE, dtype = complex));
         jprime = Jeff/(4*kappa);
-        l1, = ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
-         label = "$J/t$ = "+str(Jeff));
+        ax.plot(np.linspace(-1.9999*tl, Emax, 100, dtype = complex)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
 
     # format and plot
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    ax.set_xlabel("$E+2t_l $");
-    ax.set_ylabel("$T_{down}$");
     ax.set_xlim(0,0.2);
+    ax.set_xticks([0,0.1,0.2]);
+    ax.set_xlabel("$E+2t$");
     ax.set_ylim(0,0.2);
-    if(Delta): ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
-    else: ax.legend();
+    ax.set_yticks([0,0.1,0.2]);
+    ax.set_ylabel("$T_{flip}$");
     plt.show();
 
 
-
-if False: # 2 site hubbard that downfolds into J sigma dot S
+if False: # full 2 site hubbard treatment (downfolds to S dot S)
 
     # add'l physical terms
-    Vg = 10;
+    eps1 = 1;
+    eps2 = 31;
     U = 100.0;
-    Jeff = 2*th*th*U/((U-Vg)*Vg);
+    Jeff = 2*th*th*U/((U-(eps2-eps1))*(eps2-eps1));
 
-    # SR physics
-    hSR = np.array([[0,0,-th,th,0,0], # up down, -
-                    [0,Vg,0, 0,0,0], # up, up
-                   [-th,0,Vg, 0,0,-th], # up, down (source)
-                    [th,0, 0, Vg,0, th], # down, up
-                    [0, 0, 0,  0,Vg,0],    # down, down
-                    [0,0,-th,th,0,U+2*Vg]]); # -, up down
+    # SR physics: site 1 is in chain, site 2 is imp with large U
+    hSR = np.array([[2*eps1,0,-th,th,0,0], # up down, -
+                    [0,eps1+eps2,0, 0,0,0], # up, up
+                   [-th,0,eps1+eps2, 0,0,-th], # up, down (source)
+                    [th,0, 0, eps1+eps2,0, th], # down, up
+                    [0, 0, 0,  0,eps1+eps2,0],    # down, down
+                    [0,0,-th,th,0,U+2*eps2]]); # -, up down
+    #hSR += Jeff/4*np.eye(np.shape(hSR)[0]);
 
-    # leads also have gate voltage
-    hLL = Vg*np.eye(*np.shape(hSR));
-    hLL[0,0] = 0;
-    hRL = Vg*np.eye(*np.shape(hSR));
-    hRL[0,0] = 0;
+    # lead physics
+    hLL = (eps1+eps2)*np.eye(*np.shape(hSR));
+    hRL = (eps1+eps2)*np.eye(*np.shape(hSR));
 
     # shift by gate voltage so source is at zero
-    hLL += -Vg*np.eye(*np.shape(hLL));
-    hSR += -Vg*np.eye(*np.shape(hSR));
-    hRL += -Vg*np.eye(*np.shape(hRL));
+    hLL += -(eps1+eps2)*np.eye(*np.shape(hLL));
+    hSR += -(eps1+eps2)*np.eye(*np.shape(hSR));
+    hRL += -(eps1+eps2)*np.eye(*np.shape(hRL));
+    print("hLL = \n",hLL);
+    print("hSR = \n",hSR);
+
+    # do the downfolding explicitly
+    matA = hSR[2:4,2:4];
+    matB = np.array([[-th,-th],[th,th]]);
+    matC = np.array([[-th,th],[-th,th]]);
+    matD = np.array([[2*eps1, 0],[0,U+2*eps2]]);
+    mat_downfolded = matA - np.dot(matB, np.dot(np.linalg.inv(matD), matC)); 
+    print("mat_df = \n",mat_downfolded);
+    assert False;
 
     # package together hamiltonian blocks
     hblocks = np.array([hLL, hSR, hRL]);
@@ -130,7 +139,7 @@ if False: # 2 site hubbard that downfolds into J sigma dot S
     
     # sweep over range of energies
     # def range
-    Emin, Emax = -1.999*tl, -1.8*tl
+    Emin, Emax = -1.99*tl, -1.8*tl
     numE = 30;
     Evals = np.linspace(Emin, Emax, numE, dtype = complex);
     Tvals = [];
@@ -143,28 +152,20 @@ if False: # 2 site hubbard that downfolds into J sigma dot S
     ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's');
 
     # menezes prediction in the continuous case
-    # all the definitions, vectorized funcs of E
-    kappa = np.lib.scimath.sqrt(Evals);
-    jprime = Jeff/(4*kappa);
-    ax.plot(np.linspace(Emin,Emax,100)+2*tl, Jeff*Jeff/(16*(np.linspace(Emin,Emax,100)+2*tl)),
-     label = "$J/t$ = "+str(int(100*Jeff)/100)); 
+    ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
 
     # format and plot
-    ax.minorticks_on();
-    ax.grid(which='major', color='#DDDDDD', linewidth=0.8);
-    ax.grid(which='minor', color='#EEEEEE', linestyle=':', linewidth=0.5);
-    ax.set_xlabel("$E+2t_l $");
-    ax.set_ylabel("$T_{down}$");
+    print("Jeff = ",Jeff);
     ax.set_xlim(0,0.2);
+    ax.set_xticks([0,0.1,0.2]);
+    ax.set_xlabel("$E+2t$");
     ax.set_ylim(0,0.2);
-    if(Delta): ax.legend(title = "$J = $"+str(Jeff)+"\n$\Delta$ = "+str(Delta));
-    else: ax.legend();
+    ax.set_yticks([0,0.1,0.2]);
+    ax.set_ylabel("$T_{flip}$");
     plt.show();
 
 
-
-
-if True: # onsite U 
+if False: # onsite U 
 
     # add'l physical terms
     Vg = -0.1;

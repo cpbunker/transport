@@ -15,28 +15,28 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, th, tl, E, qi, verbose = 0):
+def kernel(h, th, tl, E, qj, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     h, block diag hamiltonian matrices
     th, block off diag hopping matrix 
     tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
     E, energy of the incident electron
-    qi, source vector (loc dof only)
+    qj, source vector (on site dof only, e.g. spin)
     '''
 
     # check inputs
     assert( isinstance(h, np.ndarray));
     assert( isinstance(th, np.ndarray));
-    assert( isinstance(qi, np.ndarray));
-    assert( len(qi) == np.shape(h[0])[0] );
+    assert( isinstance(qj, np.ndarray));
+    assert( len(qj) == np.shape(h[0])[0] );
     for hi in [0, -1]: # check that RL and LL hams are diagonal
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi]))
         if(not np.any(isdiag)):
             pass;
             #raise Exception("Not diagonal\n"+str(h[hi]))
-    for i in range(len(qi)): # check source channel mu_LL = 0
-        if(qi[i] != 0):
+    for i in range(len(qj)): # check source channel mu_LL = 0
+        if(qj[i] != 0):
             assert(h[0,i,i] == 0);
 
     # unpack
@@ -67,18 +67,24 @@ def kernel(h, th, tl, E, qi, verbose = 0):
     G = Green(h, th, tl, E, verbose = verbose);
 
     # coefs
-    qivector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
-    for j in range(len(qi)):
-        qivector[j] = qi[j]; # fill from block space
-    Gqi = np.dot(G, qivector);
-    if verbose > 3: print("\nG*q[0] = ",Gqi[0]);
+    qjvector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
+    for j in range(len(qj)):
+        qjvector[j] = qj[j]; # fill from block space
+    Gqj = np.dot(G, qjvector);
+    if verbose > 3:
+        print(Gqj);
+        for sigmai in range(len(SigmaL)):
+            rcoef = (-2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]); # zwierzycki Eq 17
+            print("\nR = ",rcoef*np.conj(rcoef));
+            tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
+            print("T = ",tcoef*np.conj(tcoef));
 
     # transmission coefs
     Ts = np.zeros(n_loc_dof, dtype = float); # must be real
     for Ti in range(n_loc_dof):
         
         # Caroli expression 
-        caroli = 4*np.imag(SigmaR[Ti])*Gqi[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqi.conj()[Ti-n_loc_dof];
+        caroli = 4*np.imag(SigmaR[Ti])*Gqj[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqj.conj()[Ti-n_loc_dof];
         assert( abs(np.imag(caroli)) <= 1e-10); # screen for errors
         Ts[Ti] = np.real(caroli);
 
@@ -169,10 +175,17 @@ def Hprime(h, th, tl, E, verbose = 0):
     del lamR, LambdaRplus, SigmaR;
     
     SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
-    if verbose > 3: print("\nH' = \n",Hp);
-    if verbose > 3: print("SigmaL, SigmaR = ",SigmaLs, SigmaRs);
-    if verbose > 3: print("ka_R = ",np.imag(SigmaRs)/tl );
-    if verbose > 3: print("KE_r = ",-2*tl*np.cos(np.imag(SigmaRs)/tl) );
+    if verbose > 3:
+        print("\nH' = \n",Hp);
+        print("\nE = ",E);
+        ka_L = np.arccos((E-h[0,0,0])/(-2*tl));
+        print("ka_L = ",ka_L);
+        print("KE_L = ",-2*tl*np.cos(ka_L) );
+        print("SigmaL = ",SigmaLs);
+        ka_R = np.arccos((E-h[-1,0,0])/(-2*tl));
+        print("ka_R = ",ka_R);
+        print("KE_R = ",-2*tl*np.cos(ka_R) );
+        print("SigmaR = ",SigmaRs);
     return Hp;
 
 
