@@ -219,11 +219,10 @@ if True: # plot fig 2b data
 
     # format and show
     axes[0].set_xlim(0.0,2.1);
-    axes[0].set_ylim(0.0,1.05);
+    axes[0].set_ylim(0.0,1);
     axes[0].set_xticks([0,1,2]);
-    axes[0].set_xlabel("$k'a(N-1)/\pi$", fontsize = "x-large");
+    axes[0].set_xlabel("$ka(N-1)/\pi$", fontsize = "x-large");
     axes[0].set_ylabel("$T$", fontsize = "x-large");
-    plt.legend(loc = "upper left", fontsize = "large");
     plt.show();
     raise(Exception);
 

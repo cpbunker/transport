@@ -27,9 +27,9 @@ verbose = 5;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = 0.0; # zeeman splitting on imp
+Delta = 0.1; # zeeman splitting on imp
 
-if False: # sigma dot S
+if True: # sigma dot S
 
     fig, ax = plt.subplots();
     for Jeff in [0.1,0.2,0.4]:
@@ -84,89 +84,89 @@ if False: # sigma dot S
     # format and plot
     ax.set_xlim(0,0.2);
     ax.set_xticks([0,0.1,0.2]);
-    ax.set_xlabel("$E+2t$");
+    ax.set_xlabel("$E+2t$", fontsize = "x-large");
     ax.set_ylim(0,0.2);
     ax.set_yticks([0,0.1,0.2]);
-    ax.set_ylabel("$T_{flip}$");
+    ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
     plt.show();
 
 
-if True: # full 2 site hubbard treatment (downfolds to S dot S)
+if False: # full 2 site hubbard treatment (downfolds to S dot S)
 
-    # add'l physical terms
-    Vg = 17
-    U = 100.0;
-    Jeff = 2*th*th*U/((U-Vg)*Vg); # better for U >> Vg
-    print("Jeff = ",Jeff);
-
-    # SR physics: site 1 is in chain, site 2 is imp with large U
-    hSR = np.array([[0,0,-th,th,0,0], # up down, -
-                    [0,Vg,0, 0,0,0], # up, up
-                   [-th,0,Vg, 0,0,-th], # up, down (source)
-                    [th,0, 0, Vg,0, th], # down, up
-                    [0, 0, 0,  0,Vg,0],    # down, down
-                    [0,0,-th,th,0,U+2*Vg]]); # -, up down
-
-    # lead physics
-    # leads also have gate voltage except 0th channel
-    hLL = Vg*np.eye(*np.shape(hSR));
-    hLL[0,0] = 0;
-    hRL = Vg*np.eye(*np.shape(hSR));
-    hRL[0,0] = 0;
-
-    # do the downfolding explicitly
-    matA = np.array([[0, 0],[0,0]]);
-    matB = np.array([[-th,-th],[th,th]]);
-    matC = np.array([[-th,th],[-th,th]]);
-    matD = np.array([[-Vg, 0],[0,U+Vg]]);
-    mat_downfolded = matA - np.dot(matB, np.dot(np.linalg.inv(matD), matC))  
-    print("mat_df = \n",mat_downfolded);
-    Jeff = 2*abs(mat_downfolded[0,0]);
-    print("Jeff = ",Jeff);
-    mat_downfolded += np.eye(2)*Jeff/4
-    print("mat_df = \n",mat_downfolded);
-
-    # shift by gate voltage so source is at zero
-    hLL += -Vg*np.eye(*np.shape(hLL));
-    hSR += -Vg*np.eye(*np.shape(hSR));
-    hSR[2,2] += (Jeff/4); hSR[3,3] += (Jeff/4); # cancel out the -1/4 I term
-    hRL += -Vg*np.eye(*np.shape(hRL));
-    print("hLL = \n",hLL);
-    print("hSR = \n",hSR);
-
-    # package together hamiltonian blocks
-    hblocks = np.array([hLL, hSR, hRL]);
-    tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
-    if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
-
-    # source = up electron, down impurity
-    source = np.zeros(np.shape(hSR)[0]);
-    source[2] = 1;
-    
-    # sweep over range of energies
-    # def range
-    Emin, Emax = -1.99*tl, -1.8*tl
-    numE = 30;
-    Evals = np.linspace(Emin, Emax, numE, dtype = complex);
-    Tvals = [];
-    for E in Evals:
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
-
-    # plot Tvals vs E
     fig, ax = plt.subplots();
-    Tvals = np.array(Tvals);
-    ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's');
+    for Vg in [17,9]:
 
-    # menezes prediction in the continuous case
-    ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
+        # parameters
+        U = 100.0;
+        Jeff = 2*th*th*U/((U-Vg)*Vg); # better for U >> Vg
+        print("Jeff = ",Jeff);
+
+        # SR physics: site 1 is in chain, site 2 is imp with large U
+        hSR = np.array([[0,0,-th,th,0,0], # up down, -
+                        [0,Vg,0, 0,0,0], # up, up
+                       [-th,0,Vg, 0,0,-th], # up, down (source)
+                        [th,0, 0, Vg,0, th], # down, up
+                        [0, 0, 0,  0,Vg,0],    # down, down
+                        [0,0,-th,th,0,U+2*Vg]]); # -, up down
+
+        # lead physics
+        # leads also have gate voltage except 0th channel
+        hLL = Vg*np.eye(*np.shape(hSR));
+        hLL[0,0] = 0;
+        hRL = Vg*np.eye(*np.shape(hSR));
+        hRL[0,0] = 0;
+
+        # do the downfolding explicitly
+        matA = np.array([[0, 0],[0,0]]);
+        matB = np.array([[-th,-th],[th,th]]);
+        matC = np.array([[-th,th],[-th,th]]);
+        matD = np.array([[-Vg, 0],[0,U+Vg]]);
+        mat_downfolded = matA - np.dot(matB, np.dot(np.linalg.inv(matD), matC))  
+        print("mat_df = \n",mat_downfolded);
+        Jeff = 2*abs(mat_downfolded[0,0]);
+        print("Jeff = ",Jeff);
+        mat_downfolded += np.eye(2)*Jeff/4
+        print("mat_df = \n",mat_downfolded);
+
+        # shift by gate voltage so source is at zero
+        hLL += -Vg*np.eye(*np.shape(hLL));
+        hSR += -Vg*np.eye(*np.shape(hSR));
+        hRL += -Vg*np.eye(*np.shape(hRL));
+        print("hLL = \n",hLL);
+        print("hSR = \n",hSR);
+
+        # package together hamiltonian blocks
+        hblocks = np.array([hLL, hSR, hRL]);
+        tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
+        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+
+        # source = up electron, down impurity
+        source = np.zeros(np.shape(hSR)[0]);
+        source[2] = 1;
+        
+        # sweep over range of energies
+        # def range
+        Emin, Emax = -1.99*tl, -1.8*tl
+        numE = 30;
+        Evals = np.linspace(Emin, Emax, numE, dtype = complex);
+        Tvals = [];
+        for E in Evals:
+            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+
+        # plot Tvals vs E
+        Tvals = np.array(Tvals);
+        ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's');
+
+        # menezes prediction in the continuous case
+        ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
 
     # format and plot
     ax.set_xlim(0,0.2);
     ax.set_xticks([0,0.1,0.2]);
-    ax.set_xlabel("$E+2t$");
+    ax.set_xlabel("$E+2t$", fontsize = "x-large");
     ax.set_ylim(0,0.2);
     ax.set_yticks([0,0.1,0.2]);
-    ax.set_ylabel("$T_{flip}$");
+    ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
     plt.show();
 
 
