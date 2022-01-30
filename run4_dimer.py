@@ -14,15 +14,11 @@ from transport.wfm import utils
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import itertools
-
-import sys
-import time
 
 #### top level
 #np.set_printoptions(precision = 4, suppress = True);
 plt.style.use("seaborn-dark-palette");
-verbose = 4;
+verbose = 5;
 
 #### setup
 
@@ -31,7 +27,7 @@ species = np.array([1,1,1]); # num of each species, which are one e, elec, spin-
 spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
-dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
+#dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
 dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # tight binding params
@@ -45,12 +41,24 @@ Jx = 0.209/Ha2meV; # convert to hartree
 Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
-An = 0.031/Ha2meV;
-JK = DT;
+An = 0
+JK = DO;
 
-# simplify for now
-Jx, Jz = 0, 0;
-DO, DT, An = 0,0,0;
+if False:
+    Jx = 0/Ha2meV;
+    Jz = 0/Ha2meV;
+    DO = 0/Ha2meV;
+    DT = 0/Ha2meV;
+
+# initialize source vector in down, 3/2, 3/2 state
+sourcei = 2; # |down, 3/2, 3/2 >
+assert(sourcei >= 0 and sourcei < len(dets52));
+source = np.zeros(len(dets52));
+source[sourcei] = 1;
+source_str = "|";
+for si in dets52[sourcei]: source_str += state_strs[si];
+source_str += ">";
+if(verbose): print("\nSource:\n"+source_str);
 
 # entangle pair
 pair = (0,1); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
@@ -65,20 +73,172 @@ if(verbose):
         pair_strs.append(pair_str);
 
 # lead eigenstates (JKO = JKT = 0)
-h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0, 0)); 
+h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0,0)); 
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
-hSR_JK0 = wfm.utils.entangle(hSR_JK0, 0, 1);
-print("JK = 0 hamiltonian\n",hSR_JK0); # |i> decoupled when A=0
+print("\nUnentangled real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0)); # |i> decoupled when A=0
 leadEs, Udiag = np.linalg.eigh(hSR_JK0);
+print("\n eigenstates:");
+for coli in range(len(leadEs)): print(np.real(Udiag.T[coli]), Ha2meV*leadEs[coli]);
 hSR_JK0_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR_JK0, Udiag));
-print("diag JK = 0 hamiltonian\n",hSR_JK0_diag); # Udiag -> lead eigenstate basis
+print("\nDiagonal real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0_diag)); # Udiag -> lead eigenstate basis
+print("\n",Ha2meV*np.real(wfm.utils.entangle(hSR_JK0_diag, *pair)));
+
+#########################################################
+#### generation
+
+if True: # fig 6 ie T vs rho J a
+
+    # plot at diff JK
+    for DeltaK in -JK*np.array([1]):
+
+        # 2 site SR
+        fig, ax = plt.subplots();
+        hblocks, tblocks = [hSR_JK0_diag], [-th*np.eye(np.shape(hSR_JK0_diag)[0])]; # on site and hopping blocks in the SR
+        for Coi in range(2):
+
+            # define all physical params
+            JKO, JKT = 0, 0;
+            if Coi == 0: JKO = JK+DeltaK/2; # J S dot sigma is onsite only
+            else: JKT = JK-DeltaK/2;
+            params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+            # construct second quantized ham
+            h1e, g2e = wfm.utils.h_dimer_2q(params); 
+
+            # construct h_SR (determinant basis)
+            hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+
+            # diagonalize lead states
+            hSR_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR, Udiag));
+            if(verbose and Coi == 0):
+                print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
+                print("\nDiagonal hamiltonian, in meV\n", Ha2meV*np.real(hSR));
+
+            # hopping between sites
+            V_SR = -tp*np.eye(np.shape(hSR)[0])
+            
+            # add to blocks list
+            hblocks.append(np.copy(hSR));
+            if(Coi == 1): tblocks.append(np.copy(V_SR));
+
+        hblocks.append(hSR_JK0_diag);
+        tblocks.append(-th*np.eye(np.shape(hSR_JK0_diag)[0]));
+        hblocks = np.array(hblocks);
+        tblocks = np.array(tblocks);
+
+        # const energy shift to set hLL[sourcei,sourcei] = 0
+        E_shift = hblocks[0,sourcei,sourcei];
+        for hb in hblocks:
+            hb += -E_shift*np.eye(np.shape(hblocks[0])[0]);
+        for hb in hblocks: print(Ha2meV*np.real(hb));
+
+        # iter over rhoJ, getting T
+        Tvals = [];
+        rhoJvals = np.linspace(0.01,4.0,49);
+        Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
+        for rhoi in range(len(rhoJvals)):
+
+            # energy
+            rhoJa = rhoJvals[rhoi];
+            Energy = Erhovals[rhoi] - 2*tl; # measure from mu
+            k_rho = np.arccos(Energy/(-2*tl));
+            if(verbose > 4):
+                print("\nCiccarello inputs");
+                print("E/t, JK/t, Erho/JK1 = ",Energy/tl + 2, JK/tl, (Energy + 2*tl)/JK);
+                print("ka = ",k_rho);
+                print("rhoJa = ", abs(JK/np.pi)/np.sqrt((Energy+2*tl)*tl));
+
+            # T (Energy from 0)
+            Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+            
+        # plot
+        Tvals = np.array(Tvals);
+        ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
+        ax.plot(rhoJvals, Tvals[:,pair[0]], label = "$|+>$", color = "black", linestyle = "dashed");
+        ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$", color = "black", linestyle = "dotted");
+
+        # format and show
+        ax.set_xlim(min(rhoJvals),max(rhoJvals));
+        ax.set_xticks([0,1,2,3,4]);
+        ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+        ax.set_ylim(0,1);
+        ax.set_yticks([0,1]);
+        ax.set_ylabel("$T$", fontsize = "x-large");
+        plt.show();
+
+    # end sweep over JK
+    raise(Exception);
+
+# plot T+ vs energy
+if False: 
+    
+    # sweep over JK
+    for JK in DO*np.array([1.0]):
+
+        # physics of scattering region -> array of [H at octo, H at tetra]
+        hblocks, tblocks = [], []; # on site and hopping blocks in the SR
+        for Coi in range(2):
+
+            # define all physical params
+            JKO, JKT = 0, 0;
+            if Coi == 0: JKO = JK; # J S dot sigma is onsite only
+            else: JKT = JK;
+            params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+            
+            # construct second quantized ham
+            h1e, g2e = wfm.utils.h_dimer_2q(params); 
+
+            # construct h_SR (determinant basis)
+            h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
+            h_SR = wfm.utils.entangle(h_SR, *pair);
+            if(verbose > 4):
+                h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+                print("\nUnentangled hamiltonian\n", h_SR_sub);
+                h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
+                print("\nEntangled hamiltonian\n", h_SR_sub);
+
+            # hopping between sites
+            V_SR = -tp*np.eye(np.shape(h_SR)[0])
+            
+            # add to blocks list
+            hblocks.append(np.copy(h_SR));
+            if(Coi == 1): tblocks.append(np.copy(V_SR));
+
+        if(verbose): print("shape(hblocks) = ", np.shape(hblocks));
+
+        # get data
+        Elims = -1.9999*tl, -1.99*tl;
+        Evals, Tvals = wfm.Data(source, hLL, -th*np.eye(np.shape(hLL)[0]),
+                        hblocks, tblocks, hRL, tl, Elims, numpts = 99, retE = True);
+
+        # first plot is just source and entangled pair
+        fig, ax = plt.subplots();
+        #ax.plot(Evals/tl+2,Tvals[:,sourcei], label = "$|i>$");
+        ax.plot(Evals/tl+2,Tvals[:,pair[0]], label = "$|+>$");
+        
+        # second plot is contamination
+        contamination = np.zeros_like(Tvals[:,0]);
+        for contami in range(len(dets)):
+            if((contami != pair[0]) and (dets[contami][0] != dets[sourcei][0])):
+                contamination += Tvals[:, contami];
+        #contamination = contamination/(contamination+Tvals[:,pair[0]]); 
+        ax.plot(Evals/tl+2, contamination, color = "black", label = "Contam.");
+        
+        # format
+        ax.set_xlim(min(Evals/tl+2), max(Evals/tl+2));
+        ax.set_ylim(0,0.1);
+        ax.set_xlabel("$E+2t_l$", fontsize = "x-large");
+        ax.set_ylabel("$T$", fontsize = "x-large");
+        ax.legend(loc = 'upper right', fontsize = "large");
+        plt.show();
+        raise(Exception);
+
 
 #########################################################
 #### detection for N_SR = 2 regime
 
 # peak for psi^- state
 # vary kx0 by varying Vgate
-if True: 
+if False: 
     
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
@@ -167,169 +327,6 @@ if True:
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
     raise(Exception);
-
-
-#########################################################
-####
-
-# initialize source vector in down, 3/2, 3/2 state
-sourcei = 16; # |down, 3/2, 3/2 >
-assert(sourcei >= 0 and sourcei < len(dets));
-source = np.zeros(len(dets));
-source[sourcei] = 1;
-source_str = "|";
-for si in dets[sourcei]: source_str += state_strs[si];
-source_str += ">";
-if(verbose): print("\nSource:\n"+source_str);
-
-if False: # fig 6 ie T vs rho J a
-
-    # plot at diff JK
-    fig, ax = plt.subplots();
-    for JK in DO*np.array([1.5,2.5,3.65,4.5,5.5]):
-
-        # 2 site SR
-        hblocks, tblocks = [hLL], [-th*np.eye(np.shape(hLL)[0])]; # on site and hopping blocks in the SR
-        for Coi in range(2):
-
-            # define all physical params
-            JKO, JKT = 0, 0;
-            if Coi == 0: JKO = JK; # J S dot sigma is onsite only
-            else: JKT = JK;
-            params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-            
-            # construct second quantized ham
-            h1e, g2e = wfm.utils.h_dimer_2q(params); 
-
-            # construct h_SR (determinant basis)
-            h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
-            h_SR = wfm.utils.entangle(h_SR, *pair);
-            if(verbose > 4):
-                h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
-                print("\nUnentangled hamiltonian\n", h_SR_sub);
-                h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
-                print("\nEntangled hamiltonian\n", h_SR_sub);
-
-            # hopping between sites
-            V_SR = -tp*np.eye(np.shape(h_SR)[0])
-            
-            # add to blocks list
-            hblocks.append(np.copy(h_SR));
-            if(Coi == 1): tblocks.append(np.copy(V_SR));
-
-        hblocks.append(hRL);
-        tblocks.append(-th*np.eye(np.shape(hLL)[0]));
-        hblocks = np.array(hblocks);
-        tblocks = np.array(tblocks);
-
-        # iter over rhoJ, getting T
-        Tvals = [];
-        rhoJvals = np.linspace(0.01,5.5,49);
-        Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
-        #Elims = -1.9999*tl, -1.99*tl;
-        #Erhovals = np.linspace(*Elims, 49) + 2*tl; # bottom of band
-        #rhoJvals = np.pi/np.sqrt(tl*Erhovals);
-        for rhoi in range(len(rhoJvals)):
-
-            # energy
-            rhoJa = rhoJvals[rhoi];
-            E_rho = Erhovals[rhoi];
-            k_rho = np.arccos((E_rho-2*tl)/(-2*tl));
-            if verbose > 4:
-                print("E, E - 2t, JK1, E/JK1 = ",E_rho/tl, E_rho/tl -2, JK, E_rho/JK);
-                print("ka = ",k_rho);
-                print("rhoJa = ", abs(JK/np.pi)/np.sqrt(E_rho*tl));
-
-            # T (Energy from 0)
-            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho -2*tl, source));
-            
-        # plot
-        Tvals = np.array(Tvals);
-        #ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$");
-        ax.plot(rhoJvals, Tvals[:,pair[0]], label = str(JK/JKreson)+" "+str(JK/DO));
-        #ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$");
-
-    # end sweep over JK
-    # format and show
-    ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
-    ax.set_ylabel("$T_+$", fontsize = "x-large");
-    ax.set_xlim(min(rhoJvals),max(rhoJvals));
-    ax.set_ylim(0,0.2);
-    ax.legend(title = "$J_K /D_O$ = ",loc = "upper right", fontsize = "large");
-    plt.show();
-
-
-
-
-
-
-
-
-
-
-            
-
-if True: #plot vs energy
-    
-    # sweep over JK
-    for JK in DO*np.array([1.0]):
-
-        # physics of scattering region -> array of [H at octo, H at tetra]
-        hblocks, tblocks = [], []; # on site and hopping blocks in the SR
-        for Coi in range(2):
-
-            # define all physical params
-            JKO, JKT = 0, 0;
-            if Coi == 0: JKO = JK; # J S dot sigma is onsite only
-            else: JKT = JK;
-            params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-            
-            # construct second quantized ham
-            h1e, g2e = wfm.utils.h_dimer_2q(params); 
-
-            # construct h_SR (determinant basis)
-            h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
-            h_SR = wfm.utils.entangle(h_SR, *pair);
-            if(verbose > 4):
-                h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
-                print("\nUnentangled hamiltonian\n", h_SR_sub);
-                h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
-                print("\nEntangled hamiltonian\n", h_SR_sub);
-
-            # hopping between sites
-            V_SR = -tp*np.eye(np.shape(h_SR)[0])
-            
-            # add to blocks list
-            hblocks.append(np.copy(h_SR));
-            if(Coi == 1): tblocks.append(np.copy(V_SR));
-
-        if(verbose): print("shape(hblocks) = ", np.shape(hblocks));
-
-        # get data
-        Elims = -1.9999*tl, -1.99*tl;
-        Evals, Tvals = wfm.Data(source, hLL, -th*np.eye(np.shape(hLL)[0]),
-                        hblocks, tblocks, hRL, tl, Elims, numpts = 99, retE = True);
-
-        # first plot is just source and entangled pair
-        fig, ax = plt.subplots();
-        #ax.plot(Evals/tl+2,Tvals[:,sourcei], label = "$|i>$");
-        ax.plot(Evals/tl+2,Tvals[:,pair[0]], label = "$|+>$");
-        
-        # second plot is contamination
-        contamination = np.zeros_like(Tvals[:,0]);
-        for contami in range(len(dets)):
-            if((contami != pair[0]) and (dets[contami][0] != dets[sourcei][0])):
-                contamination += Tvals[:, contami];
-        #contamination = contamination/(contamination+Tvals[:,pair[0]]); 
-        ax.plot(Evals/tl+2, contamination, color = "black", label = "Contam.");
-        
-        # format
-        ax.set_xlim(min(Evals/tl+2), max(Evals/tl+2));
-        ax.set_ylim(0,0.1);
-        ax.set_xlabel("$E+2t_l$", fontsize = "x-large");
-        ax.set_ylabel("$T$", fontsize = "x-large");
-        ax.legend(loc = 'upper right', fontsize = "large");
-        plt.show();
 
 
 

@@ -195,7 +195,7 @@ if False: # vary kx0 by varing k at fixed N
     if verbose: print("Saved data to "+fname);
     raise(Exception);
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -335,21 +335,22 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     ax = fig.add_subplot(projection = "3d");
     thetavals, phivals = np.meshgrid(thetavals, phivals);
     ax.plot_surface(thetavals/np.pi, phivals/np.pi, Ttotals.T, cmap = cm.coolwarm);
-    ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
-    ax.set_ylabel("$\phi/\pi$", fontsize = "x-large");
     ax.set_xlim(0,1);
     ax.set_xticks([0,1/4,1/2,3/4,1]);
+    ax.set_ylabel("$\phi/\pi$", fontsize = "x-large");
     ax.set_ylim(0,1);
     ax.set_yticks([0,1/4,1/2,3/4,1]);
+    ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
     ax.set_zlim(0,1);
     ax.set_zticks([0,1]);
+    ax.set_zlabel("$T$");
     print(tl, th, tp, myVg);
     plt.show();
     raise(Exception);
 
 
 # still in dimer case, compare T vs rho J a peak under resonant
-plot_6_resonant = False;
+plot_6_resonant = True;
 if plot_6_resonant: # cicc fig 6 (N = 2 still)
 
     # siam inputs
@@ -363,7 +364,8 @@ if plot_6_resonant: # cicc fig 6 (N = 2 still)
 
     # iter over rhoJ, getting T
     Tvals = [];
-    rhoJvals = np.linspace(0.05,2.5,40)
+    xlims = 0.05, 4.0
+    rhoJvals = np.linspace(xlims[0], xlims[1], 299)
     for rhoJa in rhoJvals:
 
         # energy and K fixed by J, rhoJ
@@ -391,23 +393,29 @@ if plot_6_resonant: # cicc fig 6 (N = 2 still)
     # plot
     fig, ax = plt.subplots();
     Tvals = np.array(Tvals);
-    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "y");
-    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "indigo");
-    ax.legend(loc = "upper left", fontsize = "large");
+    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "black");
+    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "black", linestyle = "dashed");
 
     # inset
     rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
     axins = inset_axes(ax, width="50%", height="50%");
-    axins.plot(rhoEvals,Tvals[:,1], color = "indigo");
+    #axins.plot(rhoEvals,Tvals[:,4], color = "black"); # i state
+    axins.plot(rhoEvals,Tvals[:,1]+Tvals[:,2], color = "black", linestyle = "dashed"); # + state
+    axins.set_xlim(0,0.4);
+    axins.set_xticks([0,0.4]);
     axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
-    axins.set_xlim(-0.01,0.4);
-    axins.set_ylim(0,0.15);
+    axins.set_ylim(0,0.2);
+    axins.set_yticks([0,0.2]);
 
     # format
+    ax.set_xlim(*xlims);
+    ax.set_xticks([0,1,2,3,4]);
     ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+    ax.set_ylim(0,1.0);
+    ax.set_yticks([0,1]);
     ax.set_ylabel("$T$", fontsize = "x-large");
-    ax.set_xlim(0.05,2.5);
-    ax.set_ylim(0,1.05);
+    plt.show();
+    assert False;
     if not plot_6_resonant:
         plt.show();
 
