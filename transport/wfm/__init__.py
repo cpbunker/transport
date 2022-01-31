@@ -15,14 +15,15 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, th, tl, E, qj, verbose = 0):
+def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
-    h, block diag hamiltonian matrices
-    th, block off diag hopping matrix 
-    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
-    E, energy of the incident electron
-    qj, source vector (on site dof only, e.g. spin)
+    h, array, block hamiltonian matrices
+    th, array, block hopping matrices
+    tl, float, hopping in leads, not necessarily same as hopping on/off SR
+        or within SR which is defined by th matrices
+    E, float, energy of the incident electron
+    qj, source vector at site 0 (on site dof only, e.g. spin)
     '''
 
     # check inputs
@@ -31,10 +32,9 @@ def kernel(h, th, tl, E, qj, verbose = 0):
     assert( isinstance(qj, np.ndarray));
     assert( len(qj) == np.shape(h[0])[0] );
     for hi in [0, -1]: # check that RL and LL hams are diagonal
-        isdiag = h[hi] - np.diagflat(np.diagonal(h[hi]))
-        if(not np.any(isdiag)):
-            pass;
-            #raise Exception("Not diagonal\n"+str(h[hi]))
+        isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
+        if( np.any(isdiag)): # True if there are nonzero off diag terms
+            raise Exception("Not diagonal\n"+str(h[hi]))
     for i in range(len(qj)): # check source channel mu_LL = 0
         if(qj[i] != 0):
             assert(h[0,i,i] == 0);
@@ -72,12 +72,12 @@ def kernel(h, th, tl, E, qj, verbose = 0):
         qjvector[j] = qj[j]; # fill from block space
     Gqj = np.dot(G, qjvector);
     if verbose > 3:
-        print(Gqj);
         for sigmai in range(len(SigmaL)):
+            print("\nEnergy, sigmai = ",E,sigmai);
             rcoef = (-2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]); # zwierzycki Eq 17
-            print("\nR = ",rcoef*np.conj(rcoef));
+            print("- R = ",rcoef*np.conj(rcoef));
             tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
-            print("T = ",tcoef*np.conj(tcoef));
+            print("- T = ",tcoef*np.conj(tcoef));
 
     # transmission coefs
     Ts = np.zeros(n_loc_dof, dtype = float); # must be real
@@ -130,7 +130,7 @@ def Hmat(h, t, verbose = 0):
                     elif(sitei+1 == sitej): # input from t to upper diag
                         H[ovi, ovj] += t[sitei][loci, locj];                
 
-    if verbose > 3: print("\nH = \n",H);
+    if verbose > 5: print("\nH = \n",H);
     return H; 
 
 
@@ -176,7 +176,6 @@ def Hprime(h, th, tl, E, verbose = 0):
     
     SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
     if verbose > 3:
-        print("\nH' = \n",Hp);
         print("\nE = ",E);
         ka_L = np.arccos((E-h[0,0,0])/(-2*tl));
         print("ka_L = ",ka_L);

@@ -27,7 +27,7 @@ verbose = 5;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = 0.1; # zeeman splitting on imp
+Delta = 0.0; # zeeman splitting on imp
 
 if True: # sigma dot S
 
@@ -56,7 +56,7 @@ if True: # sigma dot S
         # package together hamiltonian blocks
         hblocks = np.array([hLL, hSR, hRL]);
         tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
-        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+        #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
 
         # sweep over range of energies
         # def range
@@ -65,6 +65,7 @@ if True: # sigma dot S
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals = [];
         for E in Evals:
+            # pick one to be verbose
             if(Jeff == 0.1 and E == Evals[5]):
                 Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, verbose = verbose));
             else:
@@ -73,7 +74,7 @@ if True: # sigma dot S
         # plot Tvals vs E
         Tvals = np.array(Tvals);
         #ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
-        sc_pc = ax.scatter(Evals + 2*tl,Tvals[:,2], marker = 's');
+        sc_pc = ax.scatter(np.real(Evals + 2*tl),Tvals[:,2], marker = 's');
 
         # menezes prediction in the continuous case
         # all the definitions, vectorized funcs of E
