@@ -47,48 +47,50 @@ def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
     # need a self energy for each LL boundary condition
     SigmaL = [];
     for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tl);
+        lamL = (E-h[0][Vi,Vi])/(-2*tl);
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # reflected
         SigmaL.append( -tl/LambdaLminus);
 
     # self energies at RL
     SigmaR = [];
-    for Vi in range(n_loc_dof): # iters over all bcs
-        V = h[-1][Vi,Vi];     
-        lamR = (E-V)/(-2*tl);
+    for Vi in range(n_loc_dof): # iters over all bcs    
+        lamR = (E-h[-1][Vi,Vi])/(-2*tl);
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted
         SigmaR.append( -tl*LambdaRplus);
 
-    # check self energies
-    assert( isinstance(SigmaL[0], complex) and isinstance(SigmaR[0], complex)); # check right dtype
+    # check that modes with given energy are allowed in some LL channels
+    assert(np.any(np.imag(SigmaL)) );
 
     # green's function
     G = Green(h, th, tl, E, verbose = verbose);
 
-    # coefs
+    # contract G with source to pick out matrix elements we need
     qjvector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
     for j in range(len(qj)):
         qjvector[j] = qj[j]; # fill from block space
     Gqj = np.dot(G, qjvector);
-    if verbose > 3:
-        for sigmai in range(len(SigmaL)):
-            print("\nEnergy, sigmai = ",E,sigmai);
-            rcoef = (-2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]); # zwierzycki Eq 17
+
+    # compute reflection and transmission coeffs
+    coefs = np.zeros(n_loc_dof, dtype = float); # force zero
+    for sigmai in range(n_loc_dof): # on site degrees of freedom
+        if(verbose > 3): print("\nEnergy, sigmai = ",E,sigmai);
+        rcoef = (-2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]); # zwierzycki Eq 17
+        tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
+
+        # benchmarking
+        if(verbose > 3):
             print("- R = ",rcoef*np.conj(rcoef));
-            tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
             print("- T = ",tcoef*np.conj(tcoef));
+        assert( abs(np.imag(rcoef*np.conj(rcoef))) < 1e-10 ); # must be real
+        assert( abs(np.imag(tcoef*np.conj(tcoef))) < 1e-10 ); # must be real
 
-    # transmission coefs
-    Ts = np.zeros(n_loc_dof, dtype = float); # must be real
-    for Ti in range(n_loc_dof):
-        
-        # Caroli expression 
-        caroli = 4*np.imag(SigmaR[Ti])*Gqj[Ti-n_loc_dof]*np.imag(SigmaL[Ti])*Gqj.conj()[Ti-n_loc_dof];
-        assert( abs(np.imag(caroli)) <= 1e-10); # screen for errors
-        Ts[Ti] = np.real(caroli);
+        # return var
+        if(reflect): # want R
+            coefs[sigmai] = np.real(rcoef*np.conj(rcoef));
+        else: # want T
+            coefs[sigmai] = np.real(tcoef*np.conj(tcoef));
 
-    return tuple(Ts);
+    return coefs;
 
 
 def Hmat(h, t, verbose = 0):

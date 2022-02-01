@@ -23,16 +23,21 @@ import matplotlib.pyplot as plt
 plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
+analytical = False; # whether to compare to menezes' calc
+reflect = True;
 
 # tight binding params
 tl = 1.0;
 th = 1.0;
 Delta = 0.0; # zeeman splitting on imp
+Vb = 1.5; # barrier voltage in RL
 
 if True: # sigma dot S
 
     fig, ax = plt.subplots();
-    for Jeff in [0.1,0.2,0.4]:
+    #for Jeff in [0.1,0.2,0.4]:
+    for Nx3 in [3,6,9,12,15,18]:
+        Jeff = 0.1;
 
         # 2nd qu'd operator for S dot s
         h1e = np.zeros((4,4))
@@ -46,7 +51,7 @@ if True: # sigma dot S
                         [0, 0, Delta, 0],
                         [0, 0, 0, 0]]); # zeeman splitting
         hLL = np.copy(hzeeman);
-        hRL = np.copy(hzeeman);
+        hRL = np.copy(hzeeman)+Vb*np.eye(np.shape(hLL)[0]);
         hSR += hzeeman; # zeeman splitting is everywhere
 
         # source = up electron, down impurity
@@ -54,41 +59,45 @@ if True: # sigma dot S
         source[1] = 1;
 
         # package together hamiltonian blocks
-        hblocks = np.array([hLL, hSR, hRL]);
-        tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
-        #if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
+        hblocks = [hLL,hSR];
+        for x3i in range(Nx3): hblocks.append(np.zeros_like(hRL)); # vary imp to barrier distance
+        hblocks.append(hRL);
+        hblocks = np.array(hblocks);
+        tblocks = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
+        for x3i in range(Nx3): tblocks.append(-tl*np.eye(*np.shape(hSR))); # vary imp to barrier distance
+        tblocks = np.array(tblocks);
+        if(verbose and Jeff == 0.1): print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.99*tl, -1.8*tl
-        numE = 30;
+        Emin, Emax = -1.99*tl, -1.9*tl
+        numE = 300;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals = [];
         for E in Evals:
             # pick one to be verbose
             if(Jeff == 0.1 and E == Evals[5]):
-                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, verbose = verbose));
+                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, reflect = reflect, verbose = verbose));
             else:
-                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, reflect = reflect));
                 
         # plot Tvals vs E
         Tvals = np.array(Tvals);
-        #ax.scatter(Evals + 2*tl,Tvals[:,1], marker = 's',label = "$T$");
-        sc_pc = ax.scatter(np.real(Evals + 2*tl),Tvals[:,2], marker = 's');
+        ax.plot(np.real(Evals + 2*tl),Tvals[:,2], label = Nx3);
 
         # menezes prediction in the continuous case
-        # all the definitions, vectorized funcs of E
-        kappa = np.lib.scimath.sqrt(np.linspace(-1.9999, Emax, numE, dtype = complex));
-        jprime = Jeff/(4*kappa);
-        ax.plot(np.linspace(-1.9999*tl, Emax, 100, dtype = complex)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
+        if(analytical):
+            ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
 
     # format and plot
-    ax.set_xlim(0,0.2);
-    ax.set_xticks([0,0.1,0.2]);
+    #ax.set_xlim(0,0.2);
+    #ax.set_xticks([0,0.1,0.2]);
     ax.set_xlabel("$E+2t$", fontsize = "x-large");
-    ax.set_ylim(0,0.2);
-    ax.set_yticks([0,0.1,0.2]);
-    ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
+    #ax.set_ylim(0,0.2);
+    #ax.set_yticks([0,0.1,0.2]);
+    if(reflect): ax.set_ylabel("$R_{flip}$", fontsize = "x-large");
+    else: ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
+    plt.legend();
     plt.show();
 
 

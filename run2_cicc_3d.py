@@ -57,10 +57,10 @@ if False: # original version of 2b (varying x0 by varying N)
     # mesh of x0s (= N0s * alat)
     numpts = (29, 49);
     kx0max = 1.0*np.pi;
-    N0max = int(kx0max/(k_rho)); # a = 1
+    N0max = 1+int(kx0max/(k_rho)); # a = 1
     if verbose: print("N0max = ",N0max);
     N0vals = np.linspace(20, 1.5*N0max, numpts[0], dtype = int); # always integer
-    kx0vals = k_rho*N0vals; # a = 1
+    kx0vals = k_rho*(N0vals-1); # a = 1
     # modulate optical distance vs N, k'
     Tvals = np.zeros((numpts[0]+1,numpts[1]+1),dtype = complex);
     for N0i in range(len(N0vals)): # iter over N

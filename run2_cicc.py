@@ -3,7 +3,7 @@ Christian Bunker
 M^2QM at UF
 September 2021
 
-Quasi 1 body transmission through spin impurities project, part 0:
+Quasi 1 body transmission through spin impurities project, part 2:
 Scattering of single electron off of two localized spin-1/2 impurities
 Following cicc, imp spins are confined to single sites, separated by x0
     imp spins can flip
@@ -31,14 +31,14 @@ verbose = 5
 ##################################################################################
 #### data and plots for cicc Fig 2b (transparency)
     
-if False: # original version of 2b (varying x0 by varying N)
+if True: # original version of 2b (varying x0 by varying N)
 
     # tight binding params
     tl = 1.0;
     Jeff = 0.1;
 
     # cicc inputs
-    rhoJa = 10.0; # integer that cicc param rho*J is set equal to
+    rhoJa = 1.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
@@ -56,10 +56,10 @@ if False: # original version of 2b (varying x0 by varying N)
     
     # mesh of x0s (= N0s * alat)
     kx0max = 2.1*np.pi;
-    N0max = int(kx0max/(k_rho)); # a = 1
+    N0max = 1+int(kx0max/(k_rho)); # a = 1
     if verbose: print("N0max = ",N0max);
     N0vals = np.linspace(2, N0max, 49, dtype = int); # always integer
-    kx0vals = k_rho*N0vals; # a = 1
+    kx0vals = k_rho*(N0vals-1); # a = 1
 
     # iter over all the differen impurity spacings, get transmission
     Tvals = []
@@ -85,7 +85,7 @@ if False: # original version of 2b (varying x0 by varying N)
     fname +="N_rhoJa"+str(int(rhoJa))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
-    raise(Exception);
+    #raise(Exception);
 
 if False: # vary kx0 by varying Vgate
     
@@ -195,7 +195,7 @@ if False: # vary kx0 by varing k at fixed N
     if verbose: print("Saved data to "+fname);
     raise(Exception);
         
-if False: # plot fig 2b data
+if True: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -300,7 +300,8 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     if((th == tl) and (tp == tl)):
         myVg = -2*tl*np.cos(ka0) + 2*tp;
     else:
-        myVg = -0.80
+        myVg = -0.80;
+    print(">>> myVg = ",myVg);
     thetavals = np.linspace(0, np.pi, 49);
     phivals = np.linspace(0, np.pi, 49);
     Ttotals = np.zeros((len(thetavals), len(phivals)));
@@ -344,7 +345,6 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     ax.set_zlim(0,1);
     ax.set_zticks([0,1]);
     ax.set_zlabel("$T$");
-    print(tl, th, tp, myVg);
     plt.show();
     raise(Exception);
 
