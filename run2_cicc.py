@@ -31,14 +31,14 @@ verbose = 5
 ##################################################################################
 #### data and plots for cicc Fig 2b (transparency)
     
-if True: # original version of 2b (varying x0 by varying N)
+if False: # original version of 2b (varying x0 by varying N)
 
     # tight binding params
-    tl = 1.0;
+    tl = 10.0;
     Jeff = 0.1;
 
     # cicc inputs
-    rhoJa = 1.0; # integer that cicc param rho*J is set equal to
+    rhoJa = 2.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
@@ -58,7 +58,7 @@ if True: # original version of 2b (varying x0 by varying N)
     kx0max = 2.1*np.pi;
     N0max = 1+int(kx0max/(k_rho)); # a = 1
     if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(2, N0max, 49, dtype = int); # always integer
+    N0vals = np.linspace(2, N0max, 299, dtype = int); # always integer
     kx0vals = k_rho*(N0vals-1); # a = 1
 
     # iter over all the differen impurity spacings, get transmission
@@ -67,10 +67,11 @@ if True: # original version of 2b (varying x0 by varying N)
 
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N0, N0+2);
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, 1, N0, N0+2);
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
         # get T from this setup
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source));
 
     # package into one array
     Tvals = np.array(Tvals);
@@ -82,10 +83,12 @@ if True: # original version of 2b (varying x0 by varying N)
         data.append(Tvals[:,Ti]); # data has columns of N0val, k0val, corresponding T vals
     # save data
     fname = "dat/cicc/"+spinstate+"/";
-    fname +="N_rhoJa"+str(int(rhoJa))+".npy";
+    fname = "";
+    fname +="N_rhoJa"+str(int(np.around(rhoJa)))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
-    #raise(Exception);
+    raise(Exception);
+
 
 if False: # vary kx0 by varying Vgate
     
@@ -94,7 +97,7 @@ if False: # vary kx0 by varying Vgate
     Jeff = 0.1; # eff heisenberg
 
     # cicc quantitites
-    N_SR = 199 #988;
+    N_SR = 100 #100, 198, 988;
     ka0 = np.pi/(N_SR - 1); # a' is length defined by hopping t' btwn imps
                             # ka' = ka'0 = ka0 when t' = t so a' = a
     E_rho = 2*tl-2*tl*np.cos(ka0); # energy of ka0 wavevector, which determines rhoJa
@@ -115,24 +118,27 @@ if False: # vary kx0 by varying Vgate
 
     # get data
     kalims = (0.0*ka0,2.1*ka0);
-    kavals = np.linspace(*kalims, 299);
+    kavals = np.linspace(*kalims, 99);
     Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kavals);
     Tvals = [];
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
-        for blocki in range(len(hblocks)): # add Vg in SR
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+
+        # add gate voltage in SR
+        for blocki in range(len(hblocks)): 
             if(blocki > 0 and blocki < N_SR + 1): # if in SR
                 hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
                 
         # get data
         Energy = -2*tl*np.cos(ka0);
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
-    Tvals = np.array(Tvals);
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source));
 
     # package into one array
+    Tvals = np.array(Tvals);
     if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
     info = np.zeros_like(kavals);
     info[0], info[1], info[2], info[3] = tl, Jeff, rhoJa, ka0; # save info we need
@@ -141,7 +147,7 @@ if False: # vary kx0 by varying Vgate
         data.append(Tvals[:,Ti]); # data has columns of kaval, corresponding T vals
     # save data
     fname = "dat/cicc/"+spinstate+"/";
-    fname +="Vg_rhoJa"+str(int(rhoJa))+".npy";
+    fname +="Vg_rhoJa"+str(int(np.around(rhoJa)))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
     raise(Exception);
@@ -178,24 +184,9 @@ if False: # vary kx0 by varing k at fixed N
     # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
     hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N_SR, N_SR+2);
     raise Exception("switch from Data() to kernel()")
-        
-
     
-    # package into one array
-    if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
-    info = np.zeros_like(kavals);
-    info[0], info[1], info[2], info[3] = tl, Jeff, rhoJa, ka0; # save info we need
-    data = [info, kavals*(N_SR-1)];
-    for Ti in range(np.shape(Tvals)[1]):
-        data.append(Tvals[:,Ti]); # data has columns of kaval, corresponding T vals
-    # save data
-    fname = "dat/cicc/"+spinstate+"/";
-    fname +="ka_rhoJa"+str(int(rhoJa))+".npy";
-    np.save(fname,np.array(data));
-    if verbose: print("Saved data to "+fname);
-    raise(Exception);
         
-if True: # plot fig 2b data
+if False: # plot fig 2b data
 
     # plot each file given at command line
     fig, axes = plt.subplots();
@@ -226,6 +217,7 @@ if True: # plot fig 2b data
     plt.show();
     raise(Exception);
 
+
 ##################################################################################
 #### molecular dimer regime (N = 2 fixed)
 
@@ -246,7 +238,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     tp = 1.0
     N_SR = 2;
 
-    factor = 100;
+    factor = 99;
     ka0 =  np.pi/(N_SR - 1)/factor; # free space wavevector, should be << pi
                                     # increasing just broadens the Vg peak
     kpa0 = np.pi/(N_SR - 1)/factor; # wavevector in gated SR
@@ -269,18 +261,21 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
-        # t's vary, so have to construct hblocks, tblocks list by hand
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
+        # t's vary, so have to construct hblocks, tnn list by hand
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR); # start with SR
         hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis = 0); # LL block
         hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis = 0); # RL block
-        tblocks = np.append([-th*np.eye(np.shape(hblocks)[1])], tblocks, axis = 0); # V hyb
-        tblocks = np.append(tblocks,[-th*np.eye(np.shape(hblocks)[1])], axis = 0);
-        for blocki in range(len(hblocks)): # add Vg in SR
+        tnn = np.append([-th*np.eye(np.shape(hblocks)[1])], tnn, axis = 0); # coupling to LL
+        tnn = np.append(tnn,[-th*np.eye(np.shape(hblocks)[1])], axis = 0); # coupling to LL
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+
+        # add gate voltage in SR
+        for blocki in range(len(hblocks)): 
             if(blocki > 0 and blocki < N_SR + 1): # gate voltage if in SR
                 hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
                 
         # get data
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, -2*tl*np.cos(ka0), source));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(ka0), source));
     
     Tvals = np.array(Tvals);
     Ttotals = np.sum(Tvals, axis = 1);
@@ -307,14 +302,17 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     Ttotals = np.zeros((len(thetavals), len(phivals)));
 
     # construct blocks of hamiltonian
-    # lead blocks and Vhybs not filled yet !
-    hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
+    # have to construct hblocks, tnn list by hand
+    hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
     hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis = 0); # LL block
     hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis = 0); # RL block
-    tblocks = np.append([-th*np.eye(np.shape(hblocks)[1])], tblocks, axis = 0); # V hyb
-    tblocks = np.append(tblocks,[-th*np.eye(np.shape(hblocks)[1])], axis = 0);
-    for blocki in range(len(hblocks)): # add Vg in SR
-        if(blocki > 0 and blocki < N_SR + 1): # gate voltage if in SR
+    tnn = np.append([-th*np.eye(np.shape(hblocks)[1])], tnn, axis = 0); # couple to LL
+    tnn = np.append(tnn,[-th*np.eye(np.shape(hblocks)[1])], axis = 0); # couple to RL
+    tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+
+    # add gate voltage in SR
+    for blocki in range(len(hblocks)):
+        if(blocki > 0 and blocki < N_SR + 1): 
             hblocks[blocki] += myVg*np.eye(np.shape(hblocks[0])[0])
 
     # iter over entanglement space
@@ -329,7 +327,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
             source[2] = np.sin(thetaval)*np.exp(complex(0,phival));
 
             # get data
-            Ttotals[ti, pi] = sum(wfm.kernel(hblocks, tblocks, tl, -2*tl*np.cos(ka0), source));
+            Ttotals[ti, pi] = sum(wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(ka0), source));
 
     # plot
     fig = plt.figure();
@@ -350,8 +348,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
 
 # still in dimer case, compare T vs rho J a peak under resonant
-plot_6_resonant = True;
-if plot_6_resonant: # cicc fig 6 (N = 2 still)
+if True: # cicc fig 6 (N = 2 still)
 
     # siam inputs
     tl = 1.0;
@@ -385,10 +382,11 @@ if plot_6_resonant: # cicc fig 6 (N = 2 still)
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = 1, 1+N0;
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, i2+2);
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, i2+2);
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
         # get T from this setup
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source));
 
     # plot
     fig, ax = plt.subplots();
@@ -415,9 +413,7 @@ if plot_6_resonant: # cicc fig 6 (N = 2 still)
     ax.set_yticks([0,1]);
     ax.set_ylabel("$T$", fontsize = "x-large");
     plt.show();
-    assert False;
-    if not plot_6_resonant:
-        plt.show();
+    raise(Exception);
 
 
 if plot_6_resonant: # add fig 6 data at switching resonance (Jz = 0)

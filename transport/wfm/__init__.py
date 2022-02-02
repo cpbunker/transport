@@ -15,11 +15,12 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
+def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     h, array, block hamiltonian matrices
-    th, array, block hopping matrices
+    tnn, array, nearest neighbor block hopping matrices
+    tnnn, array, next nearest neighbor block hopping matrices
     tl, float, hopping in leads, not necessarily same as hopping on/off SR
         or within SR which is defined by th matrices
     E, float, energy of the incident electron
@@ -28,10 +29,15 @@ def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
 
     # check inputs
     assert( isinstance(h, np.ndarray));
-    assert( isinstance(th, np.ndarray));
+    assert( isinstance(tnn, np.ndarray));
+    assert(len(tnn)+1 == len(h));
+    assert( isinstance(tnnn, np.ndarray));
+    assert(len(tnnn)+2 == len(h));
     assert( isinstance(qj, np.ndarray));
     assert( len(qj) == np.shape(h[0])[0] );
-    for hi in [0, -1]: # check that RL and LL hams are diagonal
+    
+    # check that lead hams are diagonal
+    for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if( np.any(isdiag)): # True if there are nonzero off diag terms
             raise Exception("Not diagonal\n"+str(h[hi]))
@@ -62,7 +68,7 @@ def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
     assert(np.any(np.imag(SigmaL)) );
 
     # green's function
-    G = Green(h, th, tl, E, verbose = verbose);
+    G = Green(h, tnn, tnnn, tl, E, verbose = verbose);
 
     # contract G with source to pick out matrix elements we need
     qjvector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
@@ -93,17 +99,15 @@ def kernel(h, th, tl, E, qj, reflect = False, verbose = 0):
     return coefs;
 
 
-def Hmat(h, t, verbose = 0):
+def Hmat(h, tnn, tnnn, verbose = 0):
     '''
     Make the hamiltonian H for N+2 x N+2 system
     where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
 
-    h, arr of on site blocks at each of the N+2 sites
-    t, arr of N-1 hopping blocks between the N+2
+    h, array, on site blocks at each of the N+2 sites of the system
+    tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
+    tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
     '''
-
-    # check
-    assert(len(h) == len(t) + 1);
 
     # unpack
     N = len(h) - 2; # num scattering region sites, ie N+2 = num spatial dof
@@ -124,26 +128,40 @@ def Hmat(h, t, verbose = 0):
                     ovj = sitej*n_loc_dof + locj;
 
                     if(sitei == sitej): # input from local h to main diag
-                        H[ovi, ovj] += h[sitei][loci, locj];
+                        H[ovi, ovj] = h[sitei][loci, locj];
 
-                    elif(sitei == sitej+1): # input from t to lower diag
-                        H[ovi, ovj] += t[sitej][loci, locj];
+                    elif(sitei == sitej+1): # input from tnn to lower diag
+                        H[ovi, ovj] = tnn[sitej][loci, locj];
 
-                    elif(sitei+1 == sitej): # input from t to upper diag
-                        H[ovi, ovj] += t[sitei][loci, locj];                
+                    elif(sitei+1 == sitej): # input from tnn to upper diag
+                        H[ovi, ovj] = tnn[sitei][loci, locj];
 
-    if verbose > 5: print("\nH = \n",H);
+                    elif(sitei == sitej+2): # input from tnnn to 2nd lower diag
+                        H[ovi, ovj] = tnnn[sitej][loci, locj];
+
+                    elif(sitei+2 == sitej): # input from tnnn to 2nd upper diag
+                        H[ovi, ovj] = tnnn[sitei][loci, locj];
+
+    if(verbose > 5):
+        print("\n>>> H construction\n");
+        print("- shape(H_j) = ", np.shape(h[0]));
+        print("- shape(tnn_j) = ", np.shape(tnn[0]));
+        print("- shape(tnnn_j) = ", np.shape(tnnn[0]));
+        print("- shape(H) = ",np.shape(H));
+        print("- H = \n",np.real(H));
+        assert False;
     return H; 
 
 
-def Hprime(h, th, tl, E, verbose = 0):
+def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
 
-    h, block diag hamiltonian matrices
-    t, block off diag hopping matrix
-    tl, hopping in leads, not necessarily same as hopping on/off SR as def'd by t matrices
+    h, array, on site blocks at each of the N+2 sites of the system
+    tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
+    tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
+    tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
     '''
 
     # unpack
@@ -151,7 +169,7 @@ def Hprime(h, th, tl, E, verbose = 0):
     n_loc_dof = np.shape(h[0])[0];
 
     # add self energies to hamiltonian
-    Hp = Hmat(h, th, verbose = verbose); # regular ham from SR on site blocks h and hop blocks th
+    Hp = Hmat(h, tnn, tnnn, verbose = verbose); # H matrix from SR on site, hopping blocks
     
     # self energies at LL
     # need a self energy for each LL boundary condition
@@ -190,90 +208,28 @@ def Hprime(h, th, tl, E, verbose = 0):
     return Hp;
 
 
-def Green(h, th, tl, E, verbose = 0):
+def Green(h, tnn, tnnn, tl, E, verbose = 0):
     '''
     Greens function for system described by
-    - potential h[i] at site i of the scattering region (SR, sites i=1 to i=N)
-    - hopping th on and off the SR
-    - hopping tl in the leads (sites i=-\inf to 0, N+1 to +\inf)
-    - incident energy E
+    h, array, on site blocks at each of the N+2 sites of the system
+    tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
+    tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
+    tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
+    E, float, incident energy
     '''
-
-    # check inputs
-    assert( isinstance(h, np.ndarray));
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
     # get green's function matrix
-    Hp = Hprime(h, th, tl, E, verbose = verbose);
+    Hp = Hprime(h, tnn, tnnn, tl, E, verbose = verbose);
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
     # of interest is the qith row which contracts with the source q
     return G;
 
-##################################################################################
-#### wrappers
 
-def Data(source, h_LL, V_hyb, h_SR, V_SR, h_RL, tl, lims, numpts = 21, retE = True, verbose = 0):
-    '''
-    Given a LL + SR + RL wave function matching system, defined by
-    - blocks h_SR[i] on the ith site of the SR
-    - hopping V_SR[i] btwn the ith and the i+1th site of the SR
-    - hopping th onto the SR
-    - hopping tl in the leads
-
-    construct the transmission coefficients for an incident electron defined by source
-    for all ka in kalims or energy in Elims
-
-    Other args:
-    - numpts, int, how many x axis vals
-    - Energy, bool, tells whether to do vs ka or vs E
-    '''
-
-    raise Exception("Deprecated");
-
-    # check inputs
-    assert(np.shape(source)[0] == np.shape(h_SR[0])[0]);
-    assert( np.shape(h_LL) == np.shape(h_SR[0]));
-    assert(len(h_SR) == 1 + len(V_SR));
-
-    # unpack
-    N_SR = len(h_SR); # number of sites in the scattering region
-
-    # package as block hams 
-    hblocks = [h_LL] # sets mu in LL
-    tblocks = [V_hyb]; # hopping from LL to SR
-    hblocks.append(h_SR[0]); # site 1 in SR
-    for n in range(1,N_SR):
-        hblocks.append(h_SR[n]); # site n in SR, n=2...n=N_SR \
-        tblocks.append(V_SR[n-1]); # V_SR[n] gives hopping from nth to n+1th site
-    hblocks.append(h_RL); # sets mu in RL
-    tblocks.append(V_hyb); # hopping from SR to RL
-    hblocks = np.array(hblocks);
-    tblocks = np.array(tblocks);
-    if(verbose):
-        print(" - tl = ", tl);
-        print(" - th = ", -tblocks[0,0,0]);
-        print(" - t' = ", -tblocks[1,0,0]);
-
-    if retE: # iter over energy
-        Evals = np.linspace(lims[0], lims[1], numpts, dtype = complex);
-        Tvals = [];
-        for Energy in Evals:
-            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));
-        Tvals = np.array(Tvals);
-        return Evals, Tvals;
-
-    else:
-        kavals = np.linspace(lims[0], lims[1], numpts, dtype = complex);
-        Tvals = [];
-        for ka in kavals:
-            Energy = -2*tl*np.cos(ka);
-            Tvals.append(kernel(hblocks, tblocks, tl, Energy, source));           
-        Tvals = np.array(Tvals);
-        return kavals, Tvals;
 
 ##################################################################################
 #### test code

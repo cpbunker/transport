@@ -31,7 +31,7 @@ Vb = 4.0; # barrier in RL (i.e. perfect mirror)
 ##################################################################################
 #### tune N12 and N23
     
-if True: 
+if False: 
 
     # cicc inputs
     rhoJa = 2.0; # integer that cicc param rho*J is set equal to
@@ -66,12 +66,14 @@ if True:
 
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, 1+N12, 1+N12+N23+1);
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, 1, 1+N12, 1+N12+N23+1);
+        tnnn = np.zeros_like(tnn)[:-1];
+        
         # add barrier to RL
         hblocks[-1] += Vb*np.eye(len(source));
 
         # get T from this setup
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source, reflect = True));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source, reflect = True));
 
     # package into one array
     Tvals = np.array(Tvals);
@@ -83,7 +85,7 @@ if True:
         data.append(Tvals[:,sigmai]); # data has columns of N0val, k0val, corresponding T vals
     # save data
     fname = "dat/gate/"+spinstate+"/";
-    fname +="N_rhoJa"+str(int(rhoJa))+".npy";
+    fname +="N_rhoJa"+str(int(np.around(rhoJa)))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
 
@@ -104,8 +106,9 @@ if True:   # plot each file given at command line
 
         # plot by channel
         print(">>>",np.shape(Tvals));
+        labels = ["aaa","aab","aba","abb","baa","bab","bba","bbb"];
         for sigmai in range(np.shape(Tvals)[1]):
-            axes[0].plot(kNavals/np.pi, Tvals[:,sigmai], label = sigmai);
+            axes[0].plot(kNavals/np.pi, Tvals[:,sigmai], label = labels[sigmai]);
 
     # format and show
     axes[0].set_xlim(0.0,1.1);

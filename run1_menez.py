@@ -35,7 +35,6 @@ Vb = 1.5; # barrier voltage in RL
 if True: # sigma dot S
 
     fig, ax = plt.subplots();
-    #for Jeff in [0.1,0.2,0.4]:
     for Nx3 in [3,6,9,12,15,18]:
         Jeff = 0.1;
 
@@ -63,10 +62,11 @@ if True: # sigma dot S
         for x3i in range(Nx3): hblocks.append(np.zeros_like(hRL)); # vary imp to barrier distance
         hblocks.append(hRL);
         hblocks = np.array(hblocks);
-        tblocks = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
-        for x3i in range(Nx3): tblocks.append(-tl*np.eye(*np.shape(hSR))); # vary imp to barrier distance
-        tblocks = np.array(tblocks);
-        if(verbose and Jeff == 0.1): print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks);
+        tnn = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
+        for x3i in range(Nx3): tnn.append(-tl*np.eye(*np.shape(hSR))); # vary imp to barrier distance
+        tnn = np.array(tnn);
+        tnnn = np.zeros_like(tnn)[:-1];
+        if(verbose and Jeff == 0.1): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
 
         # sweep over range of energies
         # def range
@@ -77,9 +77,9 @@ if True: # sigma dot S
         for E in Evals:
             # pick one to be verbose
             if(Jeff == 0.1 and E == Evals[5]):
-                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, reflect = reflect, verbose = verbose));
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = reflect, verbose = verbose));
             else:
-                Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source, reflect = reflect));
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = reflect));
                 
         # plot Tvals vs E
         Tvals = np.array(Tvals);

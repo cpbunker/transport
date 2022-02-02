@@ -31,14 +31,14 @@ verbose = 5
 ##################################################################################
 #### data and plots for cicc Fig 2b (transparency)
     
-if False: # original version of 2b (varying x0 by varying N)
+if True: # original version of 2b (varying x0 by varying N)
 
     # tight binding params
     tl = 1.0;
     Jeff = 0.1;
 
     # cicc inputs
-    rhoJa = 1.0; # integer that cicc param rho*J is set equal to
+    rhoJa = 2.0; # integer that cicc param rho*J is set equal to
     E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
     k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
@@ -54,32 +54,43 @@ if False: # original version of 2b (varying x0 by varying N)
     source[2] = -1/np.sqrt(2);
     spinstate = "psimin";
     
-    # mesh of x0s (= N0s * alat)
-    numpts = (29, 49);
+    # return var
+    numpts = (19, 19);
+    Tvals = np.zeros((numpts[0]+1,numpts[1]+1),dtype = complex);
+
+    # N0 vals
     kx0max = 1.0*np.pi;
     N0max = 1+int(kx0max/(k_rho)); # a = 1
     if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(20, 1.5*N0max, numpts[0], dtype = int); # always integer
+    N0vals = np.linspace(10, N0max, numpts[0], dtype = int); # always integer
     kx0vals = k_rho*(N0vals-1); # a = 1
+
+    # k'a vals
+    ka0 = np.pi/(N0vals[-1] - 1);
+    kpalims = (0.0*ka0,1.1*ka0);
+    kpavals = np.linspace(*kpalims, numpts[1]);
+    Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kpavals);
+    print("kpalims: ", kpalims);
+    print("Vglims: ",(Vgvals[0], Vgvals[-1]));
+    Vg0_ind = np.argmin(abs(Vgvals));
+    kpa_Vg0 = kpavals[Vg0_ind];
+    print(">>> kpa st Vg = 0 = ", kpa_Vg0);
+    
     # modulate optical distance vs N, k'
-    Tvals = np.zeros((numpts[0]+1,numpts[1]+1),dtype = complex);
     for N0i in range(len(N0vals)): # iter over N
 
         N0 = N0vals[N0i];
         Tvals[N0i+1,0] = N0; # record N
 
         # iter over k'
-        ka0 = np.pi/(N0 - 1);
-        kpalims = (0.0*ka0,2.1*ka0);
-        kpavals = np.linspace(*kpalims, numpts[1]);
-        Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kpavals);
         for Vgi in range(len(Vgvals)):
 
-            Tvals[0,Vgi+1] = kpavals[Vgi];
+            Tvals[0,Vgi+1] = kpavals[Vgi]; # record k'a
 
             # construct blocks of hamiltonian
             # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
-            hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, 1, N0, N0+2);
+            hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, 1, N0, N0+2);
+            tnnn = np.zeros_like(tnn)[:-1];
             for blocki in range(len(hblocks)): # add Vg in SR
                 if(blocki > 0 and blocki < N0 + 1): # if in SR
                     hblocks[blocki] += Vgvals[Vgi]*np.eye(np.shape(hblocks[0])[0])
@@ -88,7 +99,8 @@ if False: # original version of 2b (varying x0 by varying N)
             Energy = -2*tl*np.cos(ka0);
             print("N0, Energy = ",N0, Energy);
             print("rhoJa = ",Jeff/(np.pi*np.sqrt(tl*(Energy+2*tl))));
-            Tvals[N0i+1,Vgi+1] = sum(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+            Tvals[N0i+1,Vgi+1] = sum(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source));
+
         # end iter over k'
     # end iter over N
 
@@ -100,15 +112,17 @@ if False: # original version of 2b (varying x0 by varying N)
     if verbose: print("Saved data to "+fname);
     raise(Exception);
 
-# 3d data modulating N, k'
         
-if True: # plot fig 2b data
+if True: # plot data
 
     # plot each file given at command line
     #fig, axes = plt.subplots();
     #axes = [axes];
     datafs = sys.argv[1:];
     for fi in range(len(datafs)):
+
+        # ref lines
+        ka_ref = 0.166;
 
         # unpack
         print("Loading data from "+datafs[fi]);
@@ -122,6 +136,7 @@ if True: # plot fig 2b data
                 axes[0].plot(N0vals[N0i]*kpvals/np.pi, np.real(Tvals[N0i,:]));
 
         else: # plot 3d
+            print(">>>",kpvals);
             fig = plt.figure();
             ax3d = fig.add_subplot(projection = "3d");
             N0vals, kpvals = np.meshgrid(N0vals, kpvals);
