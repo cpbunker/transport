@@ -38,15 +38,10 @@ if True: # original version of 2b (varying x0 by varying N)
     Jeff = 0.1;
 
     # cicc inputs
-    rhoJa = 2.0; # integer that cicc param rho*J is set equal to
-    E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
+    rhoJa_max = 2.0; # integer that cicc param rho*J is set equal to
+    E_rhomax = Jeff*Jeff/(rhoJa_max*rhoJa_max*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                             # this E is measured from bottom of band !!!
-    k_rho = np.arccos((E_rho - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
-    assert(abs((E_rho - 2*tl) - -2*tl*np.cos(k_rho)) <= 1e-8 ); # check by getting back energy measured from bottom of band
-    print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
-    print("k*a = ",k_rho); # a = 1
-    print("rho*J = ", (Jeff/np.pi)/np.sqrt(E_rho*tl));
-    E_rho = E_rho - 2*tl; # measure from mu
+    k_rhomax = np.arccos((E_rhomax - 2*tl)/(-2*tl)); # input E measured from 0 by -2*tl
 
     # choose boundary condition
     source = np.zeros(8);
@@ -55,37 +50,40 @@ if True: # original version of 2b (varying x0 by varying N)
     spinstate = "psimin";
     
     # return var
-    numpts = (19, 19);
+    numpts = (49, 49);
     Tvals = np.zeros((numpts[0]+1,numpts[1]+1),dtype = complex);
 
     # N0 vals
     kx0max = 1.0*np.pi;
-    N0max = 1+int(kx0max/(k_rho)); # a = 1
-    if verbose: print("N0max = ",N0max);
-    N0vals = np.linspace(10, N0max, numpts[0], dtype = int); # always integer
-    kx0vals = k_rho*(N0vals-1); # a = 1
+    N0max = 1+int(kx0max/k_rhomax); # a = 1
+    N0vals = np.linspace(2, N0max, numpts[0], dtype = int); # always integer
+    kx0vals = k_rhomax*(N0vals-1); # a = 1
 
     # k'a vals
-    ka0 = np.pi/(N0vals[-1] - 1);
-    kpalims = (0.0*ka0,1.1*ka0);
+    N0star = np.mean(N0vals);
+    ka0 = np.pi/(N0star - 1);
+    Energy = -2*tl*np.cos(ka0);
+    kpalims = np.array([0.0*ka0,1.0*ka0]);
     kpavals = np.linspace(*kpalims, numpts[1]);
     Vgvals = -2*tl*np.cos(ka0) + 2*tl*np.cos(kpavals);
-    print("kpalims: ", kpalims);
-    print("Vglims: ",(Vgvals[0], Vgvals[-1]));
-    Vg0_ind = np.argmin(abs(Vgvals));
-    kpa_Vg0 = kpavals[Vg0_ind];
-    print(">>> kpa st Vg = 0 = ", kpa_Vg0);
+    rhoJa_star = Jeff/(np.pi*np.sqrt(tl*(Energy+2*tl)));
+    if(verbose):
+        print("N0max = ",N0max);
+        print("Energy = ",Energy);
+        print("rhoJa_max, rhoJa* = ",rhoJa_max, rhoJa_star);
+        print("kpalims: ", kpalims, kpalims*(N0star-1)/np.pi);
+        print("Vglims: ",(Vgvals[0], Vgvals[-1]));
     
     # modulate optical distance vs N, k'
     for N0i in range(len(N0vals)): # iter over N
 
         N0 = N0vals[N0i];
-        Tvals[N0i+1,0] = N0; # record N
+        Tvals[N0i+1,0] = (N0-1)/(N0max-1); # record N
 
         # iter over k'
         for Vgi in range(len(Vgvals)):
 
-            Tvals[0,Vgi+1] = kpavals[Vgi]; # record k'a
+            Tvals[0,Vgi+1] = kpavals[Vgi]*(N0star - 1)/np.pi; # record k'a(N-1)/pi
 
             # construct blocks of hamiltonian
             # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
@@ -96,9 +94,7 @@ if True: # original version of 2b (varying x0 by varying N)
                     hblocks[blocki] += Vgvals[Vgi]*np.eye(np.shape(hblocks[0])[0])
                     
             # get data
-            Energy = -2*tl*np.cos(ka0);
-            print("N0, Energy = ",N0, Energy);
-            print("rhoJa = ",Jeff/(np.pi*np.sqrt(tl*(Energy+2*tl))));
+            print("N0 = ",N0);
             Tvals[N0i+1,Vgi+1] = sum(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source));
 
         # end iter over k'
@@ -107,13 +103,14 @@ if True: # original version of 2b (varying x0 by varying N)
     # package into one array
     if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
     fname = "dat/cicc/"+spinstate+"/";
-    fname +="3d_rhoJa"+str(int(rhoJa))+".npy";
+    fname = "";
+    fname +="3d_rhoJa"+str(int(np.around(rhoJa_star)))+".npy";
     np.save(fname,Tvals);
     if verbose: print("Saved data to "+fname);
-    raise(Exception);
+    #raise(Exception);
 
         
-if True: # plot data
+if False: # plot data
 
     # plot each file given at command line
     #fig, axes = plt.subplots();
