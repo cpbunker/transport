@@ -89,20 +89,19 @@ print("\n",Ha2meV*np.real(wfm.utils.entangle(hSR_JK0_diag, *pair)));
 if True: # fig 6 ie T vs rho J a
 
     # plot at diff JK
-    for DeltaK in -JK*np.array([1]):
+    for DeltaK in JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
 
         # 2 site SR
         fig, ax = plt.subplots();
-        hblocks, tblocks = [hSR_JK0_diag], [-th*np.eye(np.shape(hSR_JK0_diag)[0])]; # on site and hopping blocks in the SR
-        for Coi in range(2):
+        hblocks = [hSR_JK0_diag];
+        for Coi in range(2): # iter over imps
 
             # define all physical params
             JKO, JKT = 0, 0;
             if Coi == 0: JKO = JK+DeltaK/2; # J S dot sigma is onsite only
             else: JKT = JK-DeltaK/2;
             params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-            # construct second quantized ham
-            h1e, g2e = wfm.utils.h_dimer_2q(params); 
+            h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
 
             # construct h_SR (determinant basis)
             hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
@@ -111,25 +110,24 @@ if True: # fig 6 ie T vs rho J a
             hSR_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR, Udiag));
             if(verbose and Coi == 0):
                 print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
-                print("\nDiagonal hamiltonian, in meV\n", Ha2meV*np.real(hSR));
-
-            # hopping between sites
-            V_SR = -tp*np.eye(np.shape(hSR)[0])
+                print("\nDiagonal hamiltonian, in meV\n", Ha2meV*np.real(hSR_diag));
             
             # add to blocks list
-            hblocks.append(np.copy(hSR));
-            if(Coi == 1): tblocks.append(np.copy(V_SR));
+            hblocks.append(np.copy(hSR_diag));
 
+        # finish hblocks
         hblocks.append(hSR_JK0_diag);
-        tblocks.append(-th*np.eye(np.shape(hSR_JK0_diag)[0]));
         hblocks = np.array(hblocks);
-        tblocks = np.array(tblocks);
+
+        # hopping
+        tnn = np.array([-th*np.eye(len(source)),-tp*np.eye(len(source)),-th*np.eye(len(source))]);
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
         # const energy shift to set hLL[sourcei,sourcei] = 0
         E_shift = hblocks[0,sourcei,sourcei];
         for hb in hblocks:
             hb += -E_shift*np.eye(np.shape(hblocks[0])[0]);
-        for hb in hblocks: print(Ha2meV*np.real(hb));
+        for hb in hblocks: print("\nBiasing:\n",Ha2meV*np.real(hb));
 
         # iter over rhoJ, getting T
         Tvals = [];
@@ -148,7 +146,7 @@ if True: # fig 6 ie T vs rho J a
                 print("rhoJa = ", abs(JK/np.pi)/np.sqrt((Energy+2*tl)*tl));
 
             # T (Energy from 0)
-            Tvals.append(wfm.kernel(hblocks, tblocks, tl, Energy, source));
+            Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source));
             
         # plot
         Tvals = np.array(Tvals);

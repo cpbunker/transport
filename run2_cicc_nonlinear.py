@@ -27,10 +27,8 @@ plt.style.use('seaborn-dark-palette');
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5
 
-##################################################################################
-#### molecular dimer regime (N = 2 fixed)
-
-if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
+# entanglement detection for nonlinear dimers
+if False: 
 
     # incident state
     theta_param = 3*np.pi/4;
@@ -70,18 +68,22 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     for Vg in Vgvals:
 
         # construct blocks of hamiltonian
-        # t's vary, so have to construct hblocks, tblocks list by hand
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
+        # t's vary, so have to construct by hand
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tp, 0, N_SR-1, N_SR);
         hblocks = np.append([np.zeros_like(hblocks[0])], hblocks, axis = 0); # LL block
         hblocks = np.append(hblocks, [np.zeros_like(hblocks[0])], axis = 0); # RL block
-        tblocks = np.append([-th*np.eye(np.shape(hblocks)[1])], tblocks, axis = 0); # V hyb
-        tblocks = np.append(tblocks,[-th*np.eye(np.shape(hblocks)[1])], axis = 0);
         for blocki in range(len(hblocks)): # add Vg in SR
             if(blocki > 0 and blocki < N_SR + 1): # gate voltage if in SR
-                hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0])
+                hblocks[blocki] += Vg*np.eye(np.shape(hblocks[0])[0]);
+
+        # hopping
+        tnn = np.append([-th*np.eye(len(source))], tnn, axis = 0); # V hyb
+        tnn = np.append(tnn,[-th*np.eye(len(source))], axis = 0);
+        tnnn = np.zeros_like(tnn)[:-1];
+        tnnn = tnn[:-1]; # next nearest neighbor hopping allowed !
                 
         # get data
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, -2*tl*np.cos(ka0), source));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(ka0), source));
     
     Tvals = np.array(Tvals);
     Ttotals = np.sum(Tvals, axis = 1);
@@ -95,6 +97,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     axes[1].axvline(-2*tl*np.cos(ka0) + 2*tp, color = "black");
     plt.show();
     del Vg, Tvals, Ttotals, fig, axes;
+    assert False;
 
     #### vary theta, phi
     #### -> detection !
@@ -150,7 +153,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     raise(Exception);
 
 
-# nonlinear dimer case, compare T vs rhoJa
+# entanglement generation for nonlinear dimers - not much interesting so far
 if True: 
 
     # siam inputs
@@ -164,13 +167,18 @@ if True:
 
     # iter over rhoJ, getting T
     Tvals = [];
-    xlims = 0.05, 4.0
-    rhoJvals = np.linspace(xlims[0], xlims[1], 299)
+    xlims = 0.05, 4.0;
+    rhoJvals = np.linspace(xlims[0], xlims[1], 299);
+    #Elims = (1.0,2);
+    #Evals = np.linspace(Elims[0], Elims[1], 9);
+    #rhoJvals = Jeff/(np.pi*np.sqrt(tl*Evals));
+    #print(Evals,"\n",rhoJvals); 
     for rhoJa in rhoJvals:
 
         # energy and K fixed by J, rhoJ
         E_rho = Jeff*Jeff/(rhoJa*rhoJa*np.pi*np.pi*tl); # fixed E that preserves rho_J_int
                                                 # this E is measured from bottom of band !!!
+        #E_rho = Evals[Ei]
         k_rho = np.arccos((E_rho-2*tl)/(-2*tl));
         print("E, E - 2t, J, E/J = ",E_rho, E_rho -2*tl, Jeff, E_rho/Jeff);
         print("ka = ",k_rho);
@@ -180,15 +188,17 @@ if True:
         # location of impurities, fixed by kx0 = pi
         kx0 = 0*np.pi;
         N0 = max(1,int(kx0/(k_rho)));
-        if verbose: print("N0 = ",N0);
+        assert(N0 == 1);
 
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = 1, 1+N0;
-        hblocks, tblocks = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, i2+2);
+        hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, i1, i2, i2+2);
+        tnnn = np.zeros_like(tnn)[:-1];
+        tnnn = tnn[:-1]; # next nearest neighbor hopping allowed !
 
         # get T from this setup
-        Tvals.append(wfm.kernel(hblocks, tblocks, tl, E_rho , source));
+        Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source));
 
     # plot
     fig, ax = plt.subplots();
@@ -208,8 +218,8 @@ if True:
     axins.set_yticks([0,0.2]);
 
     # format
-    ax.set_xlim(*xlims);
-    ax.set_xticks([0,1,2,3,4]);
+    #ax.set_xlim(*xlims);
+    #ax.set_xticks([0,1,2,3,4]);
     ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
     ax.set_ylim(0,1.0);
     ax.set_yticks([0,1]);

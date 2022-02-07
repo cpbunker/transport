@@ -293,7 +293,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     #### vary theta, phi
     #### -> detection !
     if((th == tl) and (tp == tl)):
-        myVg = -2*tl*np.cos(ka0) + 2*tp;
+        myVg = -2*tp*np.cos(ka0) + 2*tp; # ???
     else:
         myVg = -0.80;
     print(">>> myVg = ",myVg);
@@ -377,7 +377,7 @@ if True: # cicc fig 6 (N = 2 still)
         # location of impurities, fixed by kx0 = pi
         kx0 = 0*np.pi;
         N0 = max(1,int(kx0/(k_rho)));
-        if verbose: print("N0 = ",N0);
+        assert(N0 == 1);
 
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly

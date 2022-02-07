@@ -40,7 +40,7 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if( np.any(isdiag)): # True if there are nonzero off diag terms
-            raise Exception("Not diagonal\n"+str(h[hi]))
+            pass; #raise Exception("Not diagonal\n"+str(h[hi]))
     for i in range(len(qj)): # check source channel mu_LL = 0
         if(qj[i] != 0):
             assert(h[0,i,i] == 0);
@@ -142,13 +142,15 @@ def Hmat(h, tnn, tnnn, verbose = 0):
                     elif(sitei+2 == sitej): # input from tnnn to 2nd upper diag
                         H[ovi, ovj] = tnnn[sitei][loci, locj];
 
-    if(verbose > 5):
+    if(False):
         print("\n>>> H construction\n");
         print("- shape(H_j) = ", np.shape(h[0]));
         print("- shape(tnn_j) = ", np.shape(tnn[0]));
         print("- shape(tnnn_j) = ", np.shape(tnnn[0]));
         print("- shape(H) = ",np.shape(H));
         print("- H = \n",np.real(H));
+        print(np.real(H)[::8,::8])
+        print(np.real(H)[16:24,16:24]);
         assert False;
     return H; 
 

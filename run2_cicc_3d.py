@@ -31,7 +31,7 @@ verbose = 5
 ##################################################################################
 #### data and plots for cicc Fig 2b (transparency)
     
-if True: # original version of 2b (varying x0 by varying N)
+if False: # original version of 2b (varying x0 by varying N)
 
     # tight binding params
     tl = 1.0;
@@ -103,14 +103,13 @@ if True: # original version of 2b (varying x0 by varying N)
     # package into one array
     if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
     fname = "dat/cicc/"+spinstate+"/";
-    fname = "";
     fname +="3d_rhoJa"+str(int(np.around(rhoJa_star)))+".npy";
     np.save(fname,Tvals);
     if verbose: print("Saved data to "+fname);
     #raise(Exception);
 
         
-if False: # plot data
+if True: # plot data
 
     # plot each file given at command line
     #fig, axes = plt.subplots();
