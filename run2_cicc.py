@@ -360,7 +360,7 @@ if True: # cicc fig 6 (N = 2 still)
     spinstate = "baa"
 
     # iter over rhoJ, getting T
-    Tvals = [];
+    Tvals, Rvals = [], [];
     xlims = 0.05, 4.0
     rhoJvals = np.linspace(xlims[0], xlims[1], 299)
     for rhoJa in rhoJvals:
@@ -387,13 +387,15 @@ if True: # cicc fig 6 (N = 2 still)
 
         # get T from this setup
         Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source));
+        Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E_rho , source, reflect = True));
 
     # plot
     fig, ax = plt.subplots();
-    Tvals = np.array(Tvals);
+    Tvals, Rvals = np.array(Tvals), np.array(Rvals);
     ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "black");
     ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "black", linestyle = "dashed");
-
+    totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+    ax.plot(rhoJvals, totals, color="red");
     # inset
     rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
     axins = inset_axes(ax, width="50%", height="50%");

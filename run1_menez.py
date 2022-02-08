@@ -24,18 +24,18 @@ plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 analytical = False; # whether to compare to menezes' calc
-reflect = True;
+reflect = False;
 
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = 0.0; # zeeman splitting on imp
-Vb = 1.5; # barrier voltage in RL
+Delta = -0.6; # zeeman splitting on imp
+Vb = 0.0; # barrier voltage in RL
 
 if True: # sigma dot S
 
     fig, ax = plt.subplots();
-    for Nx3 in [3,6,9,12,15,18]:
+    for Nx3 in [0]: #[3,6,9,12,15,18]:
         Jeff = 0.1;
 
         # 2nd qu'd operator for S dot s
@@ -62,6 +62,10 @@ if True: # sigma dot S
         for x3i in range(Nx3): hblocks.append(np.zeros_like(hRL)); # vary imp to barrier distance
         hblocks.append(hRL);
         hblocks = np.array(hblocks);
+        assert(Delta < 0);
+        for hb in hblocks: hb += abs(Delta)*np.eye(len(source));
+
+        # hopping
         tnn = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
         for x3i in range(Nx3): tnn.append(-tl*np.eye(*np.shape(hSR))); # vary imp to barrier distance
         tnn = np.array(tnn);
@@ -70,20 +74,24 @@ if True: # sigma dot S
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.99*tl, -1.9*tl
+        Emin, Emax = -1.99*tl, 1.8*tl
         numE = 300;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
-        Tvals = [];
+        Tvals, Rvals = [], [];
         for E in Evals:
             # pick one to be verbose
             if(Jeff == 0.1 and E == Evals[5]):
-                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = reflect, verbose = verbose));
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, verbose = verbose));
             else:
-                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = reflect));
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source));
+            Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
                 
         # plot Tvals vs E
-        Tvals = np.array(Tvals);
+        Tvals, Rvals = np.array(Tvals), np.array(Rvals);
         ax.plot(np.real(Evals + 2*tl),Tvals[:,2], label = Nx3);
+
+        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+        ax.plot(np.real(Evals + 2*tl), totals, color="red");
 
         # menezes prediction in the continuous case
         if(analytical):

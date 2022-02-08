@@ -40,10 +40,11 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if( np.any(isdiag)): # True if there are nonzero off diag terms
-            pass; #raise Exception("Not diagonal\n"+str(h[hi]))
+            raise Exception("Not diagonal\n"+str(h[hi]))
     for i in range(len(qj)): # check source channel mu_LL = 0
         if(qj[i] != 0):
-            assert(h[0,i,i] == 0);
+            pass;
+            #assert(h[0,i,i] == 0);
 
     # unpack
     N = len(h) - 2; # num scattering region sites
@@ -66,6 +67,9 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
 
     # check that modes with given energy are allowed in some LL channels
     assert(np.any(np.imag(SigmaL)) );
+    for sigmai in range(len(SigmaL)):
+        if(abs(np.imag(SigmaL[sigmai])) > 1e-10 and abs(np.imag(SigmaR[sigmai])) > 1e-10 ):
+            assert(np.sign(np.imag(SigmaL[sigmai])) == np.sign(np.imag(SigmaR[sigmai])));
 
     # green's function
     G = Green(h, tnn, tnnn, tl, E, verbose = verbose);
@@ -82,9 +86,10 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
         if(verbose > 3): print("\nEnergy, sigmai = ",E,sigmai);
         rcoef = (-2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]); # zwierzycki Eq 17
         tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
-
+        
         # benchmarking
         if(verbose > 3):
+            print("- Gqj = ",Gqj);
             print("- R = ",rcoef*np.conj(rcoef));
             print("- T = ",tcoef*np.conj(tcoef));
         assert( abs(np.imag(rcoef*np.conj(rcoef))) < 1e-10 ); # must be real
@@ -196,9 +201,9 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
         SigmaRs.append(SigmaR);
     del lamR, LambdaRplus, SigmaR;
     
-    SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
     if verbose > 3:
-        print("\nE = ",E);
+        SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
+        print("\n****\nE = ",E);
         ka_L = np.arccos((E-h[0,0,0])/(-2*tl));
         print("ka_L = ",ka_L);
         print("KE_L = ",-2*tl*np.cos(ka_L) );
@@ -226,6 +231,7 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0):
 
     # get green's function matrix
     Hp = Hprime(h, tnn, tnnn, tl, E, verbose = verbose);
+    #if(verbose): print(">>> EI - H' = \n", Hp )
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
     # of interest is the qith row which contracts with the source q

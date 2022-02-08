@@ -440,5 +440,8 @@ def h_dimer_2q(params):
     g2e = fci_mod.terms_to_g2e(g2e, zeops, JK1*zecoefs, zOops, zOcoefs);
     g2e = fci_mod.terms_to_g2e(g2e, zeops, JK2*zecoefs, zTops, zTcoefs);
 
+    # check hermicity
+    assert(not np.any(h1e - np.conj(h1e.T)));
+    assert(not np.any(g2e - np.conj(g2e.T)));
     return h1e, g2e;
 
