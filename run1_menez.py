@@ -29,7 +29,7 @@ reflect = False;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = -0.6; # zeeman splitting on imp
+Delta = 0.05; # zeeman splitting on imp
 Vb = 0.0; # barrier voltage in RL
 
 if True: # sigma dot S
@@ -62,8 +62,6 @@ if True: # sigma dot S
         for x3i in range(Nx3): hblocks.append(np.zeros_like(hRL)); # vary imp to barrier distance
         hblocks.append(hRL);
         hblocks = np.array(hblocks);
-        assert(Delta < 0);
-        for hb in hblocks: hb += abs(Delta)*np.eye(len(source));
 
         # hopping
         tnn = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
@@ -74,13 +72,13 @@ if True: # sigma dot S
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.99*tl, 1.8*tl
-        numE = 300;
+        Emin, Emax = -1.999*tl, -1.9*tl
+        numE = 30;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals, Rvals = [], [];
         for E in Evals:
             # pick one to be verbose
-            if(Jeff == 0.1 and E == Evals[5]):
+            if(E in Evals[:5]):
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, verbose = verbose));
             else:
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source));
@@ -88,10 +86,13 @@ if True: # sigma dot S
                 
         # plot Tvals vs E
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-        ax.plot(np.real(Evals + 2*tl),Tvals[:,2], label = Nx3);
+        #ax.plot(np.real(Evals + 2*tl),Tvals[:,1], label = "source T");
+        ax.plot(np.real(Evals + 2*tl),Tvals[:,2], label = "flip T");
+        #ax.plot(np.real(Evals + 2*tl),Rvals[:,1], label = "source R");
+        ax.plot(np.real(Evals + 2*tl),Rvals[:,2], label = "flip R", linestyle = "dashed");
 
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        ax.plot(np.real(Evals + 2*tl), totals, color="red");
+        ax.plot(np.real(Evals + 2*tl), totals, color="red", label = "total");
 
         # menezes prediction in the continuous case
         if(analytical):

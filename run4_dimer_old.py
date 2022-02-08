@@ -28,7 +28,7 @@ spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 #dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
-dets52 = [[0,5,9],[1,4,9],[1,5,8]]; # total spin -5/2 subspace
+dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
 
 # tight binding params
 tl = 0.0056; # lead hopping, in Hartree
@@ -42,7 +42,7 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0
-JK = 2*DO;
+JK = DO;
 
 if False:
     Jx = 0/Ha2meV;
@@ -51,7 +51,7 @@ if False:
     DT = 0/Ha2meV;
 
 # initialize source vector in down, 3/2, 3/2 state
-sourcei = 0; # |up, -3/2, -3/2 >
+sourcei = 2; # |down, 3/2, 3/2 >
 assert(sourcei >= 0 and sourcei < len(dets52));
 source = np.zeros(len(dets52));
 source[sourcei] = 1;
@@ -61,7 +61,7 @@ source_str += ">";
 if(verbose): print("\nSource:\n"+source_str);
 
 # entangle pair
-pair = (1,2); # |down, -1/2, -3/2> and |down, -3/2, -1/2 >
+pair = (0,1); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
 if(verbose):
     print("\nEntangled pair:");
     pair_strs = [];
@@ -75,7 +75,7 @@ if(verbose):
 # lead eigenstates (JKO = JKT = 0)
 h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0,0)); 
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
-print("\nUnentangled real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0)); # |i> decoupled when A=0
+print("\nNon-diagonal real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0)); # |i> decoupled when A=0
 leadEs, Udiag = np.linalg.eigh(hSR_JK0);
 print("\n eigenstates:");
 for coli in range(len(leadEs)): print(np.real(Udiag.T[coli]), Ha2meV*leadEs[coli]);
@@ -135,7 +135,7 @@ if True: # fig 6 ie T vs rho J a
 
         # iter over rhoJ, getting T
         Tvals, Rvals = [], [];
-        rhoJvals = np.linspace(0.01,0.03,99);
+        rhoJvals = np.linspace(0.01,4.0,9);
         Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
         for rhoi in range(len(rhoJvals)):
 
@@ -164,7 +164,7 @@ if True: # fig 6 ie T vs rho J a
         ax.plot(rhoJvals, Tvals[:,0]+Tvals[:,1]+Tvals[:,2]+Rvals[:,0]+Rvals[:,1]+Rvals[:,2], color = "red")
         # format and show
         ax.set_xlim(min(rhoJvals),max(rhoJvals));
-        ax.set_xticks([0,1,2,3,4]);
+        #ax.set_xticks([0,1,2,3,4]);
         ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
         ax.set_ylim(0,1);
         ax.set_yticks([0,1]);
