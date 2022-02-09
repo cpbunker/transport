@@ -31,7 +31,7 @@ Vb = 4.0; # barrier in RL (i.e. perfect mirror)
 ##################################################################################
 #### tune N12 and N23
     
-if True: 
+if False: 
 
     # choose boundary condition
     source = np.zeros(8);
@@ -40,7 +40,7 @@ if True:
 
     # fix kpa0 at 0
     N12 = 2
-    factor = 99 #988;
+    factor = 988;
     ka0 =  np.pi/(N12 - 1)/factor; # free space wavevector, should be << pi
                                     # increasing just broadens the Vg peak
     kpa0 = np.pi/(N12 - 1)/factor; # wavevector in gated SR
@@ -53,7 +53,7 @@ if True:
     kx23max = 1.0*np.pi;
     N23max = int(kx23max/ka0); # a = 1
     if verbose: print("rhoJa = ",rhoJa,"\nN12 = ",N12,"\nN23max = ",N23max);
-    N23vals = np.linspace(1, N23max, 6, dtype = int); # always integer
+    N23vals = np.linspace(1, N23max, 99, dtype = int); # always integer
     kx23vals = ka0*(N23vals); # a = 1
 
     # iter over impurity-mirror distances, get transmission
@@ -61,6 +61,7 @@ if True:
     for N23 in N23vals:
 
         # construct hams
+        print(N23);
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks also
         hblocks, tnn = wfm.utils.h_cicc_eff(Jeff, tl, 1, 1+N12, 1+N12+N23+1);
         tnnn = np.zeros_like(tnn)[:-1];
@@ -86,7 +87,7 @@ if True:
         data.append(Tvals[:,sigmai]); # data has columns of N0val, k0val, corresponding T vals
     # save data
     fname = "dat/gate/"+spinstate+"/";
-    fname = ""
+    fname = "";
     fname +="N_rhoJa"+str(int(np.around(rhoJa)))+".npy";
     np.save(fname,np.array(data));
     if verbose: print("Saved data to "+fname);
@@ -113,12 +114,12 @@ if True:   # plot each file given at command line
             axes[0].plot(kNavals/np.pi, Tvals[:,sigmai], label = labels[sigmai]);
 
     # format and show
-    axes[0].set_xlim(0.0,1.1);
-    axes[0].set_ylim(0.0,1);
+    axes[0].set_xlim(0.0,1.0);
     axes[0].set_xticks([0,1]);
-    axes[0].set_xlabel("$kaN_{23}/\pi$", fontsize = "x-large");
-    axes[0].set_ylabel("$T$", fontsize = "x-large");
-    plt.legend();
+    axes[0].set_xlabel("$ka(N_{B} - 2)/\pi$", fontsize = "x-large");
+    axes[0].set_ylim(0.0,1);
+    axes[0].set_yticks([0,1]);
+    axes[0].set_ylabel("$R$", fontsize = "x-large");
     plt.show();
     raise(Exception);
 
