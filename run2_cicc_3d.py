@@ -50,7 +50,7 @@ if False: # original version of 2b (varying x0 by varying N)
     spinstate = "psimin";
     
     # return var
-    numpts = (49, 49);
+    numpts = (9, 9);
     Tvals = np.zeros((numpts[0]+1,numpts[1]+1),dtype = complex);
 
     # N0 vals
@@ -69,6 +69,7 @@ if False: # original version of 2b (varying x0 by varying N)
     rhoJa_star = Jeff/(np.pi*np.sqrt(tl*(Energy+2*tl)));
     if(verbose):
         print("N0max = ",N0max);
+        print("N0* = ",N0star);
         print("Energy = ",Energy);
         print("rhoJa_max, rhoJa* = ",rhoJa_max, rhoJa_star);
         print("kpalims: ", kpalims, kpalims*(N0star-1)/np.pi);
@@ -103,7 +104,7 @@ if False: # original version of 2b (varying x0 by varying N)
     # package into one array
     if(verbose): print("shape(Tvals) = ",np.shape(Tvals));
     fname = "dat/cicc/"+spinstate+"/";
-    fname +="3d_rhoJa"+str(int(np.around(rhoJa_star)))+".npy";
+    fname +="3d_rhoJa0.npy";
     np.save(fname,Tvals);
     if verbose: print("Saved data to "+fname);
     #raise(Exception);
@@ -132,15 +133,18 @@ if True: # plot data
                 axes[0].plot(N0vals[N0i]*kpvals/np.pi, np.real(Tvals[N0i,:]));
 
         else: # plot 3d
-            print(">>>",kpvals);
+            print(">>>",np.real(kpvals));
+            print(">>>",np.real(N0vals));
             fig = plt.figure();
             ax3d = fig.add_subplot(projection = "3d");
             N0vals, kpvals = np.meshgrid(N0vals, kpvals);
             ax3d.plot_surface(np.real(N0vals),np.real(kpvals),np.real(Tvals.T),cmap = cm.coolwarm);
             ax3d.set_xlim(np.min(np.real(N0vals)), np.max(np.real(N0vals)));
-            ax3d.set_xlabel("$N$");
+            ax3d.set_xticks([0,1]);
+            ax3d.set_xlabel("$N$", fontsize = "x-large");
             ax3d.set_ylim(np.min(np.real(kpvals)), np.max(np.real(kpvals)));
-            ax3d.set_ylabel("$k'a$");
+            ax3d.set_yticks([0,1]);
+            ax3d.set_ylabel("$k'a$", fontsize = "x-large");
             ax3d.set_zlim(0,1);
             ax3d.set_zticks([0,1]);
             ax3d.set_zlabel("$T$");

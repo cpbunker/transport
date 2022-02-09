@@ -29,7 +29,7 @@ reflect = False;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = 0.05; # zeeman splitting on imp
+Delta = 0.01; # zeeman splitting on imp
 Vb = 0.0; # barrier voltage in RL
 
 if True: # sigma dot S
@@ -44,18 +44,25 @@ if True: # sigma dot S
         states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
         hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
 
-        # leads and zeeman splitting
+        # zeeman splitting
         hzeeman = np.array([[Delta, 0, 0, 0],
                         [0,0, 0, 0],
-                        [0, 0, Delta, 0],
-                        [0, 0, 0, 0]]); # zeeman splitting
+                        [0, 0, Delta, 0], # spin flip gains PE delta
+                        [0, 0, 0, 0]]);
+        hSR += hzeeman;
+
+        # truncate to coupled channels
+        hSR = hSR[1:3,1:3];
+        hzeeman = hzeeman[1:3,1:3];
+
+        # leads
         hLL = np.copy(hzeeman);
         hRL = np.copy(hzeeman)+Vb*np.eye(np.shape(hLL)[0]);
-        hSR += hzeeman; # zeeman splitting is everywhere
 
         # source = up electron, down impurity
+        sourcei, flipi = 0,1
         source = np.zeros(np.shape(hSR)[0]);
-        source[1] = 1;
+        source[sourcei] = 1;
 
         # package together hamiltonian blocks
         hblocks = [hLL,hSR];
@@ -72,27 +79,26 @@ if True: # sigma dot S
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.999*tl, -1.9*tl
+        Emin, Emax = -1.999*tl, -1.999*tl + 8*abs(Delta);
         numE = 30;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals, Rvals = [], [];
         for E in Evals:
-            # pick one to be verbose
-            if(E in Evals[:5]):
+            if(E in Evals[14:17]): # verbose
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, verbose = verbose));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
             else:
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source));
-            Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
                 
         # plot Tvals vs E
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-        #ax.plot(np.real(Evals + 2*tl),Tvals[:,1], label = "source T");
-        ax.plot(np.real(Evals + 2*tl),Tvals[:,2], label = "flip T");
-        #ax.plot(np.real(Evals + 2*tl),Rvals[:,1], label = "source R");
-        ax.plot(np.real(Evals + 2*tl),Rvals[:,2], label = "flip R", linestyle = "dashed");
-
+        ax.plot(np.real(Evals + 2*tl),Tvals[:,sourcei], label = "source T", color = "black");
+        ax.scatter(np.real(Evals + 2*tl),Tvals[:,flipi], label = "flip T", color = "black", marker = "s");
+        ax.plot(np.real(Evals + 2*tl),Rvals[:,sourcei], label = "source R", color = "tab:blue",);
+        ax.scatter(np.real(Evals + 2*tl),Rvals[:,flipi], label = "flip R", color = "tab:blue", marker = "s");
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        ax.plot(np.real(Evals + 2*tl), totals, color="red", label = "total");
+        ax.plot(np.real(Evals + 2*tl), totals-1, color="red", label = "total - 1");
 
         # menezes prediction in the continuous case
         if(analytical):

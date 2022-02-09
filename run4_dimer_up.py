@@ -28,7 +28,7 @@ spec_strs = ["e","1","2"];
 states = [[0,1],[2,3,4,5],[6,7,8,9]]; # e up, down, spin 1 mz, spin 2 mz
 state_strs = ["0.5_","-0.5_","1.5_","0.5_","-0.5_","-1.5_","1.5_","0.5_","-0.5_","-1.5_"];
 #dets = np.array([xi for xi in itertools.product(*tuple(states))]); # product states
-dets52 = [[0,2,7],[0,3,6],[1,2,6]]; # total spin 5/2 subspace
+dets52 = [[0,5,9],[1,4,9],[1,5,8]]; # total spin -5/2 subspace
 
 # tight binding params
 tl = 0.0056; # lead hopping, in Hartree
@@ -51,7 +51,7 @@ if False:
     DT = 0/Ha2meV;
 
 # initialize source vector in down, 3/2, 3/2 state
-sourcei = 2; # |down, 3/2, 3/2 >
+sourcei = 0; # |up, -3/2, -3/2 >
 assert(sourcei >= 0 and sourcei < len(dets52));
 source = np.zeros(len(dets52));
 source[sourcei] = 1;
@@ -61,7 +61,7 @@ source_str += ">";
 if(verbose): print("\nSource:\n"+source_str);
 
 # entangle pair
-pair = (0,1); # |down, -1/2, -3/2> and |down, -3/2, -1/2 >
+pair = (1,2); # |down, -1/2, -3/2> and |down, -3/2, -1/2 >
 if(verbose):
     print("\nEntangled pair:");
     pair_strs = [];
@@ -94,7 +94,7 @@ for i in range(len(source)): # force diag
 if True: # fig 6 ie T vs rho J a
 
     # plot at diff JK
-    for DeltaK in [JK*1.0]: #JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
+    for DeltaK in [JK*0.0]: #JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
 
         # 2 site SR
         fig, ax = plt.subplots();
@@ -135,8 +135,8 @@ if True: # fig 6 ie T vs rho J a
 
         # iter over rhoJ, getting T
         Tvals, Rvals = [], [];
-        Elims = -1.999*tl, -1.999*tl + 0.1*tl;
-        Evals = np.linspace(Elims[0], Elims[1], 99);
+        Elims = -1.999*tl, -1.999*tl + 0.05*tl;
+        Evals = np.linspace(Elims[0], Elims[1], 999);
         for Ei in range(len(Evals)):
 
             # energy
@@ -160,19 +160,17 @@ if True: # fig 6 ie T vs rho J a
         # plot
         xvals = Evals/tl+2;
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-        #ax.plot(xvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
+        ax.plot(xvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
         ax.plot(xvals, Tvals[:,pair[0]], label = "$|+>$", color = "black", linestyle = "dashed");
         ax.plot(xvals, Tvals[:,pair[1]], label = "$|->$", color = "black", linestyle = "dotted");
-        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        ax.plot(xvals, totals-1, color = "red")
+        ax.plot(xvals, Tvals[:,0]+Tvals[:,1]+Tvals[:,2]+Rvals[:,0]+Rvals[:,1]+Rvals[:,2], color = "red")
         # format and show
         ax.set_xlim(min(xvals),max(xvals));
         #ax.set_xticks([0,1,2,3,4]);
-        ax.set_xlabel("$E+2t$", fontsize = "x-large");
-        #ax.set_ylim(0,1);
-        #ax.set_yticks([0,1]);
+        ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+        ax.set_ylim(0,1);
+        ax.set_yticks([0,1]);
         ax.set_ylabel("$T$", fontsize = "x-large");
-        plt.legend();
         plt.show();
 
     # end sweep over JK

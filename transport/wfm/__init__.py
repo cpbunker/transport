@@ -71,6 +71,7 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
             assert(np.sign(np.imag(SigmaL[sigmai])) == np.sign(np.imag(SigmaR[sigmai])));
 
     # green's function
+    if(verbose): print("\nEnergy = ",np.real(E+2*tl)); # start printouts
     G = Green(h, tnn, tnnn, tl, E, verbose = verbose);
 
     # contract G with source to pick out matrix elements we need
@@ -78,19 +79,17 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
     for j in range(len(qj)):
         qjvector[j] = qj[j]; # fill from block space
     Gqj = np.dot(G, qjvector);
-    if(verbose): print(">>> Gqj = ",Gqj);
+    #if(verbose): print(">>> Gqj = ",Gqj);
 
     # compute reflection and transmission coeffs
     coefs = np.zeros(n_loc_dof, dtype = float); # force zero
     for sigmai in range(n_loc_dof): # on site degrees of freedom
-        if(verbose > 3): print("\nEnergy, sigmai = ",E,sigmai);
         rcoef = -2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]; # zwierzycki Eq 17
         tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
         
         # benchmarking
-        if(verbose > 3):
-            print("- R = ",rcoef*np.conj(rcoef));
-            print("- T = ",tcoef*np.conj(tcoef));
+        if(verbose > 1):
+            print(" - sigmai = ",sigmai,", R = ",rcoef*np.conj(rcoef),", T = ",tcoef*np.conj(tcoef));
         assert( abs(np.imag(rcoef*np.conj(rcoef))) < 1e-10 ); # must be real
         assert( abs(np.imag(tcoef*np.conj(tcoef))) < 1e-10 ); # must be real
 
@@ -200,17 +199,14 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
         SigmaRs.append(SigmaR);
     del lamR, LambdaRplus, SigmaR;
     
-    if(False):
+    if(verbose > 3):
         SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
-        print("\n****\nE = ",E);
-        ka_L = np.arccos((E-h[0,0,0])/(-2*tl));
-        print("ka_L = ",ka_L);
-        print("KE_L = ",-2*tl*np.cos(ka_L) );
-        print("SigmaL = ",SigmaLs);
-        ka_R = np.arccos((E-h[-1,0,0])/(-2*tl));
-        print("ka_R = ",ka_R);
-        print("KE_R = ",-2*tl*np.cos(ka_R) );
-        print("SigmaR = ",SigmaRs);
+        ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl));
+        ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
+        for sigmai in range(len(ka_L)):
+            print(" - sigmai = ",sigmai,", ka_L = ", ka_L[sigmai],", KE_L = ", 2*tl-2*tl*np.cos(ka_L[sigmai]),", Sigma_L = ", SigmaLs[sigmai]);
+            print(" - sigmai = ",sigmai,", ka_R = ", ka_R[sigmai],", KE_R = ", 2*tl-2*tl*np.cos(ka_R[sigmai]),", Sigma_R = ", SigmaRs[sigmai]);              #
+
     return Hp;
 
 
@@ -230,8 +226,8 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0):
 
     # get green's function matrix
     Hp = Hprime(h, tnn, tnnn, tl, E, verbose = verbose);
-    if(verbose): print(">>> H' = \n", Hp );
-    if(verbose): print(">>> EI - H' = \n", E*np.eye(np.shape(Hp)[0]) - Hp );
+    #if(verbose): print(">>> H' = \n", Hp );
+    #if(verbose): print(">>> EI - H' = \n", E*np.eye(np.shape(Hp)[0]) - Hp );
     G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
 
     # of interest is the qith row which contracts with the source q
