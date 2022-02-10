@@ -42,7 +42,7 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0
-JK = DO;
+JK = 2*DO;
 
 if False:
     Jx = 0/Ha2meV;
@@ -61,7 +61,7 @@ source_str += ">";
 if(verbose): print("\nSource:\n"+source_str);
 
 # entangle pair
-pair = (0,1); # |up, 1/2, 3/2 > and |up, 3/2, 1/2 >
+pair = (0,1); # |down, -1/2, -3/2> and |down, -3/2, -1/2 >
 if(verbose):
     print("\nEntangled pair:");
     pair_strs = [];
@@ -75,7 +75,7 @@ if(verbose):
 # lead eigenstates (JKO = JKT = 0)
 h1e_JK0, g2e_JK0 = wfm.utils.h_dimer_2q((Jx, Jx, Jz, DO, DT, An, 0,0)); 
 hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets52);
-print("\nNon-diagonal real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0)); # |i> decoupled when A=0
+print("\nUnentangled real JK = 0 hamiltonian, in meV\n",Ha2meV*np.real(hSR_JK0)); # |i> decoupled when A=0
 leadEs, Udiag = np.linalg.eigh(hSR_JK0);
 print("\n eigenstates:");
 for coli in range(len(leadEs)): print(np.real(Udiag.T[coli]), Ha2meV*leadEs[coli]);
@@ -94,7 +94,7 @@ for i in range(len(source)): # force diag
 if True: # fig 6 ie T vs rho J a
 
     # plot at diff JK
-    for DeltaK in [JK*0.0]: #JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
+    for DeltaK in [JK*1.0]: #JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
 
         # 2 site SR
         fig, ax = plt.subplots();
@@ -135,13 +135,12 @@ if True: # fig 6 ie T vs rho J a
 
         # iter over rhoJ, getting T
         Tvals, Rvals = [], [];
-        rhoJvals = np.linspace(0.01,4.0,9);
-        Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
-        for rhoi in range(len(rhoJvals)):
+        Elims = -1.999*tl, -1.999*tl + 0.1*tl;
+        Evals = np.linspace(Elims[0], Elims[1], 99);
+        for Ei in range(len(Evals)):
 
             # energy
-            rhoJa = rhoJvals[rhoi];
-            Energy = Erhovals[rhoi] - 2*tl; # measure from mu
+            Energy = Evals[Ei]; # measure from mu
             k_rho = np.arccos(Energy/(-2*tl));
             if(verbose > 4):
                 print("\nCiccarello inputs");
@@ -150,25 +149,30 @@ if True: # fig 6 ie T vs rho J a
                 print("rhoJa = ", abs(JK/np.pi)/np.sqrt((Energy+2*tl)*tl));
 
             # T (Energy from 0)
-            if(rhoJa > 0.3 and rhoJa < 0.6):
+            if(False):
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, verbose = verbose));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, reflect = True));
             else:
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, verbose = 0));
-            Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, reflect = True));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, reflect = True));
+            
             
         # plot
+        xvals = Evals/tl+2;
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-        ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
-        ax.plot(rhoJvals, Tvals[:,pair[0]], label = "$|+>$", color = "black", linestyle = "dashed");
-        ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$", color = "black", linestyle = "dotted");
-        ax.plot(rhoJvals, Tvals[:,0]+Tvals[:,1]+Tvals[:,2]+Rvals[:,0]+Rvals[:,1]+Rvals[:,2], color = "red")
+        #ax.plot(xvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
+        ax.plot(xvals, Tvals[:,pair[0]], label = "$|+>$", color = "black", linestyle = "dashed");
+        ax.plot(xvals, Tvals[:,pair[1]], label = "$|->$", color = "black", linestyle = "dotted");
+        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+        ax.plot(xvals, totals-1, color = "red")
         # format and show
-        ax.set_xlim(min(rhoJvals),max(rhoJvals));
+        ax.set_xlim(min(xvals),max(xvals));
         #ax.set_xticks([0,1,2,3,4]);
-        ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
-        ax.set_ylim(0,1);
-        ax.set_yticks([0,1]);
+        ax.set_xlabel("$E+2t$", fontsize = "x-large");
+        #ax.set_ylim(0,1);
+        #ax.set_yticks([0,1]);
         ax.set_ylabel("$T$", fontsize = "x-large");
+        plt.legend();
         plt.show();
 
     # end sweep over JK

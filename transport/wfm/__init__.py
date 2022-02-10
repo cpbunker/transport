@@ -15,7 +15,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     h, array, block hamiltonian matrices
@@ -24,80 +24,82 @@ def kernel(h, tnn, tnnn, tl, E, qj, reflect = False, verbose = 0):
     tl, float, hopping in leads, not necessarily same as hopping on/off SR
         or within SR which is defined by th matrices
     E, float, energy of the incident electron
-    qj, source vector at site 0 (on site dof only, e.g. spin)
+    Ajsigma, incident particle amplitude at site 0 in spin channel j
     '''
 
-    # check inputs
+    # check input types
     assert( isinstance(h, np.ndarray));
     assert( isinstance(tnn, np.ndarray));
     assert(len(tnn)+1 == len(h));
     assert( isinstance(tnnn, np.ndarray));
     assert(len(tnnn)+2 == len(h));
-    assert( isinstance(qj, np.ndarray));
-    assert( len(qj) == np.shape(h[0])[0] );
     
     # check that lead hams are diagonal
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if( np.any(isdiag)): # True if there are nonzero off diag terms
             raise Exception("Not diagonal\n"+str(h[hi]))
-    for i in range(len(qj)): # check source channel mu_LL = 0
-        if(qj[i] != 0):
+    for i in range(len(Ajsigma)): # always set incident mu = 0
+        if(Ajsigma[i] != 0):
             assert(h[0,i,i] == 0);
+
+    # check incident amplitude
+    assert( isinstance(Ajsigma, np.ndarray));
+    assert( len(Ajsigma) == np.shape(h[0])[0] );
+    sigma0 = -1; # incident spin channel
+    for sigmai in range(len(Ajsigma)): # find incident spin channel and check that there is only one
+        if(Ajsigma[sigmai] != 0):
+            if(sigma0 != -1): # then there was already a nonzero element, bad
+                raise(Exception("Ajsigma has too many nonzero elements:\n"+str(Ajsigma)));
+            else: sigma0 = sigmai;
+    assert(sigma0 != -1);
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
-    # self energies at LL
-    # need a self energy for each LL boundary condition
-    SigmaL = [];
-    for Vi in range(n_loc_dof): # iters over all bcs
-        lamL = (E-h[0][Vi,Vi])/(-2*tl);
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # reflected
-        SigmaL.append( -tl/LambdaLminus);
-
-    # self energies at RL
-    SigmaR = [];
-    for Vi in range(n_loc_dof): # iters over all bcs    
-        lamR = (E-h[-1][Vi,Vi])/(-2*tl);
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted
-        SigmaR.append( -tl*LambdaRplus);
-
-    # check that modes with given energy are allowed in some LL channels
-    assert(np.any(np.imag(SigmaL)) );
-    for sigmai in range(len(SigmaL)):
-        if(abs(np.imag(SigmaL[sigmai])) > 1e-10 and abs(np.imag(SigmaR[sigmai])) > 1e-10 ):
-            assert(np.sign(np.imag(SigmaL[sigmai])) == np.sign(np.imag(SigmaR[sigmai])));
+    # determine velocities in the left, right leads
+    v_L, v_R = np.zeros_like(Ajsigma), np.zeros_like(Ajsigma)
+    ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector_sigma
+    ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
+    v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
+    v_R = 2*tl*np.sin(ka_R);
 
     # green's function
     if(verbose): print("\nEnergy = ",np.real(E+2*tl)); # start printouts
     G = Green(h, tnn, tnnn, tl, E, verbose = verbose);
 
     # contract G with source to pick out matrix elements we need
-    qjvector = np.zeros(np.shape(G)[0], dtype = complex); # go from block space to full space
-    for j in range(len(qj)):
-        qjvector[j] = qj[j]; # fill from block space
-    Gqj = np.dot(G, qjvector);
-    #if(verbose): print(">>> Gqj = ",Gqj);
-
+    Avector = np.zeros(np.shape(G)[0], dtype = complex); # go from spin space to spin+site space
+    for sigmai in range(n_loc_dof):
+        Avector[sigmai] = Ajsigma[sigmai]; # fill from spin space
+    G_0sigma0 = np.dot(G, Avector); # G contracted with incident amplitude
+                                    # picks out matrix elements of incident
+                                    # still has 1 free spatial, spin index for transmitted
+    if(verbose): print(G_0sigma0);
     # compute reflection and transmission coeffs
-    coefs = np.zeros(n_loc_dof, dtype = float); # force zero
-    for sigmai in range(n_loc_dof): # on site degrees of freedom
-        rcoef = -2*complex(0,1)*np.imag(SigmaL[sigmai])*Gqj[sigmai] -qj[sigmai]; # zwierzycki Eq 17
-        tcoef = 2*complex(0,1)*Gqj[sigmai - n_loc_dof]*np.lib.scimath.sqrt(np.imag(SigmaL[sigmai])*np.imag(SigmaR[sigmai])) # zwierzycki Eq 26
+    coefs = np.zeros(n_loc_dof, dtype = float); 
+    for sigmai in range(n_loc_dof): # iter over spin dofs
+
+        # T given in my manuscript as Eq 20
+        T = G_0sigma0[-n_loc_dof+sigmai]*np.conj(G_0sigma0[-n_loc_dof+sigmai])*v_R[sigmai]*v_L[sigma0];
         
+        # R given in my manuscript as Eq 21
+        R = (complex(0,-1)*G_0sigma0[0+sigmai]*v_L[sigma0] - Ajsigma[sigmai])*np.conj(complex(0,-1)*G_0sigma0[0+sigmai]*v_L[sigma0] - Ajsigma[sigmai])*v_L[sigmai]/v_L[sigma0];   
+
         # benchmarking
         if(verbose > 1):
-            print(" - sigmai = ",sigmai,", R = ",rcoef*np.conj(rcoef),", T = ",tcoef*np.conj(tcoef));
-        assert( abs(np.imag(rcoef*np.conj(rcoef))) < 1e-10 ); # must be real
-        assert( abs(np.imag(tcoef*np.conj(tcoef))) < 1e-10 ); # must be real
+            print(" - sigmai = ",sigmai,", T = ",T,", R = ",R);
+            myvar = complex(0,1)*G_0sigma0[0+sigmai]*v_L[sigmai] - Ajsigma[sigmai]
+            print(myvar, myvar*np.conj(myvar));
+        #if( abs(np.imag(T)) > 1e-10 ): raise(Exception("T = "+str(T)+" must be real"));
+        #if( abs(np.imag(R)) > 1e-10 ): raise(Exception("R = "+str(R)+" must be real"));
 
         # return var
         if(reflect): # want R
-            coefs[sigmai] = np.real(rcoef*np.conj(rcoef));
+            coefs[sigmai] = np.real(R);
         else: # want T
-            coefs[sigmai] = np.real(tcoef*np.conj(tcoef));
+            coefs[sigmai] = np.real(T);
 
     return coefs;
 
@@ -198,12 +200,21 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
         SigmaRs.append(SigmaR);
     del lamR, LambdaRplus, SigmaR;
-    
+
+    # check that modes with given energy are allowed in some LL channels
+    SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
+    assert(np.any(np.imag(SigmaLs)) );
+    for sigmai in range(len(SigmaLs)):
+        if(abs(np.imag(SigmaLs[sigmai])) > 1e-10 and abs(np.imag(SigmaRs[sigmai])) > 1e-10 ):
+            assert(np.sign(np.imag(SigmaLs[sigmai])) == np.sign(np.imag(SigmaRs[sigmai])));
     if(verbose > 3):
-        SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
-        ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl));
+        ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector running over sigma
         ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
+        v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
+        v_R = 2*tl*np.sin(ka_R);
         for sigmai in range(len(ka_L)):
+            print(" - sigmai = ",sigmai,", v_L = ", v_L[sigmai],"v_R = ",v_R[sigmai]);
+        if False:
             print(" - sigmai = ",sigmai,", ka_L = ", ka_L[sigmai],", KE_L = ", 2*tl-2*tl*np.cos(ka_L[sigmai]),", Sigma_L = ", SigmaLs[sigmai]);
             print(" - sigmai = ",sigmai,", ka_R = ", ka_R[sigmai],", KE_R = ", 2*tl-2*tl*np.cos(ka_R[sigmai]),", Sigma_R = ", SigmaRs[sigmai]);              #
 

@@ -29,7 +29,7 @@ reflect = False;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = -0.01; # zeeman splitting on imp
+Delta = -0.5; # zeeman splitting on imp
 Vb = 0.0; # barrier voltage in RL
 
 if True: # sigma dot S
@@ -84,7 +84,7 @@ if True: # sigma dot S
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals, Rvals = [], [];
         for E in Evals:
-            if(E in Evals[14:17]): # verbose
+            if(E in Evals[:3]): # verbose
                 Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, verbose = verbose));
                 Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
             else:
