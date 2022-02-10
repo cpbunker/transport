@@ -29,7 +29,7 @@ reflect = False;
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = 0.01; # zeeman splitting on imp
+Delta = -0.01; # zeeman splitting on imp
 Vb = 0.0; # barrier voltage in RL
 
 if True: # sigma dot S
@@ -79,7 +79,7 @@ if True: # sigma dot S
 
         # sweep over range of energies
         # def range
-        Emin, Emax = -1.999*tl, -1.999*tl + 8*abs(Delta);
+        Emin, Emax = -1.999*tl, -1.999*tl+0.2;
         numE = 30;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
         Tvals, Rvals = [], [];
@@ -98,7 +98,7 @@ if True: # sigma dot S
         ax.plot(np.real(Evals + 2*tl),Rvals[:,sourcei], label = "source R", color = "tab:blue",);
         ax.scatter(np.real(Evals + 2*tl),Rvals[:,flipi], label = "flip R", color = "tab:blue", marker = "s");
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        ax.plot(np.real(Evals + 2*tl), totals-1, color="red", label = "total - 1");
+        ax.plot(np.real(Evals + 2*tl), totals, color="red", label = "total");
 
         # menezes prediction in the continuous case
         if(analytical):

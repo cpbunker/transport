@@ -221,7 +221,7 @@ if False: # plot fig 2b data
 ##################################################################################
 #### molecular dimer regime (N = 2 fixed)
 
-if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
+if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
     # incident state
     theta_param = 3*np.pi/4;
@@ -234,8 +234,8 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     # tight binding params
     tl = 1.0; # norm convention, -> a = a0/sqrt(2) = 0.37 angstrom
     Jeff = 0.1; # eff heisenberg
-    th = 1.0
-    tp = 1.0
+    th = 0.7
+    tp = 0.7
     N_SR = 2;
 
     factor = 99;
@@ -293,7 +293,7 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     #### vary theta, phi
     #### -> detection !
     if((th == tl) and (tp == tl)):
-        myVg = -2*tp*np.cos(ka0) + 2*tp; # ???
+        myVg = -2*tl*np.cos(ka0) + 2*tl; # ???
     else:
         myVg = -0.80;
     print(">>> myVg = ",myVg);
@@ -342,13 +342,13 @@ if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
     ax.set_xlabel("$\\theta/\pi$", fontsize = "x-large");
     ax.set_zlim(0,1);
     ax.set_zticks([0,1]);
-    ax.set_zlabel("$T$");
+    ax.set_zlabel("$T$", fontsize = "x-large");
     plt.show();
     raise(Exception);
 
 
 # still in dimer case, compare T vs rho J a peak under resonant
-if True: # cicc fig 6 (N = 2 still)
+if False: # cicc fig 6 (N = 2 still)
 
     # siam inputs
     tl = 1.0;
