@@ -42,7 +42,7 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0
-JK = 10*DO;
+JK = 5*DO;
 
 if False:
     Jx = 0/Ha2meV;
@@ -94,7 +94,7 @@ for i in range(len(source)): # force diag
 if True: # fig 6 ie T vs rho J a
 
     # plot at diff JK
-    for DeltaK in [JK*0.0]: #JK*np.array([-0.75,0.75,1.5,3]): #T(|+'> -> 0 at -0.75
+    for DeltaK in JK*np.array([-0.75,0,0.75,1.5,]): #T(|+'> -> 0 at -0.75
 
         # 2 site SR
         fig, ax = plt.subplots();
@@ -135,7 +135,7 @@ if True: # fig 6 ie T vs rho J a
 
         # iter over rhoJ, getting T
         Tvals, Rvals = [], [];
-        rhoJvals = np.linspace(0.01,4.0,9);
+        rhoJvals = np.linspace(0.01,4.0,99);
         Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
         for rhoi in range(len(rhoJvals)):
 
@@ -158,17 +158,32 @@ if True: # fig 6 ie T vs rho J a
             
         # plot
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-        ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$", color = "black");
-        ax.plot(rhoJvals, Tvals[:,pair[0]], label = "$|+>$", color = "black", linestyle = "dashed");
-        ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$", color = "black", linestyle = "dotted");
+        ax.plot(rhoJvals, Tvals[:,sourcei], label = "$|i\,>$", color = "darkblue", linewidth = 2);
+        ax.plot(rhoJvals, Tvals[:,pair[0]], label = "$|+>$", color = "darkgreen", linestyle = "dashed", linewidth = 2);
+        ax.plot(rhoJvals, Tvals[:,pair[1]], label = "$|->$", color = "darkred", linestyle = "dotted", linewidth = 2);
         ax.plot(rhoJvals, Tvals[:,0]+Tvals[:,1]+Tvals[:,2]+Rvals[:,0]+Rvals[:,1]+Rvals[:,2], color = "red")
+
+        # inset
+        if False:
+            rhoEvals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+            axins = inset_axes(ax, width="50%", height="50%");
+            #axins.plot(rhoEvals,Tvals[:,4], color = "black"); # i state
+            axins.plot(rhoEvals,Tvals[:,pair[0]], color = "darkred", linestyle = "dashed", linewidth = 2); # + state
+            axins.plot(rhoEvals,Tvals[:,pair[1]], color = "darkred", linestyle = "dotted", linewidth = 2); # - state
+            axins.set_xlim(0,tl);
+            axins.set_xticks([0,tl]);
+            axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
+            axins.set_ylim(0,0.2);
+            axins.set_yticks([0,0.2]);
+
         # format and show
         ax.set_xlim(min(rhoJvals),max(rhoJvals));
-        #ax.set_xticks([0,1,2,3,4]);
+        ax.set_xticks([0,1,2,3,4]);
         ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
         ax.set_ylim(0,1);
         ax.set_yticks([0,1]);
         ax.set_ylabel("$T$", fontsize = "x-large");
+        #plt.legend();
         plt.show();
 
     # end sweep over JK

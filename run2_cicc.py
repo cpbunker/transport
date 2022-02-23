@@ -192,6 +192,8 @@ if False: # plot fig 2b data
     fig, axes = plt.subplots();
     axes = [axes];
     datafs = sys.argv[1:];
+    colors = ["darkblue","darkgreen","darkred"]
+    styles = ["solid","solid","solid"];
     for fi in range(len(datafs)):
 
         # unpack
@@ -206,7 +208,7 @@ if False: # plot fig 2b data
         print(">>>",np.shape(Ttotals));
 
         # plot
-        axes[0].plot(kNavals/np.pi, Ttotals, label = "$\\rho  \, J a= $"+str(int(rhoJa)));
+        axes[0].plot(kNavals/np.pi, Ttotals, linewidth = 2, linestyle = styles[fi], color = colors[fi], label = "$\\rho  \, J a= $"+str(int(rhoJa)));
 
     # format and show
     axes[0].set_xlim(0.0,2.1);
@@ -221,7 +223,7 @@ if False: # plot fig 2b data
 ##################################################################################
 #### molecular dimer regime (N = 2 fixed)
 
-if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
+if False: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
     # incident state
     theta_param = 3*np.pi/4;
@@ -348,7 +350,7 @@ if True: # vary k'x0 by varying Vg for low energy detection, t', th != t;
 
 
 # still in dimer case, compare T vs rho J a peak under resonant
-if False: # cicc fig 6 (N = 2 still)
+if True: # cicc fig 6 (N = 2 still)
 
     # siam inputs
     tl = 1.0;
@@ -362,7 +364,7 @@ if False: # cicc fig 6 (N = 2 still)
     # iter over rhoJ, getting T
     Tvals, Rvals = [], [];
     xlims = 0.05, 4.0
-    rhoJvals = np.linspace(xlims[0], xlims[1], 299)
+    rhoJvals = np.linspace(xlims[0], xlims[1], 99)
     for rhoJa in rhoJvals:
 
         # energy and K fixed by J, rhoJ
@@ -392,20 +394,24 @@ if False: # cicc fig 6 (N = 2 still)
     # plot
     fig, ax = plt.subplots();
     Tvals, Rvals = np.array(Tvals), np.array(Rvals);
-    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "black");
-    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "black", linestyle = "dashed");
+    ax.plot(rhoJvals, Tvals[:,4], label = "$|i\,>$", color = "darkblue", linewidth = 2);
+    ax.plot(rhoJvals, Tvals[:,1]+Tvals[:,2], label = "$|+>$", color = "darkgreen", linestyle = "dashed", linewidth = 2);
     totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
     ax.plot(rhoJvals, totals, color="red");
+    #ax.scatter(rhoJvals, Rvals[:,1]+Rvals[:,2]);
+    #ax.scatter(rhoJvals, Rvals[:,4]);
+    
     # inset
-    rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
-    axins = inset_axes(ax, width="50%", height="50%");
-    #axins.plot(rhoEvals,Tvals[:,4], color = "black"); # i state
-    axins.plot(rhoEvals,Tvals[:,1]+Tvals[:,2], color = "black", linestyle = "dashed"); # + state
-    axins.set_xlim(0,0.4);
-    axins.set_xticks([0,0.4]);
-    axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
-    axins.set_ylim(0,0.2);
-    axins.set_yticks([0,0.2]);
+    if True:
+        rhoEvals = Jeff*Jeff/(rhoJvals*rhoJvals*np.pi*np.pi*tl);
+        axins = inset_axes(ax, width="50%", height="50%");
+        #axins.plot(rhoEvals,Tvals[:,4], color = "black"); # i state
+        axins.plot(rhoEvals,Tvals[:,1]+Tvals[:,2], color = "darkgreen", linestyle = "dashed", linewidth = 2); # + state
+        axins.set_xlim(0,0.4);
+        axins.set_xticks([0,0.4]);
+        axins.set_xlabel("$E+2t_l$", fontsize = "x-large");
+        axins.set_ylim(0,0.2);
+        axins.set_yticks([0,0.2]);
 
     # format
     ax.set_xlim(*xlims);

@@ -23,20 +23,102 @@ import matplotlib.pyplot as plt
 plt.style.use("seaborn-dark-palette");
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
-analytical = False; # whether to compare to menezes' calc
-reflect = False;
+analytical = True; # whether to compare to menezes' calc
+reflect = False; # whether to get R or T
 
 # tight binding params
 tl = 1.0;
 th = 1.0;
-Delta = -0.5; # zeeman splitting on imp
+Delta = 0.05; # zeeman splitting on imp
 Vb = 0.0; # barrier voltage in RL
+Nx3 = 0; # distance between imp and barrier
 
-if True: # sigma dot S
+if False: # sigma dot S
 
     fig, ax = plt.subplots();
-    for Nx3 in [0]: #[3,6,9,12,15,18]:
-        Jeff = 0.1;
+    colors = ["darkblue","darkgreen","darkred"];
+    Jeffs = [0.1,0.2,0.4];
+    for Ji in range(len(Jeffs)):
+        Jeff = Jeffs[Ji];
+
+        # 2nd qu'd operator for S dot s
+        h1e = np.zeros((4,4))
+        g2e = wfm.utils.h_kondo_2e(Jeff, 0.5); # J, spin
+        states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
+        hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
+
+        # zeeman splitting
+        hzeeman = np.array([[Delta, 0, 0, 0],
+                        [0,0, 0, 0],
+                        [0, 0, Delta, 0], # spin flip gains PE delta
+                        [0, 0, 0, 0]]);
+        hSR += hzeeman;
+
+        # truncate to coupled channels
+        hSR = hSR[1:3,1:3];
+        hzeeman = hzeeman[1:3,1:3];
+
+        # leads
+        hLL = np.copy(hzeeman);
+        hRL = np.copy(hzeeman)+Vb*np.eye(np.shape(hLL)[0]);
+
+        # source = up electron, down impurity
+        sourcei, flipi = 0,1
+        source = np.zeros(np.shape(hSR)[0]);
+        source[sourcei] = 1;
+
+        # package together hamiltonian blocks
+        hblocks = [hLL,hSR];
+        for x3i in range(Nx3): hblocks.append(np.zeros_like(hRL)); # vary imp to barrier distance
+        hblocks.append(hRL);
+        hblocks = np.array(hblocks);
+
+        # hopping
+        tnn = [-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]; # on and off imp
+        for x3i in range(Nx3): tnn.append(-tl*np.eye(*np.shape(hSR))); # vary imp to barrier distance
+        tnn = np.array(tnn);
+        tnnn = np.zeros_like(tnn)[:-1];
+        if(verbose and Jeff == 0.1): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
+
+        # sweep over range of energies
+        # def range
+        Emin, Emax = -1.99*tl, -1.99*tl+0.2;
+        numE = 30;
+        Evals = np.linspace(Emin, Emax, numE, dtype = complex);
+        Tvals, Rvals = [], [];
+        for E in Evals:
+            if(E in Evals[:3]): # verbose
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, verbose = verbose));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
+            else:
+                Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source));
+                Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
+                
+        # plot Tvals vs E
+        Tvals, Rvals = np.array(Tvals), np.array(Rvals);
+        ax.scatter(np.real(Evals + 2*tl),Tvals[:,flipi], color = colors[Ji], marker = "s");
+        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+        #ax.plot(np.real(Evals + 2*tl), totals-1, color="red", label = "total - 1");
+
+        # menezes prediction in the continuous case
+        if(analytical):
+            ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)), color = colors[Ji], linewidth = 2);
+
+    # format and plot
+    ax.set_xlim(0,0.2);
+    ax.set_xticks([0,0.1,0.2]);
+    ax.set_xlabel("$E+2t$", fontsize = "x-large");
+    ax.set_ylim(0,0.2);
+    ax.set_yticks([0,0.1,0.2]);
+    if(reflect): ax.set_ylabel("$R_{flip}$", fontsize = "x-large");
+    else: ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
+    plt.show();
+    raise(Exception);
+
+if False: # benchmark R + T
+
+    fig, ax = plt.subplots();
+    for Jeff in [0.1]:
 
         # 2nd qu'd operator for S dot s
         h1e = np.zeros((4,4))
@@ -95,10 +177,10 @@ if True: # sigma dot S
         Tvals, Rvals = np.array(Tvals), np.array(Rvals);
         ax.plot(np.real(Evals + 2*tl),Tvals[:,sourcei], label = "source T", color = "black");
         ax.scatter(np.real(Evals + 2*tl),Tvals[:,flipi], label = "flip T", color = "black", marker = "s");
-        ax.plot(np.real(Evals + 2*tl),Rvals[:,sourcei], label = "source R", color = "tab:blue",);
-        ax.scatter(np.real(Evals + 2*tl),Rvals[:,flipi], label = "flip R", color = "tab:blue", marker = "s");
+        ax.plot(np.real(Evals + 2*tl),Rvals[:,sourcei], label = "source R", color = "darkblue",);
+        ax.plot(np.real(Evals + 2*tl),Rvals[:,flipi], label = "flip R", color = "darkgreen");
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        ax.plot(np.real(Evals + 2*tl), totals, color="red", label = "total");
+        ax.plot(np.real(Evals + 2*tl), totals-1, color="red", label = "total - 1");
 
         # menezes prediction in the continuous case
         if(analytical):
@@ -114,12 +196,13 @@ if True: # sigma dot S
     else: ax.set_ylabel("$T_{flip}$", fontsize = "x-large");
     plt.legend();
     plt.show();
+    raise(Exception);
 
 
-if False: # full 2 site hubbard treatment (downfolds to S dot S)
+if True: # full 2 site hubbard treatment (downfolds to S dot S)
 
     fig, ax = plt.subplots();
-    for Vg in [17,9]:
+    for Vg in [17,9,4.8]:
 
         # parameters
         U = 100.0;
@@ -127,12 +210,15 @@ if False: # full 2 site hubbard treatment (downfolds to S dot S)
         print("Jeff = ",Jeff);
 
         # SR physics: site 1 is in chain, site 2 is imp with large U
-        hSR = np.array([[0,0,-th,th,0,0], # up down, -
-                        [0,Vg,0, 0,0,0], # up, up
-                       [-th,0,Vg, 0,0,-th], # up, down (source)
-                        [th,0, 0, Vg,0, th], # down, up
-                        [0, 0, 0,  0,Vg,0],    # down, down
-                        [0,0,-th,th,0,U+2*Vg]]); # -, up down
+        hSR = np.array([[0,-th,th,0], # up down, -
+                       [-th,Vg, 0,-th], # up, down (source)
+                        [th, 0, Vg, th], # down, up (flip)
+                        [0,-th,th,U+2*Vg]]); # -, up down
+
+        # source = up electron, down impurity
+        source = np.zeros(np.shape(hSR)[0]);
+        sourcei, flipi = 1,2;
+        source[sourcei] = 1;
 
         # lead physics
         # leads also have gate voltage except 0th channel
@@ -162,28 +248,34 @@ if False: # full 2 site hubbard treatment (downfolds to S dot S)
 
         # package together hamiltonian blocks
         hblocks = np.array([hLL, hSR, hRL]);
-        tblocks = np.array([-th*np.eye(*np.shape(hSR)),-th*np.eye(*np.shape(hSR))]);
-        if verbose: print("\nhblocks:\n", hblocks, "\ntblocks:\n", tblocks); 
-
-        # source = up electron, down impurity
-        source = np.zeros(np.shape(hSR)[0]);
-        source[2] = 1;
+        tnn_mat = -th*np.array([[0,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,0]]);
+        tnn = np.array([np.copy(tnn_mat), np.copy(tnn_mat)]);
+        tnnn = np.zeros_like(tnn)[:-1];
+        if verbose: print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn, "\ntnnn:", tnnn); 
         
         # sweep over range of energies
         # def range
         Emin, Emax = -1.99*tl, -1.8*tl
         numE = 30;
         Evals = np.linspace(Emin, Emax, numE, dtype = complex);
-        Tvals = [];
+        Tvals, Rvals = [], [];
         for E in Evals:
-            Tvals.append(wfm.kernel(hblocks, tblocks, tl, E, source));
+            Tvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source));
+            Rvals.append(wfm.kernel(hblocks, tnn, tnnn, tl, E, source, reflect = True));
 
         # plot Tvals vs E
-        Tvals = np.array(Tvals);
-        ax.scatter(Evals + 2*tl,Tvals[:,3], marker = 's');
+        Tvals, Rvals = np.array(Tvals), np.array(Rvals);
+        ax.scatter(Evals + 2*tl,Tvals[:,flipi], marker = 's');
+        if False:
+            for Ti in range(len(source)):
+                ax.plot(Evals+2*tl, Tvals[:,Ti], linestyle = "dashed",label = Ti);
+
+            # check that T+R = 1
+            totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+            ax.plot(Evals + 2*tl, totals-1, color="red");
 
         # menezes prediction in the continuous case
-        ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)));
+        ax.plot(np.linspace(-1.9999*tl, Emax, 100)+2*tl, Jeff*Jeff/(16*(np.linspace(-1.9999*tl,Emax,100)+2*tl)), linewidth = 2);
 
     # format and plot
     ax.set_xlim(0,0.2);
