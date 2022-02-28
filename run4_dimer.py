@@ -43,7 +43,6 @@ Jz = 0.124/Ha2meV;
 DO = 0.674/Ha2meV;
 DT = 0.370/Ha2meV;
 An = 0
-JK = 5*DO;
 
 if False:
     Jx = 0/Ha2meV;
@@ -135,8 +134,8 @@ if False: # fig 6 ie T vs rho J a
 
         # iter over rhoJ, getting T
         Tvals, Rvals = [], [];
-        rhoJvals = np.linspace(0.01,4.0,99);
-        Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
+        rhoJvals = np.linspace(0.01,1.0,99);
+        Erhovals = DO*DO/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
         for rhoi in range(len(rhoJvals)):
 
             # energy
@@ -173,10 +172,10 @@ if False: # fig 6 ie T vs rho J a
 
         # format and show
         ax.set_xlim(min(rhoJvals),max(rhoJvals));
-        ax.set_xticks([0,1,2,3,4]);
-        ax.set_xlabel("$(J_O/2 + J_T/2)/\pi \sqrt{tE}$", fontsize = "x-large");
-        ax.set_ylim(0,1);
-        ax.set_yticks([0,1]);
+        ax.set_xticks([0,1]);
+        ax.set_xlabel("$D_O/\pi \sqrt{tE}$", fontsize = "x-large");
+        ax.set_ylim(0,0.2);
+        ax.set_yticks([0,0.2]);
         ax.set_ylabel("$T$", fontsize = "x-large");
         #plt.legend();
         plt.show();
@@ -190,9 +189,9 @@ if True:
 
     # dependent var containers
     numxvals = 15;
-    DeltaKvals = JK*np.linspace(-1,4,numxvals);
+    DeltaKvals = DO*np.linspace(-1,4,numxvals);
     rhoJa = 1;
-    Erho = JK*JK/(rhoJa*rhoJa*np.pi*np.pi*tl); # measured from bottom of band
+    Erho = DO*DO/(rhoJa*rhoJa*np.pi*np.pi*tl); # measured from bottom of band
 
     # independent var containers
     Tvals = np.zeros((len(pair),len(DeltaKvals)));
@@ -211,8 +210,8 @@ if True:
 
                 # define all physical params
                 JKO, JKT = 0, 0;
-                if Coi == 0: JKO = JK+DeltaK/2; # J S dot sigma is onsite only
-                else: JKT = JK-DeltaK/2;
+                if Coi == 0: JKO = DO+DeltaK/2; # J S dot sigma is onsite only
+                else: JKT = DO-DeltaK/2;
                 params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
                 h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
 
@@ -244,21 +243,20 @@ if True:
             # iter over rhoJ (1/k)
 
             # T and R for desired channel only
-            Tvals[pairi,DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, verbose = 0)[pair[pairi]];
+            Tvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, verbose = 0)[pair[pairi]];
             Rvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, reflect = True)[pair[pairi]];    
             
     # plot (To do)
     fig, ax = plt.subplots();
 
     # put plotting arrays in right form
-    DeltaKvals = DeltaKvals*Ha2meV; # convert
+    DeltaKvals = DeltaKvals/DO; # convert
     thetavals = 2*np.arctan(Tvals[pair[0]].T/Tvals[pair[1]].T);
-    ax.plot(DeltaKvals, thetavals/np.pi);
+    ax.plot(DeltaKvals, thetavals/np.pi, color = "darkblue", linewidth = 2);
                       
     # format and show
     ax.set_xlim(min(DeltaKvals),max(DeltaKvals));
-    #ax3d.set_xticks([0,1,2,3,4]);
-    ax.set_xlabel("$\Delta_{K}$ (meV)", fontsize = "x-large");
+    ax.set_xlabel("$\Delta_{K} /D_O$", fontsize = "x-large");
     ax.set_ylim(0,1);
     ax.set_yticks([0,1]);
     ax.set_ylabel("$\\theta/\pi$", fontsize = "x-large");
