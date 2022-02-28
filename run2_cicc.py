@@ -416,7 +416,7 @@ if True: # cicc fig 6 (N = 2 still)
     # format
     ax.set_xlim(*xlims);
     ax.set_xticks([0,1,2,3,4]);
-    ax.set_xlabel("$\\rho\,J a$", fontsize = "x-large");
+    ax.set_xlabel("$J/\pi \sqrt{tE}$", fontsize = "x-large");
     ax.set_ylim(0,1.0);
     ax.set_yticks([0,1]);
     ax.set_ylabel("$T$", fontsize = "x-large");
