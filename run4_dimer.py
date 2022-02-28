@@ -13,6 +13,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 #### top level
@@ -91,7 +92,7 @@ for i in range(len(source)): # force diag
 #########################################################
 #### generation
 
-if True: # fig 6 ie T vs rho J a
+if False: # fig 6 ie T vs rho J a
 
     # plot at diff JK
     for DeltaK in JK*np.array([-0.75,0,0.75,1.5,]): #T(|+'> -> 0 at -0.75
@@ -189,69 +190,93 @@ if True: # fig 6 ie T vs rho J a
     # end sweep over JK
     raise(Exception);
 
-# plot T+ vs energy
-if False: 
-    
-    # sweep over JK
-    for JK in DO*np.array([1.0]):
 
-        # physics of scattering region -> array of [H at octo, H at tetra]
-        hblocks, tblocks = [], []; # on site and hopping blocks in the SR
-        for Coi in range(2):
+#cos(theta) vs energy and DeltaK 
+if True:
+
+    # dependent var containers
+    DeltaKvals = JK*np.array([-0.75,0,0.75,1.5,]);
+    rhoJvals = np.linspace(0.01,4.0,9);
+    Erhovals = JK*JK/(rhoJvals*rhoJvals*np.pi*np.pi*tl); # measured from bottom of band
+
+    # independent var containers
+    Tvals = np.zeros((len(DeltaKvals),len(rhoJvals)));
+    Rvals = np.zeros_like(Tvals);
+    my_channel = pair[0];
+
+    # iter over JK
+    for DKi in range(len(DeltaKvals)): #T(|+'> -> 0 at -0.75
+        DeltaK = DeltaKvals[DKi];
+
+        # 2 site SR
+        hblocks = [np.copy(hSR_JK0_diag)];
+        for Coi in range(2): # iter over imps
 
             # define all physical params
             JKO, JKT = 0, 0;
-            if Coi == 0: JKO = JK; # J S dot sigma is onsite only
-            else: JKT = JK;
+            if Coi == 0: JKO = JK+DeltaK/2; # J S dot sigma is onsite only
+            else: JKT = JK-DeltaK/2;
             params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
-            
-            # construct second quantized ham
-            h1e, g2e = wfm.utils.h_dimer_2q(params); 
+            h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
 
             # construct h_SR (determinant basis)
-            h_SR = fci_mod.single_to_det(h1e, g2e, species, states);
-            h_SR = wfm.utils.entangle(h_SR, *pair);
-            if(verbose > 4):
-                h_SR_sub = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
-                print("\nUnentangled hamiltonian\n", h_SR_sub);
-                h_SR_sub = wfm.utils.entangle(h_SR_sub, 0, 1);
-                print("\nEntangled hamiltonian\n", h_SR_sub);
+            hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
 
-            # hopping between sites
-            V_SR = -tp*np.eye(np.shape(h_SR)[0])
+            # diagonalize lead states
+            hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
+            if(verbose):
+                print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
+                print(" - ham:\n", Ha2meV*np.real(hSR));
+                print(" - transformed ham:\n", Ha2meV*np.real(hSR_diag));
             
             # add to blocks list
-            hblocks.append(np.copy(h_SR));
-            if(Coi == 1): tblocks.append(np.copy(V_SR));
+            hblocks.append(np.copy(hSR_diag));
 
-        if(verbose): print("shape(hblocks) = ", np.shape(hblocks));
+        # finish hblocks
+        hblocks.append(hSR_JK0_diag);
+        hblocks = np.array(hblocks);
+        E_shift = hblocks[0,sourcei,sourcei]; # const shift st hLL[sourcei,sourcei] = 0
+        for hb in hblocks:
+            hb += -E_shift*np.eye(np.shape(hblocks[0])[0]);
+        if(verbose): print("\nhblocks = \n",hblocks);
 
-        # get data
-        Elims = -1.9999*tl, -1.99*tl;
-        Evals, Tvals = wfm.Data(source, hLL, -th*np.eye(np.shape(hLL)[0]),
-                        hblocks, tblocks, hRL, tl, Elims, numpts = 99, retE = True);
+        # hopping
+        tnn = np.array([-th*np.eye(len(source)),-tp*np.eye(len(source)),-th*np.eye(len(source))]);
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
-        # first plot is just source and entangled pair
-        fig, ax = plt.subplots();
-        #ax.plot(Evals/tl+2,Tvals[:,sourcei], label = "$|i>$");
-        ax.plot(Evals/tl+2,Tvals[:,pair[0]], label = "$|+>$");
-        
-        # second plot is contamination
-        contamination = np.zeros_like(Tvals[:,0]);
-        for contami in range(len(dets)):
-            if((contami != pair[0]) and (dets[contami][0] != dets[sourcei][0])):
-                contamination += Tvals[:, contami];
-        #contamination = contamination/(contamination+Tvals[:,pair[0]]); 
-        ax.plot(Evals/tl+2, contamination, color = "black", label = "Contam.");
-        
-        # format
-        ax.set_xlim(min(Evals/tl+2), max(Evals/tl+2));
-        ax.set_ylim(0,0.1);
-        ax.set_xlabel("$E+2t_l$", fontsize = "x-large");
-        ax.set_ylabel("$T$", fontsize = "x-large");
-        ax.legend(loc = 'upper right', fontsize = "large");
-        plt.show();
-        raise(Exception);
+        # iter over rhoJ (1/k)
+        for rhoi in range(len(rhoJvals)):
+
+            # energy
+            rhoJa = rhoJvals[rhoi];
+            Energy = Erhovals[rhoi] - 2*tl; # measure from mu
+            k_rho = np.arccos(Energy/(-2*tl));
+
+            # T and R for desired channel only
+            Tvals[DKi, rhoi] = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, verbose = 0)[my_channel];
+            Rvals[DKi, rhoi] = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, reflect = True)[my_channel];
+            
+    # plot (To do)
+    fig = plt.figure();
+    ax3d = fig.add_subplot(projection = "3d");
+    DeltaKvals = DeltaKvals*Ha2meV; # convert
+    DeltaKvals, rhoJvals = np.meshgrid(DeltaKvals, rhoJvals);
+    ax3d.plot_surface(DeltaKvals, rhoJvals, Tvals.T, cmap = cm.coolwarm);
+    # format and show
+    #ax3d.set_xlim(min(rhoJvals),max(rhoJvals));
+    #ax3d.set_xticks([0,1,2,3,4]);
+    ax3d.set_xlabel("$\Delta_{K}$ (meV)", fontsize = "x-large");
+    #ax3d.set_ylim(0,1);
+    #ax3d.set_yticks([0,1]);
+    ax3d.set_ylabel("$\\rho J a$", fontsize = "x-large");
+    ax3d.set_zlim(0,1);
+    ax3d.set_zticks([0,1]);
+    ax3d.set_zlabel("$T$", fontsize = "x-large");
+    plt.show();
+
+    # end sweep over JK
+    raise(Exception);   
+
 
 
 #########################################################
