@@ -94,7 +94,7 @@ for i in range(len(source)): # force diag
 if False: # fig 6 ie T vs rho J a
 
     # plot at diff DeltaK
-    DeltaKvals = JK*np.array([0]);
+    DeltaKvals = DO*np.array([-5,0,5]);
     for DeltaK in DeltaKvals:
         # 2 site SR
         fig, ax = plt.subplots();
@@ -103,16 +103,19 @@ if False: # fig 6 ie T vs rho J a
 
             # define all physical params
             JKO, JKT = 0, 0;
-            if Coi == 0: JKO = JK+DeltaK/2; # J S dot sigma is onsite only
-            else: JKT = JK-DeltaK/2;
+            if Coi == 0: JKO = 5*DO+DeltaK/2; # J S dot sigma is onsite only
+            else: JKT = 5*DO-DeltaK/2;
             params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
             h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
 
             # construct h_SR (determinant basis)
             hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
-
+                
             # diagonalize lead states
             hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
+            if(False):
+                if Coi == 0: hSR_diag += (DeltaK)*np.eye(len(hSR_JK0_diag)); print(DeltaK*Ha2meV*np.eye(len(hSR_JK0_diag)));
+                elif Coi == 1: hSR_diag += 0 #(-DeltaK/2)*np.eye(len(hSR_JK0_diag));
             if(verbose):
                 print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
                 print(" - ham:\n", Ha2meV*np.real(hSR));
@@ -184,14 +187,15 @@ if False: # fig 6 ie T vs rho J a
     raise(Exception);
 
 
-#cos(theta) vs energy and DeltaK 
+
+#cos(theta) vs DeltaK only
 if True:
 
     # dependent var containers
     numxvals = 15;
-    DeltaKvals = DO*np.linspace(-1,4,numxvals);
-    rhoJa = 1;
-    Erho = DO*DO/(rhoJa*rhoJa*np.pi*np.pi*tl); # measured from bottom of band
+    DeltaKvals = DO*np.linspace(-400,100,numxvals);
+    rhoJa = 1
+    Erho = DO*DO/(rhoJa*rhoJa*np.pi*np.pi*tl); 
 
     # independent var containers
     Tvals = np.zeros((len(pair),len(DeltaKvals)));
@@ -201,7 +205,7 @@ if True:
     for pairi in range(len(pair)):
 
         # iter over JK
-        for DKi in range(len(DeltaKvals)): #T(|+'> -> 0 at -0.75
+        for DKi in range(len(DeltaKvals)):
             DeltaK = DeltaKvals[DKi];
 
             # 2 site SR
@@ -210,8 +214,8 @@ if True:
 
                 # define all physical params
                 JKO, JKT = 0, 0;
-                if Coi == 0: JKO = DO+DeltaK/2; # J S dot sigma is onsite only
-                else: JKT = DO-DeltaK/2;
+                if Coi == 0: JKO = DO#+DeltaK/2; # J S dot sigma is onsite only
+                else: JKT = DO#-DeltaK/2;
                 params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
                 h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
 
@@ -220,10 +224,98 @@ if True:
 
                 # diagonalize lead states
                 hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
-                if(verbose):
+                if(True):
                     print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
                     print(" - ham:\n", Ha2meV*np.real(hSR));
                     print(" - transformed ham:\n", Ha2meV*np.real(hSR_diag));
+
+                if(True):
+                    if Coi == 0: hSR_diag += (DeltaK/2)*np.eye(len(hSR_JK0_diag));
+                    elif Coi == 1: hSR_diag += (-DeltaK/2)*np.eye(len(hSR_JK0_diag));
+                
+                # add to blocks list
+                hblocks.append(np.copy(hSR_diag));
+
+            # finish hblocks
+            hblocks.append(hSR_JK0_diag);
+            hblocks = np.array(hblocks);
+            E_shift = hblocks[0,sourcei,sourcei]; # const shift st hLL[sourcei,sourcei] = 0
+            for hb in hblocks:
+                hb += -E_shift*np.eye(np.shape(hblocks[0])[0]);
+            if(verbose): print("\nhblocks = \n",hblocks);
+
+            # hopping
+            tnn = np.array([-th*np.eye(len(source)),-tp*np.eye(len(source)),-th*np.eye(len(source))]);
+            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+
+            # T and R for desired channel only
+            Tvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, verbose = 0)[pair[pairi]];
+            #Rvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erhovals[rhoi] - 2*tl, source, reflect = True)[pair[pairi]];    
+
+    # put plotting arrays in right form
+    DeltaKvals = DeltaKvals/DO; # convert
+    thetavals = 2*np.arctan(Tvals[pair[0]]/Tvals[pair[1]])/np.pi;
+    
+    # plot (To do)
+    fig, ax = plt.subplots();
+    ax.plot(DeltaKvals, thetavals, color = "darkblue", linewidth = 2);
+                      
+    # format and show
+    #ax.set_xlim(min(DeltaKvals),max(DeltaKvals));
+    ax.set_xlabel("$\Delta_{K} /D_O$", fontsize = "x-large");
+    #ax.set_ylim(0,1);
+    #ax.set_yticks([0,1]);
+    ax.set_ylabel("$\\theta/\pi$", fontsize = "x-large");
+    plt.show();
+
+    # end sweep over JK
+    raise(Exception);
+
+
+#cos(theta) vs energy and DeltaK 
+if False:
+
+    # dependent var containers
+    numxvals = 15;
+    DeltaKvals = DO*np.linspace(-100,100,numxvals);
+    rhoJavals = np.linspace(0.01,4.0,numxvals);
+    Erhovals = DO*DO/(rhoJavals*rhoJavals*np.pi*np.pi*tl); # measured from bottom of band
+
+    # independent var containers
+    Tvals = np.zeros((len(pair),len(DeltaKvals),len(rhoJavals)));
+    Rvals = np.zeros_like(Tvals);
+
+    # |+'> channel and |-'> channel
+    for pairi in range(len(pair)):
+
+        # iter over JK
+        for DKi in range(len(DeltaKvals)):
+            DeltaK = DeltaKvals[DKi];
+
+            # 2 site SR
+            hblocks = [np.copy(hSR_JK0_diag)];
+            for Coi in range(2): # iter over imps
+
+                # define all physical params
+                JKO, JKT = 0, 0;
+                if Coi == 0: JKO = DO#+DeltaK/2; # J S dot sigma is onsite only
+                else: JKT = DO#-DeltaK/2;
+                params = Jx, Jx, Jz, DO, DT, An, JKO, JKT;
+                h1e, g2e = wfm.utils.h_dimer_2q(params); # construct ham
+
+                # construct h_SR (determinant basis)
+                hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
+
+                # diagonalize lead states
+                hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
+                if(True):
+                    print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
+                    print(" - ham:\n", Ha2meV*np.real(hSR));
+                    print(" - transformed ham:\n", Ha2meV*np.real(hSR_diag));
+
+                if(True):
+                    if Coi == 0: hSR_diag += (DeltaK/2)*np.eye(len(hSR_JK0_diag));
+                    elif Coi == 1: hSR_diag += (-DeltaK/2)*np.eye(len(hSR_JK0_diag));
                 
                 # add to blocks list
                 hblocks.append(np.copy(hSR_diag));
@@ -241,25 +333,29 @@ if True:
             tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
             # iter over rhoJ (1/k)
+            for rhoi in range(len(rhoJavals)):
 
-            # T and R for desired channel only
-            Tvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, verbose = 0)[pair[pairi]];
-            Rvals[pairi, DKi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erho - 2*tl, source, reflect = True)[pair[pairi]];    
-            
-    # plot (To do)
-    fig, ax = plt.subplots();
+                # T and R for desired channel only
+                Tvals[pairi, DKi, rhoi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erhovals[rhoi] - 2*tl, source, verbose = 0)[pair[pairi]];
+                #Rvals[pairi, DKi, rhoi] = wfm.kernel(hblocks, tnn, tnnn, tl, Erhovals[rhoi] - 2*tl, source, reflect = True)[pair[pairi]];    
 
     # put plotting arrays in right form
     DeltaKvals = DeltaKvals/DO; # convert
+    DeltaKvals, rhoJavals = np.meshgrid(DeltaKvals, rhoJavals);
     thetavals = 2*np.arctan(Tvals[pair[0]].T/Tvals[pair[1]].T);
-    ax.plot(DeltaKvals, thetavals/np.pi, color = "darkblue", linewidth = 2);
+    
+    # plot (To do)
+    fig = plt.figure();   
+    #ax.plot(DeltaKvals, thetavals/np.pi, color = "darkblue", linewidth = 2);
+    ax3d = fig.add_subplot(projection = "3d");
+    ax3d.plot_surface(rhoJavals, DeltaKvals, thetavals, cmap = cm.coolwarm);
                       
     # format and show
-    ax.set_xlim(min(DeltaKvals),max(DeltaKvals));
-    ax.set_xlabel("$\Delta_{K} /D_O$", fontsize = "x-large");
-    ax.set_ylim(0,1);
-    ax.set_yticks([0,1]);
-    ax.set_ylabel("$\\theta/\pi$", fontsize = "x-large");
+    #ax.set_xlim(min(DeltaKvals),max(DeltaKvals));
+    ax3d.set_xlabel("$\Delta_{K} /D_O$", fontsize = "x-large");
+    #ax.set_ylim(0,1);
+    #ax.set_yticks([0,1]);
+    ax3d.set_ylabel("$\\theta/\pi$", fontsize = "x-large");
     plt.show();
 
     # end sweep over JK
