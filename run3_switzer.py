@@ -59,7 +59,8 @@ if(verbose):
 #########################################################
 #### plots
 
-if True: # entanglement control w/ Vg split
+
+if True: # fig 6
 
     # siam inputs
     tl = 1.0;
@@ -68,111 +69,7 @@ if True: # entanglement control w/ Vg split
 
     # eric params
     JK = 0.1;
-    DeltaD = 2*JK/10;
-    D1 = JK/2 + DeltaD/2;
-    D2 = JK/2 - DeltaD/2;
-    JH = JK;
-
-    # entangled states in leads
-    h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, JH, 0, 0);
-    hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
-    if(verbose): print("Hamiltonian, JK=0\n",np.real(hSR_JK0));
-    hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
-    if(verbose): print("Entangled Hamiltonian, JK=0\n",hSR_JK0);
-
-    # transform into eigenbasis of leads
-    _, Udiag = np.linalg.eigh(hSR_JK0); # eigvecs matrix takes us to eigenbasis
-    hSR_JK0_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR_JK0, Udiag)); # force diagonal
-    if(abs(hSR_JK0_diag[0,1]) < 1e-10): # okay to force diagonal
-        hSR_JK0_diag = np.diagflat(np.diagonal(hSR_JK0_diag));
-    del hSR_JK0; # to make sure I always use _diag version
-    if(verbose): print("Diagonal Hamiltonian, JK=0\n",hSR_JK0_diag);
-
-    # plot arrays
-    Vgvals = np.linspace(-9.0,9.0,15);
-    Tvals = np.zeros((3, len(Vgvals)));
-
-    # iter over Vg
-    for Vgi in range(len(Vgvals)):
-
-        # physics of scattering region 
-        hblocks = [np.copy(hSR_JK0_diag)]; # array of [LL, octa, tetra, RL]
-        for impi in range(2):
-            if(impi == 0): # on imp 1
-                h1e, g2e = wfm.utils.h_switzer(D1, D2, JH, JK, 0);
-            else: # on imp 2
-                h1e, g2e = wfm.utils.h_switzer(D1, D2, JH, 0, JK);
-
-            # convert to many body form
-            h = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
-            h = wfm.utils.entangle(h, *pair);
-            h_diag = np.dot( np.linalg.inv(Udiag), np.dot(h, Udiag));
-            
-            # add to list
-            hblocks.append(h_diag);
-
-        # end loop over impi
-        del h, h_diag, h1e, g2e;
-
-        # hopping
-        tnn = []; # nearest neighbor hopping in SR
-        tnn.append(-th*np.eye(len(source))); # hop onto imp 1
-        tnn.append(-tp*np.eye(len(source))); # hop onto imp 2
-        tnn.append(-th*np.eye(len(source))); # hop onto RL
-        tnn = np.array(tnn);
-        tnnn = np.zeros_like(tnn)[:-1];
-
-        # finish hblocks with RL
-        hblocks.append(np.copy(hSR_JK0_diag)); 
-        hblocks = np.array(hblocks);
-        for blocki in range(len(hblocks)): # set mu_LL = 0 for source channel
-            hblocks[blocki] -= hSR_JK0_diag[sourcei,sourcei]*np.eye(len(source));
-
-        # gate voltage
-        hblocks[1] += (Vgvals[Vgi]/2)*np.eye(len(source));
-        hblocks[2] += (-Vgvals[Vgi]/2)*np.eye(len(source));
-        if (verbose and Vgi == 0):
-            print("\nD1 = ",D1,", D2 = ",D2,", JK = ",JK);
-            print("\nhblocks:\n", hblocks);
-
-        # 2 channels of interest
-        for pairi in range(3): 
-
-            # energy and K fixed by J, rhoJa
-            rhoJa = 1
-            E_rho = JK*JK/(rhoJa*rhoJa*np.pi*np.pi*tl); # measured from bottom of band !!!
-            E_rho = E_rho - 2*tl; # measure from mu
-
-            # get T from this setup
-            Tvals[pairi, Vgi] = wfm.kernel(hblocks, tnn, tnnn, tl, E_rho, source)[pairi];
-
-    # plot
-    fig, ax = plt.subplots();
-    ax.plot(Vgvals, Tvals[sourcei], color = "darkblue", linewidth = 2, label = "$|i\,>$");
-    ax.plot(Vgvals, Tvals[pair[0]], color = "darkgreen", linewidth = 2, label = "$|+>$");
-    ax.plot(Vgvals, Tvals[pair[1]], color = "darkred", linewidth = 2, label = "$|->$");
-    ax.legend(loc = "upper left", fontsize = "large");
-    
-    # format
-    ax.set_xlabel("$V_g$", fontsize = "x-large");
-    ax.set_ylabel("$T$", fontsize = "x-large");
-    ax.set_xlim(np.min(Vgvals), np.max(Vgvals));
-    #ax.set_ylim(0,1.0);
-    plt.show();
-
-    # done itering over JK
-    raise(Exception);
-
-if False: # fig 6
-
-    # siam inputs
-    tl = 1.0;
-    th = 1.0;
-    tp = 1.0;
-
-    # eric params
-    JK = 0.1;
-    DeltaD = 0*JK/10;
+    DeltaD = 1*JK/2/10;
     D1 = JK/2 + DeltaD/2;
     D2 = JK/2 - DeltaD/2;
     for Vg in [-1,0,1]:
@@ -278,6 +175,110 @@ if False: # fig 6
         ax.set_xlim(np.min(rhoJvals), np.max(rhoJvals));
         ax.set_ylim(0,1.05);
         plt.show();
+
+    # done itering over JK
+    raise(Exception);
+
+
+if True: # entanglement control w/ Vg split
+
+    # cicc inputs
+    tl = 1.0;
+    th = 1.0;
+    tp = 1.0;
+    rhoJa = 0.5;
+
+    # eric params
+    JK = 0.1;
+    DeltaD = 0*JK/2/10;
+    D1 = JK/2 + DeltaD/2;
+    D2 = JK/2 - DeltaD/2;
+
+    # entangled states in leads
+    h1e_JK0, g2e_JK0 = wfm.utils.h_switzer(D1, D2, 0, 0, 0);
+    hSR_JK0 = fci_mod.single_to_det(h1e_JK0, g2e_JK0, species, states, dets_interest=dets32);
+    if(verbose): print("Hamiltonian, JK=0\n",np.real(hSR_JK0));
+    hSR_JK0 = wfm.utils.entangle(hSR_JK0, *pair);
+    if(verbose): print("Entangled Hamiltonian, JK=0\n",hSR_JK0);
+
+    # transform into eigenbasis of leads
+    _, Udiag = np.linalg.eigh(hSR_JK0); # eigvecs matrix takes us to eigenbasis
+    hSR_JK0_diag = np.dot( np.linalg.inv(Udiag), np.dot(hSR_JK0, Udiag)); # force diagonal
+    if(abs(hSR_JK0_diag[0,1]) < 1e-10): # okay to force diagonal
+        hSR_JK0_diag = np.diagflat(np.diagonal(hSR_JK0_diag));
+    del hSR_JK0; # to make sure I always use _diag version
+    if(verbose): print("Diagonal Hamiltonian, JK=0\n",hSR_JK0_diag);
+
+    # plot arrays
+    Vgvals = np.linspace(-2.0,2.0,15);
+    Tvals = np.zeros((3, len(Vgvals)));
+
+    # iter over Vg
+    for Vgi in range(len(Vgvals)):
+
+        # physics of scattering region 
+        hblocks = [np.copy(hSR_JK0_diag)]; # array of [LL, octa, tetra, RL]
+        for impi in range(2):
+            if(impi == 0): # on imp 1
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, JK, 0);
+            else: # on imp 2
+                h1e, g2e = wfm.utils.h_switzer(D1, D2, 0, 0, JK);
+
+            # convert to many body form
+            h = fci_mod.single_to_det(h1e,g2e, species, states, dets_interest=dets32);
+            h = wfm.utils.entangle(h, *pair);
+            h_diag = np.dot( np.linalg.inv(Udiag), np.dot(h, Udiag));
+            
+            # add to list
+            hblocks.append(h_diag);
+
+        # end loop over impi
+        del h, h_diag, h1e, g2e;
+
+        # hopping
+        tnn = []; # nearest neighbor hopping in SR
+        tnn.append(-th*np.eye(len(source))); # hop onto imp 1
+        tnn.append(-tp*np.eye(len(source))); # hop onto imp 2
+        tnn.append(-th*np.eye(len(source))); # hop onto RL
+        tnn = np.array(tnn);
+        tnnn = np.zeros_like(tnn)[:-1];
+
+        # finish hblocks with RL
+        hblocks.append(np.copy(hSR_JK0_diag)); 
+        hblocks = np.array(hblocks);
+        for blocki in range(len(hblocks)): # set mu_LL = 0 for source channel
+            hblocks[blocki] -= hSR_JK0_diag[sourcei,sourcei]*np.eye(len(source));
+
+        # gate voltage
+        hblocks[1] += (Vgvals[Vgi]/2)*np.eye(len(source));
+        hblocks[2] += (-Vgvals[Vgi]/2)*np.eye(len(source));
+        if (verbose and Vgi == 0):
+            print("\nD1 = ",D1,", D2 = ",D2,", JK = ",JK);
+            print("\nhblocks:\n", hblocks);
+
+        # 2 channels of interest
+        for pairi in range(3): 
+
+            # energy and K fixed by J, rhoJa
+            E_rho = JK*JK/(rhoJa*rhoJa*np.pi*np.pi*tl); # measured from bottom of band !!!
+            E_rho = E_rho - 2*tl; # measure from mu
+
+            # get T from this setup
+            Tvals[pairi, Vgi] = wfm.kernel(hblocks, tnn, tnnn, tl, E_rho, source)[pairi];
+
+    # plot
+    fig, ax = plt.subplots();
+    ax.plot(Vgvals, Tvals[sourcei], color = "darkblue", linewidth = 2, label = "$|i\,>$");
+    ax.plot(Vgvals, Tvals[pair[0]], color = "darkgreen", linewidth = 2, label = "$|+>$");
+    ax.plot(Vgvals, Tvals[pair[1]], color = "darkred", linewidth = 2, label = "$|->$");
+    ax.legend(loc = "upper left", fontsize = "large");
+    
+    # format
+    ax.set_xlabel("$V_g$", fontsize = "x-large");
+    ax.set_ylabel("$T$", fontsize = "x-large");
+    ax.set_xlim(np.min(Vgvals), np.max(Vgvals));
+    ax.set_ylim(0,1.0);
+    plt.show();
 
     # done itering over JK
     raise(Exception);

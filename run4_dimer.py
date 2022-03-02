@@ -91,10 +91,10 @@ for i in range(len(source)): # force diag
 #########################################################
 #### generation
 
-if False: # fig 6 ie T vs rho J a
+if True: # fig 6 ie T vs rho J a
 
     # plot at diff DeltaK
-    DeltaKvals = DO*np.array([-5,0,5]);
+    DeltaKvals = DO*np.array([0]);
     for DeltaK in DeltaKvals:
         # 2 site SR
         fig, ax = plt.subplots();
@@ -113,9 +113,6 @@ if False: # fig 6 ie T vs rho J a
                 
             # transform to eigenbasis
             hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
-            if(False):
-                if Coi == 0: hSR_diag += (DeltaK)*np.eye(len(hSR_JK0_diag)); print(DeltaK*Ha2meV*np.eye(len(hSR_JK0_diag)));
-                elif Coi == 1: hSR_diag += 0 #(-DeltaK/2)*np.eye(len(hSR_JK0_diag));
             if(verbose):
                 print("\nJKO, JKT = ",JKO*Ha2meV, JKT*Ha2meV);
                 print(" - ham:\n", Ha2meV*np.real(hSR));
@@ -189,7 +186,7 @@ if False: # fig 6 ie T vs rho J a
 
 
 #cos(theta) vs DeltaK only
-if True:
+if False:
 
     # dependent var containers
     numxvals = 15;
