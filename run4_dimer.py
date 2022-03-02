@@ -111,7 +111,7 @@ if False: # fig 6 ie T vs rho J a
             # construct h_SR (determinant basis)
             hSR = fci_mod.single_to_det(h1e, g2e, species, states, dets_interest = dets52);
                 
-            # diagonalize lead states
+            # transform to eigenbasis
             hSR_diag = np.dot(np.linalg.inv(Udiag), np.dot(hSR, Udiag));
             if(False):
                 if Coi == 0: hSR_diag += (DeltaK)*np.eye(len(hSR_JK0_diag)); print(DeltaK*Ha2meV*np.eye(len(hSR_JK0_diag)));
