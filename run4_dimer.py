@@ -94,7 +94,7 @@ for i in range(len(source)): # force diag
 if True: # fig 6 ie T vs rho J a
 
     # plot at diff DeltaK
-    DeltaKvals = DO*np.array([0]);
+    DeltaKvals = DO*np.array([-5,0,5]);
     for DeltaK in DeltaKvals:
         # 2 site SR
         fig, ax = plt.subplots();
