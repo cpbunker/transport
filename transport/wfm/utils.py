@@ -118,7 +118,7 @@ def sweep_param_space(ps, d, n):
 ##################################################################################
 #### functions specific to a model
 
-def h_cicc_eff(J, t, i1, i2, Nsites, Jz = True):
+def h_cicc_eff(J, t, i1, i2, Nsites, pair):
     '''
     Construct tight binding blocks (each block has many body dofs) to implement
     cicc model in quasi many body GF method
@@ -154,7 +154,8 @@ def h_cicc_eff(J, t, i1, i2, Nsites, Jz = True):
                         [0,0,0,0,0,1,0,0],
                         [0,0,0,2,0,0,-1,0],
                         [0,0,0,0,0,0,0,1] ]);
-
+    Se_dot_S1 = entangle(Se_dot_S1,*pair);
+    Se_dot_S2 = entangle(Se_dot_S2,*pair);
     # insert these local interactions
     h_cicc =[];
     for sitei in range(Nsites): # iter over all sites
@@ -368,7 +369,71 @@ def h_switzer(D1, D2, JH, JK1, JK2):
     return h, g;
 
 
-def h_dimer_2q(params):
+def h_manganese_2q(params):
+    '''
+    Generate second quantized form of the Co dimer spin hamiltonian
+
+    Returns:
+    h1e, one body part of second quantized ham
+    g2e, two body part of second quantized ham
+    '''
+
+    # basis size
+    Nb = 2+13+13; # e + 13 m states each imp
+
+    # unpack params
+    J12, D1, D2, JK1, JK2 = params;
+
+    # 1 particle terms
+    h1e = np.zeros((Nb, Nb), dtype = complex);
+
+    # spin 1 anisitropy
+    for i1 in range(2,2+13):
+        m1 = 6+2-i1; # integer steps from +6 to -6
+        h1e[i1, i1] = D1*m1*m1
+
+    # spin 2 anisitropy
+    for i2 in range(15,15+13):
+        m2 = 6+15-i2; # integer steps from +6 to -6
+        h1e[i2, i2] = D1*m2*m2
+
+    # 2 particle terms
+    g2e = np.zeros((Nb,Nb,Nb,Nb), dtype = complex);
+
+    # Manganese spin matrix elements
+    def S6(a,b):
+        '''
+        Spin matrix (\hbar = 1) in the ith direction of an S=6 localized spin
+        a, b are m indices
+        '''
+        snum = 6
+        k_delta = np.eye(2*snum+1);
+        Sx_ab = (k_delta[a,b+1]+k_delta[a+1,b])/2 *sqrt((snum+1)*(a+b-1)-a*b);
+        Sy_ab = complex(0,1)*(k_delta[a,b+1]-k_delta[a+1,b])/2 *sqrt((snum+1)*(a+b-1)-a*b);
+        Sz_ab = (snum + 1 - a)*k_delta[a,b];
+        Svec = [Sx_ab, Sy_ab, Sz_ab]
+
+    # Kondo terms
+    xeops = [(0,1),(1,0)];
+    xecoefs = np.array([1,1])/2;
+    g2e = fci_mod.terms_to_g2e(g2e, xeops, JK1*xecoefs, xOops, xOcoefs);
+    g2e = fci_mod.terms_to_g2e(g2e, xeops, JK2*xecoefs, xTops, xTcoefs);
+    yeops = [(0,1),(1,0)];
+    yecoefs = complex(0,1)*np.array([-1,1])/2;
+    g2e = fci_mod.terms_to_g2e(g2e, yeops, JK1*yecoefs, yOops, yOcoefs);
+    g2e = fci_mod.terms_to_g2e(g2e, yeops, JK2*yecoefs, yTops, yTcoefs);
+    zeops = [(0,0),(1,1)];
+    zecoefs = np.array([1,-1])/2;
+    g2e = fci_mod.terms_to_g2e(g2e, zeops, JK1*zecoefs, zOops, zOcoefs);
+    g2e = fci_mod.terms_to_g2e(g2e, zeops, JK2*zecoefs, zTops, zTcoefs);
+
+    # check hermicity
+    assert(not np.any(h1e - np.conj(h1e.T)));
+    assert(not np.any(g2e - np.conj(g2e.T)));
+    return h1e, g2e;
+
+
+def h_cobalt_2q(params):
     '''
     Generate second quantized form of the Co dimer spin hamiltonian
 
