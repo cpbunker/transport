@@ -30,8 +30,13 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, bdims, verbose = 0):
     https://pyblock3.readthedocs.io/en/latest/Documentation/rttddmrg.html
 
     Args:
-    - mpo, a matrix product operator form of the hamiltonian
-    - h_obj, a pyblock3.hamiltonian.Hamiltonian form of the hailtonian
+    -mpo, a matrix product operator form of the hamiltonian
+    -h_obj, a pyblock3.hamiltonian.Hamiltonian form of the hamiltonian
+    -mps, a matrix product state
+    -tf, float, the time to end the time evolution at
+    -dt, float, the time step of the time evolution
+    -i_dot, int, the site index of the impurity
+    =bdims, list of ints, bond dimension of the DMRG solver
     '''
 
     # check inputs
@@ -80,7 +85,7 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, bdims, verbose = 0):
             # get site specific observables at t=0 in array where rows are sites
             initobs = np.real(np.reshape(observables[i,n_generic_obs:],(len(sites), 4) ) );
 
-    # return time and tuple of observables as functions of time, 1d arrays
+    # return tuple of observables at t=0 and observables as arrays vs time
     return initobs, observables;
 
 
