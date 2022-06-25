@@ -54,7 +54,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0, all_debug
     sigma0 = -1; # incident spin channel
     for sigmai in range(len(Ajsigma)): # find incident spin channel and check that there is only one
         if(Ajsigma[sigmai] != 0):
-            if(all_debug and sigma0 != -1): # then there was already a nonzero element, bad
+            if(sigma0 != -1): # then there was already a nonzero element, bad
                 raise(Exception("Ajsigma has too many nonzero elements:\n"+str(Ajsigma)));
             else: sigma0 = sigmai;
     assert(sigma0 != -1);
@@ -64,7 +64,6 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0, all_debug
     n_loc_dof = np.shape(h[0])[0];
 
     # determine velocities in the left, right leads
-    v_L, v_R = np.zeros_like(Ajsigma), np.zeros_like(Ajsigma)
     ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector_sigma
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
     v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
@@ -83,27 +82,8 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0, all_debug
                                     # picks out matrix elements of incident
                                     # still has 1 free spatial, spin index for transmitted
 
-    # compute reflection and transmission coeffs
-    coefs = np.zeros(n_loc_dof, dtype = float); 
-    for sigmai in range(n_loc_dof): # iter over spin dofs
-
-        # T given in my manuscript as Eq 20
-        T = G_0sigma0[-n_loc_dof+sigmai]*np.conj(G_0sigma0[-n_loc_dof+sigmai])*v_R[sigmai]*v_L[sigma0];
-        
-        # R given in my manuscript as Eq 21
-        R = (complex(0,1)*G_0sigma0[0+sigmai]*v_L[sigma0] - Ajsigma[sigmai])*np.conj(complex(0,1)*G_0sigma0[0+sigmai]*v_L[sigma0] - Ajsigma[sigmai])*v_L[sigmai]/v_L[sigma0];  
-
-        # benchmarking
-        if(verbose > 1):
-            print(" - sigmai = ",sigmai,", T = ",T,", R = ",R);
-        if(all_debug and abs(np.imag(T)) > 1e-10 ): raise(Exception("T = "+str(T)+" must be real")); # have to turn off if E < barrier
-        if(all_debug and abs(np.imag(R)) > 1e-10 ): raise(Exception("R = "+str(R)+" must be real"));
-
-        # return var
-        if(reflect): # want R
-            coefs[sigmai] = np.real(R);
-        else: # want T
-            coefs[sigmai] = np.real(T);
+    # TODO: fill in to get t and r matrices (instead of T and R coefficients)
+    # then if possible calculate T and R in new general way (not assuming only one initial spin state)
 
     return coefs;
 
