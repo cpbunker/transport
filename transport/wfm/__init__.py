@@ -15,7 +15,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0, all_debug = True):
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
     '''
     coefficient for a transmitted up and down electron
     Args
@@ -27,91 +27,89 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, reflect = False, verbose = 0, all_debug
     -E, float, energy of the incident electron
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
     Optional args
-    -reflect, whether to return reflection or transmission coefs
     -verbose, how much printing to do
     -all_debug, whether to enforce a bunch of extra assert statements
-    '''
 
-    # check input types
-    assert( isinstance(h, np.ndarray));
-    assert( isinstance(tnn, np.ndarray));
-    assert(len(tnn)+1 == len(h));
-    assert( isinstance(tnnn, np.ndarray));
-    assert(len(tnnn)+2 == len(h));
+    Returns
+    tuple of R coefs (vector of floats for each sigma) and T coefs (likewise)
+    '''
+    if(not isinstance(h, np.ndarray)): raise TypeError;
+    if(not isinstance(tnn, np.ndarray)): raise TypeError;
+    if(not isinstance(tnnn, np.ndarray)): raise TypeError;
     
     # check that lead hams are diagonal
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if(all_debug and np.any(isdiag)): # True if there are nonzero off diag terms
             raise Exception("Not diagonal\n"+str(h[hi]))
-    for i in range(len(Ajsigma)): # always set incident mu = 0
-        if(Ajsigma[i] != 0):
-            assert(h[0,i,i] == 0);
+    for sigma in range(len(Ajsigma)): # always set incident mu = 0
+        if(Ajsigma[sigma] != 0):
+            pass;
+            #assert(h[0,sigma,sigma] == 0);
 
     # check incident amplitude
     assert( isinstance(Ajsigma, np.ndarray));
     assert( len(Ajsigma) == np.shape(h[0])[0] );
-    sigma0 = -1; # incident spin channel
-    for sigmai in range(len(Ajsigma)): # find incident spin channel and check that there is only one
-        if(Ajsigma[sigmai] != 0):
-            if(sigma0 != -1): # then there was already a nonzero element, bad
-                raise(Exception("Ajsigma has too many nonzero elements:\n"+str(Ajsigma)));
-            else: sigma0 = sigmai;
-    assert(sigma0 != -1);
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
     # determine velocities in the left, right leads
-    ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector_sigma
+    ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector with sigma components
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
-    v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
-    v_R = 2*tl*np.sin(ka_R);
+    v_L = 2*tl*np.sin(ka_L); # vector with sigma components
+    v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1
 
     # green's function
-    if(verbose): print("\nEnergy = ",np.real(E+2*tl)); # start printouts
-    G = Green(h, tnn, tnnn, tl, E, verbose = verbose);
+    if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
+    Gmat = Green(h, tnn, tnnn, tl, E, verbose = verbose);
 
-    # contract G with source to pick out matrix elements we need
-    Avector = np.zeros(np.shape(G)[0], dtype = complex); # go from spin space to spin+site space
-    for sigmai in range(n_loc_dof):
-        Avector[sigmai] = Ajsigma[sigmai]; # fill from spin space
+    # determine matrix elements
+    i_flux = np.sqrt(np.dot(Ajsigma, Ajsigma*np.real(v_L)));
+
+    # from matrix elements, determine R and T coefficients
+    # (eq:Rcoef and eq:Tcoef in paper)
+    Rs = np.zeros(n_loc_dof, dtype = float); # force as float bc we check that imag part is tiny
+    Ts = np.zeros(n_loc_dof, dtype = float);
+    for sigma in range(n_loc_dof): # iter over spin dofs
+        r_flux = (np.complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
+        r_el = r_flux/i_flux;
+        Rs[sigma] = np.real(r_el*np.conjugate(r_el));
+        t_flux = np.complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_L[sigma]));
+        t_el = t_flux/i_flux;
+        Ts[sigma] = np.real(t_el*np.conjugate(t_el));
     
-    G_0sigma0 = np.dot(G, Avector); # G contracted with incident amplitude
-                                    # picks out matrix elements of incident
-                                    # still has 1 free spatial, spin index for transmitted
-
-    # TODO: fill in to get t and r matrices (instead of T and R coefficients)
-    # then if possible calculate T and R in new general way (not assuming only one initial spin state)
-
-    return coefs;
-
+    return Rs, Ts;
 
 def Hmat(h, tnn, tnnn, verbose = 0):
     '''
-    Make the hamiltonian H for N+2 x N+2 system
+    Make the hamiltonian H for reduced dimensional N+2 x N+2 system
     where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
     Args
-    -h, array, on site blocks at each of the N+2 sites of the system
-    -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
-    -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
+    -h, 2d array, on site blocks at each of the N+2 sites of the system
+    -tnn, 2d array, nearest neighbor hopping btwn sites, N-1 blocks
+    -tnnn, 2d array, next nearest neighbor hopping btwn sites, N-2 blocks
+
+    returns 2d array with spatial and spin indices mixed
     '''
+    if(not len(tnn) +1 == len(h)): raise ValueError;
+    if(not len(tnnn)+2 == len(h)): raise ValueError;
 
     # unpack
-    N = len(h) - 2; # num scattering region sites, ie N+2 = num spatial dof
-    n_loc_dof = np.shape(h[0])[0]; # dofs that will be mapped onto row in H
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0]; # general dofs that are not the site number
     H =  np.zeros((n_loc_dof*(N+2), n_loc_dof*(N+2) ), dtype = complex);
-    # outer shape: num sites x num sites (degree of freedom is loc of itinerant e)
-    # shape at each site: runs over all other degrees of freedom)
+    # outer shape: num sites x num sites (0 <= j <= N+1)
+    # shape at each site: n_loc_dof, runs over all other degrees of freedom
 
-    # first construct matrix of matrices
-    for sitei in range(0,N+2): # iter sites dof only
+    # construct H
+    for sitei in range(0,N+2): # iter site dof only
         for sitej in range(0,N+2): # same
                 
             for loci in range(np.shape(h[0])[0]): # iter over local dofs
                 for locj in range(np.shape(h[0])[0]):
-                    
+
                     # site, loc indices -> overall indices
                     ovi = sitei*n_loc_dof + loci;
                     ovj = sitej*n_loc_dof + locj;
@@ -130,19 +128,8 @@ def Hmat(h, tnn, tnnn, verbose = 0):
 
                     elif(sitei+2 == sitej): # input from tnnn to 2nd upper diag
                         H[ovi, ovj] = tnnn[sitei][loci, locj];
-
-    if(False):
-        print("\n>>> H construction\n");
-        print("- shape(H_j) = ", np.shape(h[0]));
-        print("- shape(tnn_j) = ", np.shape(tnn[0]));
-        print("- shape(tnnn_j) = ", np.shape(tnnn[0]));
-        print("- shape(H) = ",np.shape(H));
-        print("- H = \n",np.real(H));
-        print(np.real(H)[::8,::8])
-        print(np.real(H)[16:24,16:24]);
-        assert False;
-    return H; 
-
+                        
+    return H; # end Hmat
 
 def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
     '''
@@ -152,42 +139,50 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
     -h, array, on site blocks at each of the N+2 sites of the system
     -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
     -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
-    -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
+    -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
+
+    returns 2d array with spatial and spin indices mixed
     '''
 
     # unpack
     N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0];
+    n_loc_dof = np.shape(h[0])[0]; # general dofs that are not the site number
 
-    # add self energies to hamiltonian
-    Hp = Hmat(h, tnn, tnnn, verbose = verbose); # H matrix from SR on site, hopping blocks
+    # base hamiltonian
+    Hp = Hmat(h, tnn, tnnn, verbose = verbose); # SR on site, hopping blocks
     
-    # self energies at LL
-    # need a self energy for each LL boundary condition
-    SigmaLs = [];
-    for Vi in range(n_loc_dof): # iters over all bcs
+    # self energies in LL
+    # need a self energy for all incoming/outgoing spin states (all local dof)
+    SigmaLs = np.zeros(n_loc_dof, dtype = complex);
+    for Vi in range(n_loc_dof): # iters over all local dof
+        # scale the energy
         V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tl); 
+        lamL = (E-V)/(-2*tl);
+        # make sure sign of SigmaL is correctly assigned
         assert( abs(np.imag(lamL)) < 1e-10);
-        lamL = np.real(lamL); # makes sure sign of SigmaL is correctly assigned
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); # reflected
+        lamL = np.real(lamL);
+        # reflected self energy
+        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); 
         SigmaL = -tl/LambdaLminus; 
         Hp[Vi,Vi] += SigmaL;
-        SigmaLs.append(SigmaL);
-    del lamL, LambdaLminus, SigmaL
+        SigmaLs[Vi] = SigmaL
+    del V, lamL, LambdaLminus, SigmaL
 
-    # self energies at RL
-    SigmaRs = [];
-    for Vi in range(n_loc_dof): # iters over all bcs
+    # self energies in RL
+    SigmaRs = np.zeros(n_loc_dof, dtype = complex);
+    for Vi in range(n_loc_dof): # iters over all local dof
+        # scale the energy
         V = h[-1][Vi,Vi];     
         lamR = (E-V)/(-2*tl);
+        # make sure the sign of SigmaR is correctly assigned
         assert( abs(np.imag(lamR)) < 1e-10);
         lamR = np.real(lamR); # makes sure sign of SigmaL is correctly assigned
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1); # transmitted
+        # transmitted self energy
+        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1);
         SigmaR = -tl*LambdaRplus;
         Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
-        SigmaRs.append(SigmaR);
-    del lamR, LambdaRplus, SigmaR;
+        SigmaRs[Vi] = SigmaR;
+    del V, lamR, LambdaRplus, SigmaR;
 
     # check that modes with given energy are allowed in some LL channels
     SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
@@ -200,12 +195,40 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
         ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
         v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
         v_R = 2*tl*np.sin(ka_R);
-        for sigmai in range(len(ka_L)):
-            print(" - sigmai = ",sigmai,", v_L = ", v_L[sigmai],"v_R = ",v_R[sigmai]);
-            print(" - sigmai = ",sigmai,", Sigma_L = ", SigmaLs[sigmai],"Sigma_R = ",SigmaRs[sigmai]);
+        for sigma in range(len(ka_L)):
+            print(" - sigma = "+str(sigma)+", v_L = {:.4f}+{:.4f}j, Sigma_L = {:.4f}+{:.4f}j"
+                  .format(np.real(v_L[sigma]), np.imag(v_L[sigma]), np.real(SigmaLs[sigma]), np.imag(SigmaLs[sigma])));
+            print(" - sigma = "+str(sigma)+", v_R = {:.4f}+{:.4f}j, Sigma_R = {:.4f}+{:.4f}j"
+                  .format(np.real(v_R[sigma]), np.imag(v_R[sigma]), np.real(SigmaRs[sigma]), np.imag(SigmaRs[sigma])));
 
     return Hp;
 
+def convert_to_4d(mat, n_loc_dof):
+    '''
+    Take a 2d matrix (ie with spatial and spin dofs mixed)
+    to a 4d (ie with spatial and spin dofs separated)
+    '''
+    if( not isinstance(mat, np.ndarray)): raise TypeError;
+    if( len(mat) % n_loc_dof != 0): raise ValueError;
+
+    # unpack
+    n_spatial_dof = len(mat) // n_loc_dof;
+    new_mat = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof), dtype=complex);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only
+        for sitej in range(n_spatial_dof): # same
+                
+            for loci in range(n_loc_dof): # iter over local dofs
+                for locj in range(n_loc_dof):
+
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    new_mat[sitei, sitej, loci, locj] = mat[ovi,ovj];
+
+    return new_mat;
 
 def Green(h, tnn, tnnn, tl, E, verbose = 0):
     '''
@@ -216,20 +239,23 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0):
     -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
     -E, float, incident energy
+
+    returns 4d array with spatial and spin indices separate
     '''
 
     # unpack
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
-    # get green's function matrix
+    # get 2d green's function matrix
     Hp = Hprime(h, tnn, tnnn, tl, E, verbose = verbose);
     #if(verbose): print(">>> H' = \n", Hp );
     #if(verbose): print(">>> EI - H' = \n", E*np.eye(np.shape(Hp)[0]) - Hp );
-    G = np.linalg.inv( E*np.eye(np.shape(Hp)[0] ) - Hp );
+    Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
 
-    # of interest is the qith row which contracts with the source q
-    return G;
+    # make 4d
+    Gmat = convert_to_4d(Gmat, n_loc_dof);
+    return Gmat;
 
 
 

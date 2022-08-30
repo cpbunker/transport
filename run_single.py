@@ -39,7 +39,7 @@ tl = 1.0;
 #################################################################
 #### replication of continuum solution
 
-if True:
+if False:
 
     # inelastic ?
     Delta = 0.0; # inelastic splitting
@@ -265,7 +265,7 @@ if False:
 #################################################################
 #### superposition spin center
 
-if False:
+if True:
     num_plots = 4;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
@@ -273,17 +273,20 @@ if False:
 
     # tight binding params
     Jval = 0.5;
-    zeeman = 0.0;
+    zeeman = 0.01;
 
     # iter over degree of superposition (ie theta)
-    thetavals = np.linspace(0,np.pi,2);
+    thetavals = np.linspace(0,np.pi,5);
     for thetavali in range(len(thetavals)):
         thetaval = thetavals[thetavali];
 
         # superposition + zeeman 
         source = np.zeros(4)
         source[2] = np.cos(thetaval/2);
-        source[3] = np.sin(thetaval/2);
+        source[3] = np.sin(thetaval/2); # can be higher energy due to zeeman
+                                        # sometimes, both R and T will be forbidden
+                                        # in which case Ajsigma*v_L = 0, so the incoming
+                                        # flux in this channel also gets supressed
 
         # zeeman splitting
         hzeeman = np.array([[0, 0, 0, 0],
@@ -330,8 +333,8 @@ if False:
 
         # plot tight binding results
         for axi in range(num_plots):
-            axes[axi].plot(Evals,Tvals[:,axi], color = mycolors[thetavali], marker = mymarkers[thetavali], markevery = mymarkevery, linewidth = mylinewidth);
-            axes[axi].set_ylim(0,1.05);
+            axes[axi].plot(Evals,Rvals[:,axi], color = mycolors[thetavali], marker = mymarkers[thetavali], markevery = mymarkevery, linewidth = mylinewidth);
+            #axes[axi].set_ylim(0,1.0);
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
         axes[-1].plot(Evals, totals, color="red", label = "total ");
 
