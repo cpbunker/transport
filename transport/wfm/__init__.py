@@ -63,19 +63,21 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
-    Gmat = Green(h, tnn, tnnn, tl, E, verbose = verbose);
+    Gmat = Green(h, tnn, tnnn, tl, E, verbose = verbose); # spatial and spin indices separate
 
     # determine matrix elements
-    i_flux = np.sqrt(np.dot(Ajsigma, Ajsigma*np.real(v_L)));
+    i_flux = np.sqrt(np.dot(Ajsigma, Ajsigma*np.real(v_L))); # sqrt of i flux
 
     # from matrix elements, determine R and T coefficients
     # (eq:Rcoef and eq:Tcoef in paper)
     Rs = np.zeros(n_loc_dof, dtype = float); # force as float bc we check that imag part is tiny
     Ts = np.zeros(n_loc_dof, dtype = float);
     for sigma in range(n_loc_dof): # iter over spin dofs
+        # sqrt of r flux, numerator of eq:Rcoef in manuscript
         r_flux = (np.complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
         r_el = r_flux/i_flux;
         Rs[sigma] = np.real(r_el*np.conjugate(r_el));
+        # sqrt of t flux, numerator of eq:Tcoef in manuscript
         t_flux = np.complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_L[sigma]));
         t_el = t_flux/i_flux;
         Ts[sigma] = np.real(t_el*np.conjugate(t_el));
@@ -206,7 +208,7 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
 def convert_to_4d(mat, n_loc_dof):
     '''
     Take a 2d matrix (ie with spatial and spin dofs mixed)
-    to a 4d (ie with spatial and spin dofs separated)
+    to a 4d matrix (ie with spatial and spin dofs separated)
     '''
     if( not isinstance(mat, np.ndarray)): raise TypeError;
     if( len(mat) % n_loc_dof != 0): raise ValueError;
@@ -248,13 +250,13 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0):
     n_loc_dof = np.shape(h[0])[0];
 
     # get 2d green's function matrix
-    Hp = Hprime(h, tnn, tnnn, tl, E, verbose = verbose);
+    Hp = Hprime(h, tnn, tnnn, tl, E, verbose=verbose); # for easy inversion, 2d array with spatial and spin indices mixed
     #if(verbose): print(">>> H' = \n", Hp );
     #if(verbose): print(">>> EI - H' = \n", E*np.eye(np.shape(Hp)[0]) - Hp );
     Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
 
     # make 4d
-    Gmat = convert_to_4d(Gmat, n_loc_dof);
+    Gmat = convert_to_4d(Gmat, n_loc_dof); # separates spatial and spin indices
     return Gmat;
 
 
