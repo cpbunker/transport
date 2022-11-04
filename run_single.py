@@ -39,10 +39,10 @@ tl = 1.0;
 #################################################################
 #### replication of continuum solution
 
-if False:
+if True:
 
     # inelastic ?
-    Delta = 0.0; # inelastic splitting
+    Delta = 0.01; # inelastic splitting
     inelastic = False
     if Delta > 0.0: inelastic = True;
     num_plots = 4;
@@ -265,7 +265,7 @@ if False:
 #################################################################
 #### superposition spin center
 
-if True:
+if False:
     num_plots = 4;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];

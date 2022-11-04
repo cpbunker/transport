@@ -36,7 +36,7 @@ print(h1e);
 
 # time propagate
 # since energy is in eV, time is in hbar/eV = 6.58*10^-16 sec
-# since perturbation is 1/100 eV, timescale should be 100 steps
+# since perturbation is 1/10 eV, timescale should ??
 tf = 10;
 dt = 0.1;
 civecs, observables = tdfci.kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, verbose = verbose);
