@@ -9,6 +9,8 @@ Bardeen tunneling theory in 1D
 #from transport import fci_mod
 
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 ##################################################################################
 #### driver of transmission coefficient calculations
@@ -77,24 +79,63 @@ def HRmat(tb, tR, Vinfty, Vb, VR, dims):
             
     return Hsysmat(tb, tb, tR, Vinfty, Vb, Vb, VR, dims);
 
-def matrix_element(m, mprime, tL, tb, tR, Vinfty, VL, Vb, VR, dims):
+##################################################################################
+#### util functions
 
-    # get well eigenstates
-    HL, _ = HLmat(tL, tb, Vinfty, VL, Vb, dims);
-    Es, psis = np.linalg.eigh(HL);
-    psi_m = psis[:,m];
-    HR, _ = HRmat(tb, tR, Vinfty, Vb, VR, dims);
-    Es, psis = np.linalg.eigh(HR);
-    psi_mprime = psis[:,mprime];
-    del psis, Es;
+def plot_wfs(tL, tb, tR, Vinfty, VL, Vb, VR, dims):
+    '''
+    Visualize the problem by plotting some LL wfs against Hsys
+    '''
+    fig, axes = plt.subplots(4, sharex = True);
+    mycolors = cm.get_cmap('Set1');
 
-    # operator
-    Hsys, offset = Hsysmat(tL, tb, tR, Vinfty, VL, Vb, VR, dims);
-    op = Hsys - HL;
+    # plot left well eigenstates
+    HL, offset = HLmat(tL, tb, Vinfty, VL, Vb, dims);
+    jvals = np.array(range(len(HL))) + offset;
+    axes[0].plot(jvals, np.diag(HL), color = 'black', linestyle = 'dashed', linewidth = 2);
+    Ems, psims = np.linalg.eigh(HL);
+    Ems_bound = Ems[Ems + 2*tL < Vb];
+    ms_bound = np.linspace(0,len(Ems_bound)-1,3,dtype = int);
+    for counter in range(len(ms_bound)):
+        m = ms_bound[counter]
+        axes[0].plot(jvals[jvals <= dims[1]+dims[2]], psims[:,m][jvals <= dims[1]+dims[2]], color = mycolors(counter));
+        axes[0].plot([dims[1]+dims[2],jvals[-1]],(2*tL+ Ems[m])*np.ones((2,)), color = mycolors(counter));
+    axes[0].set_ylabel('$V_j/t_L$');
+    axes[0].set_ylim(VL-2*Vb,VL+2*Vb);
 
-    return psi_m, 
+    # plot system ham
+    Hsys, _ = Hsysmat(tL, tb, tR, Vinfty, VL, Vb, VR, dims);
+    axes[1].plot(jvals, np.diag(Hsys), color = 'black', linestyle = 'dashed', linewidth = 2);
+    axes[1].plot(jvals, np.diag(Hsys-HL), color = 'darkblue', linestyle = 'dashed', linewidth = 2);
+    axes[1].set_ylabel('$V_j/t_L$');
 
+    # plot (Hsys-HL)*psi_m
+    for counter in range(len(ms_bound)):
+        m = ms_bound[counter];
+        axes[2].plot(jvals, np.dot(Hsys-HL,psims[:,m]), color = mycolors(counter));
+    axes[2].set_ylabel('$(H_{sys}-H_L) \psi_m $');
+
+    # plot right well eigenstates
+    HR, offset = HRmat(tb, tR, Vinfty, Vb, VR, dims);
+    axes[3].plot(jvals, np.diag(HR), color = 'black', linestyle = 'dashed', linewidth = 2);
+    Emprimes, psimprimes = np.linalg.eigh(HR);
+    for counter in range(len(ms_bound)):
+        mprime = ms_bound[counter];
+        axes[3].plot(jvals[jvals > -dims[0]-dims[1]], psimprimes[:,mprime][jvals > -dims[0]-dims[1]], color = mycolors(counter));
+        axes[3].plot([jvals[0],-dims[0]-dims[1]],(2*tL+ Ems[mprime])*np.ones((2,)), color = cmycolors(counter));
+    axes[3].set_ylabel('$V_j/t_L$');
+    axes[3].set_ylim(VR-2*Vb,VR+2*Vb);
+        
+    # format
+    axes[-1].set_xlabel('$j$');
+    plt.tight_layout();
+    plt.show();
+    
 def TvsE(tL, tb, tR, Vinfty, VL, Vb, VR, dims):
+    '''
+    Calculate a transmission coefficient for each LL eigenstate and return
+    these as a function of their energy
+    '''
 
     # left well eigenstates
     HL, _ = HLmat(tL, tb, Vinfty, VL, Vb, dims);
@@ -120,47 +161,47 @@ def TvsE(tL, tb, tR, Vinfty, VL, Vb, VR, dims):
 #### test code
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt;
 
     # left lead quantum well test
+    # tb params, in tL
     tL = 1.0;
     tb = 1.0;
     tR = 1.0;
-    Vinfty = 1.0;
+    Vinfty = tL/2;
     VL = -0.0;
-    Vb = Vinfty/10;
+    Vb = tL/10;
     VR = VL;
-    NL = 1000;
-    NC = 0;
-    NR = 1000;
+    NL = 100;
+    NC = NL//20;
+    NR = 100;
     dims = (NL, NC, NR);
     sys_args = (tL, tb, tR, Vinfty, VL, Vb, VR, dims);
 
-    # test Hsys
+    # visualize the problem
     if False:
-        Hsys, offset = Hsysmat(tL, tb, tR, Vinfty, VL, Vb, VR, dims);
-        print(Hsys);
-        jvals = np.array(range(len(Hsys))) + offset;
-        Vvals = np.diag(Hsys);
-        plt.plot(jvals, Vvals);
-        plt.show();
-
-    # test HL
-    if False:
-        HL, offset = HLmat(tL, tb, Vinfty, VL, Vb, dims);
-        print(HL);
-        jvals = np.array(range(len(HL))) + offset;
-        Vvals = np.diag(HL);
-        plt.plot(jvals, Vvals);
-        Es, psiEs = np.linalg.eigh(HL);
-        for psii in range(3):
-            plt.plot(jvals, psiEs[:,psii]);
-        plt.show();
+        plot_wfs(*sys_args);
 
     # test matrix elements
     if True:
+        numplots = 1;
+        fig, axes = plt.subplots(numplots, sharex = True);
+        if numplots == 1: axes = [axes];
+        fig.set_size_inches(7/2,3*numplots/2);
+
+        # bardeen results
         Es, Ts = TvsE(tL, tb, tR, Vinfty, VL, Vb, VR, dims);
-        plt.plot(Es, Ts);
+        axes[0].plot(Es+2*tL, Ts);
+
+        # compare
+        kas = np.arccos((Es-VL)/(-2*tL));
+        kappas = np.arccosh((Es-Vb)/(-2*tb));
+        ideal_exp = np.exp(-2*(2*NC+1)*kappas);
+        #axes[0].plot(Es, np.power(4*kas/kappas,2)*ideal_exp);
+
+        # format and show
+        axes[-1].set_xscale('log', subs = []);
+        axes[-1].set_xlabel('$K_i/t_L$');
+        plt.tight_layout();
         plt.show();
 
     

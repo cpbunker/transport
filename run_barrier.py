@@ -1,16 +1,10 @@
 '''
 Christian Bunker
 M^2QM at UF
-September 2021
+November 2022
 
-Quasi 1 body transmission through spin impurities project, part 0:
-Scattering of a single electron from a step potential
-
-wfm.py
-- Green's function solution to transmission of incident plane wave
-- left leads, right leads infinite chain of hopping tl treated with self energy
-- in the middle is a scattering region, hop on/off with th usually = tl
-- in SR the spin degrees of freedom of the incoming electron and spin impurities are coupled 
+Time independent scattering formalism using GF's
+Exact solution for a potential barrier
 '''
 
 from transport import wfm, fci_mod, ops
@@ -18,6 +12,7 @@ from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
@@ -26,7 +21,7 @@ verbose = 5;
 # fig standardizing
 myxvals = 199;
 myfontsize = 14;
-mycolors = ["black","darkblue","darkgreen","darkred", "darkcyan", "darkmagenta","darkgray"];
+mycolors = cm.get_cmap('Set1');
 mymarkers = ["o","^","s","d","*","X","P"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
@@ -36,15 +31,15 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 # tight binding params
 tl = 1.0;
 Vb = 0.1; # barrier height
-NC = 1; # barrier width
+NC = 5; # barrier width
 
 # blocks and inter block hopping
 hblocks = [[[0]]];
-for _ in range(NC): hblocks.append([[Vb]]);
+for _ in range(2*NC+1): hblocks.append([[Vb]]);
 hblocks.append([[0]]);
 hblocks = np.array(hblocks, dtype = float);
 tnn = [[[-tl]]];
-for _ in range(NC): tnn.append([[-tl]]);
+for _ in range(2*NC+1): tnn.append([[-tl]]);
 tnn = np.array(tnn);
 tnnn = np.zeros_like(tnn)[:-1];
 if verbose: print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn); 
@@ -55,7 +50,7 @@ source[0] = 1;
 
 # sweep over range of energies
 # def range
-logElims = -6,0
+logElims = -3,0
 Evals = np.logspace(*logElims,myxvals, dtype=complex);
 
 # test main wfm kernel
@@ -75,27 +70,28 @@ for Evali in range(len(Evals)):
 
 
 # plot Tvals vs E
-numplots = 1;
+numplots = 2;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
-axes[0].plot(Evals, Tvals[:,0], color=mycolors[0], marker = mymarkers[0], linewidth = mylinewidth, markevery = mymarkevery); 
-axes[0].set_ylim(0,1);
-
-#axes[1].plot(Evals, Rvals[:,0], color=mycolors[1], marker = mymarkers[1], linewidth = mylinewidth, markevery = mymarkevery); 
-#totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-#axes[1].plot(Evals, totals, color="red");
-#axes[1].set_ylim(0,1);
+fig.set_size_inches(7/2,3*numplots/2);
+axes[0].plot(Evals, Tvals[:,0], color=mycolors(0), marker = mymarkers[0], markevery = mymarkevery, linewidth = mylinewidth); 
 
 # ideal comparison
 kavals = np.arccos((Evals-2*tl-hblocks[0][0,0])/(-2*tl));
 kappavals = np.arccosh((Evals-2*tl-hblocks[1][0,0])/(-2*tl));
 ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-ideal_exp = np.exp(-2*NC*kappavals);
+ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
 ideal_Tvals = ideal_prefactor*ideal_exp;
-ideal_Tvals *= np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-axes[0].plot(Evals,ideal_Tvals);
-#axes[1].plot(Evals,kappavals);
-#axes[1].plot(Evals,np.sqrt(Vb - Evals));
+ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
+ideal_Tvals *= ideal_correction
+axes[0].plot(Evals,ideal_Tvals, color = 'black', linewidth = mylinewidth);
+axes[0].set_ylim(0,1);
+
+# approximations to ideal
+axes[1].plot(Evals,ideal_Tvals, color = 'black', linewidth = mylinewidth);
+axes[1].plot(Evals,ideal_Tvals/ideal_correction, color = mycolors(2), linewidth = mylinewidth, marker = mymarkers[1], markevery = mymarkevery);
+axes[1].plot(Evals,np.power(4*kavals/kappavals,2)*ideal_exp,color = mycolors(3), linewidth = mylinewidth, marker = mymarkers[2], markevery = mymarkevery,);
+axes[1].set_ylim(0,0.2);
         
 # format and show
 axes[-1].set_xscale('log', subs = []);
