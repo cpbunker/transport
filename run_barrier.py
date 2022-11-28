@@ -26,7 +26,7 @@ mymarkers = ["o","^","s","d","*","X","P"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # tight binding params
 tl = 1.0;
@@ -74,9 +74,9 @@ numplots = 2;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
 fig.set_size_inches(7/2,3*numplots/2);
-axes[0].plot(Evals, Tvals[:,0], color=mycolors(0), marker = mymarkers[0], markevery = mymarkevery, linewidth = mylinewidth); 
+axes[1].plot(Evals, np.real(Tvals[:,0]), color=mycolors(1), marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
 
-# ideal comparison
+# approximations to ideal
 kavals = np.arccos((Evals-2*tl-hblocks[0][0,0])/(-2*tl));
 kappavals = np.arccosh((Evals-2*tl-hblocks[1][0,0])/(-2*tl));
 ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
@@ -84,21 +84,24 @@ ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
 ideal_Tvals = ideal_prefactor*ideal_exp;
 ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
 ideal_Tvals *= ideal_correction
-axes[0].plot(Evals,ideal_Tvals, color = 'black', linewidth = mylinewidth);
-axes[0].set_ylim(0,1);
+axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+axes[0].plot(Evals,np.real(ideal_Tvals/ideal_correction), color=mycolors(0), linewidth=mylinewidth, marker=mymarkers[0], markevery=mymarkevery);
+axes[0].set_ylim(0,0.2);
+axes[0].set_ylabel('$T_{approx}$');
 
-# approximations to ideal
-axes[1].plot(Evals,ideal_Tvals, color = 'black', linewidth = mylinewidth);
-axes[1].plot(Evals,ideal_Tvals/ideal_correction, color = mycolors(2), linewidth = mylinewidth, marker = mymarkers[1], markevery = mymarkevery);
-axes[1].plot(Evals,np.power(4*kavals/kappavals,2)*ideal_exp,color = mycolors(3), linewidth = mylinewidth, marker = mymarkers[2], markevery = mymarkevery,);
-axes[1].set_ylim(0,0.2);
+# ideal comparison
+axes[1].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+axes[1].set_ylim(0,1);
+axes[1].set_ylabel('$T_{numerical}$');
         
 # format and show
 axes[-1].set_xscale('log', subs = []);
 axes[-1].set_xlim(10**(logElims[0]), 10**(logElims[1]));
 axes[-1].set_xticks([10**(logElims[0]), 10**(logElims[1])]);
 axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
-plt.show();
+for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize); 
+plt.tight_layout();
+plt.savefig('figs/barrier.pdf');
    
 
 
