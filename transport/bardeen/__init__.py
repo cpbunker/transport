@@ -159,7 +159,7 @@ def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
     Tms = np.zeros_like(Ems);
     for m in range(len(Ems)):
         M = np.dot(psimprimes[:,m],np.dot(op,psims[:,m]));
-        Tms[m] = M*np.conj(M)*NL*NR/(kms[m]*kmprimes[m]*tL*tR); # NOT SURE ABOUT L VS R
+        Tms[m] = M*np.conj(M)*NL/(kms[m]*tL)*NR/(kmprimes[m]*tR);
         
     return Ems, Tms;
 
@@ -210,8 +210,8 @@ if __name__ == "__main__":
         plt.show();
         plot_wfs(*ts, *Vs, *Ns);
 
-    # test matrix elements
-    if True:
+    # test matrix elements vs NC
+    if False:
         del NC;
         NCvals = [0,2,7];
         numplots = len(NCvals);
@@ -239,13 +239,94 @@ if __name__ == "__main__":
             ideal_Tvals *= ideal_correction;
             axes[NCi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
             axes[NCi].set_ylabel('$T$');
+            axes[NCi].set_title('$d = '+str(2*NCvals[NCi]+1)+'a$', x=0.17, y = 0.7, fontsize = myfontsize);
 
         # format and show
         axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$K_i/t_L$');
-        for axi in range(len(axes)): axes[axi].set_title('$N_C = '+str(NCvals[axi])+'$', x=0.17, y = 0.7, fontsize = myfontsize); 
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
         plt.tight_layout();
-        plt.show();
+        plt.savefig("figs/bardeen/NC");
+
+    # test matrix elements vs VC
+    if False:
+        del VC;
+        VCvals = [0.01,0.1,1.0];
+        numplots = len(VCvals);
+        fig, axes = plt.subplots(numplots, sharex = True);
+        if numplots == 1: axes = [axes];
+        fig.set_size_inches(7/2,3*numplots/2);
+
+        # bardeen results for different well thicknesses
+        for VCi in range(len(VCvals)):
+            Evals, Tvals = TvsE(*ts, 5*VCvals[VCi], VL, VCvals[VCi], VR, *Ns);
+            Evals = (Evals+2*tL);
+            Evals, Tvals = Evals[Evals <= VCvals[VCi]], Tvals[Evals <= VCvals[VCi]]; # bound states only
+            axes[VCi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
+            axes[VCi].set_ylim(0,1.1*max(Tvals));
+
+            # compare
+            logElims = -3,0
+            Evals = np.logspace(*logElims,myxvals, dtype=complex);
+            kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
+            kappavals = np.arccosh((Evals-2*tL-VCvals[VCi])/(-2*tL));
+            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+            ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
+            ideal_Tvals = ideal_prefactor*ideal_exp;
+            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
+            ideal_Tvals *= ideal_correction;
+            axes[VCi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+            axes[VCi].set_ylabel('$T$');
+            axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.17, y = 0.7, fontsize = myfontsize);
+
+        # format and show
+        axes[-1].set_xscale('log', subs = []);
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        plt.tight_layout();
+        plt.savefig("figs/bardeen/VC");
+
+    # test matrix elements vs NR
+    if False:
+        del NR;
+        NRvals = [10,50,100,150,190];
+        numplots = len(NRvals);
+        fig, axes = plt.subplots(numplots, sharex = True);
+        if numplots == 1: axes = [axes];
+        fig.set_size_inches(7/2,3*numplots/2);
+        symmetric = False;
+
+        # bardeen results for different well thicknesses
+        for NRi in range(len(NRvals)):
+            if symmetric:
+                fname = "figs/bardeen/NR_symmetric";
+                Evals, Tvals = TvsE(*ts, *Vs, Ninfty, NRvals[NRi], NC, NRvals[NRi]);
+            else:
+                fname = "figs/bardeen/NR";
+                Evals, Tvals = TvsE(*ts, *Vs, Ninfty, NL, NC, NRvals[NRi]);
+            Evals = (Evals+2*tL);
+            Evals, Tvals = Evals[Evals <= VC], Tvals[Evals <= VC]; # bound states only
+            axes[NRi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
+            axes[NRi].set_ylim(0,1.1*max(Tvals));
+
+            # compare
+            logElims = -3,0
+            Evals = np.logspace(*logElims,myxvals, dtype=complex);
+            kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
+            kappavals = np.arccosh((Evals-2*tL-VC)/(-2*tL));
+            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+            ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
+            ideal_Tvals = ideal_prefactor*ideal_exp;
+            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
+            ideal_Tvals *= ideal_correction;
+            axes[NRi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+            axes[NRi].set_ylabel('$T$');
+            axes[NRi].set_title('$N_R = '+str(NRvals[NRi])+'$', x=0.17, y = 0.7, fontsize = myfontsize);
+
+        # format and show
+        axes[-1].set_xscale('log', subs = []);
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        plt.tight_layout();
+        #plt.show();
+        plt.savefig(fname);
 
     
 
