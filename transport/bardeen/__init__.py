@@ -135,14 +135,15 @@ def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
     plt.tight_layout();
     plt.show();
     
-def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
+def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, VCprime = None):
     '''
     Calculate a transmission coefficient for each LL eigenstate and return
     these as a function of their energy
     '''
+    if VCprime == None: VCprime = VC;
 
     # left well eigenstates
-    HL, _ = HLmat(tinfty, tL, tC, Vinfty, VL, VC, Ninfty, NL, NC, NR);
+    HL, _ = Hsysmat(tinfty, tL, tC, tC, Vinfty, VL, VC, VCprime, Ninfty, NL, NC, NR);
     Ems, psims = np.linalg.eigh(HL); # eigenstates of the left well
     kms = np.arccos((Ems-VL)/(-2*tL)); # wavenumbers in the left well
 
@@ -155,11 +156,20 @@ def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
     Hsys, offset = Hsysmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR);
     op = Hsys - HL;
 
+    # debugging
+    if False:
+        jvals = np.array(range(len(Hsys))) + offset;
+        for H in [HL,HR,Hsys]:
+            myfig,myax = plt.subplots();
+            myax.plot(jvals, np.diag(H), color = 'black', linestyle = 'dashed', linewidth = 2);
+            myfig.show();
+
     # compute T
     Tms = np.zeros_like(Ems);
     for m in range(len(Ems)):
-        M = np.dot(psimprimes[:,m],np.dot(op,psims[:,m]));
-        Tms[m] = M*np.conj(M)*NL/(kms[m]*tL)*NR/(kmprimes[m]*tR);
+        mprime = m;
+        M = np.dot(psimprimes[:,mprime],np.dot(op,psims[:,m]));
+        Tms[m] = M*np.conj(M)*NL/(kms[m]*tL)*NR/(kmprimes[mprime]*tR);
         
     return Ems, Tms;
 
@@ -201,7 +211,7 @@ if __name__ == "__main__":
     # visualize the problem
     if False:
         fig, ax = plt.subplots();
-        Hsys, offset = Hsysmat(*ts, *Vs, *Ns);
+        Hsys, offset = Hsysmat(*ts, Vinfty, VL, VC, VC, *Ns);
         jvals = np.array(range(len(Hsys))) + offset;
         ax.plot(jvals, np.diag(Hsys), color = 'black', linestyle = 'dashed', linewidth = 2);
         ax.set_ylabel('$V_j/t_L$');
@@ -219,7 +229,7 @@ if __name__ == "__main__":
         if numplots == 1: axes = [axes];
         fig.set_size_inches(7/2,3*numplots/2);
 
-        # bardeen results for different well thicknesses
+        # bardeen results for different barrier width
         for NCi in range(len(NCvals)):
             Evals, Tvals = TvsE(*ts, *Vs, Ninfty, NL, NCvals[NCi], NR);
             Evals = (Evals+2*tL);
@@ -256,7 +266,7 @@ if __name__ == "__main__":
         if numplots == 1: axes = [axes];
         fig.set_size_inches(7/2,3*numplots/2);
 
-        # bardeen results for different well thicknesses
+        # bardeen results for different barrier height
         for VCi in range(len(VCvals)):
             Evals, Tvals = TvsE(*ts, 5*VCvals[VCi], VL, VCvals[VCi], VR, *Ns);
             Evals = (Evals+2*tL);
@@ -287,7 +297,7 @@ if __name__ == "__main__":
     # test matrix elements vs NR
     if False:
         del NR;
-        NRvals = [10,50,100,150,190];
+        NRvals = [200];
         numplots = len(NRvals);
         fig, axes = plt.subplots(numplots, sharex = True);
         if numplots == 1: axes = [axes];
@@ -325,8 +335,43 @@ if __name__ == "__main__":
         axes[-1].set_xscale('log', subs = []);
         axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
         plt.tight_layout();
-        #plt.show();
-        plt.savefig(fname);
+        plt.show();
+
+    # test matrix elements vs VCprime
+    if True:
+        VCPvals = [0.01,0.1,1.0,10.0];
+        numplots = len(VCPvals);
+        fig, axes = plt.subplots(numplots, sharex = True);
+        if numplots == 1: axes = [axes];
+        fig.set_size_inches(7/2,3*numplots/2);
+
+        # bardeen results for different well thicknesses
+        for VCPi in range(len(VCPvals)):
+            Evals, Tvals = TvsE(*ts, *Vs, *Ns, VCprime = VCPvals[VCPi]);
+            Evals = (Evals+2*tL);
+            Evals, Tvals = Evals[Evals <= VC], Tvals[Evals <= VC]; # bound states only
+            axes[VCPi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
+            axes[VCPi].set_ylim(0,1.1*max(Tvals));
+
+            # compare
+            logElims = -3,0
+            Evals = np.logspace(*logElims,myxvals, dtype=complex);
+            kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
+            kappavals = np.arccosh((Evals-2*tL-VC)/(-2*tL));
+            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+            ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
+            ideal_Tvals = ideal_prefactor*ideal_exp;
+            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
+            ideal_Tvals *= ideal_correction;
+            axes[VCPi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+            axes[VCPi].set_ylabel('$T$');
+            axes[VCPi].set_title("$V_C' = "+str(VCPvals[VCPi])+"$", x=0.17, y = 0.7, fontsize = myfontsize);
+
+        # format and show
+        axes[-1].set_xscale('log', subs = []);
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        plt.tight_layout();
+        plt.show();
 
     
 
