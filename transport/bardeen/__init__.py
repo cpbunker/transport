@@ -100,24 +100,23 @@ def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
     ms_bound = np.linspace(0,len(Ems_bound)-1,3,dtype = int);
     for counter in range(len(ms_bound)):
         m = ms_bound[counter]
-        axes[0].plot(jvals[jvals <= NC+NR], psims[:,m][jvals <= NC+NR], color = mycolors(counter));
+        axes[0].plot(jvals[jvals <= NC+NR], -psims[:,m][jvals <= NC+NR], color = mycolors(counter));
         axes[0].plot([NC+NR,jvals[-1]],(2*tL+ Ems[m])*np.ones((2,)), color = mycolors(counter));
-    axes[0].set_ylabel('$V_j/t_L$');
+    axes[0].set_ylabel('$\langle j | k_m \\rangle $');
     axes[0].set_ylim(VL-2*VC,VL+2*VC);
 
     # plot system ham
     if True:
         Hsys, _ = Hsysmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR);
-        axes[1].plot(jvals, np.diag(Hsys), color = 'black', linestyle = 'dashed', linewidth = 2);
-        axes[1].plot(jvals, np.diag(Hsys-HL), color = 'darkblue', linestyle = 'dashed', linewidth = 2);
-        axes[1].set_ylabel('$V_j/t_L$');
+        axes[1].plot(jvals, np.diag(Hsys-HL), color = 'black', linestyle = 'dashed', linewidth = 2);
+        axes[1].set_ylabel('$H_{sys}-H_L$');
 
     # plot (Hsys-HL)*psi_m
     if True:
         for counter in range(len(ms_bound)):
             m = ms_bound[counter];
             axes[2].plot(jvals, np.dot(Hsys-HL,psims[:,m]), color = mycolors(counter));
-        axes[2].set_ylabel('$(H_{sys}-H_L) \psi_m $');
+        axes[2].set_ylabel('$\langle j |(H_{sys}-H_L)| k_m \\rangle $');
 
     # plot right well eigenstates
     HR, offset = HRmat(tinfty, tC, tR, Vinfty, VC, VR, Ninfty, NL, NC, NR);
@@ -127,7 +126,7 @@ def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
         mprime = ms_bound[counter];
         axes[3].plot(jvals[jvals > -NL-NC], psimprimes[:,mprime][jvals > -NL-NC], color = mycolors(counter));
         axes[3].plot([jvals[0],-NL-NC],(2*tL+ Ems[mprime])*np.ones((2,)), color = mycolors(counter));
-    axes[3].set_ylabel('$V_j/t_L$');
+    axes[3].set_ylabel("$\langle j |k_{m'} \\rangle $");
     axes[3].set_ylim(VR-2*VC,VR+2*VC);
         
     # format
@@ -217,7 +216,7 @@ if __name__ == "__main__":
     Ns = (Ninfty, NL, NC, NR);
 
     # visualize the problem
-    if False:
+    if True:
         fig, ax = plt.subplots();
         Hsys, offset = Hsysmat(*ts, Vinfty, VL, VC, VC, *Ns);
         jvals = np.array(range(len(Hsys))) + offset;
@@ -346,8 +345,8 @@ if __name__ == "__main__":
         plt.show();
 
     # test matrix elements vs VCprime
-    if True:
-        VCPvals = [0.01,1.0,10.0,100.0];
+    if False:
+        VCPvals = [0.01,0.1,1.0,10.0];
         numplots = len(VCPvals);
         fig, axes = plt.subplots(numplots, sharex = True);
         if numplots == 1: axes = [axes];
