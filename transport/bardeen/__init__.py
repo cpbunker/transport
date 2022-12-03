@@ -179,7 +179,7 @@ def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tCprime = N
     for m in range(len(Ems)):
         mprime = m;
         M = np.dot(psimprimes[:,mprime],np.dot(op,psims[:,m]));
-        Tms[m] = M*np.conj(M)*NL/(kms[m]*tL)*NR/(kmprimes[mprime]*tR);
+        Tms[m] = M*np.conj(M) *NL/(kms[m]*tL)*NR/(kmprimes[mprime]*tR);
         
     return Ems, Tms;
 
@@ -193,12 +193,13 @@ if __name__ == "__main__":
     # fig standardizing
     myxvals = 199;
     myfontsize = 14;
-    mycolors = cm.get_cmap('Set1');
+    mycolors = ["cornflowerblue", "darkgreen", "darkcyan", "darkred", "darkmagenta","darkgray"];
+    accentcolors = ["black","red"];
     mymarkers = ["o","^","s","d","*","X","P"];
     mymarkevery = (40, 40);
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
-    #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+    plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
     # left lead quantum well test
     # tb params, in tL
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     Vs = (Vinfty, VL, VC, VR);
     Ninfty = 100;
     NL = 100;
-    NC = 5;
+    NC = 11;
     NR = 1*NL;
     Ns = (Ninfty, NL, NC, NR);
 
@@ -223,54 +224,45 @@ if __name__ == "__main__":
         fig, ax = plt.subplots();
         Hsys, offset = Hsysmat(*ts, Vinfty, VL, VC, VC, *Ns);
         jvals = np.array(range(len(Hsys))) + offset;
-        ax.plot(jvals, np.diag(Hsys), color = 'black', linestyle = 'dashed', linewidth = 2);
-        ax.set_ylabel('$V_j/t_L$');
-        ax.set_xlabel('$j$');
+        ax.plot(jvals, np.diag(Hsys), color = accentcolors[0], linestyle = 'dashed', linewidth = 2);
+        ax.set_ylabel('$V_j/t_L$', fontsize = myfontsize);
+        ax.set_xlabel('$j$', fontsize = myfontsize);
         plt.tight_layout();
         plt.show();
         plot_wfs(*ts, *Vs, *Ns);
 
-    # matrix elements vs NC
+    # matrix elements vs VC
     if False:
-        del NC;
-        NCvals = [1,5,15];
-        numplots = len(NCvals);
+        del VC;
+        VCvals = [0.1,0.5];
+        numplots = len(VCvals);
         fig, axes = plt.subplots(numplots, sharex = True);
         if numplots == 1: axes = [axes];
         fig.set_size_inches(7/2,3*numplots/2);
 
-        # bardeen results for different barrier width
-        for NCi in range(len(NCvals)):
-            Evals, Tvals = TvsE(*ts, *Vs, Ninfty, NL, NCvals[NCi], NR);
-            Evals = (Evals+2*tL);
-            Evals, Tvals = Evals[Evals <= VC], Tvals[Evals <= VC]; # bound states only
-            axes[NCi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
-            axes[NCi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            logElims = -3,0
-            Evals = np.logspace(*logElims,myxvals, dtype=complex);
-            kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
-            kappavals = np.arccosh((Evals-2*tL-VC)/(-2*tL));
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*NCvals[NCi]*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[NCi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
-            axes[NCi].set_ylabel("$M_{m'm}$");
-            axes[NCi].set_title('$N_C = '+str(NCvals[NCi])+'$', x=0.17, y = 0.7, fontsize = myfontsize);
+        # bardeen results for different barrier height
+        for VCi in range(len(VCvals)):
+            Evals, Tvals = TvsE(*ts, 5*VCvals[VCi], VL, VCvals[VCi], VR, *Ns);
+            Evals = np.real(Evals+2*tL);
+            Tvals = np.real(Tvals);
+            axes[VCi].plot(Evals, Tvals, color = mycolors[0]);
+            axes[VCi].set_ylim(0,1.1*max(Tvals));
+            axes[VCi].set_ylabel("$M_{m'm}$",fontsize=myfontsize);
+            axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.17, y=0.7,fontsize=myfontsize);
 
         # format and show
         axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$', fontsize=myfontsize);
+        axes[-1].set_xlim(10**(-3),1)
         plt.tight_layout();
-        plt.savefig("figs/bardeen/matrixelements");
+        #plt.show();
+        #plt.savefig("figs/bardeen/matrixelements.pdf");
+        raise Exception("You have to do this manually");
 
     # T vs NC
     if True:
         del NC;
-        NCvals = [1,5,15];
+        NCvals = [11,21,31];
         numplots = len(NCvals);
         fig, axes = plt.subplots(numplots, sharex = True);
         if numplots == 1: axes = [axes];
@@ -279,14 +271,13 @@ if __name__ == "__main__":
         # bardeen results for different barrier width
         for NCi in range(len(NCvals)):
             Evals, Tvals = TvsE(*ts, *Vs, Ninfty, NL, NCvals[NCi], NR);
-            Evals = (Evals+2*tL);
+            Evals = np.real(Evals+2*tL);
+            Tvals = np.real(Tvals);
             Evals, Tvals = Evals[Evals <= VC], Tvals[Evals <= VC]; # bound states only
-            axes[NCi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
+            axes[NCi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
             axes[NCi].set_ylim(0,1.1*max(Tvals));
 
             # compare
-            logElims = -3,0
-            Evals = np.logspace(*logElims,myxvals, dtype=complex);
             kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
             kappavals = np.arccosh((Evals-2*tL-VC)/(-2*tL));
             ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
@@ -294,20 +285,21 @@ if __name__ == "__main__":
             ideal_Tvals = ideal_prefactor*ideal_exp;
             ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
             ideal_Tvals *= ideal_correction;
-            axes[NCi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
-            axes[NCi].set_ylabel('$T$');
-            axes[NCi].set_title('$N_C = '+str(NCvals[NCi])+'$', x=0.17, y = 0.7, fontsize = myfontsize);
+            axes[NCi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
+            axes[NCi].set_ylabel('$T$',fontsize=myfontsize);
+            axes[NCi].set_title('$N_C = '+str(NCvals[NCi])+'$', x=0.17, y=0.7,fontsize=myfontsize);
 
             # % error
             axright = axes[NCi].twinx();
-            axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color = 'slategray');
-            axright.set_ylabel('% error');
+            axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color=accentcolors[1]);
+            axright.set_ylabel('% error',fontsize=myfontsize);
 
         # format and show
         axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
         plt.tight_layout();
-        plt.savefig("figs/bardeen/NC");
+        plt.show();
+        #plt.savefig("figs/bardeen/NC.pdf");
 
     # T vs VC
     if False:
@@ -321,30 +313,35 @@ if __name__ == "__main__":
         # bardeen results for different barrier height
         for VCi in range(len(VCvals)):
             Evals, Tvals = TvsE(*ts, 5*VCvals[VCi], VL, VCvals[VCi], VR, *Ns);
-            Evals = (Evals+2*tL);
+            Evals = np.real(Evals+2*tL);
+            Tvals = np.real(Tvals);
             Evals, Tvals = Evals[Evals <= VCvals[VCi]], Tvals[Evals <= VCvals[VCi]]; # bound states only
-            axes[VCi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors(0));
+            axes[VCi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
             axes[VCi].set_ylim(0,1.1*max(Tvals));
 
             # compare
-            logElims = -3,0
-            Evals = np.logspace(*logElims,myxvals, dtype=complex);
             kavals = np.arccos((Evals-2*tL-VL)/(-2*tL));
             kappavals = np.arccosh((Evals-2*tL-VCvals[VCi])/(-2*tL));
             ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
+            ideal_exp = np.exp(-2*NC*kappavals);
             ideal_Tvals = ideal_prefactor*ideal_exp;
             ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
             ideal_Tvals *= ideal_correction;
-            axes[VCi].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
-            axes[VCi].set_ylabel('$T$');
-            axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.17, y = 0.7, fontsize = myfontsize);
+            axes[VCi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
+            axes[VCi].set_ylabel('$T$',fontsize=myfontsize);
+            axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.2, y = 0.7, fontsize = myfontsize);
+
+            # % error
+            axright = axes[VCi].twinx();
+            axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color=accentcolors[1]);
+            axright.set_ylabel("% error",fontsize=myfontsize);
 
         # format and show
         axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$');
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
         plt.tight_layout();
-        plt.savefig("figs/bardeen/VC");
+        plt.show();
+        #plt.savefig("figs/bardeen/VC/pdf");
 
     # T vs NR
     if False:
