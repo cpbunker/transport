@@ -236,16 +236,24 @@ if __name__ == "__main__":
     myNs = (myNinfty, myNL, myNC, myNR);
 
     # visualize the problem
-    if False:
+    if True:
         fig, ax = plt.subplots();
-        Hsys, offset = Hsysmat(*ts, Vinfty, VL, VC, 0.5*VC, *Ns);
-        jvals = np.array(range(len(Hsys))) + offset;
-        ax.plot(jvals, np.diag(Hsys), color = accentcolors[0], linestyle='dashed', linewidth=2*mylinewidth);
-        ax.set_ylabel('$V_j/t_L$', fontsize=myfontsize);
-        ax.set_xlabel('$j$', fontsize=myfontsize);
+        fig.set_size_inches(7/2,3/2);
+        HL, offset = Hsysmat(*myts, myVC, myVL, myVC, myVC, *myNs);
+        jvals = np.array(range(len(HL))) + offset;
+        Hsys, _ = Hsysmat(*myts, myVC, myVL, myVC, myVR, *myNs);
+        ax.plot(jvals, np.diag(Hsys-HL), color = accentcolors[0], linestyle="solid", linewidth=2*mylinewidth);
+        myEs, mypsis = np.linalg.eigh(HL);
+        psi0 = mypsis[:,1];
+        ax.plot(jvals,-psi0/5, color = mycolors[0]);
+
+        # format and show
+        #ax.set_ylabel('$V_j/t_L$', fontsize=myfontsize);
+        #ax.set_xlabel('$j$', fontsize=myfontsize);
         plt.tight_layout();
+        plt.axis('off');
         plt.show();
-        plot_wfs(*ts, *Vs, *Ns);
+        #plot_wfs(*myts, *myVs, *myNs);
 
     # matrix elements vs VC
     if False:
