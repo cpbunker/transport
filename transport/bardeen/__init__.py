@@ -215,7 +215,7 @@ if __name__ == "__main__":
     mymarkevery = (40, 40);
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
-    #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+    plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
     # left lead quantum well test
     # tb params, in tL
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     myNs = (myNinfty, myNL, myNC, myNR);
 
     # visualize the problem
-    if True:
+    if False:
         fig, ax = plt.subplots();
         fig.set_size_inches(7/2,3/2);
         HL, offset = Hsysmat(*myts, myVC, myVL, myVC, myVC, *myNs);
@@ -371,9 +371,9 @@ if __name__ == "__main__":
         plt.savefig("figs/bardeen/NC.pdf");
 
     # T vs NR
-    if False:
+    if True:
         del myNR;
-        NRvals = [50,100,200];
+        NRvals = [100,200];
         numplots = len(NRvals);
         fig, axes = plt.subplots(numplots, sharex = True);
         if numplots == 1: axes = [axes];
@@ -410,12 +410,13 @@ if __name__ == "__main__":
             axright = axes[NRi].twinx();
             axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color=accentcolors[1]);
             axright.set_ylabel('$\%$ error',fontsize=myfontsize);
+            axright.set_ylim(0,30);
 
         # format and show
         axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+        axes[-1].set_xlabel('$K_i / t$',fontsize=myfontsize);
         plt.tight_layout();
-        plt.savefig(fname);
+        plt.savefig("figs/poster.pdf");
 
     # T vs VRprime
     if False:
