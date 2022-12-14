@@ -205,33 +205,6 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
 
     return Hp;
 
-def convert_to_4d(mat, n_loc_dof):
-    '''
-    Take a 2d matrix (ie with spatial and spin dofs mixed)
-    to a 4d matrix (ie with spatial and spin dofs separated)
-    '''
-    if( not isinstance(mat, np.ndarray)): raise TypeError;
-    if( len(mat) % n_loc_dof != 0): raise ValueError;
-
-    # unpack
-    n_spatial_dof = len(mat) // n_loc_dof;
-    new_mat = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof), dtype=complex);
-
-    # convert
-    for sitei in range(n_spatial_dof): # iter site dof only
-        for sitej in range(n_spatial_dof): # same
-                
-            for loci in range(n_loc_dof): # iter over local dofs
-                for locj in range(n_loc_dof):
-
-                    # site, loc indices -> overall indices
-                    ovi = sitei*n_loc_dof + loci;
-                    ovj = sitej*n_loc_dof + locj;
-
-                    new_mat[sitei, sitej, loci, locj] = mat[ovi,ovj];
-
-    return new_mat;
-
 def Green(h, tnn, tnnn, tl, E, verbose = 0):
     '''
     Greens function for system described by
@@ -256,10 +229,102 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0):
     Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
 
     # make 4d
-    Gmat = convert_to_4d(Gmat, n_loc_dof); # separates spatial and spin indices
+    Gmat = mat_2d_to_4d(Gmat, n_loc_dof); # separates spatial and spin indices
     return Gmat;
 
+##################################################################################
+#### utils
 
+def scal_to_vec(scal, n_dof):
+    '''
+    Take a number or operator, which is a scalar in real space,
+    energy space, etc and make it a constant vector in that space
+    '''
+
+    return np.full((n_dof, *np.shape(scal)), scal).T;
+
+def vec_1d_to_2d(vec, n_loc_dof):
+    '''
+    Take a 1d vector (ie with spatial and spin dofs mixed)
+    to a 2d vector(ie with spatial and spin dofs separated)
+    '''
+    if( not isinstance(vec, np.ndarray)): raise TypeError;
+    if( len(vec) % n_loc_dof != 0): raise ValueError;
+
+    # unpack
+    n_spatial_dof = len(vec) // n_loc_dof;
+    new_vec = np.zeros((n_spatial_dof,n_loc_dof), dtype=vec.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only               
+        for loci in range(n_loc_dof): # iter over local dofs
+
+            # site, loc indices -> overall indices
+            ovi = sitei*n_loc_dof + loci;
+
+            # update
+            new_vec[sitei, loci] = vec[ovi];
+
+    return new_vec;
+
+def mat_2d_to_4d(mat, n_loc_dof):
+    '''
+    Take a 2d matrix (ie with spatial and spin dofs mixed)
+    to a 4d matrix (ie with spatial and spin dofs separated)
+    '''
+    if( not isinstance(mat, np.ndarray)): raise TypeError;
+    if( len(mat) % n_loc_dof != 0): raise ValueError;
+
+    # unpack
+    n_spatial_dof = len(mat) // n_loc_dof;
+    new_mat = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof), dtype=mat.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only
+        for sitej in range(n_spatial_dof): # same
+                
+            for loci in range(n_loc_dof): # iter over local dofs
+                for locj in range(n_loc_dof):
+
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    # update
+                    new_mat[sitei, sitej, loci, locj] = mat[ovi,ovj];
+
+    return new_mat;
+
+def mat_4d_to_2d(mat):
+    '''
+    Take a 4d matrix (ie with spatial and spin dofs separated)
+    to a 2d matrix (ie with spatial and spin dofs mixed)
+    '''
+    if( not isinstance(mat, np.ndarray)): raise TypeError;
+    if( np.shape(mat)[0] != np.shape(mat)[1]): raise ValueError;
+    if( np.shape(mat)[2] != np.shape(mat)[3]): raise ValueError;
+
+    # unpack
+    n_loc_dof = np.shape(mat)[-1];
+    n_spatial_dof = np.shape(mat)[0];
+    n_ov_dof = n_loc_dof*n_spatial_dof;
+    new_mat = np.zeros((n_ov_dof,n_ov_dof), dtype=mat.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only
+        for sitej in range(n_spatial_dof): # same
+                
+            for loci in range(n_loc_dof): # iter over local dofs
+                for locj in range(n_loc_dof):
+
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    # update
+                    new_mat[ovi,ovj] = mat[sitei, sitej, loci, locj];
+
+    return new_mat;
 
 ##################################################################################
 #### test code

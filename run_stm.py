@@ -1,53 +1,71 @@
 '''
 Christian Bunker
 M^2QM at UF
-October 2022
+November 2022
 
-Examining time-dep perturbation theory using td-FCI tools
+Scattering of a single electron from a spin-1/2 impurity w/ Kondo-like
+interaction strength J (e.g. menezes paper) solved in time-dependent QM
+using bardeen theory method in transport/bardeen
 '''
 
-from transport import stm_utils, tdfci
+from transport import bardeen
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 # top level
-verbose = 5
+np.set_printoptions(precision = 4, suppress = True);
+verbose = 5;
 
-# sample states
-samp_energies = np.array([10]); # in eV;
-N_samp = len(samp_energies);
+# fig standardizing
+myxvals = 199;
+myfontsize = 14;
+mycolors = ["black","darkblue","darkgreen","darkred", "darkmagenta","darkgray","darkcyan"];
+mymarkers = ["o","^","s","d","X","P","*"];
+mymarkevery = 50;
+mylinewidth = 1.0;
+mypanels = ["(a)","(b)","(c)","(d)"];
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 
-# tip states
-tip_energies = np.array([4,8]);
-N_tip = len(tip_energies);
-Norbs = N_samp + N_tip;
+# tight binding params
+n_loc_dof = 2; # spin up and down
+tL = 1.0*np.eye(n_loc_dof);
+tinfty = 1.0*tL;
+tR = 1.0*tL;
+ts = (tinfty, tL, tinfty, tR, tinfty);
+Vinfty = 1.0*tL;
+VL = 0.0*tL;
+VR = 0.0*tL;
+Vs = (Vinfty, VL, Vinfty, VR, Vinfty);
+Ninfty = 1;
+NL = 1;
+NR = 1*NL;
+Ns = (Ninfty, NL, NR);
 
-# initial state ( e in sample)
-h1e, g2e, i_state, mol_inst, scf_inst = stm_utils.initial_state(samp_energies, tip_energies, verbose = verbose);
+# central region
+tC = 1*tL;
+VC = 0.1*tL;
+#VC = 1.0*tL;
+NC = 1;
+HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+for j in range(NC):
+    HC[j,j] = VC;
+for j in range(NC-1):
+    HC[j,j+1] = -tC;
+    HC[j+1,j] = -tC;
 
-# perturb by coupling the sample states to tip states
-thyb = 0.1; # in eV
-for sampi in range(N_samp):
-    for tipi in range(N_tip):
-        h1e[sampi, N_samp+tipi] += thyb;
-        h1e[N_samp+tipi, sampi] += thyb;
-print(h1e);
+# central region prime
+tCprime = tC;
+VCprime = VC;
+HCprime = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+for j in range(NC):
+    HCprime[j,j] = VCprime;
+for j in range(NC-1):
+    HCprime[j,j+1] = -tCprime;
+    HCprime[j+1,j] = -tCprime;
+print(HCprime)
 
-# time propagate
-# since energy is in eV, time is in hbar/eV = 6.58*10^-16 sec
-# since perturbation is 1/10 eV, timescale should ??
-tf = 10;
-dt = 0.1;
-civecs, observables = tdfci.kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, verbose = verbose);
-
-# plot
-fig, axes = plt.subplots(Norbs);
-for orbi in range(Norbs):
-    axes[orbi].plot(observables[:,0], observables[:,2+orbi]);
-plt.show();
-
-
+bardeen.kernel(*ts, *Vs, *Ns, HC, HCprime);
 
 
 

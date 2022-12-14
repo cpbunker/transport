@@ -21,25 +21,26 @@ verbose = 5;
 # fig standardizing
 myxvals = 199;
 myfontsize = 14;
-mycolors = cm.get_cmap('Set1');
+mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+accentcolors = ["black","red"];
 mymarkers = ["o","^","s","d","*","X","P"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # tight binding params
 tl = 1.0;
 Vb = 0.1; # barrier height
-NC = 5; # barrier width
+NC = 11; # barrier width
 
 # blocks and inter block hopping
 hblocks = [[[0]]];
-for _ in range(2*NC+1): hblocks.append([[Vb]]);
+for _ in range(NC): hblocks.append([[Vb]]);
 hblocks.append([[0]]);
 hblocks = np.array(hblocks, dtype = float);
 tnn = [[[-tl]]];
-for _ in range(2*NC+1): tnn.append([[-tl]]);
+for _ in range(NC): tnn.append([[-tl]]);
 tnn = np.array(tnn);
 tnnn = np.zeros_like(tnn)[:-1];
 if verbose: print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn); 
@@ -70,29 +71,25 @@ for Evali in range(len(Evals)):
 
 
 # plot Tvals vs E
-numplots = 2;
+numplots = 1;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
 fig.set_size_inches(7/2,3*numplots/2);
-axes[1].plot(Evals, np.real(Tvals[:,0]), color=mycolors(1), marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
+axes[0].plot(Evals, np.real(Tvals[:,0]), color=mycolors[0], marker=mymarkers[0], markevery=mymarkevery, linewidth=mylinewidth); 
 
-# approximations to ideal
+# ideal
 kavals = np.arccos((Evals-2*tl-hblocks[0][0,0])/(-2*tl));
 kappavals = np.arccosh((Evals-2*tl-hblocks[1][0,0])/(-2*tl));
 ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-ideal_exp = np.exp(-2*(2*NC+1)*kappavals);
+ideal_exp = np.exp(-2*NC*kappavals);
 ideal_Tvals = ideal_prefactor*ideal_exp;
 ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
 ideal_Tvals *= ideal_correction
-axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
-axes[0].plot(Evals,np.real(ideal_Tvals/ideal_correction), color=mycolors(0), linewidth=mylinewidth, marker=mymarkers[0], markevery=mymarkevery);
-axes[0].set_ylim(0,0.2);
-axes[0].set_ylabel('$T_{approx}$');
 
 # ideal comparison
-axes[1].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
-axes[1].set_ylim(0,1);
-axes[1].set_ylabel('$T_{numerical}$');
+axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+axes[0].set_ylim(0,1);
+axes[0].set_ylabel('$T$');
         
 # format and show
 axes[-1].set_xscale('log', subs = []);

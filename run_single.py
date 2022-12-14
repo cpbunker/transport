@@ -1,16 +1,11 @@
 '''
 Christian Bunker
 M^2QM at UF
-September 2021
+November 2022
 
-Quasi 1 body transmission through spin impurities project, part 0:
-Scattering of a single electron from a spin-1/2 impurity
-
-wfm.py
-- Green's function solution to transmission of incident plane wave
-- left leads, right leads infinite chain of hopping tl treated with self energy
-- in the middle is a scattering region, hop on/off with th usually = tl
-- in SR the spin degrees of freedom of the incoming electron and spin impurities are coupled 
+Scattering of a single electron from a spin-1/2 impurity w/ Kondo-like
+interaction strength J (e.g. menezes paper) solved in time-independent QM
+using Green's function method in transport/wfm
 '''
 
 from transport import wfm, fci_mod, ops
@@ -24,7 +19,7 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 
 # fig standardizing
-myxvals = 199;
+myxvals = 49;
 myfontsize = 14;
 mycolors = ["black","darkblue","darkgreen","darkred", "darkmagenta","darkgray","darkcyan"];
 mymarkers = ["o","^","s","d","X","P","*"];
@@ -37,12 +32,90 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 tl = 1.0;
 
 #################################################################
-#### replication of continuum solution
+#### T \alpha -> \beta
 
 if True:
 
+    # tb params
+    Msites = 1;
+    Jval = -0.5;
+
+    # range of energies
+    logElims = -4,0
+    Evals = np.logspace(*logElims,myxvals, dtype = complex);
+
+    # R and T matrices
+    alphas = [0,1,2,3];
+    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
+    hspacesize = len(alphas);
+    Rvals = np.empty((hspacesize,hspacesize,len(Evals)), dtype = float);
+    Tvals = np.empty((hspacesize,hspacesize,len(Evals)), dtype = float);
+
+    # plotting
+    nplots_x = len(alphas);
+    nplots_y = len(alphas);
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
+    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
+
+    # iter over initial states (alpha)
+    for alpha in alphas:
+
+        # source = up electron, down impurity
+        source = np.zeros(hspacesize);
+        source[alpha] = 1;
+
+        # 2nd qu'd operator for S dot s
+        h1e = np.zeros((hspacesize,hspacesize))
+        g2e = wfm.utils.h_kondo_2e(Jval, 0.5); # J, spin
+        states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
+        hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
+
+        # leads
+        hLL = np.zeros_like(hSR);
+        hRL = np.zeros_like(hSR);
+
+        # package together hamiltonian blocks
+        hblocks = [hLL];
+        for _ in range(Msites): hblocks.append(np.copy(hSR));
+        hblocks.append(hRL);
+        hblocks = np.array(hblocks);
+        tnn = [];
+        for _ in range(len(hblocks)-1): tnn.append(-tl*np.eye(*np.shape(hSR)));
+        tnn = np.array(tnn);
+        tnnn = np.zeros_like(tnn)[:-1];
+        if(verbose and alpha == 0): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
+
+        # sweep over range of energies
+        for Evali in range(len(Evals)):
+
+            # energy
+            Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
+            Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+
+            # R and T
+            # kernel returns R[beta], T[beta] at given E
+            Rbeta, Tbeta = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False);
+            Rvals[alpha,:,Evali] = Rbeta;
+            Tvals[alpha,:,Evali] = Tbeta;
+
+    # plot results
+    for alpha in alphas:
+        for beta in alphas:
+            axes[alpha,beta].plot(np.real(Evals), Tvals[alpha,beta]);
+            axes[alpha,beta].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
+    # format and show
+    axes[-1,-1].set_xscale('log', subs = []);
+    plt.tight_layout();
+    plt.show();   
+
+
+#################################################################
+#### replication of continuum solution
+
+if False:
+
     # inelastic ?
-    Delta = 0.01; # inelastic splitting
+    Delta = 0.001; # inelastic splitting
     inelastic = False
     if Delta > 0.0: inelastic = True;
     num_plots = 4;
@@ -55,7 +128,7 @@ if True:
     Msites = 1; 
 
     # iter over effective J
-    Jvals = np.array([0.5,1.0,5.0,10]);
+    Jvals = np.array([-0.005,-0.05,-0.5,-5.0,]);
     for Jvali in range(len(Jvals)):
         Jval = Jvals[Jvali];
         
@@ -100,7 +173,7 @@ if True:
 
         # sweep over range of energies
         # def range
-        logElims = -3,0
+        logElims = -6,0
         Evals = np.logspace(*logElims,myxvals);
         kavals = np.arccos((Evals-2*tl)/(-2*tl));
         jprimevals = Jval/(4*tl*kavals);
@@ -258,92 +331,6 @@ if False:
     axes[-1].set_xticks([10**(logElims[0]), 10**(logElims[1])]);
     axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
     for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize);
-    plt.tight_layout();
-    plt.show();
-
-
-#################################################################
-#### superposition spin center
-
-if False:
-    num_plots = 4;
-    fig, axes = plt.subplots(num_plots, sharex = True);
-    if num_plots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*num_plots/2);
-
-    # tight binding params
-    Jval = 0.5;
-    zeeman = 0.01;
-
-    # iter over degree of superposition (ie theta)
-    thetavals = np.linspace(0,np.pi,5);
-    for thetavali in range(len(thetavals)):
-        thetaval = thetavals[thetavali];
-
-        # superposition + zeeman 
-        source = np.zeros(4)
-        source[2] = np.cos(thetaval/2);
-        source[3] = np.sin(thetaval/2); # can be higher energy due to zeeman
-                                        # sometimes, both R and T will be forbidden
-                                        # in which case Ajsigma*v_L = 0, so the incoming
-                                        # flux in this channel also gets supressed
-
-        # zeeman splitting
-        hzeeman = np.array([[0, 0, 0, 0],
-                        [0,zeeman, 0, 0],
-                        [0, 0, 0, 0], # spin center up has more zeeman energy
-                        [0, 0, 0, zeeman]]);
-        
-        # 2nd qu'd operator for S dot s
-        h1e = np.zeros((len(source),len(source)));
-        g2e = wfm.utils.h_kondo_2e(Jval, 0.5); # J, spin
-        states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
-        hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
-        hSR += hzeeman;
-
-        # package together hSR blocks with leads
-        hblocks = np.array([np.copy(hzeeman), hSR, np.copy(hzeeman)]);
-
-        # hopping
-        tnn = [];
-        for _ in range(len(hblocks)-1): tnn.append(-tl*np.eye(*np.shape(hSR)));
-        tnn = np.array(tnn);
-        tnnn = np.zeros_like(tnn)[:-1];
-        if(verbose and thetavali == 0): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
-
-        # sweep over range of energies
-        # def range
-        logElims = -3,0
-        Evals = np.logspace(*logElims,myxvals);
-        kavals = np.arccos((Evals-2*tl)/(-2*tl));
-        Rvals = np.empty((len(Evals),len(source)), dtype = float);
-        Tvals = np.empty((len(Evals),len(source)), dtype = float); 
-        for Evali in range(len(Evals)):
-
-            # energy
-            Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-            Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
-
-            if(Evali < 1): # verbose
-                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False, verbose = verbose);
-            else: # not verbose
-                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False);
-            Rvals[Evali] = Rdum;
-            Tvals[Evali] = Tdum;
-
-        # plot tight binding results
-        for axi in range(num_plots):
-            axes[axi].plot(Evals,Rvals[:,axi], color = mycolors[thetavali], marker = mymarkers[thetavali], markevery = mymarkevery, linewidth = mylinewidth);
-            #axes[axi].set_ylim(0,1.0);
-        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        axes[-1].plot(Evals, totals, color="red", label = "total ");
-
-    # show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlim(10**(logElims[0]), 10**(logElims[1]));
-    axes[-1].set_xticks([10**(logElims[0]), 10**(logElims[1])]);
-    axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
-    for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize); 
     plt.tight_layout();
     plt.show();
 
