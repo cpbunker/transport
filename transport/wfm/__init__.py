@@ -60,6 +60,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
     v_L = 2*tl*np.sin(ka_L); # vector with sigma components
     v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1
+    assert(v_L == v_R);
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
@@ -78,7 +79,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
         r_el = r_flux/i_flux;
         Rs[sigma] = np.real(r_el*np.conjugate(r_el));
         # sqrt of t flux, numerator of eq:Tcoef in manuscript
-        t_flux = np.complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_L[sigma]));
+        t_flux = np.complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
         t_el = t_flux/i_flux;
         Ts[sigma] = np.real(t_el*np.conjugate(t_el));
     
@@ -264,6 +265,30 @@ def vec_1d_to_2d(vec, n_loc_dof):
 
             # update
             new_vec[sitei, loci] = vec[ovi];
+
+    return new_vec;
+
+def vec_2d_to_1d(vec):
+    '''
+    Take a 2d vector (ie with spatial and spin dofs separated)
+    to a 1d vector(ie with spatial and spin dofs mixed)
+    '''
+    if( not isinstance(vec, np.ndarray)): raise TypeError;
+
+    # unpack
+    n_spatial_dof, n_loc_dof = np.shape(vec);
+    n_ov_dof = n_spatial_dof*n_loc_dof;
+    new_vec = np.zeros((n_ov_dof,), dtype=vec.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only               
+        for loci in range(n_loc_dof): # iter over local dofs
+
+            # site, loc indices -> overall indices
+            ovi = sitei*n_loc_dof + loci;
+
+            # update
+            new_vec[ovi] = vec[sitei, loci];
 
     return new_vec;
 
