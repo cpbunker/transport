@@ -13,7 +13,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime):
+def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,verbose=0):
     '''
     Calculate a transmission coefficient for each left well state as
     a function of energy
@@ -42,7 +42,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Emas, psimas = np.array(Emas), np.array(psimas); # shape is (n_loc_dof, n_ms)
     kmas = np.arccos((Emas-wfm.scal_to_vec(VLa,n_ms))
                     /(-2*wfm.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
-    assert(np.shape(Emas) == np.shape(kmas));
+    kmas = np.arccos((Emas-VLa)/(-2*tLa));
+    assert np.shape(Emas) == np.shape(kmas);
     
     # right well eigenstates  
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
@@ -55,12 +56,26 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     n_ns = len(Enbs[0]);
     Enbs, psinbs = np.array(Enbs), np.array(psinbs); # shape is (n_loc_dof, n_ns)
     knbs = np.arccos((Enbs-wfm.scal_to_vec(VRa,n_ns))
-                    /(-2*wfm.scal_to_vec(tLa,n_ns))); # wavenumbers in the left well
+                    /(-2*wfm.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
+    knbs = np.arccos((Enbs-VRa)/(-2*tRa));
     assert(np.shape(Enbs) == np.shape(knbs));
 
     # operator
     Hsys, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    Hdiff = Hsys - HL;
+    Hdiff = wfm.mat_4d_to_2d(Hsys - HL);
+
+    # visualize
+    if verbose:
+        import matplotlib.pyplot as plt
+        jvals = np.array(range(len(Hsys))) + offset;
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [HL,HR,Hsys];
+            for Hi in range(len(Hs)):
+                myaxes[alpha].plot(jvals, Hi*0.01+np.diag(Hs[Hi][:,:,alpha,alpha]));
+        plt.show();
+        assert False;
 
     # compute T[alpha,m] of E[alpha,m]
     Tmas = np.zeros_like(Emas);
@@ -73,7 +88,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 for n in range(n_ns):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < 1e-9): # equal energy
                         Mma += matrix_element(beta,psinbs[beta,n],Hdiff,alpha,psimas[alpha,m]);
-            Tms[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
+            Tmas[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
 
     return Emas, Tmas;
 
@@ -207,12 +222,14 @@ def is_alpha_conserving(T,n_loc_dof):
 
 def matrix_element(beta,psibeta,op,alpha,psialpha):
     '''
-    Take the matrix element of a (not in general alpha conserving) operator
-    between spin conserving states
+    Take the matrix element of a (not in general alpha conserving), spin separated
+    (2d) operator between spin conserving states
     '''
-    n_spatial_dof = np.shape(op)[0];
-    n_loc_dof = np.shape(op)[-1];
-    n_ov_dof = n_spatial_dof*n_loc_dof;
+    if(len(np.shape(op))!=2): raise ValueError; # op should be flattened
+    n_spatial_dof = len(psialpha);
+    n_ov_dof = len(op);
+    if(n_ov_dof % n_spatial_dof != 0): raise ValueError;
+    n_loc_dof = n_ov_dof // n_spatial_dof;
 
     # flatten psis's
     psim = np.zeros((n_spatial_dof,n_loc_dof),dtype=complex);
@@ -221,9 +238,6 @@ def matrix_element(beta,psibeta,op,alpha,psialpha):
     psin = np.zeros((n_spatial_dof,n_loc_dof),dtype=complex);
     psin[:,beta] = psibeta; # all zeros except for psi[beta]
     psin = wfm.vec_2d_to_1d(psin); # flatten
-
-    # flatten op
-    op = wfm.mat_4d_to_2d(op);
 
     return np.dot(psin, np.dot(op,psim));
 
@@ -344,7 +358,6 @@ def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = N
 if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
     # fig standardizing
     myxvals = 199;
     myfontsize = 14;
@@ -483,7 +496,7 @@ if __name__ == "__main__":
         plt.savefig("figs/bardeen_benchmark/tRprime.png");
 
     # T vs NR
-    if False:
+    if True:
         del myNR;
         NRvals = [50,100,500];
         numplots = len(NRvals);
@@ -498,13 +511,16 @@ if __name__ == "__main__":
             Evals, Tvals = TvsE(*myts, *myVs, myNinfty, NRvals[NRi], myNC, NRvals[NRi]);
             Evals = np.real(Evals+2*mytL);
             Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= myVC], Tvals[Evals <= myVC]; # bound states only
+            #Evals, Tvals = Evals[Evals <= myVC], Tvals[Evals <= myVC]; # bound states only
             axes[NRi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
             axes[NRi].set_ylim(0,1.1*max(Tvals));
 
             # compare
             kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytL-myVC)/(-2*mytL));
+            kappavals = np.arccosh((Evals-2*mytC-myVC)/(-2*mytC));
+            print(Evals[:8]);
+            print(kavals[:8]);
+            print(kappavals[:8]);
             ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
             ideal_exp = np.exp(-2*myNC*kappavals);
             ideal_Tvals = ideal_prefactor*ideal_exp;
@@ -525,10 +541,11 @@ if __name__ == "__main__":
         # format and show
         axes[-1].set_xscale('log', subs = []);
         axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-        for axright in axrights: axright.set_ylim(0,maxerror);
+        #for axright in axrights: axright.set_ylim(0,maxerror);
         plt.tight_layout();
-        fname = "figs/bardeen_benchmark/NR.png";
-        plt.savefig(fname);
+        plt.show();
+        #fname = "figs/bardeen_benchmark/NR.png";
+        #plt.savefig(fname);
 
     # T vs VC
     if False:
