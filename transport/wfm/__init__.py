@@ -60,7 +60,6 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
     v_L = 2*tl*np.sin(ka_L); # vector with sigma components
     v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1
-    assert(v_L == v_R);
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
