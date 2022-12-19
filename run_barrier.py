@@ -8,7 +8,7 @@ Exact solution for a potential barrier
 '''
 
 from transport import wfm, fci_mod, ops
-from transport.wfm import utils
+#from transport.wfm import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -98,7 +98,8 @@ axes[-1].set_xticks([10**(logElims[0]), 10**(logElims[1])]);
 axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
 for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize); 
 plt.tight_layout();
-plt.savefig('figs/barrier.pdf');
+plt.show();
+#plt.savefig('figs/barrier.pdf');
    
 
 

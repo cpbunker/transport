@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 5;
+verbose = 3;
 
 # fig standardizing
 myxvals = 199;
@@ -34,7 +34,7 @@ tL = 1.0*np.eye(n_loc_dof);
 tinfty = 1.0*tL;
 tR = 1.0*tL;
 ts = (tinfty, tL, tinfty, tR, tinfty);
-Vinfty = 1.0*tL;
+Vinfty = 0.5*tL;
 VL = 0.0*tL;
 VR = 0.0*tL;
 Vs = (Vinfty, VL, Vinfty, VR, Vinfty);
@@ -46,9 +46,9 @@ def get_ideal_T(Es,mytL,myVL,mytC,myVC,myNC):
 
     kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
     kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
-    print(Es[:8]-2*mytC-myVC);
-    print(kavals[:8]);
-    print(kappavals[:8]);
+    print("Es:\n", Es[:8]);
+    print("kavals:\n", kavals[:8]);
+    print("kappavals:\n", kappavals[:8]);
 
     ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
     ideal_exp = np.exp(-2*myNC*kappavals);
@@ -79,7 +79,7 @@ if True:
     for j in range(NC-1):
         HC[j,j+1] = -tC;
         HC[j+1,j] = -tC;
-    print("HC =\n",HC);
+    print("HC =\n",HC[:,:,0,0]);
 
     # central region prime
     tCprime = tC;
@@ -90,40 +90,39 @@ if True:
     for j in range(NC-1):
         HCprime[j,j+1] = -tCprime;
         HCprime[j+1,j] = -tCprime;
-    print("HCprime =\n",HCprime);
+    print("HCprime =\n",HCprime[:,:,0,0]);
 
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):
         Ninfty = 100;
         NL = NLvals[NLi];
         NR = 1*NL;
-        Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,verbose=0);
+        Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,verbose=verbose);
         Evals = np.real(Evals+2*tL);
         Tvals = np.real(Tvals);
+
+        # % error
+        axright = axes[NLi].twinx();
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+        axright.set_ylim(0,20);
+        
         for alpha in range(n_loc_dof): 
 
-            # truncate to bound states
-            #Tvals[alpha] = Tvals[alpha,Evals[alpha] <= VC[alpha,alpha]];
-            #Evals[alpha] = Evals[alpha,Evals[alpha] <= VC[alpha,alpha]];
-
-            # plot
-            #axes[NLi].scatter(Evals[alpha], Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+            # truncate to bound states and plot
+            yvals = Tvals[alpha,Evals[alpha] <= VC[alpha,alpha]];
+            xvals = Evals[alpha,Evals[alpha] <= VC[alpha,alpha]];
+            axes[NLi].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
             ideal_Tvals_alpha = get_ideal_T(Evals[alpha],tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            assert(np.shape(Evals[alpha]) == np.shape(ideal_Tvals_alpha));
-            print(ideal_Tvals_alpha);
             axes[NLi].plot(Evals[alpha],np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
             #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
+            axright.plot(Evals[alpha],100*abs((Tvals[alpha]-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
 
         axes[NLi].set_ylabel('$T$',fontsize=myfontsize);
         axes[NLi].set_title('$N_L = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
-        # % error
-        axright = axes[NLi].twinx();
-        #axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals_alpha))/ideal_Tvals),color=accentcolors[1]);
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize);
-        axright.set_ylim(0,10)
+
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
