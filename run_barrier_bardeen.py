@@ -98,12 +98,10 @@ if True:
 
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):
-        Ninfty = 100;
+        Ninfty = 50;
         NL = NLvals[NLi];
         NR = 1*NL;
-        Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,verbose=verbose);
-        Evals = np.real(Evals+2*tL);
-        Tvals = np.real(Tvals);
+        Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,cutoff=VC[0,0],verbose=verbose);
 
         # % error
         axright = axes[NLi].twinx();
@@ -113,20 +111,18 @@ if True:
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
-            yvals = Tvals[alpha,Evals[alpha] <= VC[alpha,alpha]];
-            xvals = Evals[alpha,Evals[alpha] <= VC[alpha,alpha]];
+            yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[NLi].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
-            ideal_Tvals_alpha = get_ideal_T(Evals[alpha],tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            axes[NLi].plot(Evals[alpha],np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
+            ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
+            axes[NLi].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
             #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
-            axright.plot(Evals[alpha],100*abs((Tvals[alpha]-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+            axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
 
         axes[NLi].set_ylabel('$T$',fontsize=myfontsize);
         axes[NLi].set_title('$N_L = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
-
-
 
     # format and show
     axes[-1].set_xscale('log', subs = []);

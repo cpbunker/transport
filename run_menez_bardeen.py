@@ -93,24 +93,18 @@ if True:
     print_H_alpha(HCprime);
 
     # bardeen results 
-    Ninfty = 100;
-    NL = 1*Ninfty
+    Ninfty = 50;
+    NL = 100;
     NR = 1*NL;
-    Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,verbose=verbose);
-    print(np.shape(Tvals),np.shape(Evals)); assert False
-    # initial states
-    for alpha in alphas:
-        Evals[alpha] = np.real(Evals[alpha]+2*tL[alpha,alpha]);
-        Tvals[alpha] = np.real(Tvals[alpha]);
+    Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,cutoff=HC[0,0,1,1],verbose=verbose);
 
-        # final states
+    # initial and final states
+    for alpha in alphas:
         for beta in alphas:
 
             # truncate to bound states and plot
-            yvals = Tvals[alpha,beta];
-            xvals = Evals[alpha,alpha]
-            #yvals = Tvals[alpha,Evals[alpha] <= VC[alpha,alpha]];
-            #xvals = Evals[alpha,Evals[alpha] <= VC[alpha,alpha]];
+            yvals = np.diagonal(Tvals[beta,:,alpha,:]);
+            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[alpha,beta].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
@@ -118,7 +112,8 @@ if True:
             #axes[NLi].plot(Evals[alpha],np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
             #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
 
-        #format
+            #format
+            axes[alpha,beta].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$")
         #axes[alpha,-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
 
     # format and show

@@ -254,6 +254,7 @@ def vec_1d_to_2d(vec, n_loc_dof):
     # unpack
     n_spatial_dof = len(vec) // n_loc_dof;
     new_vec = np.zeros((n_spatial_dof,n_loc_dof), dtype=vec.dtype);
+    assert(n_spatial_dof > n_loc_dof); # hacky but works
 
     # convert
     for sitei in range(n_spatial_dof): # iter site dof only               
@@ -278,6 +279,7 @@ def vec_2d_to_1d(vec):
     n_spatial_dof, n_loc_dof = np.shape(vec);
     n_ov_dof = n_spatial_dof*n_loc_dof;
     new_vec = np.zeros((n_ov_dof,), dtype=vec.dtype);
+    assert(n_spatial_dof > n_loc_dof); # hacky but works
 
     # convert
     for sitei in range(n_spatial_dof): # iter site dof only               

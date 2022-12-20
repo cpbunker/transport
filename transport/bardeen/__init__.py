@@ -13,7 +13,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,verbose=0):
+def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,cutoff=1.0,verbose=0):
     '''
     Calculate a transmission coefficient for each left well state as
     a function of energy
@@ -37,13 +37,14 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL[:,:,alpha,alpha]);
+        psims = psims.T[Ems+2*tLa[alpha] < cutoff];
+        Ems = Ems[Ems+2*tLa[alpha] < cutoff];
         Emas.append(Ems.astype(complex));
-        psimas.append(psims.T);
+        psimas.append(psims);
     n_ms = len(Emas[0]);
     Emas, psimas = np.array(Emas), np.array(psimas); # shape is (n_loc_dof, n_ms)
     kmas = np.arccos((Emas-wfm.scal_to_vec(VLa,n_ms))
                     /(-2*wfm.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
-    assert np.shape(Emas) == np.shape(kmas);
     
     # right well eigenstates  
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
@@ -51,13 +52,14 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     for beta in range(n_loc_dof):
         Ens, psins = np.linalg.eigh(HR[:,:,beta,beta]);
+        psins = psins.T[Ens+2*tRa[alpha] < cutoff];
+        Ens = Ens[Ens+2*tRa[alpha] < cutoff];
         Enbs.append(Ens.astype(complex));
-        psinbs.append(psins.T);
+        psinbs.append(psins);
     n_ns = len(Enbs[0]);
     Enbs, psinbs = np.array(Enbs), np.array(psinbs); # shape is (n_loc_dof, n_ns)
     knbs = np.arccos((Enbs-wfm.scal_to_vec(VRa,n_ns))
                     /(-2*wfm.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
-    assert(np.shape(Enbs) == np.shape(knbs));
 
     # operator
     Hsys, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
@@ -80,13 +82,15 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Tmas = np.zeros_like(Emas);
 
     # compute matrix elements
-    M_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=complex);
+    T_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=float);
     for alpha in range(n_loc_dof):
         for m in range(n_ms):
             for beta in range(n_loc_dof):
                 for n in range(n_ns):
-                    M_nb_mas[beta,n,alpha,m] = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                    melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                    T_nb_mas[beta,n,alpha,m] = np.real(melement*np.conj(melement)* NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]));
 
+            '''
             # average matrix elements over final states |k_n \beta>
             # with the same energy as the intial state |k_m \alpha>
             Mma = 0.0;
@@ -97,8 +101,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
             # update T based on average
             Tmas[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
-
-    return Emas, Tmas;
+            '''
+    return Emas, T_nb_mas;
 
 def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC):
     '''
@@ -244,11 +248,12 @@ def matrix_element(beta,psin,op,alpha,psim):
     # flatten psis's
     psimalpha = np.zeros_like(psim);
     psimalpha[alpha] = psim[alpha]; # all zeros except for psi[alphas]
-    psimalpha = wfm.vec_2d_to_1d(psimalpha); # flatten
+    psimalpha = wfm.vec_2d_to_1d(psimalpha.T); # flatten
+    assert(is_alpha_conserving(psimalpha,n_loc_dof));
     psinbeta = np.zeros_like(psin);
     psinbeta[beta] = psin[beta] # all zeros except for psi[beta]
-    psinbeta = wfm.vec_2d_to_1d(psinbeta); # flatten
-    
+    psinbeta = wfm.vec_2d_to_1d(psinbeta.T); # flatten
+    assert(is_alpha_conserving(psinbeta,n_loc_dof));
     return np.dot(psinbeta, np.dot(op,psimalpha));
 
 def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None):
