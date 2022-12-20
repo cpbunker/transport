@@ -3,9 +3,8 @@ Christian Bunker
 M^2QM at UF
 November 2022
 
-Scattering of a single electron from a spin-1/2 impurity w/ Kondo-like
-interaction strength J (e.g. menezes paper) solved in time-dependent QM
-using bardeen theory method in transport/bardeen
+Scattering from a rectangular potential barrier, spin independent
+Time dependent tunnelling theory following bardeen
 '''
 
 from transport import bardeen
@@ -29,7 +28,7 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # tight binding params
-n_loc_dof = 1; # spin up and down
+n_loc_dof = 1; 
 tL = 1.0*np.eye(n_loc_dof);
 tinfty = 1.0*tL;
 tR = 1.0*tL;
@@ -57,6 +56,11 @@ def get_ideal_T(Es,mytL,myVL,mytC,myVC,myNC):
     ideal_T *= ideal_correction;
     return np.real(ideal_T);
 
+def print_H_j(H):
+    assert(len(np.shape(H)) == 4);
+    for alpha in range(np.shape(H)[-1]):
+        print("H["+str(alpha)+","+str(alpha)+"] =\n",H[:,:,alpha,alpha]);
+
 #################################################################
 #### benchmarking T in spinless 1D case
 
@@ -79,7 +83,7 @@ if True:
     for j in range(NC-1):
         HC[j,j+1] = -tC;
         HC[j+1,j] = -tC;
-    print("HC =\n",HC[:,:,0,0]);
+    print_H_j(HC);
 
     # central region prime
     tCprime = tC;
@@ -90,7 +94,7 @@ if True:
     for j in range(NC-1):
         HCprime[j,j+1] = -tCprime;
         HCprime[j+1,j] = -tCprime;
-    print("HCprime =\n",HCprime[:,:,0,0]);
+    print_H_j(HCprime);
 
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):

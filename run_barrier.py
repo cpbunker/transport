@@ -3,8 +3,8 @@ Christian Bunker
 M^2QM at UF
 November 2022
 
+Scattering from a rectangular potential barrier, spin independent
 Time independent scattering formalism using GF's
-Exact solution for a potential barrier
 '''
 
 from transport import wfm, fci_mod, ops

@@ -350,6 +350,93 @@ def mat_4d_to_2d(mat):
 
     return new_mat;
 
+def h_kondo(J,s2):
+    '''
+    Kondo interaction between spin 1/2 and spin s2
+    '''
+
+    n_loc_dof = int(2*(2*s2+1));
+    h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
+
+    if(s2 == 0.5):
+        h[0,0] = 1;
+        h[1,1] = -1;
+        h[2,2] = -1;
+        h[3,3] = 1;
+        h[1,2] = 2;
+        h[2,1] = 2;
+        h *= J/4;
+
+    else: raise ValueError("Unsupported s2");
+
+    return h;
+
+def h_kondo_2e(J,s2):
+    '''
+    Kondo interaction between spin 1/2 and spin s2, 2nd-quantized form
+    '''
+
+    # m2 states
+    ms = [];
+    m2 = s2;
+    while(m2 >= -s2):
+        ms.append(m2);
+        m2 -= 1;
+
+    assert( len(ms) == 2*s2+1);
+    Nstates = 2 + len(ms);
+    h = np.zeros((Nstates,Nstates,Nstates,Nstates));
+
+    if(s2 == 0.5):
+
+        # S \pm parts
+        h[0,1,3,2] = 2;
+        h[3,2,0,1] = 2;
+        h[1,0,2,3] = 2;
+        h[2,3,1,0] = 2;
+
+        # Sz parts
+        h[0,0,2,2] = 1;
+        h[2,2,0,0] = 1;
+        h[0,0,3,3] = -1;
+        h[3,3,0,0] = -1;
+        h[1,1,2,2] = -1;
+        h[2,2,1,1] = -1;
+        h[1,1,3,3] = 1;
+        h[3,3,1,1] = 1;
+
+        # scale with J
+        h = (J/4.0)*h;
+
+    elif(s2 == 1.0):
+
+        # S \pm parts
+        h[2,3,1,0] = 1/np.sqrt(2);
+        h[1,0,2,3] = 1/np.sqrt(2);
+        h[3,2,0,1] = 1/np.sqrt(2);
+        h[0,1,3,2] = 1/np.sqrt(2);
+        h[3,4,1,0] = 1/np.sqrt(2);
+        h[1,0,3,4] = 1/np.sqrt(2);
+        h[4,3,0,1] = 1/np.sqrt(2);
+        h[0,1,4,3] = 1/np.sqrt(2);
+
+        # Sz parts
+        h[2,2,0,0] = 1/2;
+        h[0,0,2,2] = 1/2;
+        h[2,2,1,1] = -1/2;
+        h[1,1,2,2] = -1/2;
+        h[4,4,0,0] = -1/2;
+        h[0,0,4,4] = -1/2;
+        h[4,4,1,1] = 1/2;
+        h[1,1,4,4] = 1/2;
+
+        # scale with J
+        h = J*h;
+
+    else: raise ValueError("Unsupported s2");
+
+    return h;
+
 ##################################################################################
 #### test code
 

@@ -43,7 +43,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Emas, psimas = np.array(Emas), np.array(psimas); # shape is (n_loc_dof, n_ms)
     kmas = np.arccos((Emas-wfm.scal_to_vec(VLa,n_ms))
                     /(-2*wfm.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
-    kmas = np.arccos((Emas-VLa)/(-2*tLa));
     assert np.shape(Emas) == np.shape(kmas);
     
     # right well eigenstates  
@@ -58,7 +57,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Enbs, psinbs = np.array(Enbs), np.array(psinbs); # shape is (n_loc_dof, n_ns)
     knbs = np.arccos((Enbs-wfm.scal_to_vec(VRa,n_ns))
                     /(-2*wfm.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
-    knbs = np.arccos((Enbs-VRa)/(-2*tRa));
     assert(np.shape(Enbs) == np.shape(knbs));
 
     # operator
@@ -80,16 +78,24 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # compute T[alpha,m] of E[alpha,m]
     Tmas = np.zeros_like(Emas);
+
+    # compute matrix elements
+    M_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=complex);
     for alpha in range(n_loc_dof):
         for m in range(n_ms):
+            for beta in range(n_loc_dof):
+                for n in range(n_ns):
+                    M_nb_mas[beta,n,alpha,m] = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+
             # average matrix elements over final states |k_n \beta>
             # with the same energy as the intial state |k_m \alpha>
             Mma = 0.0;
             for beta in range(n_loc_dof):
                 for n in range(n_ns):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < 1e-9): # equal energy
-                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                        Mma += np.real(melement*np.conj(melement));                      
+                        Mma += np.real(M_nb_mas[beta,n,alpha,m]*np.conj(M_nb_mas[beta,n,alpha,m]));
+
+            # update T based on average
             Tmas[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
 
     return Emas, Tmas;
