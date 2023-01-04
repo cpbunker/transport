@@ -20,6 +20,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     '''
     from transport import wfm
     if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
 
     # convert from matrices to _{alpha alpha} elements
@@ -35,14 +36,24 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     HL, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(wfm.mat_4d_to_2d(HL),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
+    n_ms = 0;
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL[:,:,alpha,alpha]);
         psims = psims.T[Ems+2*tLa[alpha] < cutoff];
         Ems = Ems[Ems+2*tLa[alpha] < cutoff];
-        Emas.append(Ems.astype(complex));
+        Emas.append(Ems);
         psimas.append(psims);
-    n_ms = len(Emas[0]);
-    Emas, psimas = np.array(Emas), np.array(psimas); # shape is (n_loc_dof, n_ms)
+        n_ms = max(n_ms, len(Emas[alpha]));
+    Emas_arr = np.empty((n_loc_dof,n_ms), dtype = complex); # make un-ragged
+    psimas_arr = np.empty((n_loc_dof,n_ms,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ems = Emas[alpha];
+        Ems_arr = np.append(Ems, np.full((n_ms-len(Ems),), Ems[-1]));
+        Emas_arr[alpha] = Ems_arr;
+        psims = psimas[alpha];
+        psims_arr = np.append(psims, np.full((n_ms-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+        psimas_arr[alpha] = psims_arr;
+    Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_ms)
     kmas = np.arccos((Emas-wfm.scal_to_vec(VLa,n_ms))
                     /(-2*wfm.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
     
@@ -50,14 +61,25 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(wfm.mat_4d_to_2d(HR),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
+    n_ns = 0;
     for beta in range(n_loc_dof):
         Ens, psins = np.linalg.eigh(HR[:,:,beta,beta]);
         psins = psins.T[Ens+2*tRa[alpha] < cutoff];
         Ens = Ens[Ens+2*tRa[alpha] < cutoff];
         Enbs.append(Ens.astype(complex));
         psinbs.append(psins);
-    n_ns = len(Enbs[0]);
-    Enbs, psinbs = np.array(Enbs), np.array(psinbs); # shape is (n_loc_dof, n_ns)
+        n_ns = max(n_ns, len(Ens));
+    assert(n_ms == n_ns);
+    Enbs_arr = np.empty((n_loc_dof,n_ns), dtype = complex); # make un-ragged
+    psinbs_arr = np.empty((n_loc_dof,n_ns,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ens = Enbs[alpha];
+        Ens_arr = np.append(Ens, np.full((n_ns-len(Ens),), Ens[-1]));
+        Enbs_arr[alpha] = Ens_arr;
+        psins = psinbs[alpha];
+        psins_arr = np.append(psins, np.full((n_ns-len(Ens),n_spatial_dof), psins[-1]),axis=0);
+        psinbs_arr[alpha] = psins_arr
+    Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_ms)
     knbs = np.arccos((Enbs-wfm.scal_to_vec(VRa,n_ns))
                     /(-2*wfm.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
 
@@ -77,9 +99,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 myaxes[alpha].plot(jvals, Hi*0.01+np.diag(Hs[Hi][:,:,alpha,alpha]));
         plt.show();
         assert False;
-
-    # compute T[alpha,m] of E[alpha,m]
-    Tmas = np.zeros_like(Emas);
 
     # compute matrix elements
     T_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=float);

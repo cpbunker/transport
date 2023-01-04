@@ -65,7 +65,7 @@ def print_H_j(H):
 #### benchmarking T in spinless 1D case
 
 # T vs NL
-if False:
+if True:
 
     NLvals = [50,100,500];
     numplots = len(NLvals);
@@ -201,7 +201,7 @@ if False:
     plt.show();
 
 # worst case vs best case
-if True:
+if False:
 
     numplots = 2;
     fig, axes = plt.subplots(numplots, sharex = True);

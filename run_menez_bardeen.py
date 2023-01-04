@@ -28,12 +28,42 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def get_ideal_T(Es,mytL,myVL,mytC,myVC,myNC):
+def get_ideal_T(alpha,beta,Es,mytL,myVL,myNC,myJ,myVC = None):
     '''
     Get analytical T for spin-spin scattering, Menezes paper
     '''
+    if alpha not in [0,1,2,3]: raise ValueError;
+    if beta not in [0,1,2,3]: raise ValueError;
+    assert np.min(Es) >= 0; # energies must start at zero
+    assert myVL == 0.0;
+    #assert myNC == 1;
 
-    return False
+    if myVC != None: # hacky code to get barrier T's
+        mytC = mytL;
+        kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
+        kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
+        print("Es:\n", Es[:8]);
+        print("kavals:\n", kavals[:8]);
+        print("kappavals:\n", kappavals[:8]);
+
+        ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+        ideal_exp = np.exp(-2*myNC*kappavals);
+        ideal_T = ideal_prefactor*ideal_exp;
+        ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
+        ideal_T *= ideal_correction;
+        return np.real(ideal_T);
+
+    kas = np.arccos((Es-2*mytL)/(-2*mytL));
+    jprimes = myJ/(4*mytL*kas);
+    ideal_Tf = jprimes*jprimes/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
+    ideal_Tnf = (1+jprimes*jprimes/4)/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
+    
+    if((alpha==1 and beta==1) or (alpha==2 and beta==2)):
+        return ideal_Tnf;
+    elif((alpha == 1 and beta == 2) or (alpha == 2 and beta == 1)):
+        return ideal_Tf;
+    else:
+        return np.zeros_like(ideal_Tf);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -42,26 +72,21 @@ def print_H_j(H):
 
 def print_H_alpha(H):
     assert(len(np.shape(H)) == 4);
-    for j in range(np.shape(H)[0]):
-        print("H["+str(j)+","+str(j)+"] =\n",H[j,j,:,:]);
+    numj = np.shape(H)[0];
+    for i in range(numj):
+        for j in [max(0,i-1),i,min(numj-1,i+1)]:
+            print("H["+str(i)+","+str(j)+"] =\n",H[i,j,:,:]);
 
 #################################################################
 #### all possible T_{\alpha -> \beta}
 
 if True:
+    # benchmark w/out spin flips
+    barrier = False;
 
-    # range of energies
-    logElims = -4,0
-    Evals = np.logspace(*logElims,myxvals, dtype = complex);
-
-    # R and T matrices
+    # spin dofs
     alphas = [0,1,2,3];
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
-    hspacesize = len(alphas);
-    Rvals = np.empty((hspacesize,hspacesize,len(Evals)), dtype = float);
-    Tvals = np.empty((hspacesize,hspacesize,len(Evals)), dtype = float);
-
-    # plotting
+    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
     nplots_x = len(alphas);
     nplots_y = len(alphas);
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
@@ -72,33 +97,55 @@ if True:
     tL = 1.0*np.eye(n_loc_dof);
     tinfty = 1.0*tL;
     tR = 1.0*tL;
-    ts = (tinfty, tL, tinfty, tR, tinfty);
     Vinfty = 0.5*tL;
     VL = 0.0*tL;
     VR = 0.0*tL;
-    Vs = (Vinfty, VL, Vinfty, VR, Vinfty);
-    Jval = -0.5;
+    Jval = -0.4;
 
     # central region
-    NC = 1;
+    tC = 1.0*tL;
+    NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
-        HC[NCi,NCi] = wfm.h_kondo(Jval,0.5);
+        for NCj in range(NC):
+            if(NCi == NCj): # exchange interaction
+                HC[NCi,NCj] = wfm.h_kondo(Jval,0.5);
+            elif(abs(NCi -NCj) == 1): # nn hopping
+                HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
     print_H_alpha(HC);
 
     # central region prime
     HCprime = np.zeros_like(HC);
     for NCi in range(NC):
-        HCprime[NCi,NCi] = np.diagflat(np.diagonal(HC[NCi,NCi]));
+        for NCj in range(NC):
+            if(NCi == NCj): # exchange interaction
+                HCprime[NCi,NCj] = np.diagflat(np.diagonal(HC[NCi,NCj]));
+            elif(abs(NCi -NCj) == 1): # nn hopping
+                HCprime[NCi,NCj] = -tC*np.eye(n_loc_dof);
     print_H_alpha(HCprime);
 
-    # bardeen results 
+    if barrier: # get rid of off diag parts for benchmarking
+        HC = np.copy(HCprime);
+
+    # bardeen results for spin flip scattering
     Ninfty = 50;
     NL = 100;
     NR = 1*NL;
-    Evals, Tvals = bardeen.kernel(*ts, *Vs, Ninfty, NL, NR, HC, HCprime,cutoff=HC[0,0,1,1],verbose=verbose);
+    ##
+    #### Notes
+    ##
+    # - bardeen.kernel syntax:
+    #       tinfty, tL, tLprime, tR, tRprime,
+    #       Vinfty, VL, VLprime, VR, VRprime,
+    #       Ninfty, NL, NR, HC,HCprime,
+    # - I am setting VLprime = VRprime = Vinfty for best results according
+    # run_barrier_bardeen tests
+    Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
+                                  Vinfty, VL, Vinfty, VR, Vinfty,
+                                Ninfty, NL, NR, HC, HCprime,cutoff=HC[0,0,1,1],verbose=verbose);
 
     # initial and final states
+    alphas = [1,2];
     for alpha in alphas:
         for beta in alphas:
 
@@ -108,13 +155,21 @@ if True:
             axes[alpha,beta].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
-            #ideal_Tvals_alpha = get_ideal_T(Evals[alpha],tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            #axes[NLi].plot(Evals[alpha],np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
+            VC_barrier = None;
+            if barrier: VC_barrier = -Jval/4;
+            ideal_Tvals_alpha = get_ideal_T(alpha, beta, xvals, tL[alpha,alpha],VL[alpha,alpha],NC,Jval,myVC = VC_barrier);
+            axes[alpha,beta].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
             #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
+
+            # error
+            if( barrier and (alpha == 1 and beta == 1)):
+                axright = axes[alpha,beta].twinx();
+                axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+                axright.set_ylim(0,50);
 
             #format
             axes[alpha,beta].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$")
-        #axes[alpha,-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            #axes[alpha,-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
 
     # format and show
     axes[-1,-1].set_xscale('log', subs = []);
