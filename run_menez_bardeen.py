@@ -51,7 +51,11 @@ def get_ideal_T(alpha,beta,Es,mytL,myVL,myNC,myJ,myVC = None):
         ideal_T = ideal_prefactor*ideal_exp;
         ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
         ideal_T *= ideal_correction;
-        return np.real(ideal_T);
+
+        if((alpha==1 and beta==1) or (alpha==2 and beta==2)):
+            return np.real(ideal_T);
+        else:
+            return np.zeros_like(ideal_T);
 
     kas = np.arccos((Es-2*mytL)/(-2*mytL));
     jprimes = myJ/(4*mytL*kas);
@@ -162,7 +166,7 @@ if True:
             #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
 
             # error
-            if( barrier and (alpha == 1 and beta == 1)):
+            if False: #( barrier and (alpha == 1 and beta == 1)):
                 axright = axes[alpha,beta].twinx();
                 axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
                 axright.set_ylim(0,50);
