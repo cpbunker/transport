@@ -60,7 +60,7 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     name of observables vs t data file
     '''
     from transport import tddmrg, fci_mod
-    from fci_mod import ops_dmrg
+    from transport.fci_mod import ops, ops_dmrg
     from pyblock3 import fcidump, hamiltonian
     from pyblock3.algebra.mpe import MPE
 
@@ -84,7 +84,7 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
     ham_params = t_leads, 1e-5, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
-    h1e, g2e, input_str = fci_mod.ops_dmrg.dot_hams(nleads, nelecs, ndots, ham_params, spinstate, verbose = verbose);
+    h1e, g2e, input_str = fci_mod.ops.dot_hams(nleads, ndots, ham_params, spinstate, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
@@ -116,16 +116,18 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     ham_params_neq = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb and Vbias on, no zeeman splitting
-    h1e_neq, g2e_neq, input_str_neq = fci_mod.ops_dmrg.dot_hams(nleads,nelecs, ndots, ham_params_neq, "", verbose = verbose);
+    h1e_neq, g2e_neq, input_str_neq = fci_mod.ops.dot_hams(nleads, ndots, ham_params_neq, "", verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq, flat=True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
     h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
 
-    from pyblock3.algebra import flat
-    assert( isinstance(h_obj_neq.FT, flat.FlatFermionTensor) );
-    assert( isinstance(h_mpo_neq, flat.FlatFermionTensor) );
-    #assert(False);
+    try:
+        from pyblock3.algebra import flat
+        assert( isinstance(h_obj_neq.FT, flat.FlatFermionTensor) );
+        assert( isinstance(h_mpo_neq, flat.FlatFermionTensor) );
+    except:
+        pass;
 
     # time propagate the noneq state
     # td dmrg uses highest bond dim

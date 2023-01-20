@@ -32,7 +32,7 @@ import numpy as np
 #######################################################
 #### 1 e operators, yield form
 
-def occ(site_i, norbs) -> function:
+def occ(site_i, norbs):
     '''
     Operator for the occupancy of sites specified by site_i
     ASU formalism only !!!

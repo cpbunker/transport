@@ -5,7 +5,6 @@ Plotting module for quick methods of making matplotlib plots in pyscf context
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines
-import seaborn
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # format matplotlib globally
@@ -78,10 +77,8 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
-    colors = seaborn.color_palette("dark");
-    if (len(colors) < len(sites) ): # need more colors
-        colors = plt.cm.get_cmap('seismic', len(datafs));
-        colors = colors(np.linspace(0,1, len(datafs) ) );
+    mycolors = plt.cm.get_cmap('seismic', len(sites));
+    mycolors = mycolors(np.linspace(0,1, len(sites) ) );
 
     # unpack
     print("Loading data from ",dataf);
@@ -114,14 +111,14 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     # plot occupancy vs time
     if 'occ' in splots:
         for sitei in range(len(sites)): # occ of each site on same ax
-            axes[axcounter].plot(t, occs[sitei], label = sites[sitei], color = colors[sitei]);
+            axes[axcounter].plot(t, occs[sitei], label = sites[sitei], color = mycolors[sitei]);
             
             # inset for dot occ
             if(sites[sitei] == 'D'):
                 # Create inset of width 1.3 inches and height 0.9 inches
                 # at the default upper right location
                 axins = inset_axes(axes[axcounter], width="30%", height="30%");
-                axins.plot(t[:int(2/np.real(t[1]) ) ], occs[sitei][:int(2/np.real(t[1]) ) ], color = colors[sitei] );
+                axins.plot(t[:int(2/np.real(t[1]) ) ], occs[sitei][:int(2/np.real(t[1]) ) ], color = mycolors[sitei] );
 
         # format
         axes[axcounter].set_ylabel("Occ.")
@@ -143,16 +140,16 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
         axins = inset_axes(axes[axcounter], width="20%", height="20%");
         axins.plot(t[:int(2/np.real(t[1]) ) ], Docc[:int(2/np.real(t[1]) ) ], color = colors[1] );
                 
-        axes[axcounter].plot(t, LLocc, color = colors[0], label = "LL");
-        axes[axcounter].plot(t, Docc, color = colors[1], label = "D");
-        axes[axcounter].plot(t, RLocc, color = colors[2], label = "RL");
+        axes[axcounter].plot(t, LLocc, color = mycolors[0], label = "LL");
+        axes[axcounter].plot(t, Docc, color = mycolors[1], label = "D");
+        axes[axcounter].plot(t, RLocc, color = mycolors[2], label = "RL");
         axes[axcounter].set_ylabel("Occ.");
         axcounter += 1;
 
     # plot Sz of dot vs time
     if 'Sz' in splots:
         for sitei in range(len(sites)): # iter over sites
-            axes[axcounter].plot(t, Szs[sitei], label = sites[sitei], color = colors[sitei]);
+            axes[axcounter].plot(t, Szs[sitei], label = sites[sitei], color = mycolors[sitei]);
         axes[axcounter].set_ylabel("$S_z$")
         #axes[axcounter].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.);
         axcounter += 1;
@@ -171,11 +168,11 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
         # inset for min RL spin
         axins = inset_axes(axes[axcounter], width="20%", height="20%");
         minSi= np.argmin(RLS);
-        axins.plot(t[:minSi], RLS[:minSi], color = colors[2] );
+        axins.plot(t[:minSi], RLS[:minSi], color = mycolors[2] );
 
-        axes[axcounter].plot(t, LLS, color = colors[0], label = "LL");
-        axes[axcounter].plot(t, DS, color = colors[1], label = "D");
-        axes[axcounter].plot(t, RLS, color = colors[2], label = "RL");
+        axes[axcounter].plot(t, LLS, color = mycolors[0], label = "LL");
+        axes[axcounter].plot(t, DS, color = mycolors[1], label = "D");
+        axes[axcounter].plot(t, RLS, color = mycolors[2], label = "RL");
         axes[axcounter].set_ylabel("Sz");
         axcounter += 1;
 

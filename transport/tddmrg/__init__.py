@@ -9,6 +9,8 @@ Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 
 Combine with fci code later
 '''
+from transport import fci_mod
+from transport.fci_mod import ops_dmrg
 
 import numpy as np
 from pyblock3 import hamiltonian, fcidump
@@ -50,16 +52,16 @@ def kernel(mpo, h_obj, mps, tf, dt, i_dot, bdims, verbose = 0):
 
     # mpos for observables
     obs_mpos = [];
-    obs_mpos.append(h_obj.build_mpo(ops.dmrg.Jup(i_dot, norbs)[0] ) );
-    obs_mpos.append(h_obj.build_mpo(ops.dmrg.Jup(i_dot, norbs)[1] ) );
-    obs_mpos.append(h_obj.build_mpo(ops.dmrg.Jdown(i_dot, norbs)[0] ) );
-    obs_mpos.append(h_obj.build_mpo(ops.dmrg.Jdown(i_dot, norbs)[1] ) );
-    obs_mpos.append(h_obj.build_mpo(ops.dmrg.spinflip(i_dot, norbs) ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[0] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[1] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[0] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[1] ) );
+    obs_mpos.append(h_obj.build_mpo(ops_dmrg.spinflip(i_dot, norbs) ) );
     for site in sites: # site specific observables
-        obs_mpos.append( h_obj.build_mpo(ops.dmrg.occ(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops.dmrg.Sx(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops.dmrg.Sy(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops.dmrg.Sz(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.occ(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sx(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sy(site, norbs) ) );
+        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sz(site, norbs) ) );
 
     # loop over time
     for i in range(N+1):
