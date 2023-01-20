@@ -81,6 +81,42 @@ def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
 
     return e,v;
 
+def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
+    '''
+    Convert physics contained in an FCIDUMP object or file
+    to a MatrixProduct Expectation (MPE) for doing DMRG
+
+    Args:
+    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
+    bdim_i, int, initial bond dimension of the MPE
+
+    Returns:
+    MPE object
+    '''
+    from pyblock3 import hamiltonian, fcidump
+    from pyblock3.algebra.mpe import MPE
+    
+    if(not isinstance(h1e, np.ndarray)): raise TypeError;
+    if(not isinstance(g2e, np.ndarray)): raise TypeError;
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+
+    # convert arrays to fcidump
+    fd = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
+
+    # convert fcidump to hamiltonian obj
+    h_obj = hamiltonian.Hamiltonian(fd,flat=True);
+
+    # from hamiltonian obj, build Matrix Product Operator
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    h_mps = h_obj.build_mps(bdim_i);
+
+    # MPE
+    return MPE(h_mps, h_mpo, h_mps);
+
+
 def scf_to_arr(mol, scf_obj):
     '''
     Converts physics of an atomic/molecular system, as contained in an scf inst

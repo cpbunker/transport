@@ -14,57 +14,62 @@ import matplotlib.pyplot as plt
 
 import sys
 
-##################################################################################
-#### set up physics of dot
-
 # top level
 verbose = 3;
-nleads = (4,4);
-nelecs = (2,0); # one electron on dot and one itinerant
-ndots = 1;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
-spinstate = "ab";
+
+##################################################################################
+#### toy model of molecule
 
 # phys params, must be floats
-tl = 1.0;
-th = 1.0; 
-td = 1.0; 
-Vb = 0.0;
-mu = 0.0;
-Vg = -40.0;
-U = 80.0
-B = 1000;
-theta = 0.0;
+tm = 1.0; # hopping within molecule
+th = 0.5; # hopping on/off molecule
+Vg = -10*tm; # gate voltage of substrate
 
-#time info
-dt = 0.005;
-tf = 150.0;
+# time info
+timestep = 0.1
+timefinal = 1.0;
 
-# dmrg info
-bdims = [700, 800, 900, 1000];
-noises = [1e-4, 1e-5, 1e-6, 0.0];
+# electrons
+nelecs = 1;
+nelecs = (nelecs,0); # spin blind
 
-if get_data: # must actually compute data
+#### hamiltonian
+n_sys_orbs = 2; # molecular orbs in the sys
+n_sub_orbs = 1; # molecular orbs in the substrate
+n_fer_orbs = 2*n_sys_orbs+2*n_sub_orbs; # total fermionic orbs
+h1e = np.zeros((n_fer_orbs, n_fer_orbs));
 
-    params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    tddmrg.utils.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
+# spin-independent hopping between sys orbs
+for sysi in range(0,2*n_sys_orbs-2,2):
+    h1e[sysi,sysi+2] = -tm; # up hopping
+    h1e[sysi+2,sysi] = -tm;
+    h1e[sysi+1,sysi+1+2] = -tm; # down hopping
+    h1e[sysi+1+2,sysi+1] = -tm;
 
-else:
+# spin-independent hopping between sys and substrate
+for sysi in range(0,2*n_sys_orbs,2):
+    for subi in range(2*n_sys_orbs,n_fer_orbs,2):
+        h1e[sysi,subi] = -th; # up hopping
+        h1e[subi,sysi] = -th;
+        h1e[sysi+1,subi+1] = -th; # down hopping
+        h1e[subi+1,sysi+1] = -th;
 
-    # plot results
-    datafs = sys.argv[2:]
-    splots = ['lead_occ','lead_Sz','E']; # which subplots to plot
-    mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
-    title = "Itinerant electron scatters from spin impurity";
-    paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
-    tddmrg.plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
+# substrate on-site
+for subi in range(2*n_sys_orbs,n_fer_orbs,2):
+    h1e[subi,subi] = Vg;
+    h1e[subi+1,subi+1] = Vg;
 
-    
+# g2e
+g2e = np.zeros((n_fer_orbs,n_fer_orbs,n_fer_orbs,n_fer_orbs));
 
+if(verbose):
+    print("1. Hamiltonian\n-h1e = \n",h1e);
 
-
-
-
-
-
+#### time evol
+hilbert_size = 2**n_fer_orbs;
+print(hilbert_size);
+bdims_init = n_fer_orbs**2;
+bdims = bdims_init*np.array([1,1.2,1.4,1.6]);
+tddmrg.kernel(h1e, g2e, nelecs, bdims)
 
