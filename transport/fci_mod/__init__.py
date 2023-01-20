@@ -114,7 +114,8 @@ def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
     h_mps = h_obj.build_mps(bdim_i);
 
     # MPE
-    return MPE(h_mps, h_mpo, h_mps);
+    mpe_obj = MPE(h_mps, h_mpo, h_mps);
+    return h_obj, mpe_obj;
 
 
 def scf_to_arr(mol, scf_obj):
