@@ -7,12 +7,12 @@ Half filled 1D TB band of itinerant e's interacting with a single quantum dot
 under a small bias voltage.
 solved in time-dependent DMRG (approximate many body QM) method in transport/tddmrg
 '''
-
 from transport import tddmrg
 from transport.tddmrg import wrappers
+from transport import fci_mod
+from transport.fci_mod import plot
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sys
 
@@ -49,7 +49,7 @@ noises = [1e-4, 1e-5, 1e-6, 0.0];
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    tddmrg.wrappers.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
+    tddmrg.wrappers.siam_data(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
 
 else:
 
@@ -59,7 +59,7 @@ else:
     mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
     title = "Itinerant electron scatters from spin impurity";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
-    tddmrg.plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
+    fcimod.plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
 
     
 

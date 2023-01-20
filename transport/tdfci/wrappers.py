@@ -3,10 +3,10 @@ Christian Bunker
 M^2QM at UF
 June 2021
 
-tddmrg/wrappers.py
+siam_current.py
 
-use dmrg for time evol of model ham systems
-- single impurity anderson model
+Use FCI exact diag to solve single impurity anderson model (siam)
+Then use td FCI or td DMRG to time propagate
 
 pyscf formalism:
 - h1e_pq = (p|h|q) p,q spatial orbitals
@@ -30,7 +30,93 @@ import time
 #################################################
 #### get current data
 
-def siam_data(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, 
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, 
+spinstate = "", prefix = "dat/", namevar="Vg", verbose = 0) -> str:
+    '''
+    Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
+    and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
+    - construct the eq hamiltonian, 1e and 2e parts, as np arrays
+    - encode hamiltonians in an scf.UHF inst
+    - do FCI on scf.UHF to get exact gd state
+    - turn on thyb to intro nonequilibrium (current will flow)
+    - use ruojing's code (td_fci module) to do time propagation
+
+    Args:
+    nleads, tuple of ints of left lead sites, right lead sites
+    nelecs, tuple of num up e's, 0 due to ASU formalism
+    ndots, int, number of dots in impurity
+    timestop, float, how long to run for
+    deltat, float, time step increment
+    physical params, tuple of t, thyb, Vbias, mu, Vgate, U, B, theta, phi
+    	if None, gives defaults vals for all (see below)
+    prefix: assigns prefix (eg folder) to default output file name
+
+    Returns:
+    name of observables vs t data file
+    '''
+    
+    # imports here so we can run without pyblock3
+    from transport import tdfci, fci_mod
+    from pyscf import fci
+
+    # check inputs
+    assert( isinstance(nleads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
+
+    # set up the hamiltonian
+    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites start and end, inclusive
+    norbs = 2*(nleads[0]+nleads[1]+ndots); # num spin orbs
+    # nelecs left as tunable
+    t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, B, theta = phys_params;
+
+    # get 1 elec and 2 elec hamiltonian arrays for siam, dot model impurity
+    if(verbose): print("1. Construct hamiltonian")
+    eq_params = t_leads, 0.0, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta to prep spin
+    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, eq_params, spinstate, verbose = verbose);
+        
+    # get scf implementation siam by passing hamiltonian arrays
+    if(verbose): print("2. FCI solution");
+    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
+    
+    # from scf instance, do FCI, get exact gd state of equilibrium system
+    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
+    if( verbose > 3): print("|initial> = ",v_fci);
+    
+    # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
+    if(verbose > 3 ): print("- Add nonequilibrium terms");
+    neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
+    neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, nelecs, ndots, neq_params, "", verbose = verbose);
+
+    # from fci gd state, do time propagation
+    if(verbose): print("3. Time propagation")
+    init, observables = td_fci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
+    
+    # write results to external file
+    if namevar == "Vg":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
+    elif namevar == "U":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
+    elif namevar == "Vb":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+    elif namevar == "th":
+        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
+    else: assert(False); # invalid option
+    hstring = time.asctime();
+    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
+    hstring += "\nASU formalism, t_hyb noneq. term"
+    hstring += "\nEquilibrium"+input_str; # write input vals to txt
+    hstring += "\nNonequlibrium"+input_str_noneq;
+    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.save(fname, observables);
+    if (verbose): print("4. Saved data to "+fname);
+    
+    return fname; # end dot data
+
+def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, 
 spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
@@ -65,14 +151,14 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     from pyblock3.algebra.mpe import MPE
 
     # check inputs
-    if(not isinstance(nleads, tuple) ): raise TypeError;
-    if(not isinstance(nelecs, tuple) ): raise TypeError;
-    if(not isinstance(ndots, int) ): raise TypeError;
-    if(not isinstance(timestop, float) ): raise TypeError;
-    if(not isinstance(deltat, float) ): raise TypeError;
-    if(not isinstance(phys_params, tuple) or phys_params == None): raise TypeError;
-    if(not bond_dims[0] <= bond_dims[-1]): raise ValueError; # bdims must have increasing behavior 
-    if(not noises[0] >= noises[-1] ): raise ValueError; # noises must have decreasing behavior 
+    assert( isinstance(nleads, tuple) );
+    assert( isinstance(nelecs, tuple) );
+    assert( isinstance(ndots, int) );
+    assert( isinstance(timestop, float) );
+    assert( isinstance(deltat, float) );
+    assert( isinstance(phys_params, tuple) or phys_params == None);
+    assert( bond_dims[0] <= bond_dims[-1]); # checks bdims has increasing behavior and is list
+    assert( noises[0] >= noises[-1] ); # checks noises has decreasing behavior and is list
 
     # set up the hamiltonian
     imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ]; # imp sites, inclusive
@@ -123,8 +209,8 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     h_mpo_neq, _ = h_mpo_neq.compress(cutoff=1E-15); # compression saves memory
 
     from pyblock3.algebra import flat
-    assert( isinstance(h_obj_neq.FT, flat.FlatFermionTensor) );
-    assert( isinstance(h_mpo_neq, flat.FlatFermionTensor) );
+    #assert( isinstance(h_obj_neq.FT, flat.FlatFermionTensor) );
+    #assert( isinstance(h_mpo_neq, flat.FlatFermionTensor) );
     #assert(False);
 
     # time propagate the noneq state

@@ -17,14 +17,10 @@ pyscf/fci module:
 '''
 
 import numpy as np
-import functools
-import itertools
-
-import math
 
 
 ##########################################################################################################
-#### fci conversions
+#### conversions
 
 def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
@@ -40,8 +36,9 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     mol, gto.mol object which holds some physical params
     scf inst, holds physics: h1e, h2e, mo coeffs etc
     '''
-
     from pyscf import gto, scf
+    if(not isinstance(h1e, np.ndarray)): raise TypeError;
+    if(not isinstance(g2e, np.ndarray)): raise TypeError;
     
     # initial guess density matrices
     Pa = np.zeros(norbs)
@@ -67,6 +64,23 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
 
     return mol, scf_inst;
 
+def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
+    '''
+    '''
+    if(not isinstance(h1e, np.ndarray)): raise TypeError;
+    if(not isinstance(g2e, np.ndarray)): raise TypeError;
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+
+    # to scf
+    mol, scfo = arr_to_scf(h1e, g2e, norbs, nelecs);
+
+    # to eigenstates
+    e, v = scf_FCI(mol, scfo, nroots = norbs, verbose = verbose);
+
+    return e,v;
+
 def scf_to_arr(mol, scf_obj):
     '''
     Converts physics of an atomic/molecular system, as contained in an scf inst
@@ -77,8 +91,8 @@ def scf_to_arr(mol, scf_obj):
     - etc
     to ab initio hamiltonian arrays h1e and g2e
     '''
-
-    from pyscf import ao2mo
+    from pyscf import ao2mo, gto
+    if(not isinstance(mol, gto.mol)): raise TypeError;
 
     # unpack scf object
     hcore = scf_obj.get_hcore();
@@ -91,121 +105,10 @@ def scf_to_arr(mol, scf_obj):
 
     return h1e, g2e;
 
-
-def cj_to_ck(h1e, nleads):
-    '''
-    Transform hams which are second quantized in real space (ie c_j)
-    into hams which are second quantized in momentum space (ie c_k)
-
-    Note on ASU formalism
-    For an L sight chain we have tight binding sites 0,1,...2L in real space.
-    Each are single e only, even are up and odd are down.
-    In k space k = (2\pi)/La * integer < \pi/a -> L//2 states of each spin
-    where m = \pm 1, ... \pm L/2 e.g. for a 2 site lead, m = \pm 1
-    corresponding to a left and right moving state of each spin (4 total states)
-    '''
-
-    # check inputs
-    assert(np.shape(h1e)[0] % 2 == 0);
-
-    # unpack
-    norbs = np.shape(h1e)[0];
-    nimp = norbs - 2*sum(nleads);
-    iLL = 2*nleads[0];
-    iRL = 2*nleads[0] + nimp;
-
-    # full k state ham
-    hk = np.zeros_like(h1e, dtype = complex);
-    for j in range(norbs): # iter over spin orbs
-        for jp in range(norbs):
-
-            # to ref molecular orbs
-            jmo = j // 2;
-            jpmo = jp // 2;
-            
-            # replace pure lead j states with k states, left lead
-            if( j < iLL and jp < iLL ):
-                # k is just index in ham, m reps ka=2\pi m/L, w/ m <= L/2
-                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
-                    if(j == 0 and jp == 0): # do only once
-                        ka = 2*np.pi*m/nleads[0];
-                        hk[2*k,2*k] += -2*np.cos(ka);
-                        hk[2*k+1,2*k+1] += -2*np.cos(ka);
-                    '''
-                    for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
-                        if(j % 2 == 0 and jp % 2 == 0): # up states
-                            hk[2*k, 2*kp] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
-                        elif(j % 2 == 1 and jp % 2 == 1): # down states
-                            hk[2*k+1, 2*kp+1] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
-                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
-                    '''
-            # replace pure lead j states with k states, right lead
-            elif(j >= iRL and jp >= iRL ):
-                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
-                    if(j == 0 and jp == 0): # do only once
-                        ka = 2*np.pi*m/nleads[1];
-                        hk[iRL+2*k,iRL+2*k] += -2*np.cos(ka);
-                        hk[iRL+2*k+1,iRL+2*k+1] += -2*np.cos(ka);
-                    '''
-                    for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
-                        if(j % 2 == 0 and jp % 2 == 0): # up states
-                            hk[iRL + 2*k, iRL + 2*kp] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
-                        elif(j % 2 == 1 and jp % 2 == 1): # down states
-                            hk[iRL+2*k+1, iRL+2*kp+1] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
-                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
-                    '''
-            # jp coupling to LL
-            elif( j >= iLL and j < iRL and jp < iLL):
-
-                # jp column elements go to kp
-                for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
-                    if(jp % 2 == 0): # up states
-                        hk[j,2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
-                    elif(jp % 2 == 1): # down states
-                        hk[j,2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
-
-            # j coupling to LL
-            elif( jp >= iLL and jp < iRL and j < iLL):
-
-                # j row elements go to k
-                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
-                    if(j % 2 == 0): # up states
-                        hk[2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
-                    elif(j % 2 == 1): # down states
-                        hk[2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
-
-            # jp coupling to RL
-            elif( j >= iLL and j < iRL and jp >= iRL):
-
-                # jp column elements go to kp
-                for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
-                    if(jp % 2 == 0): # up states
-                        hk[j,iRL+2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
-                    elif(jp % 2 == 1): # down states
-                        hk[j,iRL+2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
-
-            # j coupling to RL
-            elif( jp >= iLL and jp < iRL and j >= iRL):
-
-                # j row elements go to k
-                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
-                    if(j % 2 == 0): # up states
-                        hk[iRL+2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
-                    elif(j % 2 == 1): # down states
-                        hk[iRL+2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
-                        
-            # pure SR states unchanged
-            elif( j >= iLL and j < iRL and jp >= iLL and jp < iRL):
-                hk[j,jp] += h1e[j,jp];
-
-            else: assert(h1e[j,jp] == 0);
-
-    # resulting ham should be real
-    #assert(np.max(abs(np.imag(hk))) < 1e-10);
-    return hk;
-
-
 def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
+    '''
+    '''
+    if(not isinstance(g2e, np.ndarray)): raise TypeError;
 
     for termi in range(len(terms1)):
         for termj in range(len(terms2)):
@@ -213,7 +116,6 @@ def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
             g2e[terms1[termi][0], terms1[termi][1], terms2[termj][0], terms2[termj][1]] += coefs1[termi]*coefs2[termj];
             g2e[terms2[termj][0], terms2[termj][1], terms1[termi][0], terms1[termi][1]] += coefs1[termi]*coefs2[termj];
 
-    #assert False;
     return g2e;
 
 
@@ -231,13 +133,11 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         only if asked
         only if dets of interest do not couple with other dets (blocked off)
     '''
-
-    # check inputs
-    assert( isinstance(Nps, np.ndarray));
-    assert( isinstance(states, list));
-    assert( isinstance(dets_interest, list));
-    assert(len(states) == len(Nps));
-    assert( states[-1][-1]+1 == np.shape(h1e)[0] );
+    if(not isinstance(Nps, np.ndarray)): raise TypeError;
+    if(not isinstance(states, list)): raise TypeError;
+    if(not isinstance(dets_interest, list)): raise TypeError;
+    if(not len(states) == len(Nps)): raise TypeError;
+    if(not states[-1][-1]+1 == np.shape(h1e)[0] ): raise TypeError;
 
     # 1 particle basis to N particle slater determinants
     # dets start as cartesian products
@@ -356,7 +256,116 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         
     return H;
 
+def cj_to_ck(h1e, nleads):
+    '''
+    Transform hams which are second quantized in real space (ie c_j)
+    into hams which are second quantized in momentum space (ie c_k)
 
+    Note on ASU formalism
+    For an L sight chain we have tight binding sites 0,1,...2L in real space.
+    Each are single e only, even are up and odd are down.
+    In k space k = (2\pi)/La * integer < \pi/a -> L//2 states of each spin
+    where m = \pm 1, ... \pm L/2 e.g. for a 2 site lead, m = \pm 1
+    corresponding to a left and right moving state of each spin (4 total states)
+    '''
+    if(not np.shape(h1e)[0] % 2 == 0): raise TypeError;
+    raise NotImplementedError
+
+    # unpack
+    norbs = np.shape(h1e)[0];
+    nimp = norbs - 2*sum(nleads);
+    iLL = 2*nleads[0];
+    iRL = 2*nleads[0] + nimp;
+
+    # full k state ham
+    hk = np.zeros_like(h1e, dtype = complex);
+    for j in range(norbs): # iter over spin orbs
+        for jp in range(norbs):
+
+            # to ref molecular orbs
+            jmo = j // 2;
+            jpmo = jp // 2;
+            
+            # replace pure lead j states with k states, left lead
+            if( j < iLL and jp < iLL ):
+                # k is just index in ham, m reps ka=2\pi m/L, w/ m <= L/2
+                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(j == 0 and jp == 0): # do only once
+                        ka = 2*np.pi*m/nleads[0];
+                        hk[2*k,2*k] += -2*np.cos(ka);
+                        hk[2*k+1,2*k+1] += -2*np.cos(ka);
+                    '''
+                    for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                        if(j % 2 == 0 and jp % 2 == 0): # up states
+                            hk[2*k, 2*kp] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        elif(j % 2 == 1 and jp % 2 == 1): # down states
+                            hk[2*k+1, 2*kp+1] += h1e[j, jp]*(1/nleads[0])*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0]) - 2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
+                    '''
+            # replace pure lead j states with k states, right lead
+            elif(j >= iRL and jp >= iRL ):
+                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(j == 0 and jp == 0): # do only once
+                        ka = 2*np.pi*m/nleads[1];
+                        hk[iRL+2*k,iRL+2*k] += -2*np.cos(ka);
+                        hk[iRL+2*k+1,iRL+2*k+1] += -2*np.cos(ka);
+                    '''
+                    for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                        if(j % 2 == 0 and jp % 2 == 0): # up states
+                            hk[iRL + 2*k, iRL + 2*kp] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        elif(j % 2 == 1 and jp % 2 == 1): # down states
+                            hk[iRL+2*k+1, iRL+2*kp+1] += h1e[j, jp]*(1/nleads[1])*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1])) - 2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                        else: assert(h1e[j,jp] == 0); # no spin flip terms in lead
+                    '''
+            # jp coupling to LL
+            elif( j >= iLL and j < iRL and jp < iLL):
+
+                # jp column elements go to kp
+                for kp, mp in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(jp % 2 == 0): # up states
+                        hk[j,2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+                    elif(jp % 2 == 1): # down states
+                        hk[j,2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*mp/nleads[0]*(jpmo % nleads[0])));
+
+            # j coupling to LL
+            elif( jp >= iLL and jp < iRL and j < iLL):
+
+                # j row elements go to k
+                for k, m in enumerate(np.append(range(-nleads[0]//2,0),range(1,nleads[0]//2+1))):
+                    if(j % 2 == 0): # up states
+                        hk[2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+                    elif(j % 2 == 1): # down states
+                        hk[2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[0]))*np.exp(complex(0,2*np.pi*m/nleads[0]*(jmo % nleads[0])));
+
+            # jp coupling to RL
+            elif( j >= iLL and j < iRL and jp >= iRL):
+
+                # jp column elements go to kp
+                for kp, mp in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(jp % 2 == 0): # up states
+                        hk[j,iRL+2*kp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+                    elif(jp % 2 == 1): # down states
+                        hk[j,iRL+2*kp+1] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*mp/nleads[1]*(jpmo % (nimp+nleads[1]))));
+
+            # j coupling to RL
+            elif( jp >= iLL and jp < iRL and j >= iRL):
+
+                # j row elements go to k
+                for k, m in enumerate(np.append(range(-nleads[1]//2,0),range(1,nleads[1]//2+1))):
+                    if(j % 2 == 0): # up states
+                        hk[iRL+2*k,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                    elif(j % 2 == 1): # down states
+                        hk[iRL+2*k+1,jp] += h1e[j,jp]*(1/np.sqrt(nleads[1]))*np.exp(complex(0,2*np.pi*m/nleads[1]*(jmo % (nimp+nleads[1]))));
+                        
+            # pure SR states unchanged
+            elif( j >= iLL and j < iRL and jp >= iLL and jp < iRL):
+                hk[j,jp] += h1e[j,jp];
+
+            else: assert(h1e[j,jp] == 0);
+
+    # resulting ham should be real
+    #assert(np.max(abs(np.imag(hk))) < 1e-10);
+    return hk;
 
 ##########################################################################################################
 #### solvers
@@ -376,12 +385,12 @@ def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
 
     return E_fci, v_fci;
 
-
 def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     '''
     '''
-
-    from pyscf import fci, ao2mo
+    from pyscf import fci, ao2mo, gto
+    import functools
+    if( not isinstance(mol, gto.mol)): raise TypeError;
 
     # init ci solver with ham from molecule inst
     cisolver = fci.direct_uhf.FCISolver(mol);
@@ -416,47 +425,9 @@ def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
 
     return E_fci, v_fci;
 
-
-def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
-
-    norbs = np.shape(h1e)[0];
-
-    # to scf
-    mol, scfo = arr_to_scf(h1e, g2e, norbs, nelecs);
-
-    # to eigenstates
-    e, v = scf_FCI(mol, scfo, nroots = norbs, verbose = verbose);
-
-    return e,v;
-
-
-def arr_to_initstate(h1e, g2e, nleads, nelecs, ndots, verbose = 0):
-
-    norbs = np.shape(h1e)[0];
-    imp_i = [nleads[0]*2, nleads[0]*2 + 2*ndots - 1 ];
-    
-    # get scf 
-    mol, dotscf = arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = scf_FCI(mol, dotscf, verbose = verbose);
-
-    return E_fci, v_fci;
-
-
 ##########################################################################################################
 #### exec code
 
 if __name__ == "__main__":
 
-    import ops
-
-    # test 1p -> det conversion on kondo
-    h1e = np.zeros((4,4));
-    g2e = ops.h_kondo_2e(1.0,0.5);
-    states_1p = [[0,1],[2,3]]; # spin states each particle can occupy
-
-    # 1e ham, 2e ham, num particles
-    interest = [[0,3],[1,2]]; # can pick out certain dets if desired
-    Hdet = single_to_det(h1e, g2e,  np.array([1,1]), states_1p, dets_interest = interest, verbose = 5);
-    print(Hdet);
+    pass;

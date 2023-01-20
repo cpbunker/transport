@@ -32,7 +32,7 @@ import numpy as np
 #######################################################
 #### 1 e operators, yield form
 
-def occ(site_i, norbs):
+def occ(site_i, norbs) -> function:
     '''
     Operator for the occupancy of sites specified by site_i
     ASU formalism only !!!
@@ -40,9 +40,7 @@ def occ(site_i, norbs):
     - site_i, list of (usually spin orb) site indices
     - norbs, total num orbitals in system
     '''
-
-    # check inputs
-    assert( isinstance(site_i, list) or isinstance(site_i, np.ndarray));
+    if(not isinstance(site_i, np.ndarray)): raise TypeError;
 
     def occ_yield(norbs, adag, a):
 
@@ -216,7 +214,7 @@ def spinflip(site_i, norbs):
 
 
 #####################################
-#### wrapper functions, test code
+#### test code
     
 #####################################
 #### exec code
