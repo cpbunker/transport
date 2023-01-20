@@ -23,11 +23,11 @@ get_data = int(sys.argv[1]); # whether to run computations, if not data already 
 
 # phys params, must be floats
 tm = 1.0; # hopping within molecule
-th = 0.5; # hopping on/off molecule
-Vg = -10*tm; # gate voltage of substrate
+th = 0.8; # hopping on/off molecule
+Vg = -4*tm; # gate voltage of substrate
 
 # time info
-timestep = 0.1
+timestep = 0.02
 timefinal = 1.0;
 
 # electrons
@@ -74,14 +74,15 @@ def get_hg(mytm, myth, myVg):
 #### time evol
 hilbert_size = n_loc_dof**n_fer_orbs;
 bdims_init = n_fer_orbs**2;
-bdims = bdims_init*np.array([1,1.2,1.4,1.6]);
-bdims = bdims.astype(int);
+bdims = bdims_init*np.array([1,1.2,1.4]);
+bdims = list(bdims.astype(int));
 harr, garr = get_hg(tm, 0, Vg); # initial state = no sub-sys hopping
 harr_neq, _ = get_hg(tm, th, Vg); # add in sub-sys hopping
 obs = tddmrg.kernel(harr, garr, harr_neq, nelecs, bdims,timefinal, timestep, verbose = verbose);
 
 # plot
-timei, Ei = 0,1;
-plt.plot(obs[:,timei], obs[:,Ei]);
+plt.plot(np.real(obs[:,0]), np.real(obs[:,2]));
+plt.plot(np.real(obs[:,0]), np.real(obs[:,4]));
+plt.plot(np.real(obs[:,0]), np.real(obs[:,6]));
 plt.show();
 

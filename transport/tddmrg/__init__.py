@@ -45,7 +45,7 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
     if(not isinstance(h1e, np.ndarray)): raise TypeError;
     if(not isinstance(g2e, np.ndarray)): raise TypeError;
     if(not isinstance(nelecs, tuple)): raise TypeError;
-    if(not isinstance(bdims, np.ndarray)): raise TypeError;
+    if(not isinstance(bdims, list)): raise TypeError;
     if(not bdims[0] <= bdims[-1]): raise ValueError; # bdims must have increasing behavior 
 
     # unpack
@@ -56,21 +56,16 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
     
     # convert everything to matrix product form
     if(verbose): print("2. DMRG solution");
-    h_obj, mpe_obj = fci_mod.arr_to_mpe(h1e, g2e, nelecs, bdims[0]);
-    h_mpo = h_obj.build_qc_mpo();
-    h_mpo, _ = h_mpo.compress(cutoff=1E-15); # compressing saves memory
+    h_obj, h_mpo, psi_init = fci_mod.arr_to_mpo(h1e, g2e, nelecs, bdims[0]);
     if verbose: print("- built H as compressed MPO: ", h_mpo.show_bond_dims() );
-    psi_init = h_obj.build_mps(bdims[0]);
-    E_init = compute_obs(h_mpo, psi_init);
-    if verbose: print("- guessed gd energy = ", E_init);
-    psi_init = mpe_obj.ket
     E_init = compute_obs(h_mpo, psi_init);
     if verbose: print("- guessed gd energy = ", E_init);
 
     # solve ham with DMRG
+    dmrg_mpe = MPE(psi_init, h_mpo, psi_init);
     # MPE.dmrg method controls bdims,noises, n_sweeps,conv tol (tol),verbose (iprint)
     # noises[0] = 1e-3 and tol = 1e-8 work best from trial and error
-    dmrg_obj = mpe_obj.dmrg(bdims=bdims, tol = 1e-8, iprint=0);
+    dmrg_obj = dmrg_mpe.dmrg(bdims=bdims, tol = 1e-8, iprint=0);
     if verbose: print("- variational gd energy = ", dmrg_obj.energies[-1]);
 
     # return vals
@@ -85,26 +80,27 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
         obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sz(site, norbs) ) );
 
     # time evol
-    h_obj_neq, mpe_obj_neq = fci_mod.arr_to_mpe(h1e_neq, g2e, nelecs, bdims[0]);
+    _, h_mpo_neq, _ = fci_mod.arr_to_mpo(h1e_neq, g2e, nelecs, bdims[0]);
+    dmrg_mpe_neq = MPE(psi_init, h_mpo_neq, psi_init); # must be built with initial state!
     if(verbose): print("3. Time evolution\n-h1e_neq = \n",h1e_neq);
     for ti in range(nsteps):
         if(verbose>2): print("-time: ", ti*dt);
 
         # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        energies = mpe_obj_neq.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
-        psi_t = mpe_obj.ket; # update wf
+        E_t = dmrg_mpe_neq.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
+        psi_t = dmrg_mpe_neq.ket; # update wf
 
         # compute observables
         observables[ti,0] = ti*dt; # time
-        observables[ti,1] = energies[-1]; # energy
+        observables[ti,1] = E_t[-1]; # energy
         for mi in range(len(obs_mpos)): # iter over mpos
             observables[ti,obs_gen+mi] = compute_obs(obs_mpos[mi], psi_t);
         
-        # before any time stepping, get initial state
-        if(ti==0):
-            # get site specific observables at t=0 in array where rows are sites
-            initobs = np.real(np.reshape(observables[i,obs_gen:],(len(sites), obs_per_site) ) );
 
+    # site specific observables at t=0 in array where rows are sites
+    initobs = np.real(np.reshape(observables[0,obs_gen:],(len(sites), obs_per_site)));
+    print("-init observables:\n",initobs);
+    
     # return observables as arrays vs time
     return observables;
 

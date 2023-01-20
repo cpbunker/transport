@@ -81,7 +81,7 @@ def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
 
     return e,v;
 
-def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
+def arr_to_mpo(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
     '''
     Convert physics contained in an FCIDUMP object or file
     to a MatrixProduct Expectation (MPE) for doing DMRG
@@ -91,7 +91,7 @@ def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
     bdim_i, int, initial bond dimension of the MPE
 
     Returns:
-    MPE object
+    tuple of ham as MPO, state as mps
     '''
     from pyblock3 import hamiltonian, fcidump
     from pyblock3.algebra.mpe import MPE
@@ -111,11 +111,12 @@ def arr_to_mpe(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
     # from hamiltonian obj, build Matrix Product Operator
     h_mpo = h_obj.build_qc_mpo();
     h_mpo, _ = h_mpo.compress(cutoff = cutoff);
-    h_mps = h_obj.build_mps(bdim_i);
+    
+    # from hamiltonian onj, build Matrix Product State
+    psi_mps = h_obj.build_mps(bdim_i);
 
     # MPE
-    mpe_obj = MPE(h_mps, h_mpo, h_mps);
-    return h_obj, mpe_obj;
+    return h_obj, h_mpo, psi_mps;
 
 
 def scf_to_arr(mol, scf_obj):
