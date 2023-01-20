@@ -31,15 +31,16 @@ timestep = 0.1
 timefinal = 1.0;
 
 # electrons
+n_loc_dof = 2;
 nelecs = 1;
 nelecs = (nelecs,0); # spin blind
 
 #### hamiltonian
 n_sys_orbs = 2; # molecular orbs in the sys
 n_sub_orbs = 1; # molecular orbs in the substrate
-n_fer_orbs = 2*n_sys_orbs+2*n_sub_orbs; # total fermionic orbs
+n_fer_orbs = n_loc_dof*n_sys_orbs+n_loc_dof*n_sub_orbs; # total fermionic orbs
 
-def get_hg(mytm, myth, myVg)-> (np.ndarray, np.ndarray):
+def get_hg(mytm, myth, myVg):
     '''
     make the 1body and 2body parts of the 2nd qu'd ham
     '''
@@ -47,33 +48,37 @@ def get_hg(mytm, myth, myVg)-> (np.ndarray, np.ndarray):
     g2e = np.zeros((n_fer_orbs,n_fer_orbs,n_fer_orbs,n_fer_orbs));
 
     # spin-independent hopping between sys orbs
-    for sysi in range(0,2*n_sys_orbs-2,2):
-        h1e[sysi,sysi+2] = -mytm; # up hopping
-        h1e[sysi+2,sysi] = -mytm;
-        h1e[sysi+1,sysi+1+2] = -mytm; # down hopping
-        h1e[sysi+1+2,sysi+1] = -mytm;
+    for sysi in range(0,n_loc_dof*n_sys_orbs-n_loc_dof,n_loc_dof):
+        # iter over local dofs (up, down, etc)
+        for loci in range(n_loc_dof):
+            h1e[sysi+loci,sysi+loci+n_loc_dof] = -mytm; 
+            h1e[sysi+loci+n_loc_dof,sysi+loci] = -mytm;
 
     # spin-independent hopping between sys and substrate
-    for sysi in range(0,2*n_sys_orbs,2):
-        for subi in range(2*n_sys_orbs,n_fer_orbs,2):
-            h1e[sysi,subi] = -myth; # up hopping
-            h1e[subi,sysi] = -myth;
-            h1e[sysi+1,subi+1] = -myth; # down hopping
-            h1e[subi+1,sysi+1] = -myth;
+    for sysi in range(0,n_loc_dof*n_sys_orbs,n_loc_dof):
+        for subi in range(n_loc_dof*n_sys_orbs,n_fer_orbs,n_loc_dof):
+            # iter over local dofs (up, down, etc)
+            for loci in range(n_loc_dof):
+                h1e[sysi+loci,subi+loci] = -myth; # down hopping
+                h1e[subi+loci,sysi+loci] = -myth;
 
     # substrate on-site
-    for subi in range(2*n_sys_orbs,n_fer_orbs,2):
-        h1e[subi,subi] = myVg;
-        h1e[subi+1,subi+1] = myVg;
+    for subi in range(n_loc_dof*n_sys_orbs,n_fer_orbs,n_loc_dof):
+        # iter over local dofs (up, down, etc)
+        for loci in range(n_loc_dof):
+            h1e[subi+loci,subi+loci] = myVg;
 
+    return h1e, g2e;
 
 
 #### time evol
-hilbert_size = 2**n_fer_orbs;
+hilbert_size = n_loc_dof**n_fer_orbs;
 bdims_init = n_fer_orbs**2;
 bdims = bdims_init*np.array([1,1.2,1.4,1.6]);
 bdims = bdims.astype(int);
-obs = tddmrg.kernel(h1e, g2e, nelecs, bdims,timefinal, timestep, verbose = verbose);
+harr, garr = get_hg(tm, 0, Vg); # initial state = no sub-sys hopping
+harr_neq, _ = get_hg(tm, th, Vg); # add in sub-sys hopping
+obs = tddmrg.kernel(harr, garr, harr_neq, nelecs, bdims,timefinal, timestep, verbose = verbose);
 
 # plot
 timei, Ei = 0,1;
