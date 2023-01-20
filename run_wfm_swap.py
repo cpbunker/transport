@@ -1,11 +1,11 @@
 '''
 Christian Bunker
 M^2QM at UF
-October 2021
+November 2022
 
-Quasi 1 body transmission through spin impurities project, part 4:
-Cobalt dimer modeled as two spin-3/2 impurities mo
-Spin interaction parameters calculated from dft, Jie-Xiang's Co dimer manuscript
+Scattering from two spin-s MSQs
+Want to make a SWAP gate
+solved in time-independent QM using wfm method in transport/wfm
 '''
 
 from transport import fci_mod, wfm

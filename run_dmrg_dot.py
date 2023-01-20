@@ -3,15 +3,16 @@ Christian Bunker
 M^2QM at UF
 September 2021
 
-Itinerant electron scattering from a single dot
-
-Scattering mechanism is Heisenberg exchange J=t^2/Vg
+Half filled 1D TB band of itinerant e's interacting with a single quantum dot
+under a small bias voltage.
+solved in time-dependent DMRG (approximate many body QM) method in transport/tddmrg
 '''
 
-import siam_current
+from transport import tddmrg
+from transport.tddmrg import wrappers
 
 import numpy as np
-import scipy
+import matplotlib.pyplot as plt
 
 import sys
 
@@ -48,12 +49,9 @@ noises = [1e-4, 1e-5, 1e-6, 0.0];
 if get_data: # must actually compute data
 
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    siam_current.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
+    tddmrg.wrappers.DotDataDmrg(nleads, nelecs, ndots, tf, dt, params, bdims, noises, spinstate = spinstate, prefix = "", namevar = "Vg", verbose = verbose);
 
 else:
-
-    import plot
-    import matplotlib.pyplot as plt
 
     # plot results
     datafs = sys.argv[2:]
@@ -61,7 +59,7 @@ else:
     mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
     title = "Itinerant electron scatters from spin impurity";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
-    plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
+    tddmrg.plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);
 
     
 

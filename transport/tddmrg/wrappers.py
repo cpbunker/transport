@@ -24,15 +24,14 @@ pyscf fci module:
 
 '''
 
-import ops
-
 import numpy as np
 import time
 
 #################################################
 #### get current data
 
-def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = "", prefix = "dat/", namevar="Vg", verbose = 0):
+def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, 
+spinstate = "", prefix = "dat/", namevar="Vg", verbose = 0) -> str:
     '''
     Walks thru all the steps for plotting current thru a SIAM, using FCI for equil state
     and td-FCI for nonequil dynamics. Impurity is a single quantum dot w/ gate voltage and hubbard U
@@ -53,13 +52,12 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     prefix: assigns prefix (eg folder) to default output file name
 
     Returns:
-    none, but outputs t, observable data to /dat/DotData/ folder
+    name of observables vs t data file
     '''
     
-    # imports here so dmrg can be run even if pyscf not on machine
+    # imports here so we can run without pyblock3
+    from transport import tdfci, fci_mod
     from pyscf import fci
-    import fci_mod
-    import td_fci
 
     # check inputs
     assert( isinstance(nleads, tuple) );
@@ -118,8 +116,8 @@ def DotData(nleads, nelecs, ndots, timestop, deltat, phys_params, spinstate = ""
     
     return fname; # end dot data
 
-
-def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, spinstate = "", prefix = "dat/", namevar = "Vg", verbose = 0):
+def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, 
+spinstate = "", prefix = "dat/", namevar = "Vg", verbose = 0) -> str:
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
     and td-DMRG for nonequilibirum dynamics. Impurity is a quantum dot w/ gate voltage, hubbard U
@@ -145,12 +143,13 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     prefix: assigns prefix (eg folder) to default output file name
 
     Returns:
-    none, but outputs t, observable data to /dat/DotDataDMRG/ folder
+    name of observables vs t data file
     '''
     
+    # imports here so we can run without pyscf
+    from transport import tddmrg, fci_mod
     from pyblock3 import fcidump, hamiltonian
     from pyblock3.algebra.mpe import MPE
-    import td_dmrg
 
     # check inputs
     assert( isinstance(nleads, tuple) );
@@ -172,7 +171,7 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     # get h1e and h2e for siam, h_imp = h_dot
     if(verbose): print("1. Construct hamiltonian")
     ham_params = t_leads, 1e-5, t_dots, 0.0, mu, V_gate, U, B, theta; # thyb, Vbias turned off, mag field in theta direction
-    h1e, g2e, input_str = ops.dot_hams(nleads, nelecs, ndots, ham_params, spinstate, verbose = verbose);
+    h1e, g2e, input_str = fci_mod.ops_dmrg.dot_hams(nleads, nelecs, ndots, ham_params, spinstate, verbose = verbose);
 
     # store physics in fci dump object
     hdump = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); # twos = 2S tells spin    
@@ -185,7 +184,7 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
 
     # initial ansatz for wf, in matrix product state (MPS) form
     psi_mps = h_obj.build_mps(bond_dims[0]);
-    E_mps_init = td_dmrg.compute_obs(h_mpo, psi_mps);
+    E_mps_init = tddmrg.compute_obs(h_mpo, psi_mps);
     if verbose: print("- Initial gd energy = ", E_mps_init);
 
     # ground-state DMRG
@@ -204,7 +203,7 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     # nonequil hamiltonian (as MPO)
     if(verbose > 2 ): print("- Add nonequilibrium terms");
     ham_params_neq = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb and Vbias on, no zeeman splitting
-    h1e_neq, g2e_neq, input_str_neq = ops.dot_hams(nleads,nelecs, ndots, ham_params_neq, "", verbose = verbose);
+    h1e_neq, g2e_neq, input_str_neq = fci_mod.ops_dmrg.dot_hams(nleads,nelecs, ndots, ham_params_neq, "", verbose = verbose);
     hdump_neq = fcidump.FCIDUMP(h1e=h1e_neq,g2e=g2e_neq,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]); 
     h_obj_neq = hamiltonian.Hamiltonian(hdump_neq, flat=True);
     h_mpo_neq = h_obj_neq.build_qc_mpo(); # got mpo
@@ -218,7 +217,7 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     # time propagate the noneq state
     # td dmrg uses highest bond dim
     if(verbose): print("3. Time propagation");
-    init, observables = td_dmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, [bond_dims[-1]], verbose = verbose);
+    init, observables = tddmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, [bond_dims[-1]], verbose = verbose);
 
     # write results to external file
     if namevar == "Vg":
@@ -240,100 +239,6 @@ def DotDataDmrg(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims,
     if(verbose): print("4. Saved data to "+fname);
     
     return fname; # end dot data dmrg
-
-
-def CustomData(h1e, g2e, h1e_neq, nelecs, timestop, deltat, fname = "fci_custom.npy", verbose = 0):
-
-    # imports here so dmrg can be run even if pyscf not on machine
-    from pyscf import fci
-    import fci_mod
-    import td_fci
-    
-    # unpack
-    norbs = np.shape(h1e)[0];
-    imp_i = [int(norbs/2)-1, int(norbs/2)]; # approx midpt
-
-    # get scf implementation siam by passing hamiltonian arrays
-    if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
-    # from scf instance, do FCI, get exact gd state of equilibrium system
-    E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
-    if( verbose > 3): print("|initial> = ",v_fci);
-
-    # from fci gd state, do time propagation
-    if(verbose): print("3. Time propagation")
-    init, observables = td_fci.kernel(h1e_neq, g2e, v_fci, mol, dotscf, timestop, deltat, imp_i, verbose = verbose);
-    
-    hstring = time.asctime();
-    hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
-    hstring += "\n"+str(h1e);
-    hstring += "\n"+str(h1e_neq);
-    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
-    np.save(fname, observables);
-    if (verbose): print("4. Saved data to "+fname);
-    
-    return; # end custom data
-
-
-
-
-#################################################
-#### manipulate current data
-
-def Fourier(signal, samplerate, angular = False, dominant = 0, shorten = False):
-    '''
-    Uses the discrete fourier transform to find the frequency composition of the signal
-
-    Args:
-    - signal, 1d np array of info vs time
-    - samplerate, num data pts per second. Necessary for freq to make any sense
-
-    Returns: tuple of
-    1d array of |FT|^2, 1d array of freqs
-    '''
-
-    # get vals
-    nx = len(signal);
-    dx = 1/samplerate;
-
-    # perform fourier transform
-    FT = np.fft.fft(signal)
-    nu = np.fft.fftfreq(nx, dx); # gets accompanying freqs
-
-    # manipulate data
-    FT = FT/nx; # norm missing in np.fft.fft
-    FT, nu = np.fft.fftshift(FT), np.fft.fftshift(nu); # puts zero freq at center
-    FT = np.absolute(FT)*np.absolute(FT); # get norm squared
-    if np.isrealobj(signal): # real signals have only positive freqs
-        # truncate FT, nu to nu > 0
-        FT, nu = FT[int(nx/2):], nu[int(nx/2):]
-        
-    # show freq resolution # dnu = 1/(tf - ti)
-    #print("dnu = ", nu[1] - nu[0] );
-
-    # if asked, convert to omega
-    if angular: nu = nu*2*np.pi;
-
-    # if asked, get and return dominant frequencies
-    if dominant:
-
-        # get as many of the highest freqs as asked for
-        nu_maxvals = np.zeros(dominant);
-        for i in range(dominant):
-
-            # get current largest FT val
-            imax = np.argmax(FT); # where dominant freq occurs
-            nu_maxvals[i] = nu[imax]; # place dominant freq in array
-
-            # get current max out of FT
-            FT = np.delete(FT, imax);
-            nu = np.delete(nu, imax);
-
-        return nu_maxvals; # end here instead
-
-    return  FT, nu;
-
     
 #################################################
 #### exec code

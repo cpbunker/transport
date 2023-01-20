@@ -3,8 +3,9 @@ Christian Bunker
 M^2QM at UF
 November 2022
 
-Scattering from a rectangular potential barrier, spin independent
-Time dependent tunnelling theory following bardeen
+Spin independent scattering from a rectangular potential barrier
+benchmarked to exact solution
+solved in time-dependent QM using bardeen theory method in transport/bardeen
 '''
 
 from transport import bardeen

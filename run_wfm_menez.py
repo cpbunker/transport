@@ -4,8 +4,10 @@ M^2QM at UF
 November 2022
 
 Scattering of a single electron from a spin-1/2 impurity w/ Kondo-like
-interaction strength J (e.g. menezes paper) solved in time-independent QM
-using Green's function method in transport/wfm
+interaction strength J (e.g. menezes paper)
+benchmarked to exact solution 
+solved in time-independent QM using wfm method in transport/wfm
+
 '''
 
 from transport import wfm, fci_mod, ops

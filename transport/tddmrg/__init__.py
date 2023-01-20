@@ -10,9 +10,6 @@ Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 Combine with fci code later
 '''
 
-from transport import ops
-from transport.ops import dmrg
-
 import numpy as np
 from pyblock3 import hamiltonian, fcidump
 from pyblock3.algebra.mpe import MPE

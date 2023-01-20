@@ -4,8 +4,9 @@ M^2QM at UF
 November 2022
 
 Scattering of a single electron from a spin-1/2 impurity w/ Kondo-like
-interaction strength J (e.g. menezes paper) solved in time-dependent QM
-using bardeen theory method in transport/bardeen
+interaction strength J (e.g. menezes paper) 
+benchmarked to exact solution
+solved in time-dependent QM using bardeen theory method in transport/bardeen
 '''
 
 from transport import bardeen, wfm
