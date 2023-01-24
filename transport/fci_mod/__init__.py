@@ -20,7 +20,7 @@ import numpy as np
 
 
 ##########################################################################################################
-#### conversions
+#### type conversions
 
 def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
@@ -143,6 +143,127 @@ def scf_to_arr(mol, scf_obj):
 
     return h1e, g2e;
 
+#### array dimensionality
+
+def scal_to_vec(scal, n_dof):
+    '''
+    Take a number or operator, which is a scalar in real space,
+    energy space, etc and make it a constant vector in that space
+    '''
+
+    return np.full((n_dof, *np.shape(scal)), scal).T;
+
+def vec_1d_to_2d(vec, n_loc_dof):
+    '''
+    Take a 1d vector (ie with spatial and spin dofs mixed)
+    to a 2d vector(ie with spatial and spin dofs separated)
+    '''
+    if( not isinstance(vec, np.ndarray)): raise TypeError;
+    if( len(vec) % n_loc_dof != 0): raise ValueError;
+
+    # unpack
+    n_spatial_dof = len(vec) // n_loc_dof;
+    new_vec = np.zeros((n_spatial_dof,n_loc_dof), dtype=vec.dtype);
+    assert(n_spatial_dof > n_loc_dof); # hacky but works
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only               
+        for loci in range(n_loc_dof): # iter over local dofs
+
+            # site, loc indices -> overall indices
+            ovi = sitei*n_loc_dof + loci;
+
+            # update
+            new_vec[sitei, loci] = vec[ovi];
+
+    return new_vec;
+
+def vec_2d_to_1d(vec):
+    '''
+    Take a 2d vector (ie with spatial and spin dofs separated)
+    to a 1d vector(ie with spatial and spin dofs mixed)
+    '''
+    if( not isinstance(vec, np.ndarray)): raise TypeError;
+
+    # unpack
+    n_spatial_dof, n_loc_dof = np.shape(vec);
+    n_ov_dof = n_spatial_dof*n_loc_dof;
+    new_vec = np.zeros((n_ov_dof,), dtype=vec.dtype);
+    assert(n_spatial_dof > n_loc_dof); # hacky but works
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only               
+        for loci in range(n_loc_dof): # iter over local dofs
+
+            # site, loc indices -> overall indices
+            ovi = sitei*n_loc_dof + loci;
+
+            # update
+            new_vec[ovi] = vec[sitei, loci];
+
+    return new_vec;
+
+def mat_2d_to_4d(mat, n_loc_dof):
+    '''
+    Take a 2d matrix (ie with spatial and spin dofs mixed)
+    to a 4d matrix (ie with spatial and spin dofs separated)
+    '''
+    if( not isinstance(mat, np.ndarray)): raise TypeError;
+    if( len(mat) % n_loc_dof != 0): raise ValueError;
+
+    # unpack
+    n_spatial_dof = len(mat) // n_loc_dof;
+    new_mat = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof), dtype=mat.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only
+        for sitej in range(n_spatial_dof): # same
+                
+            for loci in range(n_loc_dof): # iter over local dofs
+                for locj in range(n_loc_dof):
+
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    # update
+                    new_mat[sitei, sitej, loci, locj] = mat[ovi,ovj];
+
+    return new_mat;
+
+def mat_4d_to_2d(mat):
+    '''
+    Take a 4d matrix (ie with spatial and spin dofs separated)
+    to a 2d matrix (ie with spatial and spin dofs mixed)
+    '''
+    if( not isinstance(mat, np.ndarray)): raise TypeError;
+    if( np.shape(mat)[0] != np.shape(mat)[1]): raise ValueError;
+    if( np.shape(mat)[2] != np.shape(mat)[3]): raise ValueError;
+
+    # unpack
+    n_loc_dof = np.shape(mat)[-1];
+    n_spatial_dof = np.shape(mat)[0];
+    n_ov_dof = n_loc_dof*n_spatial_dof;
+    new_mat = np.zeros((n_ov_dof,n_ov_dof), dtype=mat.dtype);
+
+    # convert
+    for sitei in range(n_spatial_dof): # iter site dof only
+        for sitej in range(n_spatial_dof): # same
+                
+            for loci in range(n_loc_dof): # iter over local dofs
+                for locj in range(n_loc_dof):
+
+                    # site, loc indices -> overall indices
+                    ovi = sitei*n_loc_dof + loci;
+                    ovj = sitej*n_loc_dof + locj;
+
+                    # update
+                    new_mat[ovi,ovj] = mat[sitei, sitej, loci, locj];
+
+    return new_mat;
+
+#### second quant
+
 def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
     '''
     '''
@@ -171,6 +292,8 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         only if asked
         only if dets of interest do not couple with other dets (blocked off)
     '''
+    import itertools
+    
     if(not isinstance(Nps, np.ndarray)): raise TypeError;
     if(not isinstance(states, list)): raise TypeError;
     if(not isinstance(dets_interest, list)): raise TypeError;
@@ -293,6 +416,8 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         H = newH;
         
     return H;
+
+#### under construction
 
 def cj_to_ck(h1e, nleads):
     '''

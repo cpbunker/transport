@@ -9,7 +9,7 @@ benchmarked to exact solution
 solved in time-dependent QM using bardeen theory method in transport/bardeen
 '''
 
-from transport import bardeen, wfm
+from transport import bardeen
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -82,6 +82,27 @@ def print_H_alpha(H):
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",H[i,j,:,:]);
 
+def h_kondo(J,s2):
+    '''
+    Kondo interaction between spin 1/2 and spin s2
+    '''
+
+    n_loc_dof = int(2*(2*s2+1));
+    h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
+
+    if(s2 == 0.5):
+        h[0,0] = 1;
+        h[1,1] = -1;
+        h[2,2] = -1;
+        h[3,3] = 1;
+        h[1,2] = 2;
+        h[2,1] = 2;
+        h *= J/4;
+
+    else: raise ValueError("Unsupported s2");
+
+    return h;
+
 #################################################################
 #### all possible T_{\alpha -> \beta}
 
@@ -114,7 +135,7 @@ if True:
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                HC[NCi,NCj] = wfm.h_kondo(Jval,0.5);
+                HC[NCi,NCj] = h_kondo(Jval,0.5);
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
     print_H_alpha(HC);
@@ -134,7 +155,7 @@ if True:
 
     # bardeen results for spin flip scattering
     Ninfty = 50;
-    NL = 100;
+    NL = 400;
     NR = 1*NL;
     ##
     #### Notes

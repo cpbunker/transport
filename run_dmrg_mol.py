@@ -16,7 +16,7 @@ import sys
 
 # top level
 verbose = 3;
-get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
+#get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 
 ##################################################################################
 #### toy model of molecule

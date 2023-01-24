@@ -6,7 +6,7 @@ November 2022
 Bardeen tunneling theory in 1D
 '''
 
-#from transport import wfm
+from transport import fci_mod
 
 import numpy as np
 
@@ -34,7 +34,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # left well eigenstates
     HL, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(wfm.mat_4d_to_2d(HL),n_loc_dof));
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_ms = 0;
     for alpha in range(n_loc_dof):
@@ -54,12 +54,12 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
         psims_arr = np.append(psims, np.full((n_ms-len(Ems),n_spatial_dof), psims[-1]),axis=0);
         psimas_arr[alpha] = psims_arr;
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_ms)
-    kmas = np.arccos((Emas-wfm.scal_to_vec(VLa,n_ms))
-                    /(-2*wfm.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
+    kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_ms))
+                    /(-2*fci_mod.scal_to_vec(tLa,n_ms))); # wavenumbers in the left well
     
     # right well eigenstates  
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(wfm.mat_4d_to_2d(HR),n_loc_dof));
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     n_ns = 0;
     for beta in range(n_loc_dof):
@@ -80,12 +80,12 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
         psins_arr = np.append(psins, np.full((n_ns-len(Ens),n_spatial_dof), psins[-1]),axis=0);
         psinbs_arr[alpha] = psins_arr
     Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_ms)
-    knbs = np.arccos((Enbs-wfm.scal_to_vec(VRa,n_ns))
-                    /(-2*wfm.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
+    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_ns))
+                    /(-2*fci_mod.scal_to_vec(tRa,n_ns))); # wavenumbers in the left well
 
     # operator
     Hsys, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    Hdiff = wfm.mat_4d_to_2d(Hsys - HL);
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
 
     # visualize
     if(verbose > 4):
@@ -267,11 +267,11 @@ def matrix_element(beta,psin,op,alpha,psim):
     # flatten psis's
     psimalpha = np.zeros_like(psim);
     psimalpha[alpha] = psim[alpha]; # all zeros except for psi[alphas]
-    psimalpha = wfm.vec_2d_to_1d(psimalpha.T); # flatten
+    psimalpha = fci_mod.vec_2d_to_1d(psimalpha.T); # flatten
     assert(is_alpha_conserving(psimalpha,n_loc_dof));
     psinbeta = np.zeros_like(psin);
     psinbeta[beta] = psin[beta] # all zeros except for psi[beta]
-    psinbeta = wfm.vec_2d_to_1d(psinbeta.T); # flatten
+    psinbeta = fci_mod.vec_2d_to_1d(psinbeta.T); # flatten
     assert(is_alpha_conserving(psinbeta,n_loc_dof));
     return np.dot(psinbeta, np.dot(op,psimalpha));
 

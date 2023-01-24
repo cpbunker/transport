@@ -61,6 +61,7 @@ tnn = np.array(tnn);
 tnnn = np.zeros_like(tnn)[:-1];
 if verbose: print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
 plt.plot(hblocks[:,0,0]);
+plt.title('$V_j$');
 plt.show();  
 
 # source
