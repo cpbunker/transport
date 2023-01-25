@@ -14,11 +14,8 @@ from transport.fci_mod import ops_dmrg
 
 import numpy as np
 
-try:
-    from pyblock3 import hamiltonian, fcidump
-    from pyblock3.algebra.mpe import MPE
-except:
-    pass;
+from pyblock3 import hamiltonian, fcidump
+from pyblock3.algebra.mpe import MPE
 
 import time
 
@@ -58,7 +55,7 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
     if(verbose): print("2. DMRG solution");
     h_obj, h_mpo, psi_init = fci_mod.arr_to_mpo(h1e, g2e, nelecs, bdims[0]);
     if verbose: print("- built H as compressed MPO: ", h_mpo.show_bond_dims() );
-    E_init = compute_obs(h_mpo, psi_init);
+    E_init = ops_dmrg.compute_obs(h_mpo, psi_init);
     if verbose: print("- guessed gd energy = ", E_init);
 
     # solve ham with DMRG
@@ -94,7 +91,7 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
         observables[ti,0] = ti*dt; # time
         observables[ti,1] = E_t[-1]; # energy
         for mi in range(len(obs_mpos)): # iter over mpos
-            observables[ti,obs_gen+mi] = compute_obs(obs_mpos[mi], psi_t);
+            observables[ti,obs_gen+mi] = ops_dmrg.compute_obs(obs_mpos[mi], psi_t);
         
 
     # site specific observables at t=0 in array where rows are sites
@@ -105,16 +102,6 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
     return observables;
 
 
-##########################################################################################################
-#### utils
-
-def compute_obs(op,mps):
-    '''
-    Compute expectation value of observable repped by given operator from MPS wf
-    op must be an MPO
-    '''
-
-    return np.dot(mps.conj(), op @ mps)/np.dot(mps.conj(),mps);
 
 
 

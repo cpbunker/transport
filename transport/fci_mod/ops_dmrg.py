@@ -28,6 +28,13 @@ pyscf/fci module:
 
 import numpy as np
 
+def compute_obs(op,mps):
+    '''
+    Compute expectation value of observable repped by given operator from MPS wf
+    op must be an MPO
+    '''
+
+    return np.dot(mps.conj(), op @ mps)/np.dot(mps.conj(),mps);
 
 #######################################################
 #### 1 e operators, yield form

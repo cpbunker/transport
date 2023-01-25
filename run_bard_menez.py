@@ -108,7 +108,7 @@ def h_kondo(J,s2):
 
 if True:
     # benchmark w/out spin flips
-    barrier = False;
+    barrier = True;
 
     # spin dofs
     alphas = [0,1,2,3];
@@ -155,7 +155,7 @@ if True:
 
     # bardeen results for spin flip scattering
     Ninfty = 50;
-    NL = 400;
+    NL = 100;
     NR = 1*NL;
     ##
     #### Notes
