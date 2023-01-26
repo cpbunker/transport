@@ -86,10 +86,8 @@ def h_kondo(J,s2):
     '''
     Kondo interaction between spin 1/2 and spin s2
     '''
-
     n_loc_dof = int(2*(2*s2+1));
     h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
-
     if(s2 == 0.5):
         h[0,0] = 1;
         h[1,1] = -1;
@@ -98,8 +96,7 @@ def h_kondo(J,s2):
         h[1,2] = 2;
         h[2,1] = 2;
         h *= J/4;
-
-    else: raise ValueError("Unsupported s2");
+    else: raise NotImplementedError;
 
     return h;
 
@@ -111,7 +108,7 @@ if True:
     barrier = True;
 
     # spin dofs
-    alphas = [0,1,2,3];
+    alphas = [1,2];
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
     nplots_x = len(alphas);
     nplots_y = len(alphas);
@@ -130,28 +127,52 @@ if True:
 
     # central region
     tC = 1.0*tL;
-    NC = 11;
+    NC = 1;
+    if barrier: NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                HC[NCi,NCj] = h_kondo(Jval,0.5);
+                HC[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
-    print_H_alpha(HC);
 
     # central region prime
+    tCprime = tC;
+    VCprime = Vinfty;
     HCprime = np.zeros_like(HC);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                HCprime[NCi,NCj] = np.diagflat(np.diagonal(HC[NCi,NCj]));
+                HCprime[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
+                HCprime[NCi,NCj] += VCprime*np.eye(n_loc_dof);
             elif(abs(NCi -NCj) == 1): # nn hopping
-                HCprime[NCi,NCj] = -tC*np.eye(n_loc_dof);
-    print_H_alpha(HCprime);
+                HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
 
     if barrier: # get rid of off diag parts for benchmarking
-        HC = np.copy(HCprime);
+        HCprime = np.zeros_like(HC);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # exchange interaction
+                    HCprime[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
+                    # >>>> Problem here
+                    HCprime[NCi,NCj] += VCprime*np.eye(n_loc_dof);
+                    # >>>>>
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
+        HC= np.zeros_like(HC);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # exchange interaction
+                    HC[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC[NCi,NCj] += -tC*np.eye(n_loc_dof);
+
+    # print
+    print("HC =");
+    print_H_alpha(HC);
+    print("HCprime =");
+    print_H_alpha(HCprime);
 
     # bardeen results for spin flip scattering
     Ninfty = 50;
@@ -172,30 +193,30 @@ if True:
 
     # initial and final states
     alphas = [1,2];
-    for alpha in alphas:
-        for beta in alphas:
+    for alphai in range(len(alphas)):
+        for betai in range(len(alphas)):
+            alpha, beta = alphas[alphai], alphas[betai];
 
             # truncate to bound states and plot
-            yvals = np.diagonal(Tvals[beta,:,alpha,:]);
-            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[alpha,beta].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+            yvals = np.diagonal(Tvals[betai,:,alphai,:]);
+            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
+            axes[alphai,betai].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
             VC_barrier = None;
             if barrier: VC_barrier = -Jval/4;
-            ideal_Tvals_alpha = get_ideal_T(alpha, beta, xvals, tL[alpha,alpha],VL[alpha,alpha],NC,Jval,myVC = VC_barrier);
-            axes[alpha,beta].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-            #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
+            ideal_Tvals_alpha = get_ideal_T(alpha, beta, xvals, tL[alphai,alphai],VL[alphai,alphai],NC,Jval,myVC = VC_barrier);
+            axes[alphai,betai].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
 
             # error
             if False: #( barrier and (alpha == 1 and beta == 1)):
-                axright = axes[alpha,beta].twinx();
+                axright = axes[alphai,betai].twinx();
                 axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
                 axright.set_ylim(0,50);
 
             #format
-            axes[alpha,beta].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$")
-            #axes[alpha,-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$")
+            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
 
     # format and show
     axes[-1,-1].set_xscale('log', subs = []);
