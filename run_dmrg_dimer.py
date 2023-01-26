@@ -27,12 +27,13 @@ np.set_printoptions(precision = 4, suppress = True);
 # phys params, must be floats
 tm = 1.0; # hopping within molecule
 B_elec = 0.1; # B field * gfactor / Bohr magneton
-B_mol = 0.00; # B field * gfactor / Bohr magneton
+B_mol = 0.001; # B field * gfactor / Bohr magneton
 JH = 0.5;
 JK = -0.0; # turned off in get_h1e anyway
 
 # electrons
-n_mols = 3; # number of magnetic molecules
+n_mols = 2; # number of magnetic molecules
+assert n_mols == 2;
 s_mols = 1/2; # spin of the mols
 n_elecs = 1;
 n_loc_dof = int((2**n_elecs)*((2*s_mols+1)**n_mols));
@@ -67,7 +68,7 @@ if verbose: print("- guessed gd energy = ", E_init);
 dmrg_mpe = MPE(psi_init, h_mpo, psi_init);
 # MPE.dmrg method controls bdims,noises, n_sweeps,conv tol (tol),verbose (iprint)
 # noise typically needs to be high
-dmrg_obj = dmrg_mpe.dmrg(bdims=bdims, tol = 1e-8, iprint=-5, noises=noises);
+dmrg_obj = dmrg_mpe.dmrg(bdims=bdims, tol = 1e-8, iprint=-5,noises=noises);
 if verbose: print("- variational gd energy = ", dmrg_obj.energies[-1]);
 
 #### MPS state -> observables
@@ -113,7 +114,6 @@ for a in range(n_mols):
             SaSb_exp = np.dot(psi0,np.dot(SaSb_arr,psi0));
             if(verbose): print("-< S_"+str(a)+" S_"+str(b)+"> = ",SaSb_exp);
             SaSb_vals_exact[a,b] = SaSb_exp;
-            #assert False
 assert False
 
 # spin-fermion correlation
