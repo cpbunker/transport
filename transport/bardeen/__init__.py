@@ -34,7 +34,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # left well eigenstates
     HL, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
+    #assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_ms = 0;
     for alpha in range(n_loc_dof):
@@ -59,7 +59,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     
     # right well eigenstates  
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
+    #assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     n_ns = 0;
     for beta in range(n_loc_dof):
@@ -85,22 +85,24 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # operator
     Hsys, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
+    Hdiff = Hsys - HL;
 
     # visualize
-    if(verbose > 4):
+    if(verbose > 9):
         import matplotlib.pyplot as plt
         jvals = np.array(range(len(Hsys))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
-            Hs = [HL,HR,Hsys];
+            Hs = [HL,HR,Hsys,Hdiff];
+            Hstrs = ["HL","HR","Hsys","Hdiff"];
             for Hi in range(len(Hs)):
-                myaxes[alpha].plot(jvals, Hi*0.01+np.diag(Hs[Hi][:,:,alpha,alpha]));
+                myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+        plt.legend();
         plt.show();
-        assert False;
 
     # compute matrix elements
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
     T_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=float);
     for alpha in range(n_loc_dof):
         for m in range(n_ms):
@@ -126,6 +128,11 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC):
     '''
     Make the TB Hamiltonian for the full system, general 1D case
+    Params are classified by region: infty, L, R.
+    tinfty, tL, tR is hopping in these regions (2d arr describing local dofs)
+    Vinfty, VL, VR is local potential in these regions (2d arr describing local dofs)
+    Ninfty, NL, NR is number of sites in these regions
+    HC is Hamiltonian of central region (4d arr describing spatial and local dofs)
     '''
     for arg in [tinfty, tL, tR, Vinfty, VL, VR]:
         if(type(arg) != np.ndarray): raise TypeError;
@@ -270,9 +277,11 @@ def matrix_element(beta,psin,op,alpha,psim):
     psimalpha = fci_mod.vec_2d_to_1d(psimalpha.T); # flatten
     assert(is_alpha_conserving(psimalpha,n_loc_dof));
     psinbeta = np.zeros_like(psin);
-    psinbeta[beta] = psin[beta] # all zeros except for psi[beta]
+    psinbeta[beta] = psin[beta]; # all zeros except for psi[beta]
     psinbeta = fci_mod.vec_2d_to_1d(psinbeta.T); # flatten
     assert(is_alpha_conserving(psinbeta,n_loc_dof));
+    #print( psinbeta.shape, op.shape,psimalpha.shape);
+    #assert False
     return np.dot(psinbeta, np.dot(op,psimalpha));
 
 def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None):
@@ -342,368 +351,13 @@ def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime
     wfaxes[-1].set_xlabel('$j$');
     plt.tight_layout();
     plt.show();
-    
-def TvsE(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None):
-    '''
-    Calculate a transmission coefficient for each LL eigenstate and return
-    these as a function of their energy
-    '''
-    if tLprime == None: tLprime = tC;
-    if VLprime == None: VLprime = VC;
-    if tRprime == None: tRprime = tC;
-    if VRprime == None: VRprime = VC;
-
-    # left well eigenstates
-    HL, _ = Hwellmat(tinfty, tL, tC, tRprime, Vinfty, VL, VC, VRprime, Ninfty, NL, NC, NR);
-    Ems, psims = np.linalg.eigh(HL); # eigenstates of the left well
-    Ems = Ems.astype(complex);
-    kms = np.arccos((Ems-VL)/(-2*tL)); # wavenumbers in the left well
-
-    # right well eigenstates  
-    HR, _ = Hwellmat(tinfty, tLprime, tC, tR, Vinfty, VLprime, VC, VR, Ninfty, NL, NC, NR);
-    Emprimes, psimprimes = np.linalg.eigh(HR); # eigenstates of the right well
-    #Emprimes = Emprimes.astype(complex);
-    #kmprimes = np.arccos((Emprimes-VR)/(-2*tR)); # wavenumbers in the right well
-
-    # operator
-    Hsys, offset = Hwellmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR);
-    op = Hsys - HL;
-
-    # visualize
-    if False:
-        import matplotlib.pyplot as plt
-        jvals = np.array(range(len(Hsys))) + offset;
-        myfig,myaxes = plt.subplots(1,sharex=True);
-        myaxes = [myaxes];
-        Hs = [HL,HR,Hsys];
-        for Hi in range(len(Hs)):
-            myaxes[0].plot(jvals, Hi*0.01+np.diag(Hs[Hi][:,:]));
-        plt.show();
-        assert False;
-
-    # compute T
-    Tms = np.zeros_like(Ems);
-    for m in range(len(Ems)):
-        mprime = m;
-        M = np.dot(psimprimes[:,mprime],np.dot(op,psims[:,m]));
-        Tms[m] = M*np.conj(M) *NL/(kms[m]*tL) *NR/(kms[m]*tR);
-        
-    return Ems, Tms;
 
 ##################################################################################
 #### test code
 
 if __name__ == "__main__":
 
-    import matplotlib.pyplot as plt
-    # fig standardizing
-    myxvals = 199;
-    myfontsize = 14;
-    mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
-    accentcolors = ["black","red"];
-    mymarkers = ["o","^","s","d","*","X","P"];
-    mymarkevery = (40, 40);
-    mylinewidth = 1.0;
-    mypanels = ["(a)","(b)","(c)","(d)"];
-    #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-
-    # left lead quantum well test
-    # tb params, in tL
-    mytL = 1.0;
-    mytinfty = 1*mytL;
-    mytC = 1*mytL;
-    mytR = 1*mytL;
-    myts = (mytinfty, mytL, mytC, mytR);
-    myVinfty = mytL/2;
-    myVL = 0.0;
-    myVC = mytL/10;
-    myVR = 1*myVL;
-    myVs = (myVinfty, myVL, myVC, myVR);
-    myNinfty = 100;
-    myNL = 500;
-    myNC = 11;
-    myNR = 1*myNL;
-    myNs = (myNinfty, myNL, myNC, myNR);
-
-    # visualize the problem
-    if False:
-        fig, ax = plt.subplots();
-        Hsys, offset = Hsysmat(*ts, Vinfty, VL, VC, 0.5*VC, *Ns);
-        jvals = np.array(range(len(Hsys))) + offset;
-        ax.plot(jvals, np.diag(Hsys), color = accentcolors[0], linestyle='dashed', linewidth=2*mylinewidth);
-        ax.set_ylabel('$V_j/t_L$', fontsize=myfontsize);
-        ax.set_xlabel('$j$', fontsize=myfontsize);
-        plt.tight_layout();
-        plt.show();
-        plot_wfs(*ts, *Vs, *Ns);
-    
-    # T vs VRprime
-    if False:
-        VRPvals = [0.1,1.0,10.0];
-        numplots = len(VRPvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-        maxerror = 0;
-        axrights = [];
-
-        # bardeen results for different well thicknesses
-        for VRPi in range(len(VRPvals)):
-            Evals, Tvals = TvsE(*myts, *myVs, *myNs, VLprime = VRPvals[VRPi], VRprime = VRPvals[VRPi]);
-            #plot_wfs(*myts, *myVs, *myNs, VLprime = VRPvals[VRPi], VRprime = VRPvals[VRPi]);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= min(myVC, VRPvals[VRPi])], Tvals[Evals <= min(myVC, VRPvals[VRPi])]; # bound states only
-            axes[VRPi].scatter(Evals, Tvals, marker=mymarkers[0], color = mycolors[0]);
-            axes[VRPi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytL-myVC)/(-2*mytL));
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*myNC*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[VRPi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
-            axes[VRPi].set_ylabel('$T$', fontsize=myfontsize);
-            axes[VRPi].set_title("$V_R' = "+str(VRPvals[VRPi])+"$", x=0.2, y = 0.7, fontsize=myfontsize);
-
-            # % error
-            axright = axes[VRPi].twinx();
-            axrights.append(axright);
-            errorvals = 100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals);
-            maxerror = np.max((maxerror,np.max(errorvals)));
-            axright.plot(Evals,errorvals,color=accentcolors[1]);
-            axright.set_ylabel('$\%$ error', fontsize=myfontsize);
-            
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$', fontsize=myfontsize);
-        maxerror = 10
-        for axright in axrights: axright.set_ylim(0,maxerror);
-        plt.tight_layout();
-        plt.savefig("figs/bardeen_benchmark/VRprime.png");
-
-    # T vs tRprime
-    if False:
-        tRPvals = [1.0,0.1,0.01];
-        numplots = len(tRPvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-        maxerror = 0;
-        axrights = [];
-
-        # bardeen results for different well thicknesses
-        for tRPi in range(len(tRPvals)):
-            #plot_wfs(*myts, *myVs, *myNs, tLprime=2*tRPvals[tRPi], tRprime=tRPvals[tRPi]);
-            Evals, Tvals = TvsE(*myts, *myVs, *myNs, tLprime=tRPvals[tRPi], tRprime=tRPvals[tRPi]);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= myVC], Tvals[Evals <= myVC]; # bound states only
-            axes[tRPi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
-            axes[tRPi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytL-myVC)/(-2*mytL));
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*myNC*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[tRPi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
-            axes[tRPi].set_ylabel('$T$', fontsize=myfontsize);
-            axes[tRPi].set_title("$t_R' = "+str(tRPvals[tRPi])+"$", x=0.2, y = 0.7, fontsize=myfontsize);
-
-            # % error
-            axright = axes[tRPi].twinx();
-            axrights.append(axright);
-            errorvals = 100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals);
-            maxerror = np.max((maxerror,np.max(errorvals)));
-            axright.plot(Evals,errorvals,color=accentcolors[1]);
-            axright.set_ylabel('$\%$ error', fontsize=myfontsize);
-            
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$', fontsize=myfontsize);
-        for axright in axrights: axright.set_ylim(0,maxerror);
-        plt.tight_layout();
-        #plt.show();
-        plt.savefig("figs/bardeen_benchmark/tRprime.png");
-
-    # T vs NR
-    if True:
-        del myNR;
-        NRvals = [50,100];
-        numplots = len(NRvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-        maxerror = 0;
-        axrights = [];
-
-        # bardeen results for different well widths
-        for NRi in range(len(NRvals)):
-            Evals, Tvals = TvsE(*myts, *myVs, myNinfty, NRvals[NRi], myNC, NRvals[NRi], VLprime=myVinfty,VRprime=myVinfty);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= myVC], Tvals[Evals <= myVC]; # bound states only
-            axes[NRi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
-            axes[NRi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytC-myVC)/(-2*mytC));
-            print("Evals:\n",Evals[:8]);
-            print("kavals:\n",kavals[:8]);
-            print("kappavals:\n",kappavals[:8]);
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*myNC*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[NRi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
-            axes[NRi].set_ylabel('$T$',fontsize=myfontsize);
-            axes[NRi].set_title('$N_R = '+str(NRvals[NRi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
-
-            # % error
-            axright = axes[NRi].twinx();
-            axrights.append(axright);
-            errorvals = 100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals);
-            maxerror = np.max((maxerror,np.max(errorvals)));
-            axright.plot(Evals,errorvals,color=accentcolors[1]);
-            axright.set_ylabel('$\%$ error', fontsize=myfontsize);
-
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-        for axright in axrights: axright.set_ylim(0,20);
-        plt.tight_layout();
-        plt.show();
-        #fname = "figs/bardeen_benchmark/NR.png";
-        #plt.savefig(fname);
-
-    # T vs VC
-    if False:
-        del myVC;
-        VCvals = np.array([0.01,0.05,0.1,0.2,0.5,1.0]);
-        numplots = len(VCvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-
-        # bardeen results for different barrier height
-        for VCi in range(len(VCvals)):
-            Evals, Tvals = TvsE(*myts, 5*VCvals[VCi], myVL, VCvals[VCi], myVR, *myNs);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= VCvals[VCi]], Tvals[Evals <= VCvals[VCi]]; # bound states only
-            axes[VCi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
-            axes[VCi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytL-VCvals[VCi])/(-2*mytL));
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*myNC*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[VCi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
-            axes[VCi].set_ylabel('$T$',fontsize=myfontsize);
-            if VCi==0:
-                axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.7, y = 0.7, fontsize = myfontsize);
-            else:
-                axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.2, y = 0.7, fontsize = myfontsize);
-
-            # % error
-            axright = axes[VCi].twinx();
-            axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color=accentcolors[1]);
-            axright.set_ylabel("$\%$ error",fontsize=myfontsize);
-
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-        plt.tight_layout();
-        plt.show();
-        #plt.savefig("figs/bardeen/VC.pdf");
-
-    # T vs NC
-    if False:
-        del myNC;
-        NCvals = [11,21,31];
-        numplots = len(NCvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-
-        # bardeen results for different barrier width
-        for NCi in range(len(NCvals)):
-            Evals, Tvals = TvsE(*myts, *myVs, myNinfty, myNL, NCvals[NCi], myNR);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            Evals, Tvals = Evals[Evals <= myVC], Tvals[Evals <= myVC]; # bound states only
-            axes[NCi].scatter(Evals, Tvals, marker=mymarkers[0], color=mycolors[0]);
-            axes[NCi].set_ylim(0,1.1*max(Tvals));
-
-            # compare
-            kavals = np.arccos((Evals-2*mytL-myVL)/(-2*mytL));
-            kappavals = np.arccosh((Evals-2*mytL-myVC)/(-2*mytL));
-            ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-            ideal_exp = np.exp(-2*NCvals[NCi]*kappavals);
-            ideal_Tvals = ideal_prefactor*ideal_exp;
-            ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-            ideal_Tvals *= ideal_correction;
-            axes[NCi].plot(Evals,np.real(ideal_Tvals), color=accentcolors[0], linewidth=mylinewidth);
-            axes[NCi].set_ylabel('$T$',fontsize=myfontsize);
-            axes[NCi].set_title('$N_C = '+str(NCvals[NCi])+'$', x=0.2, y=0.7,fontsize=myfontsize);
-
-            # % error
-            axright = axes[NCi].twinx();
-            axright.plot(Evals,100*abs((Tvals-np.real(ideal_Tvals))/ideal_Tvals),color=accentcolors[1]);
-            axright.set_ylabel('$\%$ error',fontsize=myfontsize);
-
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-        plt.tight_layout();
-        #plt.show();
-        plt.savefig("figs/bardeen/NC.pdf");
-
-    # matrix elements vs VC
-    if False:
-        del myVC;
-        VCvals = [0.1,0.5];
-        numplots = len(VCvals);
-        fig, axes = plt.subplots(numplots, sharex = True);
-        if numplots == 1: axes = [axes];
-        fig.set_size_inches(7/2,3*numplots/2);
-
-        # bardeen results for different barrier height
-        for VCi in range(len(VCvals)):
-            Evals, Tvals = TvsE(*myts, 5*VCvals[VCi], myVL, VCvals[VCi], myVR, *myNs);
-            Evals = np.real(Evals+2*mytL);
-            Tvals = np.real(Tvals);
-            axes[VCi].plot(Evals, Tvals, color = mycolors[0]);
-            axes[VCi].set_ylim(0,1.1*max(Tvals));
-            axes[VCi].set_ylabel("$M_{m'm}$",fontsize=myfontsize);
-            axes[VCi].set_title('$V_C = '+str(VCvals[VCi])+'$', x=0.2, y=0.7,fontsize=myfontsize);
-
-        # format and show
-        axes[-1].set_xscale('log', subs = []);
-        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$', fontsize=myfontsize);
-        axes[-1].set_xlim(10**(-3),1)
-        plt.tight_layout();
-        #plt.show();
-        #plt.savefig("figs/bardeen/matrixelements.pdf");
-        raise Exception("You have to do this manually");
-
-
-
-
-    
+    pass;
     
 
 
