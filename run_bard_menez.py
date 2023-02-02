@@ -106,7 +106,6 @@ def h_kondo(J,s2):
 if True:
     # benchmark w/out spin flips
     barrier = False;
-    bury = False;
 
     # spin dofs
     alphas = [1,2];
@@ -124,17 +123,17 @@ if True:
     Vinfty = 0.5*tL;
     VL = 0.0*tL;
     VR = 0.0*tL;
-    Jval = -0.4;
+    Jval = -0.7;
 
     # central region
     tC = 1.0*tL;
-    NC = 1;
+    NC = 3;
     if barrier: NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if barrier:
+                if(barrier or NCi == 1):
                     HC[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
                 else:
                     HC[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
@@ -147,19 +146,18 @@ if True:
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if False:
+                if(barrier or NCi == 1):
                     HCprime[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
                 else:
-                    HCprime[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
-                if bury: HCprime[NCi,NCj] += Vinfty*np.eye(n_loc_dof);
+                    #HCprime[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
+                    #HCprime[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
+                    pass;
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
 
     # print
-    print("HC =");
-    print_H_alpha(HC);
-    print("HCprime =");
-    print_H_alpha(HCprime);
+    print("HC - HCprime =");
+    print_H_alpha(HC-HCprime);
 
     # bardeen results for spin flip scattering
     Ninfty = 20;

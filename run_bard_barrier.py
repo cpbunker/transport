@@ -133,7 +133,7 @@ if False:
     plt.show();
 
 # T vs VLR prime
-if False:
+if True:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);
@@ -156,15 +156,14 @@ if False:
     # bardeen results for heights of barrier covering well
     for Vprimei in range(len(Vprimevals)):
         Ninfty = 20;
-        NL = 500;
+        NL = 100;
         NR = 1*NL;
         VLprime = Vprimevals[Vprimei];
         VRprime = Vprimevals[Vprimei];
 
         # central region prime
         tCprime = 1*tL;
-        VCprime = Vprimevals[Vprimei];
-        #VCprime = VC;
+        VCprime = VC;
         HCprime = np.zeros_like(HC);
         for j in range(NC):
             HCprime[j,j] += VCprime;
@@ -212,7 +211,7 @@ if False:
     plt.show();
 
 # worst case vs best case
-if True:
+if False:
 
     numplots = 3;
     fig, axes = plt.subplots(numplots, sharex = True);
