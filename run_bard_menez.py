@@ -127,15 +127,16 @@ if True:
 
     # central region
     tC = 1.0*tL;
+    VC = -Jval/4;
     NC = 3;
     if barrier: NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if(barrier or NCi == 1):
-                    HC[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
-                else:
+                if(barrier or NCi == NC //2): # spinless barrier on central site
+                    HC[NCi,NCj] += VC*np.eye(n_loc_dof);
+                else: # kondo exchange right at barrier-well boundary
                     HC[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
@@ -146,11 +147,9 @@ if True:
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if(barrier or NCi == 1):
-                    HCprime[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
-                else:
-                    #HCprime[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
-                    #HCprime[NCi,NCj] += np.diagflat(np.diagonal(h_kondo(Jval,0.5)[1:3,1:3]));
+                if(barrier or NCi == NC // 2): # spinless barrier on central site
+                    HCprime[NCi,NCj] += VC*np.eye(n_loc_dof);
+                else: 
                     pass;
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
@@ -194,14 +193,9 @@ if True:
             ideal_Tvals_alpha = get_ideal_T(alpha, beta, xvals, tL[alphai,alphai],VL[alphai,alphai],NC,Jval,myVC = VC_barrier);
             axes[alphai,betai].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
 
-            # error
-            if False: #( barrier and (alpha == 1 and beta == 1)):
-                axright = axes[alphai,betai].twinx();
-                axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
-                axright.set_ylim(0,50);
-
             #format
-            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$")
+            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
+            axes[alphai,betai].set_ylim(0,0.5);
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
 
     # format and show
