@@ -15,7 +15,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True) -> tuple:
     '''
     coefficient for a transmitted up and down electron
     Args
@@ -84,7 +84,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True):
     
     return Rs, Ts;
 
-def Hmat(h, tnn, tnnn, verbose = 0):
+def Hmat(h, tnn, tnnn, verbose = 0) -> np.ndarray:
     '''
     Make the hamiltonian H for reduced dimensional N+2 x N+2 system
     where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
@@ -133,7 +133,7 @@ def Hmat(h, tnn, tnnn, verbose = 0):
                         
     return H; # end Hmat
 
-def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
+def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
@@ -205,7 +205,7 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0):
 
     return Hp;
 
-def Green(h, tnn, tnnn, tl, E, verbose = 0):
+def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     '''
     Greens function for system described by
     Args

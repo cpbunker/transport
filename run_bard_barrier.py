@@ -28,35 +28,6 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-# tight binding params
-n_loc_dof = 1; 
-tL = 1.0*np.eye(n_loc_dof);
-tinfty = 1.0*tL;
-tR = 1.0*tL;
-# ts = (tinfty, tL, tinfty, tR, tinfty);
-Vinfty = 0.5*tL;
-VL = 0.0*tL;
-VR = 0.0*tL;
-# Vs = (Vinfty, VL, Vinfty, VR, Vinfty);
-
-def get_ideal_T(Es,mytL,myVL,mytC,myVC,myNC):
-    '''
-    Get analytical T for square barrier scattering, landau & lifshitz pg 79
-    '''
-
-    kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
-    kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
-    print("Es:\n", Es[:8]);
-    print("kavals:\n", kavals[:8]);
-    print("kappavals:\n", kappavals[:8]);
-
-    ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-    ideal_exp = np.exp(-2*myNC*kappavals);
-    ideal_T = ideal_prefactor*ideal_exp;
-    ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-    ideal_T *= ideal_correction;
-    return np.real(ideal_T);
-
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
     for alpha in range(np.shape(H)[-1]):
@@ -64,6 +35,15 @@ def print_H_j(H):
 
 #################################################################
 #### benchmarking T in spinless 1D case
+
+# tight binding params
+n_loc_dof = 1; 
+tL = 1.0*np.eye(n_loc_dof);
+tinfty = 1.0*tL;
+tR = 1.0*tL;
+Vinfty = 0.5*tL;
+VL = 0.0*tL;
+VR = 0.0*tL;
 
 # T vs NL
 if False:
@@ -88,7 +68,6 @@ if False:
 
     # central region prime
     HCprime = np.copy(HC);
-    print_H_j(HCprime);
 
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):
@@ -101,24 +80,25 @@ if False:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
-                                      Ninfty, NL, NR, HC, HCprime,cutoff=VC[0,0],verbose=verbose);
+                                      Ninfty, NL, NR, HC, HCprime,
+                                      E_cutoff=VC[0,0], verbose=verbose);
 
-        # % error
+        # benchmark
         axright = axes[NLi].twinx();
+        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
 
         # for each dof
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
             yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+            yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[NLi].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
-            # compare
-            ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            axes[NLi].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-            #axes[NLi].set_ylim(0,1.1*max(Tvals[alpha]));
-            axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+            # % error
+            axes[NLi].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize);
@@ -128,12 +108,12 @@ if False:
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
 
 # T vs VLR prime
-if True:
+if False:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);
@@ -153,6 +133,9 @@ if True:
         HC[j+1,j] += -tC;
     print_H_j(HC);
 
+    # central region prime
+    HCprime = np.copy(HC);
+
     # bardeen results for heights of barrier covering well
     for Vprimei in range(len(Vprimevals)):
         Ninfty = 20;
@@ -160,17 +143,6 @@ if True:
         NR = 1*NL;
         VLprime = Vprimevals[Vprimei];
         VRprime = Vprimevals[Vprimei];
-
-        # central region prime
-        tCprime = 1*tL;
-        VCprime = VC;
-        HCprime = np.zeros_like(HC);
-        for j in range(NC):
-            HCprime[j,j] += VCprime;
-        for j in range(NC-1):
-            HCprime[j,j+1] += -tCprime;
-            HCprime[j+1,j] += -tCprime;
-        print_H_j(HCprime);
         
         # bardeen.kernel syntax:
         # tinfty, tL, tLprime, tR, tRprime,
@@ -179,28 +151,29 @@ if True:
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      cutoff=VC[0,0],verbose=1);
+                                      E_cutoff=VC[0,0],verbose=1);
 
         # % error
         axright = axes[Vprimei].twinx();
+        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+
 
         # for each dof
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
             yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+            yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[Vprimei].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
-            # compare
-            ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            axes[Vprimei].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-            #axes[Vprimei].set_ylim(0,1.1*max(Tvals[alpha]));
-            axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+            # % error
+            axes[Vprimei].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize);
-        axright.set_ylim(0,105);
+        axright.set_ylim(0,50);
         axes[Vprimei].set_ylabel('$T$',fontsize=myfontsize);
         axes[Vprimei].set_title("$V_L' = "+str(Vprimevals[Vprimei][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
@@ -211,7 +184,7 @@ if True:
     plt.show();
 
 # worst case vs best case
-if False:
+if True:
 
     numplots = 3;
     fig, axes = plt.subplots(numplots, sharex = True);
@@ -247,24 +220,25 @@ if False:
     # Ninfty, NL, NR, HC,HCprime,
     Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,cutoff=VC[0,0],verbose=verbose);
+                                  Ninfty, NL, NR, HC, HCprime,
+                                  E_cutoff=VC[0,0],verbose=verbose);
 
-    # % error
+    # benchmark
     axright = axes[axno].twinx();
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
 
     # for each dof
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
         yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
         axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
-        # compare
-        ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-        axes[axno].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-        #axes[axno].set_ylim(0,1.1*max(Tvals[alpha]));
-        axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+        # % error
+        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize);
@@ -285,24 +259,26 @@ if False:
     # Ninfty, NL, NR, HC,HCprime,
     Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,cutoff=VC[0,0],verbose=verbose);
+                                  Ninfty, NL, NR, HC, HCprime,
+                                  E_cutoff=VC[0,0],verbose=verbose);
 
-    # % error
+    # benchmark
     axright = axes[axno].twinx();
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+
 
     # for each dof
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
         yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
         axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
-        # compare
-        ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-        axes[axno].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-        #axes[axno].set_ylim(0,1.1*max(Tvals[alpha]));
-        axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+        # % error
+        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize);
@@ -336,9 +312,11 @@ if False:
     # Ninfty, NL, NR, HC,HCprime,
     Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,cutoff=VC[0,0],verbose=verbose);
+                                  Ninfty, NL, NR, HC, HCprime,
+                                  E_cutoff=VC[0,0],verbose=verbose);
 
-    # % error
+    # benchmark
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
     axright = axes[axno].twinx();
 
     # for each dof
@@ -346,14 +324,13 @@ if False:
 
         # truncate to bound states and plot
         yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
+        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
         axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
-        # compare
-        ideal_Tvals_alpha = get_ideal_T(xvals,tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-        axes[axno].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
-        #axes[axno].set_ylim(0,1.1*max(Tvals[alpha]));
-        axright.plot(xvals,100*abs((yvals-np.real(ideal_Tvals_alpha))/ideal_Tvals_alpha),color=accentcolors[1]);
+        # % error
+        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize);
@@ -363,7 +340,7 @@ if False:
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
 
