@@ -135,7 +135,7 @@ if True:
                                   E_cutoff=HC[0,0,1,1],verbose=1);
 
     # benchmark
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=1);
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
 
     # initial and final states

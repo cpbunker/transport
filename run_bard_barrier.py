@@ -157,7 +157,6 @@ if False:
         axright = axes[Vprimei].twinx();
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
 
-
         # for each dof
         for alpha in range(n_loc_dof): 
 
@@ -265,7 +264,6 @@ if True:
     # benchmark
     axright = axes[axno].twinx();
     Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
-
 
     # for each dof
     for alpha in range(n_loc_dof): 
