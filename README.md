@@ -2,7 +2,7 @@
 Methods for calculating transport through magnetic molecules / spin impurities
 
 ## transport/wfm
-Given a single electron incident on an interacting scattering region, calculate the steady state transmission coefficient. The key feature of this formalism is sensitivity to the quantum numbers of the entire system (scattered electron and scattering region), including the ability to account for changes to the quantum numbers of the scattering region during the scattering process. This accounting is implemented with the methods outlined in *Conductance calculations for quantum wires and interfaces: mode matching and Green's functions* b Khomyakov et al, 2005.
+Given a single electron incident on an interacting central region, calculate the transmission and reflection coefficients within time-independent scattering theory. The key feature of this formalism is sensitivity to the quantum numbers of the entire system (scattered electron and scattering region), including the ability to account for changes to the quantum numbers of the scattering region during the scattering process. This accounting is implemented with the methods outlined in *Conductance calculations for quantum wires and interfaces: mode matching and Green's functions* b Khomyakov et al, 2005.
 
 The key function is wfm.kernel() which outputs transmission and reflection information, given
 - a system described by an array *h* of on site block hamiltonians, and arrays *tnn, tnnn* of nearest neighbor and next nearest neighbor hopping matrices
