@@ -22,7 +22,7 @@ myxvals = 199;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","^","s","d","*","X","P"];
+mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -32,22 +32,6 @@ def print_H_j(H):
     assert(len(np.shape(H)) == 4);
     for alpha in range(np.shape(H)[-1]):
         print("H["+str(alpha)+","+str(alpha)+"] =\n",H[:,:,alpha,alpha]);
-
-def get_T_exact(Es,mytL,myVL,mytC,myVC,myNC):
-    '''
-    Get analytical T for square barrier scattering, landau & lifshitz pg 79
-    '''
-    kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
-    kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
-    print("Es:\n", Es[:8]);
-    print("kavals:\n", kavals[:8]);
-    print("kappavals:\n", kappavals[:8]);
-    exact_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-    exact_exp = np.exp(-2*myNC*kappavals);
-    exact_T = exact_prefactor*exact_exp;
-    exact_correction = np.power(1+(exact_prefactor-2)*exact_exp+exact_exp*exact_exp,-1);
-    exact_T *= exact_correction;
-    return np.array([np.real(exact_T)]);
 
 #################################################################
 #### benchmarking T in spinless 1D case
@@ -62,7 +46,7 @@ VL = 0.0*tL;
 VR = 0.0*tL;
 
 # T vs NL
-if False:
+if True:
 
     NLvals = [50,100,500];
     numplots = len(NLvals);
@@ -97,27 +81,25 @@ if False:
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=VC[0,0], verbose=verbose);
+                                      E_cutoff=VC[0,0], verbose=1);
 
         # benchmark
         axright = axes[NLi].twinx();
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
         # for each dof
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
-            yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-            yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[NLi].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+            axes[NLi].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[NLi].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+            axes[NLi].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
 
         # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
         axes[NLi].set_ylabel('$T$',fontsize=myfontsize);
         axes[NLi].set_title('$N_L = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
@@ -129,7 +111,7 @@ if False:
     plt.show();
 
 # T vs VLR prime
-if True:
+if False:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);
@@ -155,7 +137,7 @@ if True:
     # bardeen results for heights of barrier covering well
     for Vprimei in range(len(Vprimevals)):
         Ninfty = 20;
-        NL = 100;
+        NL = 200;
         NR = 1*NL;
         VLprime = Vprimevals[Vprimei];
         VRprime = Vprimevals[Vprimei];
@@ -182,12 +164,11 @@ if True:
             axes[Vprimei].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            Tvals_bench = get_T_exact(xvals, tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
-            axes[Vprimei].plot(xvals, Tvals_bench[alpha], color=accentcolors[0], linewidth=mylinewidth);
+            axes[Vprimei].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
 
         # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
         axes[Vprimei].set_ylabel('$T$',fontsize=myfontsize);
         axes[Vprimei].set_title("$V_L' = "+str(Vprimevals[Vprimei][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
@@ -240,23 +221,21 @@ if False:
 
     # benchmark
     axright = axes[axno].twinx();
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
     # for each dof
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
-        yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
 
     # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
     axright.set_ylim(0,50);
     axes[axno].set_ylabel('$T$',fontsize=myfontsize);
     axes[axno].set_title("Worst", x=0.2, y = 0.7, fontsize=myfontsize);
@@ -279,23 +258,21 @@ if False:
 
     # benchmark
     axright = axes[axno].twinx();
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
     # for each dof
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
-        yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
 
     # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
     axright.set_ylim(0,50);
     axes[axno].set_ylabel('$T$',fontsize=myfontsize);
     axes[axno].set_title("Best", x=0.2, y = 0.7, fontsize=myfontsize);
@@ -330,24 +307,22 @@ if False:
                                   E_cutoff=VC[0,0],verbose=verbose);
 
     # benchmark
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
     axright = axes[axno].twinx();
 
     # for each dof
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
-        yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-        yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
 
     # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
     axright.set_ylim(0,105);
     axes[axno].set_ylabel('$T$',fontsize=myfontsize);
     axes[axno].set_title("Best + burying", x=0.2, y = 0.7, fontsize=myfontsize);

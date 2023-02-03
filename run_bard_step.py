@@ -22,7 +22,7 @@ myxvals = 199;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","^","s","d","*","X","P"];
+mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -32,6 +32,22 @@ def print_H_j(H):
     assert(len(np.shape(H)) == 4);
     for alpha in range(np.shape(H)[-1]):
         print("H["+str(alpha)+","+str(alpha)+"] =\n",H[:,:,alpha,alpha]);
+
+def get_T_exact(Es,mytL,myVL,mytC,myVC,myNC):
+    '''
+    Get analytical T for square barrier scattering, landau & lifshitz pg 79
+    '''
+    kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
+    kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
+    print("Es:\n", Es[:8]);
+    print("kavals:\n", kavals[:8]);
+    print("kappavals:\n", kappavals[:8]);
+    exact_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+    exact_exp = np.exp(-2*myNC*kappavals);
+    exact_T = exact_prefactor*exact_exp;
+    exact_correction = np.power(1+(exact_prefactor-2)*exact_exp+exact_exp*exact_exp,-1);
+    exact_T *= exact_correction;
+    return np.array([np.real(exact_T)]);
 
 #################################################################
 #### benchmarking T in spinless 1D case
@@ -43,10 +59,10 @@ tinfty = 1.0*tL;
 tR = 1.0*tL;
 Vinfty = 0.5*tL;
 VL = 0.0*tL;
-VLprime = Vinfty;
+VR = 0.0*tL;
 
-# T vs VLR prime
-if True:
+# T vs VR
+if False:
 
     VRvals = np.array([0.1*Vinfty,0.2*Vinfty]);
     numplots = len(VRvals);
@@ -56,7 +72,7 @@ if True:
 
     # central region
     tC = 1*tL;
-    VC = 0.3*tL;
+    VC = 0.1*tL;
     NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
     for j in range(NC):
@@ -82,37 +98,39 @@ if True:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
+        # returns two arrays of size (n_loc_dof, n_left_bound)
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0],verbose=10);
 
-        # % error
-        axright = axes[VRi].twinx();
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+        # benchmark
+        axright = axes[Vprimei].twinx();
+        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
         # for each dof
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
-            yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-            yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[Vprimei].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+            axes[Vprimei].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[Vprimei].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+            axes[Vprimei].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
 
         # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize);
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
-        axes[Vprimei].set_ylabel('$T$',fontsize=myfontsize);
-        axes[Vprimei].set_title("$V_R' = "+str(VRvals[VRi][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[VRi].set_ylabel('$T$',fontsize=myfontsize);
+        axes[VRi].set_title("$V_L' = "+str(Vprimevals[VRi][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
+
+
+
 

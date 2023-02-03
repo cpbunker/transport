@@ -23,7 +23,7 @@ myxvals = 199;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","^","s","d","*","X","P"];
+mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -58,20 +58,6 @@ def h_kondo(J,s2):
     else: raise NotImplementedError;
     return h;
 
-def get_T_exact(Es,mytL,myVL,myNC,myJ):
-    '''
-    Get analytical T for spin-spin scattering, Menezes paper
-    '''
-    assert np.min(Es) >= 0; # energies must start at zero
-    assert myVL == 0.0;
-    
-    kas = np.arccos((Es-2*mytL)/(-2*mytL));
-    jprimes = myJ/(4*mytL*kas);
-    ideal_Tf = jprimes*jprimes/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
-    ideal_Tnf = (1+jprimes*jprimes/4)/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
-    
-    return np.array([ideal_Tf+ideal_Tnf,ideal_Tf+ideal_Tnf]);
-
 #################################################################
 #### all possible T_{\alpha -> \beta}
 
@@ -80,13 +66,16 @@ if True:
     barrier = False;
 
     # iter over J
-    Jvals = np.array([-0.05,-0.1,-0.5,-1.0]);
+    Jvals = np.array([-0.5,-1.0,-5.0]);
     nplots = len(Jvals);
     fig, axes = plt.subplots(nrows = nplots, sharex = True);
     fig.set_size_inches(7/2,nplots*3/2);
     alphas = [1,2];
+    if barrier:
+        alphas=[0];
+        Jvals *= (-1);
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
-    alpha_strs = alpha_strs[alphas[0]:alphas[1]];
+    alpha_strs = alpha_strs[alphas[0]:alphas[-1]+1];
     myalpha = 0;
     
     # tight binding params
@@ -104,38 +93,39 @@ if True:
 
         # central region
         tC = 1.0*tL;
-        VC = -Jval/4;
-        NC = 1;
+        VC = abs(Jval/4)*tL;
+        NC = 5;
         if barrier: NC = 11;
-        my_kondo = h_kondo(Jval,0.5)[1:3,1:3];
+        my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): # exchange interaction
-                    if(barrier or False):# NCi == NC //2): # spinless barrier on central site
-                        HC[NCi,NCj] += VC*np.eye(n_loc_dof);
-                    else: # kondo exchange right at barrier-well boundary
+                    if(NCi == NC //2): # exchange right at barrier-well boundary
                         HC[NCi,NCj] += my_kondo;
+                    else:
+                        HC[NCi,NCj] += 0.0;
                 elif(abs(NCi -NCj) == 1): # nn hopping
-                    HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
+                    HC[NCi,NCj] += -tC;
 
         # central region prime
         tCprime = tC;
         HCprime = np.zeros_like(HC);
-        kondo_replace = np.zeros_like(my_kondo);
         kondo_replace = np.diagflat(np.diagonal(my_kondo));
         #kondo_replace = my_kondo;
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): # exchange interaction
-                    if(barrier or False):# NCi == NC // 2): # spinless barrier on central site
-                        HCprime[NCi,NCj] += VC*np.eye(n_loc_dof);
-                    else: # replace kondo exchange in HC
+                    if(NCi == NC //2):#  replace exchange
                         HCprime[NCi,NCj] += kondo_replace;
+                    else: 
+                        HCprime[NCi,NCj] += 0.0;
                 elif(abs(NCi -NCj) == 1): # nn hopping
-                    HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
+                    HCprime[NCi,NCj] += -tC;
 
         # print
+        print("HC =");
+        print_H_alpha(HC);
         print("HC - HCprime =");
         print_H_alpha(HC-HCprime);
 
@@ -156,7 +146,7 @@ if True:
         Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=HC[0,0,1,1],verbose=1);
+                                      E_cutoff=0.1,verbose=1);
 
         # benchmark
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
@@ -167,11 +157,12 @@ if True:
 
         # % error
         axright = axes[Jvali].twinx();
-        Tvals_bench = get_T_exact(xvals, tL[myalpha,myalpha],VL[myalpha,myalpha],NC,Jval);
-        axes[Jvali].plot(xvals, Tvals_bench[myalpha], color=accentcolors[0], linewidth=mylinewidth);
+        axes[Jvali].scatter(xvals, Tvals_bench[myalpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
         axright.plot(xvals,100*abs((Tvals[myalpha]-Tvals_bench[myalpha])/Tvals_bench[myalpha]),color=accentcolors[1]); 
 
         #format
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+        #axright.set_ylim(0,50);
         fig.suptitle("$"+alpha_strs[myalpha]+"\\rightarrow $");
         axes[Jvali].set_title("$J = "+str(Jval)+"$");
         my_ylim = (0,0.5);

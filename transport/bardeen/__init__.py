@@ -106,8 +106,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
             Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
-        plt.legend();
-        plt.show();
+        plt.legend();plt.show();assert False;
 
     # compute matrix elements
     Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
@@ -153,7 +152,7 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     if(np.shape(Emas)[0] != np.shape(HC)[-1]): raise ValueError;
     n_spatial_dof = np.shape(HC)[0];
     n_loc_dof = np.shape(HC)[-1];
-    n_bound = np.shape(Emas)[-1];
+    n_bound_left = np.shape(Emas)[-1];
 
     ##### convert from HC to hblocks, tnn, tnnn
     # construct arrs
@@ -184,16 +183,19 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
         print(tnnn);
         assert False;
 
-    # get probabilities
-    T_nb_mas = np.empty((n_loc_dof,n_bound,n_loc_dof,n_bound),dtype=float);
+    # get probabilities, final state resolved
+    T_nb_mas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    # unresolved
+    Tmas = np.empty((n_loc_dof,n_bound_left),dtype=float);
     for alpha in range(n_loc_dof):
         source = np.zeros((n_loc_dof,));
         source[alpha] = 1.0;
-        for m in range(n_bound):
+        for m in range(n_bound_left):
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tL[alpha,alpha], Emas[alpha,m], source, verbose = verbose);
-            T_nb_mas[alpha,m,:,m] = Tdum;
-
-    return T_nb_mas;            
+            T_nb_mas[alpha,m,:] = Tdum;
+            Tmas[alpha,m] = np.sum(Tdum);
+            
+    return Tmas;            
     
 ############################################################################
 #### Hamiltonian construction
