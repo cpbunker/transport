@@ -108,7 +108,7 @@ if False:
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
 
@@ -179,7 +179,7 @@ if False:
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
 
@@ -340,7 +340,7 @@ if True:
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
 

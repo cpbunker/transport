@@ -29,47 +29,6 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def get_ideal_T(alpha,beta,Es,mytL,myVL,myNC,myJ,myVC = None):
-    '''
-    Get analytical T for spin-spin scattering, Menezes paper
-    '''
-    if alpha not in [0,1,2,3]: raise ValueError;
-    if beta not in [0,1,2,3]: raise ValueError;
-    assert np.min(Es) >= 0; # energies must start at zero
-    assert myVL == 0.0;
-    #assert myNC == 1;
-
-    if myVC != None: # hacky code to get barrier T's
-        mytC = mytL;
-        kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
-        kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
-        print("Es:\n", Es[:8]);
-        print("kavals:\n", kavals[:8]);
-        print("kappavals:\n", kappavals[:8]);
-
-        ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-        ideal_exp = np.exp(-2*myNC*kappavals);
-        ideal_T = ideal_prefactor*ideal_exp;
-        ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
-        ideal_T *= ideal_correction;
-
-        if((alpha==1 and beta==1) or (alpha==2 and beta==2)):
-            return np.real(ideal_T);
-        else:
-            return np.zeros_like(ideal_T);
-
-    kas = np.arccos((Es-2*mytL)/(-2*mytL));
-    jprimes = myJ/(4*mytL*kas);
-    ideal_Tf = jprimes*jprimes/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
-    ideal_Tnf = (1+jprimes*jprimes/4)/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
-    
-    if((alpha==1 and beta==1) or (alpha==2 and beta==2)):
-        return ideal_Tnf;
-    elif((alpha == 1 and beta == 2) or (alpha == 2 and beta == 1)):
-        return ideal_Tf;
-    else:
-        return np.zeros_like(ideal_Tf);
-
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
     for alpha in range(np.shape(H)[-1]):
@@ -97,7 +56,6 @@ def h_kondo(J,s2):
         h[2,1] = 2;
         h *= J/4;
     else: raise NotImplementedError;
-
     return h;
 
 #################################################################
@@ -174,7 +132,11 @@ if True:
     Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                 Ninfty, NL, NR, HC, HCprime,
-                                  cutoff=HC[0,0,1,1],verbose=1);
+                                  E_cutoff=HC[0,0,1,1],verbose=1);
+
+    # benchmark
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=1);
+
 
     # initial and final states
     alphas = [1,2];
@@ -184,19 +146,19 @@ if True:
 
             # truncate to bound states and plot
             yvals = np.diagonal(Tvals[betai,:,alphai,:]);
+            yvals_bench = np.diagonal(Tvals_bench[betai,:,alphai,:]);
             xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
             axes[alphai,betai].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
 
             # compare
-            VC_barrier = None;
-            if barrier: VC_barrier = -Jval/4;
-            ideal_Tvals_alpha = get_ideal_T(alpha, beta, xvals, tL[alphai,alphai],VL[alphai,alphai],NC,Jval,myVC = VC_barrier);
-            axes[alphai,betai].plot(xvals,np.real(ideal_Tvals_alpha), color=accentcolors[0], linewidth=mylinewidth);
+            axes[alphai,betai].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
 
             #format
             axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
-            axes[alphai,betai].set_ylim(0,0.5);
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            my_ylim = (0,0.5);
+            if barrier: my_ylim = (0,0.1);
+            axes[alphai,betai].set_ylim(*my_ylim);
+            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\,  J = '+str(Jval)+'$',fontsize=myfontsize);
 
     # format and show
     axes[-1,-1].set_xscale('log', subs = []);

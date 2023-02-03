@@ -138,7 +138,7 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     Given bound state energies and HC from kernel, calculate the transmission
     probability for each energy using wfm code
     '''
-    if(tL != tR): raise NotImplementedError; # wfm code can't handle this case
+    if(np.any(tL-tR)): raise NotImplementedError; # wfm code can't handle this case
     if(np.shape(Emas)[0] != np.shape(HC)[-1]): raise ValueError;
     n_spatial_dof = np.shape(HC)[0];
     n_loc_dof = np.shape(HC)[-1];
@@ -167,7 +167,7 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     hblocks[-1] = VR*np.eye(n_loc_dof);
     tnn[-1] = -tR*np.eye(n_loc_dof);
     tnnn[-1] = 0.0*np.eye(n_loc_dof);
-    if False:
+    if(verbose > 9):
         print(hblocks);
         print(tnn);
         print(tnnn);
