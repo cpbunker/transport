@@ -6,19 +6,27 @@ November 2022
 Bardeen tunneling theory in 1D
 '''
 
-from transport import fci_mod
+from transport import fci_mod, wfm
 
 import numpy as np
 
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,cutoff=1.0,verbose=0):
+def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
     '''
-    Calculate a transmission coefficient for each left well state as
-    a function of energy
+    Calculate a transmission probability for each left well bound state
+    as a function of the bound state energies
+
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+
+    Optional args:
+    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
+        than this. That way we limit to bound states
     '''
-    from transport import wfm
     if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
@@ -39,8 +47,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     n_ms = 0;
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL[:,:,alpha,alpha]);
-        psims = psims.T[Ems+2*tLa[alpha] < cutoff];
-        Ems = Ems[Ems+2*tLa[alpha] < cutoff];
+        psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
+        Ems = Ems[Ems+2*tLa[alpha] < E_cutoff];
         Emas.append(Ems);
         psimas.append(psims);
         n_ms = max(n_ms, len(Emas[alpha]));
@@ -64,8 +72,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     n_ns = 0;
     for beta in range(n_loc_dof):
         Ens, psins = np.linalg.eigh(HR[:,:,beta,beta]);
-        psins = psins.T[Ens+2*tRa[alpha] < cutoff];
-        Ens = Ens[Ens+2*tRa[alpha] < cutoff];
+        psins = psins.T[Ens+2*tRa[alpha] < E_cutoff];
+        Ens = Ens[Ens+2*tRa[alpha] < E_cutoff];
         Enbs.append(Ens.astype(complex));
         psinbs.append(psins);
         n_ns = max(n_ns, len(Ens));
@@ -125,10 +133,64 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
             '''
     return Emas, T_nb_mas;
 
-def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC):
+def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
+    '''
+    Given bound state energies and HC from kernel, calculate the transmission
+    probability for each energy using wfm code
+    '''
+    if(tL != tR): raise NotImplementedError; # wfm code can't handle this case
+    if(np.shape(Emas)[0] != np.shape(HC)[-1]): raise ValueError;
+    n_spatial_dof = np.shape(HC)[0];
+    n_loc_dof = np.shape(HC)[-1];
+    n_bound = np.shape(Emas)[-1];
+
+    ##### convert from HC to hblocks, tnn, tnnn
+    # construct arrs
+    hblocks = np.empty((n_spatial_dof+2,n_loc_dof,n_loc_dof),dtype=complex);
+    hblocks[0] = VL*np.eye(n_loc_dof);
+    tnn = np.empty((n_spatial_dof+1,n_loc_dof,n_loc_dof),dtype=complex);
+    tnn[0] = -tL*np.eye(n_loc_dof);
+    tnnn = np.empty((n_spatial_dof,n_loc_dof,n_loc_dof),dtype=complex);
+    tnnn[0] = 0.0*np.eye(n_loc_dof);
+
+    # convert
+    for spacei in range(n_spatial_dof):
+        for spacej in range(n_spatial_dof):
+            if(spacei == spacej): # on-site
+                hblocks[1+spacei] = HC[spacei,spacej];
+            elif(spacei == spacej - 1): # nn hopping
+                tnn[1+spacei] = HC[spacei,spacej];
+            elif(spacei == spacej - 2): # next nn hopping
+                tnnn[1+spacei] = HC[spacei,spacej];
+            elif(spacei < spacej):
+                assert(not np.any(HC[spacei,spacej]));
+    hblocks[-1] = VR*np.eye(n_loc_dof);
+    tnn[-1] = -tR*np.eye(n_loc_dof);
+    tnnn[-1] = 0.0*np.eye(n_loc_dof);
+    if False:
+        print(hblocks);
+        print(tnn);
+        print(tnnn);
+        assert False;
+
+    # get probabilities
+    T_nb_mas = np.empty((n_loc_dof,n_bound,n_loc_dof,n_bound),dtype=float);
+    for alpha in range(n_loc_dof):
+        source = np.zeros((n_loc_dof,));
+        source[alpha] = 1.0;
+        for m in range(n_bound):
+            Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tL[alpha,alpha], Emas[alpha,m], source, verbose = verbose);
+            T_nb_mas[alpha,m,:,m] = Tdum;
+
+    return T_nb_mas;            
+    
+############################################################################
+#### Hamiltonian construction
+
+def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC) -> np.ndarray:
     '''
     Make the TB Hamiltonian for the full system, general 1D case
-    Params are classified by region: infty, L, R.
+    Physical params are classified by region: infty, L, R.
     tinfty, tL, tR is hopping in these regions (2d arr describing local dofs)
     Vinfty, VL, VR is local potential in these regions (2d arr describing local dofs)
     Ninfty, NL, NR is number of sites in these regions
@@ -180,7 +242,7 @@ def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC):
             
     return Hmat, minusinfty;
 
-def Hwellmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
+def Hwellmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR) -> np.ndarray:
     '''
     Make the TB Hamiltonian for the full system, 1D well case
     '''
@@ -233,7 +295,7 @@ def Hwellmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR):
 ##################################################################################
 #### utils
 
-def is_alpha_conserving(T,n_loc_dof):
+def is_alpha_conserving(T,n_loc_dof) -> bool:
     '''
     Determines if a tensor T conserves alpha in the sense that it has
     only nonzero elements for a certain value of alpha
@@ -258,7 +320,7 @@ def is_alpha_conserving(T,n_loc_dof):
 
     else: raise Exception; # not supported
 
-def matrix_element(beta,psin,op,alpha,psim):
+def matrix_element(beta,psin,op,alpha,psim) -> complex:
     '''
     Take the matrix element of a (not in general alpha conserving), spin separated
     (2d) operator between spin conserving states
@@ -280,11 +342,12 @@ def matrix_element(beta,psin,op,alpha,psim):
     psinbeta[beta] = psin[beta]; # all zeros except for psi[beta]
     psinbeta = fci_mod.vec_2d_to_1d(psinbeta.T); # flatten
     assert(is_alpha_conserving(psinbeta,n_loc_dof));
-    #print( psinbeta.shape, op.shape,psimalpha.shape);
-    #assert False
-    return np.dot(psinbeta, np.dot(op,psimalpha));
+    return np.dot(np.conj(psinbeta), np.dot(op,psimalpha));
 
-def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None):
+##################################################################################
+#### test code
+
+def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None) -> None:
     '''
     Visualize the problem by plotting some LL wfs against Hsys
     '''
@@ -351,9 +414,6 @@ def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime
     wfaxes[-1].set_xlabel('$j$');
     plt.tight_layout();
     plt.show();
-
-##################################################################################
-#### test code
 
 if __name__ == "__main__":
 
