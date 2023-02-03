@@ -58,6 +58,21 @@ def h_kondo(J,s2):
     else: raise NotImplementedError;
     return h;
 
+def get_T_exact(Es,mytL,myVL,myNC,myJ):
+    '''
+    Get analytical T for spin-spin scattering, Menezes paper
+    '''
+    if alpha not in [0,1,2,3]: raise ValueError;
+    assert np.min(Es) >= 0; # energies must start at zero
+    assert myVL == 0.0;
+    
+    kas = np.arccos((Es-2*mytL)/(-2*mytL));
+    jprimes = myJ/(4*mytL*kas);
+    ideal_Tf = jprimes*jprimes/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
+    ideal_Tnf = (1+jprimes*jprimes/4)/(1+(5/2)*jprimes*jprimes+(9/16)*np.power(jprimes,4));
+    
+    return np.array([ideal_Tf+ideal_Tnf,ideal_Tf+ideal_Tnf]);
+
 #################################################################
 #### all possible T_{\alpha -> \beta}
 
@@ -68,10 +83,9 @@ if True:
     # spin dofs
     alphas = [1,2];
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
-    nplots_x = len(alphas);
-    nplots_y = len(alphas);
-    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
-    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
+    nplots= len(alphas);
+    fig, axes = plt.subplots(nrows = nplots, sharex = True);
+    fig.set_size_inches(7/2,nplots*3/2);
 
     # tight binding params
     n_loc_dof = len(alphas); # spin up and down for each
@@ -86,29 +100,31 @@ if True:
     # central region
     tC = 1.0*tL;
     VC = -Jval/4;
-    NC = 3;
+    NC = 1;
     if barrier: NC = 11;
+    my_kondo = h_kondo(Jval,0.5)[1:3,1:3];
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if(barrier or NCi == NC //2): # spinless barrier on central site
+                if(barrier or False):# NCi == NC //2): # spinless barrier on central site
                     HC[NCi,NCj] += VC*np.eye(n_loc_dof);
                 else: # kondo exchange right at barrier-well boundary
-                    HC[NCi,NCj] += h_kondo(Jval,0.5)[1:3,1:3];
+                    HC[NCi,NCj] += my_kondo;
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] = -tC*np.eye(n_loc_dof);
 
     # central region prime
     tCprime = tC;
     HCprime = np.zeros_like(HC);
+    kondo_replace = np.zeros_like(my_kondo);
     for NCi in range(NC):
         for NCj in range(NC):
             if(NCi == NCj): # exchange interaction
-                if(barrier or NCi == NC // 2): # spinless barrier on central site
+                if(barrier or False):# NCi == NC // 2): # spinless barrier on central site
                     HCprime[NCi,NCj] += VC*np.eye(n_loc_dof);
-                else: 
-                    pass;
+                else: # replace kondo exchange in HC
+                    HCprime[NCi,NCj] += kondo_replace;
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HCprime[NCi,NCj] += -tC*np.eye(n_loc_dof);
 
@@ -123,45 +139,44 @@ if True:
     ##
     #### Notes
     ##
-    # - bardeen.kernel syntax:
-    #       tinfty, tL, tLprime, tR, tRprime,
-    #       Vinfty, VL, VLprime, VR, VRprime,
-    #       Ninfty, NL, NR, HC,HCprime,
-    # - I am setting VLprime = VRprime = Vinfty for best results according
-    # run_barrier_bardeen tests
+    # bardeen.kernel syntax:
+    # tinfty, tL, tLprime, tR, tRprime,
+    # Vinfty, VL, VLprime, VR, VRprime,
+    # Ninfty, NL, NR, HC,HCprime,
+    # I am setting VLprime = VRprime = Vinfty for best results according
+    # tests performed in run_barrier_bardeen 
+    # returns two arrays of size (n_loc_dof, n_left_bound)
     Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
-                                Ninfty, NL, NR, HC, HCprime,
+                                  Ninfty, NL, NR, HC, HCprime,
                                   E_cutoff=HC[0,0,1,1],verbose=1);
 
     # benchmark
     Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
-
-    # initial and final states
-    alphas = [1,2];
+    # plot bases on initial state
     for alphai in range(len(alphas)):
-        for betai in range(len(alphas)):
-            alpha, beta = alphas[alphai], alphas[betai];
+        alpha = alphas[alphai];
 
-            # truncate to bound states and plot
-            yvals = np.diagonal(Tvals[betai,:,alphai,:]);
-            yvals_bench = np.diagonal(Tvals_bench[betai,:,alphai,:]);
-            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+        # truncate to bound states and plot
+        xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
+        axes[alphai].scatter(xvals, Tvals[alphai], marker=mymarkers[0], color=mycolors[0]);
 
-            # compare
-            axes[alphai,betai].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
+        # % error
+        axright = axes[alphai].twinx();
+        Tvals_bench = get_T_exact(xvals, tL[alphai,alphai],VL[alphai,alphai],NC,Jval);
+        axes[alphai].plot(xvals, Tvals_bench[alphai], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alphai]-Tvals_bench[alphai])/Tvals_bench[alphai]),color=accentcolors[1]); 
 
-            #format
-            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
-            my_ylim = (0,0.5);
-            if barrier: my_ylim = (0,0.1);
-            axes[alphai,betai].set_ylim(*my_ylim);
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\,  J = '+str(Jval)+'$',fontsize=myfontsize);
+        #format
+        axes[alphai].set_title("$"+alpha_strs[alpha]+"\\rightarrow $");
+        my_ylim = (0,0.5);
+        if barrier: my_ylim = (0,0.1);
+        #axes[alphai].set_ylim(*my_ylim);
+        axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\,  J = '+str(Jval)+'$',fontsize=myfontsize);
 
     # format and show
-    axes[-1,-1].set_xscale('log', subs = []);
+    axes[-1].set_xscale('log', subs = []);
     plt.tight_layout();
     plt.show();
 

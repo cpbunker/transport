@@ -111,27 +111,38 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # compute matrix elements
     Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
-    T_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=float);
+    M_nb_mas = np.empty((n_loc_dof,n_ns,n_loc_dof,n_ms),dtype=float);
     for alpha in range(n_loc_dof):
         for m in range(n_ms):
             for beta in range(n_loc_dof):
                 for n in range(n_ns):
                     melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                    T_nb_mas[beta,n,alpha,m] = np.real(melement*np.conj(melement)* NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]));
+                    M_nb_mas[beta,n,alpha,m] = np.real(melement*np.conj(melement));
 
-            '''
-            # average matrix elements over final states |k_n \beta>
-            # with the same energy as the intial state |k_m \alpha>
+    # for when we want to resove final states
+    # however, doing so is not technically within the bounds of bardeen
+    if False: return Emas, M_nb_mas # * NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]);
+
+    # otherwise average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    Tmas = np.empty((n_loc_dof,n_ms),dtype=float);
+    for alpha in range(n_loc_dof):
+        for m in range(n_ms):
+            # average over final states
             Mma = 0.0;
+            N_nb = 0; # number of final states averaged over
+            interval_width = 1e-9; # arbitrary for now
             for beta in range(n_loc_dof):
                 for n in range(n_ns):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < 1e-9): # equal energy
-                        Mma += np.real(M_nb_mas[beta,n,alpha,m]*np.conj(M_nb_mas[beta,n,alpha,m]));
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
+                        N_nb += 1;
+                        Mma += M_nb_mas[beta,n,alpha,m];
 
             # update T based on average
+            Mma = Mma / N_nb;
             Tmas[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
-            '''
-    return Emas, T_nb_mas;
+
+    return Emas, Tmas;
 
 def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''

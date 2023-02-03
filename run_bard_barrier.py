@@ -33,6 +33,22 @@ def print_H_j(H):
     for alpha in range(np.shape(H)[-1]):
         print("H["+str(alpha)+","+str(alpha)+"] =\n",H[:,:,alpha,alpha]);
 
+def get_T_exact(Es,mytL,myVL,mytC,myVC,myNC):
+    '''
+    Get analytical T for square barrier scattering, landau & lifshitz pg 79
+    '''
+    kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
+    kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
+    print("Es:\n", Es[:8]);
+    print("kavals:\n", kavals[:8]);
+    print("kappavals:\n", kappavals[:8]);
+    exact_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
+    exact_exp = np.exp(-2*myNC*kappavals);
+    exact_T = exact_prefactor*exact_exp;
+    exact_correction = np.power(1+(exact_prefactor-2)*exact_exp+exact_exp*exact_exp,-1);
+    exact_T *= exact_correction;
+    return np.array([np.real(exact_T)]);
+
 #################################################################
 #### benchmarking T in spinless 1D case
 
@@ -113,7 +129,7 @@ if False:
     plt.show();
 
 # T vs VLR prime
-if False:
+if True:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);
@@ -148,27 +164,27 @@ if False:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
+        # returns two arrays of size (n_loc_dof, n_left_bound)
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0],verbose=1);
 
-        # % error
+        # benchmark
         axright = axes[Vprimei].twinx();
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=verbose);
+        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
         # for each dof
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
-            yvals = np.diagonal(Tvals[alpha,:,alpha,:]);
-            yvals_bench = np.diagonal(Tvals_bench[alpha,:,alpha,:]);
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[Vprimei].scatter(xvals, yvals, marker=mymarkers[0], color=mycolors[0]);
+            axes[Vprimei].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[Vprimei].plot(xvals, yvals_bench, color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((yvals-yvals_bench)/yvals_bench),color=accentcolors[1]);
+            Tvals_bench = get_T_exact(xvals, tL[alpha,alpha],VL[alpha,alpha],tC[alpha,alpha],VC[alpha,alpha],NC);
+            axes[Vprimei].plot(xvals, Tvals_bench[alpha], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize);
@@ -183,7 +199,7 @@ if False:
     plt.show();
 
 # worst case vs best case
-if True:
+if False:
 
     numplots = 3;
     fig, axes = plt.subplots(numplots, sharex = True);
