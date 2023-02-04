@@ -63,7 +63,9 @@ def h_kondo(J,s2):
 
 if True:
     barrier = False; # benchmark w/out spin flips
-    
+    mixed = True; # unperturbed ham (HCprime) mixes spin
+                  # likely cannot resolve final spins in this case
+
     # iter over J
     Jvals = np.array([-0.5,-1.0,-5.0]);
     nplots = len(Jvals);
@@ -111,6 +113,7 @@ if True:
         tCprime = tC;
         HCprime = np.zeros_like(HC);
         kondo_replace = np.diagflat(np.diagonal(my_kondo));
+        if mixed: kondo_replace = my_kondo;
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): 
@@ -141,18 +144,27 @@ if True:
         # I am setting VLprime = VRprime = Vinfty for best results according
         # tests performed in run_barrier_bardeen 
         # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
-                                  Vinfty, VL, Vinfty, VR, Vinfty,
-                                  Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=0.1,verbose=1);
+        if mixed:
+            Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
+                                      Vinfty, VL, Vinfty, VR, Vinfty,
+                                      Ninfty, NL, NR, HC, HCprime,
+                                      E_cutoff=0.1,verbose=1);
+        else:
+            Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
+                                      Vinfty, VL, Vinfty, VR, Vinfty,
+                                      Ninfty, NL, NR, HC, HCprime,
+                                      E_cutoff=0.1,verbose=1);
 
         # benchmark
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = np.copy(Tvals); # = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+
+        # very hacky code
+        Evals, Tvals, Tvals_bench = [Evals], [Tvals], [Tvals_bench];
 
         # plot based on initial state
         xvals = np.real(Evals[myalpha])+2*tL[myalpha,myalpha];
         axes[Jvali].scatter(xvals, Tvals[myalpha], marker=mymarkers[0], color=mycolors[0]);
-
+        print(xvals); 
         # % error
         axright = axes[Jvali].twinx();
         axes[Jvali].scatter(xvals, Tvals_bench[myalpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);

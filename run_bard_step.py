@@ -33,24 +33,8 @@ def print_H_j(H):
     for alpha in range(np.shape(H)[-1]):
         print("H["+str(alpha)+","+str(alpha)+"] =\n",H[:,:,alpha,alpha]);
 
-def get_T_exact(Es,mytL,myVL,mytC,myVC,myNC):
-    '''
-    Get analytical T for square barrier scattering, landau & lifshitz pg 79
-    '''
-    kavals = np.arccos((Es-2*mytL-myVL)/(-2*mytL));
-    kappavals = np.arccosh((Es-2*mytC-myVC)/(-2*mytC));
-    print("Es:\n", Es[:8]);
-    print("kavals:\n", kavals[:8]);
-    print("kappavals:\n", kappavals[:8]);
-    exact_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
-    exact_exp = np.exp(-2*myNC*kappavals);
-    exact_T = exact_prefactor*exact_exp;
-    exact_correction = np.power(1+(exact_prefactor-2)*exact_exp+exact_exp*exact_exp,-1);
-    exact_T *= exact_correction;
-    return np.array([np.real(exact_T)]);
-
 #################################################################
-#### benchmarking T in spinless 1D case
+#### spinless 1D IETS
 
 # tight binding params
 n_loc_dof = 1; 
@@ -59,12 +43,11 @@ tinfty = 1.0*tL;
 tR = 1.0*tL;
 Vinfty = 0.5*tL;
 VL = 0.0*tL;
-VR = 0.0*tL;
 
-# T vs VR
-if False:
+# T vs VR (step-down case)
+if True:
 
-    VRvals = np.array([0.1*Vinfty,0.2*Vinfty]);
+    VRvals = -np.array([0.1*Vinfty,0.2*Vinfty,0.4*Vinfty]);
     numplots = len(VRvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -88,10 +71,11 @@ if False:
     # bardeen results for heights of barrier covering well
     for VRi in range(len(VRvals)):
         Ninfty = 20;
-        NL = 100;
+        NL = 200;
         NR = 1*NL;
         VR = VRvals[VRi];
-        VRprime = VRvals[VRi]+Vinfty;
+        VRprime = 1*Vinfty;
+        VLprime = 1*Vinfty; #VRvals[VRi]+Vinfty; # left cover needs to be higher from view of right well
         assert(not np.any(np.ones((len(VC)),)[np.diagonal(VC) < np.diagonal(VR)]));
         
         # bardeen.kernel syntax:
@@ -102,10 +86,10 @@ if False:
         Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=VC[0,0],verbose=10);
+                                      E_cutoff=VC[0,0],verbose=1);
 
         # benchmark
-        axright = axes[Vprimei].twinx();
+        axright = axes[VRi].twinx();
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
 
         # for each dof
@@ -113,17 +97,17 @@ if False:
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[Vprimei].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+            axes[VRi].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[Vprimei].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axes[VRi].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,50);
+        #axright.set_ylim(0,50);
         axes[VRi].set_ylabel('$T$',fontsize=myfontsize);
-        axes[VRi].set_title("$V_L' = "+str(Vprimevals[VRi][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[VRi].set_title("$V_R' = "+str(VRvals[VRi][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
