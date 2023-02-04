@@ -42,7 +42,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
 
     # left well eigenstates
     HL, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
+    #assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_ms = 0;
     for alpha in range(n_loc_dof):
@@ -67,7 +67,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     
     # right well eigenstates  
     HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
+    #assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     n_ns = 0;
     for beta in range(n_loc_dof):

@@ -62,8 +62,9 @@ def h_kondo(J,s2):
 #### all possible T_{\alpha -> \beta}
 
 if True:
-    # benchmark w/out spin flips
-    barrier = False;
+    barrier = False; # benchmark w/out spin flips
+    mixed = True; # unperturbed ham (HCprime) mixes spin
+                  # likely cannot resolve final spins in this case
 
     # iter over J
     Jvals = np.array([-0.5,-1.0,-5.0]);
@@ -93,18 +94,18 @@ if True:
 
         # central region
         tC = 1.0*tL;
-        VC = abs(Jval/4)*tL;
-        NC = 5;
+        #VC = abs(Jval/4)*tL;
+        NC = 3;
         if barrier: NC = 11;
         my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
-                if(NCi == NCj): # exchange interaction
-                    if(NCi == NC //2): # exchange right at barrier-well boundary
+                if(NCi == NCj): 
+                    if(NCi == NC //2): # exchange in middle of barrier
                         HC[NCi,NCj] += my_kondo;
-                    else:
-                        HC[NCi,NCj] += 0.0;
+                    else: # buffer zone
+                        HC[NCi,NCj] += 0.0; 
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HC[NCi,NCj] += -tC;
 
@@ -112,14 +113,14 @@ if True:
         tCprime = tC;
         HCprime = np.zeros_like(HC);
         kondo_replace = np.diagflat(np.diagonal(my_kondo));
-        #kondo_replace = my_kondo;
+        if mixed: kondo_replace = my_kondo;
         for NCi in range(NC):
             for NCj in range(NC):
-                if(NCi == NCj): # exchange interaction
+                if(NCi == NCj): 
                     if(NCi == NC //2):#  replace exchange
                         HCprime[NCi,NCj] += kondo_replace;
-                    else: 
-                        HCprime[NCi,NCj] += 0.0;
+                    else:  # buffer zone
+                        HCprime[NCi,NCj] += 0.0; #
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HCprime[NCi,NCj] += -tC;
 
