@@ -23,6 +23,9 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
 
+    This kernel requires the initial and final states to have definite spin,
+    and so CAN RESOLVE the spin -> spin transitions
+
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
         than this. That way we limit to bound states
@@ -109,43 +112,34 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
         plt.legend();plt.show();assert False;
 
-    # compute matrix elements
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
-    M_nb_mas = np.empty((n_loc_dof,n_bound_right,n_loc_dof,n_bound_left),dtype=float);
-    for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):
-            for beta in range(n_loc_dof):
-                for n in range(n_bound_right):
-                    melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                    M_nb_mas[beta,n,alpha,m] = np.real(melement*np.conj(melement));
-
-    # for when we want to resove final states
-    # however, doing so is not technically within the bounds of bardeen
-    if False: return Emas, M_nb_mas # * NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]);
-
-    # otherwise average matrix elements over final states |k_n \beta>
+    # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
-    Tmas = np.empty((n_loc_dof,n_bound_left),dtype=float);
+    # average over energy but keep spin separate
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
+    Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    # initial energy and spin states
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):
-            # average over final states
-            Mma = 0.0;
-            N_nb = 0; # number of final states averaged over
-            interval_width = 1e-9;
-            #interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]); # arbitrary for now
+            # final spin states
             for beta in range(n_loc_dof):
+                # average over final state energy
+                Mbma = 0.0;
+                Nbma = 0; # number of final states averaged over
+                interval_width = 1e-9;
+                #interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]); # arbitrary for now
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
-                        N_nb += 1;
-                        Mma += M_nb_mas[beta,n,alpha,m];
+                        Nbma += 1;
+                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                        Mbma += np.real(melement*np.conj(melement));
 
-            # update T based on average
-            print(interval_width, N_nb);
-            if N_nb == 0: Mma = 0.0;
-            else: Mma = Mma / N_nb;
-            Tmas[alpha,m] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mma;
+                # update T based on average
+                print(interval_width, Nbma);
+                if Nbma == 0: Mbma = 0.0;
+                else: Mbma = Mbma / Nbma;
+                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbma;
 
-    return Emas, Tmas;
+    return Emas, Tbmas;
 
 def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
     '''
@@ -156,6 +150,9 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
+
+    This kernel allows the initial and final states to lack definite spin,
+    but as a result CANNOT RESOLVE the spin -> spin transitions
 
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -225,19 +222,19 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
 
         # average over final states
         Mm = 0.0;
-        Nn = 0; # number of final states averaged over
+        Nm = 0; # number of final states averaged over
         interval_width = 1e-9;
-        #interval_width = abs(Enbs[-2]-Enbs[-1]); # arbitrary for now       
+        #interval_width = abs(Ens[-1]-Ens[-2]); # arbitrary for now       
         for n in range(n_bound_right):
             if( abs(Ems[m] - Ens[n]) < interval_width/2):
-                Nn += 1;
+                Nm += 1;
                 melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
                 Mm += np.real(melement*np.conj(melement));
 
         # update T based on average
-        print(interval_width, Nn);
-        if(Nn == 0): Mm = 0.0;
-        else: Mm = Mm/Nn;
+        print(interval_width, Nm);
+        if(Nm == 0): Mm = 0.0;
+        else: Mm = Mm/Nm;
         Tms[m] = NL/(kms[m]*tLa) *NR/(kms[m]*tRa) *Mm;
 
     return Ems, Tms;
@@ -281,19 +278,16 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
         print(tnnn);
         assert False;
 
-    # get probabilities, final state resolved
-    T_nb_mas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    # unresolved
-    Tmas = np.empty((n_loc_dof,n_bound_left),dtype=float);
+    # get probabilities, final spin state resolved
+    Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
     for alpha in range(n_loc_dof):
         source = np.zeros((n_loc_dof,));
         source[alpha] = 1.0;
         for m in range(n_bound_left):
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tL[alpha,alpha], Emas[alpha,m], source, verbose = verbose);
-            T_nb_mas[alpha,m,:] = Tdum;
-            Tmas[alpha,m] = np.sum(Tdum);
+            Tbmas[:,m,alpha] = Tdum;
             
-    return Tmas;
+    return Tbmas;
 
 def benchmark_mixed(tL, tR, VL, VR, HC_4d, Ems, verbose=0) -> np.ndarray:
     '''
@@ -342,9 +336,8 @@ def benchmark_mixed(tL, tR, VL, VR, HC_4d, Ems, verbose=0) -> np.ndarray:
             source[alpha] = 1.0;
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tL[alpha,alpha], Ems[m], source, verbose = verbose);
             Tmas[alpha,m] = np.sum(Tdum);
-        # ???? sum over initial spin states ????
-        assert(n_loc_dof == 1);
-        Tms[m] = np.sum(Tmas[:,m]);
+        # sum over initial spin states
+        Tms[m] = np.sum(Tmas[:,m])/n_loc_dof;
             
     return Tms; 
     

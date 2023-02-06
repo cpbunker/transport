@@ -86,20 +86,19 @@ if True:
         # benchmark
         axright = axes[NLi].twinx();
         Tvals_bench = bardeen.benchmark_mixed(tL, tR, VL, VR, HC, Evals, verbose=0);
-
-        # very hacky code
-        Evals, Tvals, Tvals_bench = [Evals], [Tvals], [Tvals_bench];
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
         
-        # for each dof
+        # no local dof information is kept in the transmission probs
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
-            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[NLi].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+            xvals = np.real(Evals)+2*tL[alpha,alpha];
+            axes[NLi].scatter(xvals, Tvals, marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[NLi].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
+            axes[NLi].scatter(xvals, Tvals_bench, marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals-Tvals_bench)/Tvals_bench),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);

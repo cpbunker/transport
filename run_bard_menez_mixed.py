@@ -67,17 +67,15 @@ if True:
                   # likely cannot resolve final spins in this case
 
     # iter over J
-    Jvals = np.array([-0.5,-1.0,-5.0]);
+    Jvals = np.array([-0.5]);
     nplots = len(Jvals);
     fig, axes = plt.subplots(nrows = nplots, sharex = True);
+    if  nplots==1: axes=[axes];
     fig.set_size_inches(7/2,nplots*3/2);
     alphas = [1,2];
     if barrier:
         alphas=[0];
         Jvals *= (-1);
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
-    alpha_strs = alpha_strs[alphas[0]:alphas[-1]+1];
-    myalpha = 0;
     
     # tight binding params
     n_loc_dof = len(alphas); # spin up and down for each
@@ -95,7 +93,7 @@ if True:
         # central region
         tC = 1.0*tL;
         #VC = abs(Jval/4)*tL;
-        NC = 3;
+        NC = 1;
         if barrier: NC = 11;
         my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
@@ -113,14 +111,14 @@ if True:
         tCprime = tC;
         HCprime = np.zeros_like(HC);
         kondo_replace = np.diagflat(np.diagonal(my_kondo));
-        if mixed: kondo_replace = my_kondo;
+        if mixed: kondo_replace = np.copy(my_kondo);
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): 
                     if(NCi == NC //2):#  replace exchange
                         HCprime[NCi,NCj] += kondo_replace;
                     else:  # buffer zone
-                        HCprime[NCi,NCj] += 0.0; #
+                        HCprime[NCi,NCj] += 0.0;
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HCprime[NCi,NCj] += -tC;
 
@@ -148,7 +146,7 @@ if True:
             Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=1);
+                                      E_cutoff=0.99,verbose=1);
         else:
             Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
@@ -156,32 +154,33 @@ if True:
                                       E_cutoff=0.1,verbose=1);
 
         # benchmark
-        Tvals_bench = np.copy(Tvals); # = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        if mixed:
+            Tvals_bench = bardeen.benchmark_mixed(tL, tR, VL, VR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        # very hacky code
-        Evals, Tvals, Tvals_bench = [Evals], [Tvals], [Tvals_bench];
+        # no local dof information is kept in the transmission probs
+        for alpha in range(n_loc_dof):
 
-        # plot based on initial state
-        xvals = np.real(Evals[myalpha])+2*tL[myalpha,myalpha];
-        axes[Jvali].scatter(xvals, Tvals[myalpha], marker=mymarkers[0], color=mycolors[0]);
-        print(xvals); 
-        # % error
-        axright = axes[Jvali].twinx();
-        axes[Jvali].scatter(xvals, Tvals_bench[myalpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[myalpha]-Tvals_bench[myalpha])/Tvals_bench[myalpha]),color=accentcolors[1]); 
+             # truncate to bound states and plot
+            xvals = np.real(Evals)+2*tL[alpha,alpha];
+            axes[Jvali].scatter(xvals, Tvals, marker=mymarkers[0], color=mycolors[0]);
+
+            # % error
+            axright = axes[Jvali].twinx();
+            axes[Jvali].scatter(xvals, Tvals_bench, marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals-Tvals_bench)/Tvals_bench),color=accentcolors[1]); 
 
         #format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        #axright.set_ylim(0,50);
-        fig.suptitle("$"+alpha_strs[myalpha]+"\\rightarrow $");
         axes[Jvali].set_title("$J = "+str(Jval)+"$");
         my_ylim = (0,0.5);
         if barrier: my_ylim = (0,0.1);
         #axes[Jvali].set_ylim(*my_ylim);
+        axes[-1].set_xscale('log', subs = []);
         axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
 
-    # format and show
-    axes[-1].set_xscale('log', subs = []);
+    # show
     plt.tight_layout();
     plt.show();
 
