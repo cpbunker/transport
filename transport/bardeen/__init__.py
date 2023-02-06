@@ -81,7 +81,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
         Enbs.append(Ens.astype(complex));
         psinbs.append(psins);
         n_bound_right = max(n_bound_right, len(Ens));
-    #assert(n_bound_left == n_bound_right);
     Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
     psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
     for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
