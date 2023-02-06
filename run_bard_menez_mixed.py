@@ -146,7 +146,7 @@ if True:
             Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.99,verbose=1);
+                                      E_cutoff=0.1,verbose=1);
         else:
             Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,

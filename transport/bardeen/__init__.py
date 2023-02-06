@@ -177,7 +177,8 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     interval = 2;
-    if verbose: print("-HL[:,:] =\n",np.real(HL[n_loc_dof*(n_spatial_dof//2-interval):n_loc_dof*(n_spatial_dof//2+interval),n_loc_dof*(n_spatial_dof//2-interval):n_loc_dof*(n_spatial_dof//2+interval)]));
+    interval_tup = (n_loc_dof*(n_spatial_dof//2-interval),n_loc_dof*(n_spatial_dof//2+interval+1) );
+    if verbose: print("-HL[:,:] =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
 
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
@@ -189,8 +190,8 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
-    if verbose: print("-HR[:,:] =\n",np.real(HL[n_loc_dof*(n_spatial_dof//2-interval):n_loc_dof*(n_spatial_dof//2+interval),n_loc_dof*(n_spatial_dof//2-interval):n_loc_dof*(n_spatial_dof//2+interval)]));
-
+    if verbose: print("-HR[:,:] =\n",np.real(HR[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+    
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
     psins = psins.T[Ens+2*tRa < E_cutoff];
@@ -201,6 +202,10 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     if(verbose > 9):
+        for m in range(10):
+            psi0 = psims[m];
+            print(m,Ems[m],np.dot(np.conj(psi0[::2]),psi0[::2]),np.dot(np.conj(psi0[1::2]),psi0[1::2]));
+        assert False
         import matplotlib.pyplot as plt
         jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
@@ -229,9 +234,22 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
                 Nm += 1;
                 melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
                 Mm += np.real(melement*np.conj(melement));
+                print(interval_width, Nm);
+                #print(np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+                print("->",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
+                print("->",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
+                print("->",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
+                Sz = np.zeros_like(HL_4d);
+                for Szi in range(np.shape(HL_4d)[0]):
+                    for Szj in range(np.shape(HL_4d)[0]):
+                        if Szi==Szj:
+                            Sz[Szi,Szj] = np.array([[0,1],[1,0]]);
+                Sz = fci_mod.mat_4d_to_2d(Sz);
+                print("->",np.dot(psims[m],np.dot(Sz,psins[n])));
+                assert False
 
         # update T based on average
-        print(interval_width, Nm);
+        #print(interval_width, Nm, psims[m]);
         if(Nm == 0): Mm = 0.0;
         else: Mm = Mm/Nm;
         Tms[m] = NL/(kms[m]*tLa) *NR/(kms[m]*tRa) *Mm;
@@ -242,6 +260,9 @@ def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''
     Given bound state energies and HC from kernel, calculate the transmission
     probability for each energy using wfm code
+
+    Used when the initial and final states have definite spin,
+    and so CAN RESOLVE the spin -> spin transitions
     '''
     if(np.any(tL-tR)): raise NotImplementedError; # wfm code can't handle this case
     if(np.shape(Emas)[0] != np.shape(HC)[-1]): raise ValueError;
@@ -292,6 +313,9 @@ def benchmark_mixed(tL, tR, VL, VR, HC_4d, Ems, verbose=0) -> np.ndarray:
     '''
     Given bound state energies and HC from kernel, calculate the transmission
     probability for each energy using wfm code
+
+    Used when the initial and final states don't definite spin,
+    and so CANNOT RESOLVE the spin -> spin transitions
     '''
     if(np.any(tL-tR)): raise NotImplementedError; # wfm code can't handle this case
     n_spatial_dof = np.shape(HC_4d)[0];
