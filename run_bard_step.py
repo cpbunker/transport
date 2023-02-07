@@ -44,10 +44,10 @@ tR = 1.0*tL;
 Vinfty = 0.5*tL;
 VL = 0.0*tL;
 
-# T vs VR (step-down case)
+# T vs VR
 if True:
 
-    VRvals = -np.array([0.1*Vinfty,0.2*Vinfty,0.4*Vinfty]);
+    VRvals = VRvals = 2*np.array([-0.005*Vinfty,-0.001*Vinfty,0.001*Vinfty,0.005*Vinfty]);
     numplots = len(VRvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -91,21 +91,23 @@ if True:
         # benchmark
         axright = axes[VRi].twinx();
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        # for each dof
+         # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[VRi].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+            axes[VRi].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[VRi].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
+            axes[VRi].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        #axright.set_ylim(0,50);
+        axright.set_ylim(0,50);
         axes[VRi].set_ylabel('$T$',fontsize=myfontsize);
         axes[VRi].set_title("$V_R' = "+str(VRvals[VRi][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
@@ -114,6 +116,7 @@ if True:
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
+
 
 
 

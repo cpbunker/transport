@@ -46,7 +46,7 @@ VL = 0.0*tL;
 VR = 0.0*tL;
 
 # T vs NL
-if True:
+if False:
 
     NLvals = [50,100,500];
     numplots = len(NLvals);
@@ -157,17 +157,19 @@ if False:
         # benchmark
         axright = axes[Vprimei].twinx();
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        # for each dof
+        # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof): 
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[Vprimei].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+            axes[Vprimei].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[Vprimei].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]); 
+            axes[Vprimei].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
@@ -182,7 +184,7 @@ if False:
     plt.show();
 
 # worst case vs best case
-if False:
+if True:
 
     numplots = 3;
     fig, axes = plt.subplots(numplots, sharex = True);
@@ -224,17 +226,19 @@ if False:
     # benchmark
     axright = axes[axno].twinx();
     Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+    print("Output shapes:");
+    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-    # for each dof
+    # only one loc dof, and transmission is diagonal
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
@@ -257,21 +261,23 @@ if False:
                                   Vinfty, VL, VLprime, VR, VRprime,
                                   Ninfty, NL, NR, HC, HCprime,
                                   E_cutoff=VC[0,0],verbose=verbose);
-
+    
     # benchmark
     axright = axes[axno].twinx();
     Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+    print("Output shapes:");
+    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-    # for each dof
+    # only one loc dof, and transmission is diagonal
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
@@ -309,19 +315,21 @@ if False:
                                   E_cutoff=VC[0,0],verbose=verbose);
 
     # benchmark
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
     axright = axes[axno].twinx();
+    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+    print("Output shapes:");
+    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-    # for each dof
+    # only one loc dof, and transmission is diagonal
     for alpha in range(n_loc_dof): 
 
         # truncate to bound states and plot
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha], marker=mymarkers[0], color=mycolors[0]);
+        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
         # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha]-Tvals_bench[alpha])/Tvals_bench[alpha]),color=accentcolors[1]);
+        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
     # format
     axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
