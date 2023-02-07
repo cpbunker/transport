@@ -11,7 +11,7 @@ def print_H_alpha(H) -> None:
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",np.real(H[i,j,:,:]));
 
-def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_chiral, debug = 0) -> np.ndarray:
+def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_chiral, verbose = 0) -> np.ndarray:
     '''
     make the 1body and 2body parts of the 2nd qu'd ham
     The Ham is Kumar 2017 Eqs (1)-(3)
@@ -32,25 +32,37 @@ def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_ch
     mol_projections = tuple(np.linspace(-s_mols,s_mols,int(2*s_mols+1))[::-1]);
     mol_states = np.array([x for x in itertools.product(*(n_mols*(mol_projections,)))]);
     n_loc_dof = 2*len(mol_states);
-    n_sys_orbs = spatial_orbs;
-    h1e = np.zeros((n_sys_orbs, n_sys_orbs, n_loc_dof, n_loc_dof),dtype=complex);
+    h1e = np.zeros((spatial_orbs, spatial_orbs, n_loc_dof, n_loc_dof),dtype=complex);
 
     #### fermionic terms
+
+    # hacky code to break fermion spatial symetry
+    for loci in range(n_loc_dof):
+        h1e[1,1,loci,loci] += -0.0;
+
     # spin-independent hopping between n.n. sys orbs
-    for sysi in range(n_sys_orbs-1):
+    for sysi in range(spatial_orbs-1):
         # iter over local dofs (up, down, etc)
         for loci in range(n_loc_dof):
             h1e[sysi,sysi+1,loci,loci] += -mytm; 
             h1e[sysi+1,sysi,loci,loci] += -mytm;
-    if(n_sys_orbs > 2): # last to first hopping
+    if(spatial_orbs > 2): # last to first hopping
         for loci in range(n_loc_dof): 
             h1e[0,-1,loci,loci] += -mytm; 
             h1e[-1,0,loci,loci] += -mytm;
 
+    # fermionic Zeeman
+    for sysi in range(spatial_orbs):
+        h1e += myB_elec*get_sigz(n_loc_dof, spatial_orbs, sysi);
+
     #### spin terms
-    # Zeeman terms
-    if(debug): print("Zeeman"); 
-    for sysi in range(n_sys_orbs):
+
+    # chiral breaking
+    h1e += my_chiral*get_chiral_op(n_mols,s_mols,spatial_orbs);
+
+    # spin Zeeman terms
+    if(verbose): print("Zeeman"); 
+    for sysi in range(spatial_orbs):
         # have to iter over local dofs paticle-by-particle
         # iter over all (2s+1)^n_mols many-body mol spin states
         for mol_statei in range(len(mol_states)):
@@ -58,82 +70,21 @@ def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_ch
             # iter over electron spin 
             for sigma in range(2):
                 loci = 2*mol_statei+sigma;
-                h1e[sysi,sysi,loci,loci] += myB_elec*(1/2-sigma) + myB_mm*Sztot;
-                if(debug>1 and sysi == 0): print("->",loci,1/2-sigma,mol_states[mol_statei],'->',myB_elec*(1/2-sigma) + myB_mm*Sztot);
+                h1e[sysi,sysi,loci,loci] += myB_mm*Sztot;
+            if(verbose>1 and sysi==0): print("->",2*mol_statei,mol_states[mol_statei],'->',Sztot);
 
     # Heisenberg - regardless of elec location, couples mol spins
-    if(debug): print("Heisenberg"); 
-    for sysi in range(n_sys_orbs):
-
-        # iter over many-body mol spin states twice
-        for mol_statei in range(len(mol_states)):
-            for mol_statej in range(len(mol_states)):
-                # difference between states
-                n_different = np.count_nonzero(mol_states[mol_statei]-mol_states[mol_statej]);
-                if(n_different in [0,2]):
-
-                    # iter over ind'l mols in spin states twice
-                    for mola in range(n_mols):
-                        for molb in range(mola):
-                            # nearest neighbors, first-last
-                            if(mola - molb == 1 or (mola == n_mols-1) and molb == 0):
-                                
-                                # quantum numbers
-                                Szi_a = mol_states[mol_statei][mola];
-                                Szi_b = mol_states[mol_statei][molb];
-                                Szj_a = mol_states[mol_statej][mola];
-                                Szj_b = mol_states[mol_statej][molb];
-
-                                # S^z_a S^z_b couples state to itself
-                                if(mol_statei == mol_statej):
-                                    # add term to both elec spin channels
-                                    for sigma in range(2):
-                                        loci = 2*mol_statei+sigma;
-                                        h1e[sysi,sysi,loci,loci] += myJH*Szi_a*Szi_b;
-                                        if(debug>1 and sysi == 0): print("->",2*mol_statei,mol_states[mol_statei],'->',myJH*Szi_a*Szi_b);
-
-                                # S^+_a S^-_b couples spin flipped states
-                                if(Szi_a - Szj_a==1 and Szi_b-Szj_b==-1):
-                                    if(debug>1 and sysi == 0): print("->",2*mol_statei,mol_states[mol_statei],2*mol_statej,mol_states[mol_statej],'->',(1/2)*myJH);   
-                                    # add term to both elec spin channels
-                                    for sigma in range(2):
-                                        loci = 2*mol_statei+sigma;
-                                        locj = 2*mol_statej+sigma;
-                                        h1e[sysi,sysi,loci,locj] += (1/2)*myJH;
-                                        # hc
-                                        h1e[sysi,sysi,locj,loci] += (1/2)*myJH;
+    if(verbose): print("Heisenberg"); 
+    for mola in range(n_mols):
+        for molb in range(n_mols):
+            if(molb-mola==1 or (mola==n_mols-1 and molb==0)): # nn only
+                h1e += myJH*get_SaSb(n_mols, s_mols, spatial_orbs, mola, molb, verbose=verbose);
 
     # Kondo exchange - couples elec to molecule it is on
-    if False: assert(myJK == 0); return h1e;
-    if(debug): print("Kondo");
-    for moli in range(n_mols):
-
-        # iter over many-body mol spin states twice
-        for mol_statei in range(len(mol_states)):
-            for mol_statej in range(len(mol_states)):
-                # difference between states
-                n_different = np.count_nonzero(mol_states[mol_statei]-mol_states[mol_statej]);
-                if(n_different in [0,1]):
-                
-                    # S^z - couples state to itself
-                    if(mol_statei == mol_statej):
-                        for sigma in range(2):
-                            loci = 2*mol_statei+sigma;
-                            h1e[moli,moli,loci,loci] += myJK*mol_states[mol_statei][moli]*(1/2-sigma);
-                            if(debug>1 and moli==0):  print("->",moli,"->",2*mol_statei+sigma,mol_states[mol_statei],(1/2-sigma),'->',myJK*mol_states[mol_statei][moli]*(1/2-sigma)) 
-
-                    # S^+ - couples statei to statej with moli flipped up by one
-                    if(mol_states[mol_statei][moli]+1 == mol_states[mol_statej][moli]):
-                        # all other have to be the same
-                        if(n_different == 1):
-                            if(debug>1 and moli==0): print("->",moli,"->",2*mol_statei+0,mol_states[mol_statei],0.5,"->",2*mol_statej+1,mol_states[mol_statej],-0.5,'->',(1/2)*myJK);
-                            # couple statei with elec up to statej wth elec down
-                            h1e[moli,moli,2*mol_statei,2*mol_statej+1] += (1/2)*myJK;
-                            # hc
-                            h1e[moli,moli,2*mol_statej+1,2*mol_statei] += (1/2)*myJK;
-
-    # chiral breaking
-    h1e += my_chiral*get_chiral_op(n_mols,s_mols,n_sys_orbs);
+    if(n_mols != spatial_orbs): assert(myJK == 0); raise Exception; return h1e;
+    if(verbose): print("Kondo");
+    for mola in range(n_mols):
+        h1e += myJK*get_SaSigb(n_mols, s_mols, spatial_orbs, mola, mola, verbose=verbose);
 
     # return
     return h1e;
@@ -148,17 +99,27 @@ def get_occ(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
             occ[spacei,spacei] += np.eye(n_loc_dof);
 
     return occ;
+
+def get_sigz(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
+    '''
+    Get the operator for the electron z spin of site a
+    '''
+    sigz = np.zeros((spatial_orbs,spatial_orbs,n_loc_dof,n_loc_dof));
+    for spacei in range(spatial_orbs):
+        if(spacei == aindex):
+            diag = [1 if i%2==0 else -1 for i in range(n_loc_dof)];
+            sigz[spacei,spacei] += np.diagflat(diag)/2;
+
+    return sigz;
  
 
-def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
+def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex, verbose = 0) -> np.ndarray:
     '''
     Get the operator mol spin S_a dotted into mol spin S_b
-    For calculating D_ab (Kumar Eq (5)
     '''
     assert s_mols == 1/2; # have to add factors of sqrt(s) on S^\pm otherwise!
     mol_projections = tuple(np.linspace(-s_mols,s_mols,int(2*s_mols+1))[::-1]);
     mol_states = np.array([x for x in itertools.product(*(n_mols*(mol_projections,)))]);
-    if(aindex == bindex): raise ValueError;
     
     # construct as 4d in the spatial orbs, mol_states basis
     SaSb = np.zeros((spatial_orbs,spatial_orbs,2*len(mol_states),2*len(mol_states)));
@@ -178,19 +139,18 @@ def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
 
                 # S^z_a S^z_b - couples state to itself
                 if(mol_statei == mol_statej):
-                    # add term to all spatial blocks
+                    # add term to diag of all spatial blocks
                     for spacei in range(spatial_orbs):
                         # for both elec spins
                         for sigma in [0,1]:
-                            #print("->",2*mol_statei,mol_states[mol_statei],2*mol_statej,mol_states[mol_statej]);
                             SaSb[spacei,spacei,2*mol_statei+sigma,2*mol_statej+sigma] += Szi_a*Szi_b;
 
                 # S^+_a S^-_b couples spin flipped states
                 if(Szi_a - Szj_a==1 and Szi_b-Szj_b==-1):
-                    #print("->",2*mol_statei,mol_states[mol_statei],2*mol_statej,mol_states[mol_statej]);
-                    # add term to all spatial blocks
+                    # add term to diag of all spatial blocks
                     for spacei in range(spatial_orbs):
-                    # for both elec spins
+                        if(verbose>1 and spacei==0): print("-> S_"+str(aindex)+" S_"+str(bindex)); print("->",2*mol_statei,mol_states[mol_statei],"->",2*mol_statej,mol_states[mol_statej],'->',1/2); 
+                        # for both elec spins
                         for sigma in [0,1]:
                             SaSb[spacei,spacei,2*mol_statei+sigma,2*mol_statej+sigma] += (1/2);
                             # hc
@@ -199,10 +159,9 @@ def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
     # return                       
     return SaSb;
 
-def get_SaSigb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
+def get_SaSigb(n_mols, s_mols, spatial_orbs, aindex, bindex, verbose=0) -> np.ndarray:
     '''
     Get the operator mol spin S_a dotted into elec spin sigma on site b
-    For calculating F_ab (Kumar Eq (5)
     '''
     assert s_mols == 1/2; # have to add factors of sqrt(s) on S^\pm otherwise!
     mol_projections = tuple(np.linspace(-s_mols,s_mols,int(2*s_mols+1))[::-1]);
@@ -223,6 +182,7 @@ def get_SaSigb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
                     for sigma in range(2):
                         loci = 2*mol_statei+sigma;
                         SaSigb[aindex,bindex,loci,loci] += mol_states[mol_statei][aindex]*(1/2-sigma);
+                        if(verbose>1 and aindex==0 and bindex==0): print("-> S_"+str(aindex)+" \sigma_"+str(bindex)); print("->",loci,mol_states[mol_statei],(1/2-sigma),'->',mol_states[mol_statei][aindex]*(1/2-sigma));
 
                 # S^+ - couples statei to statej with moli flipped up by one
                 if(mol_states[mol_statei][aindex]+1 == mol_states[mol_statej][aindex]):
@@ -232,11 +192,15 @@ def get_SaSigb(n_mols,s_mols,spatial_orbs,aindex,bindex) -> np.ndarray:
                         SaSigb[aindex,bindex,2*mol_statei,2*mol_statej+1] += (1/2);
                         # hc
                         SaSigb[aindex,bindex,2*mol_statej+1,2*mol_statei] += (1/2);
+                        if(verbose>1 and aindex==0 and bindex==0): print("-> S_"+str(aindex)+" \sigma_"+str(bindex)); print("->",2*mol_statei+0,mol_states[mol_statei],0.5,"->",2*mol_statej+1,mol_states[mol_statej],-0.5,'->',1/2);                   
 
     # return
     return SaSigb;
 
 def get_chiral_op(n_mols,s_mols, spatial_orbs):
+    '''
+    get the operator S_1 \cdot (S_2 \times S_3)
+    '''
     assert n_mols == 3;
     assert s_mols == 1/2;
     hilbert_space = int((2*s_mols+1)**n_mols);
@@ -268,10 +232,35 @@ def get_chiral_op(n_mols,s_mols, spatial_orbs):
             for oldj in range(hilbert_space):
                 # add in spin block
                 for sigma in [0,1]:
-                    chiral_op_sigma[spacei,spacei,2*oldi+sigma,2*oldj+sigma] = chiral_op[oldi,oldj];
+                    chiral_op_sigma[spacei,spacei,2*oldi+sigma,2*oldj+sigma] += chiral_op[oldi,oldj];
 
     # return
     return chiral_op_sigma;
+
+def get_Stot2(n_mols,s_mols, spatial_orbs):
+    '''
+    Get the total spin operator squared
+    '''
+    assert s_mols == 1/2; # have to add factors of sqrt(s) on S^\pm otherwise!
+    mol_projections = tuple(np.linspace(-s_mols,s_mols,int(2*s_mols+1))[::-1]);
+    mol_states = np.array([x for x in itertools.product(*(n_mols*(mol_projections,)))]);
+    
+    # construct as 4d in the spatial orbs, mol_states basis
+    Stot2 = np.zeros((spatial_orbs,spatial_orbs,2*len(mol_states),2*len(mol_states)));
+
+    # add mol spins squared
+    S1 = get_SaSb(s_mols, n_mols, spatial_orbs, 0, 0)
+    Stot2 += np.matmul(S1,S1);
+    S2 = get_SaSb(s_mols, n_mols, spatial_orbs, 1, 1)
+    Stot2 += np.matmul(S2,S2);
+    S3 = get_SaSb(s_mols, n_mols, spatial_orbs, 2, 2)
+    Stot2 += np.matmul(S3,S3);
+
+    # add in unique spin-spin correlation
+    for mola in range(n_mols):
+        for molb in range(n_mols):
+            if(mola < molb):
+                Stot2 += get_SaSb(n_mols,s_mols,spatial_orbs,mola,molb);
 
     
 
