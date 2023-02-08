@@ -123,9 +123,12 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
             for beta in range(n_loc_dof):
                 # average over final state energy
                 Mbma = 0.0;
-                Nbma = 0; # number of final states averaged over
-                interval_width = 1e-9;
-                #interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]); # arbitrary for now
+
+                # inelastic means averaging over an interval
+                Nbma = 0; # num states in the interval
+                interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
+                if(n_bound_left == n_bound_right):
+                    if(not np.any(Enbs-Emas)): interval_width = 1e-9;
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
                         Nbma += 1;
@@ -224,29 +227,34 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     Tms = np.empty((n_bound_left,),dtype=float);
     for m in range(n_bound_left):
 
-        # average over final states
+        # average over final state energy
         Mm = 0.0;
-        Nm = 0; # number of final states averaged over
-        interval_width = 1e-9;
-        #interval_width = abs(Ens[-1]-Ens[-2]); # arbitrary for now       
+
+        # inelastic means averaging over an interval
+        Nm = 0; # num states in the interval
+        interval_width = abs(Ems[-2]-Ems[-1]);
+        if(n_bound_left == n_bound_right):
+            if(not np.any(Ens-Ems)): interval_width = 1e-9;    
+        interval_width = 1e-9;    
         for n in range(n_bound_right):
             if( abs(Ems[m] - Ens[n]) < interval_width/2):
                 Nm += 1;
                 melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
                 Mm += np.real(melement*np.conj(melement));
                 print(interval_width, Nm);
-                #print(np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
-                print("->",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
-                print("->",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
-                print("->",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
-                Sz = np.zeros_like(HL_4d);
-                for Szi in range(np.shape(HL_4d)[0]):
-                    for Szj in range(np.shape(HL_4d)[0]):
-                        if Szi==Szj:
-                            Sz[Szi,Szj] = np.array([[0,1],[1,0]]);
-                Sz = fci_mod.mat_4d_to_2d(Sz);
-                print("->",np.dot(psims[m],np.dot(Sz,psins[n])));
-                assert False
+                if False:
+                    #print(np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+                    print("->",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
+                    print("->",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
+                    print("->",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
+                    Sz = np.zeros_like(HL_4d);
+                    for Szi in range(np.shape(HL_4d)[0]):
+                        for Szj in range(np.shape(HL_4d)[0]):
+                            if Szi==Szj:
+                                Sz[Szi,Szj] = np.array([[0,1],[1,0]]);
+                    Sz = fci_mod.mat_4d_to_2d(Sz);
+                    print("->",np.dot(psims[m],np.dot(Sz,psins[n])));
+                    assert False
 
         # update T based on average
         #print(interval_width, Nm, psims[m]);

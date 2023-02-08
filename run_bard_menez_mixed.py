@@ -169,7 +169,7 @@ if True:
             # % error
             axright = axes[Jvali].twinx();
             axes[Jvali].scatter(xvals, Tvals_bench, marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals-Tvals_bench)/Tvals_bench),color=accentcolors[1]); 
+            #axright.plot(xvals,100*abs((Tvals-Tvals_bench)/Tvals_bench),color=accentcolors[1]); 
 
         #format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
