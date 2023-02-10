@@ -7,8 +7,7 @@ Spin independent scattering from a rectangular potential barrier
 solved in time-independent QM using wfm method in transport/wfm
 '''
 
-from transport import wfm, fci_mod, ops
-#from transport.wfm import utils
+from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,7 +22,7 @@ myxvals = 199;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","^","s","d","*","X","P"];
+mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -69,13 +68,12 @@ for Evali in range(len(Evals)):
     Rvals[Evali] = Rdum;
     Tvals[Evali] = Tdum;
 
-
 # plot Tvals vs E
 numplots = 1;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
 fig.set_size_inches(7/2,3*numplots/2);
-axes[0].plot(Evals, np.real(Tvals[:,0]), color=mycolors[0], marker=mymarkers[0], markevery=mymarkevery, linewidth=mylinewidth); 
+axes[0].plot(Evals, np.real(Tvals[:,0]), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
 
 # ideal
 kavals = np.arccos((Evals-2*tl-hblocks[0][0,0])/(-2*tl));
@@ -87,7 +85,7 @@ ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,
 ideal_Tvals *= ideal_correction
 
 # ideal comparison
-axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', linewidth = mylinewidth);
+axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);
 axes[0].set_ylim(0,1);
 axes[0].set_ylabel('$T$');
         

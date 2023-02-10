@@ -22,83 +22,29 @@ verbose = 5;
 # fig standardizing
 myxvals = 49;
 myfontsize = 14;
-mycolors = ["black","darkblue","darkgreen","darkred", "darkmagenta","darkgray","darkcyan"];
-mymarkers = ["o","^","s","d","X","P","*"];
-mymarkevery = 50;
+mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+accentcolors = ["black","red"];
+mymarkers = ["+","o","^","s","d","*","X"];
+mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 
-# tight binding params
-tl = 1.0;
-Msites = 1;
-Jval = -0.5;
-
-
-def h_kondo_2e(J,s2):
+def h_kondo(J,s2):
     '''
-    Kondo interaction between spin 1/2 and spin s2, 2nd-quantized form
+    Kondo interaction between spin 1/2 and spin s2
     '''
-
-    # m2 states
-    ms = [];
-    m2 = s2;
-    while(m2 >= -s2):
-        ms.append(m2);
-        m2 -= 1;
-
-    assert( len(ms) == 2*s2+1);
-    Nstates = 2 + len(ms);
-    h = np.zeros((Nstates,Nstates,Nstates,Nstates));
-
+    n_loc_dof = int(2*(2*s2+1));
+    h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
     if(s2 == 0.5):
-
-        # S \pm parts
-        h[0,1,3,2] = 2;
-        h[3,2,0,1] = 2;
-        h[1,0,2,3] = 2;
-        h[2,3,1,0] = 2;
-
-        # Sz parts
-        h[0,0,2,2] = 1;
-        h[2,2,0,0] = 1;
-        h[0,0,3,3] = -1;
-        h[3,3,0,0] = -1;
-        h[1,1,2,2] = -1;
-        h[2,2,1,1] = -1;
-        h[1,1,3,3] = 1;
-        h[3,3,1,1] = 1;
-
-        # scale with J
-        h = (J/4.0)*h;
-
-    elif(s2 == 1.0):
-
-        # S \pm parts
-        h[2,3,1,0] = 1/np.sqrt(2);
-        h[1,0,2,3] = 1/np.sqrt(2);
-        h[3,2,0,1] = 1/np.sqrt(2);
-        h[0,1,3,2] = 1/np.sqrt(2);
-        h[3,4,1,0] = 1/np.sqrt(2);
-        h[1,0,3,4] = 1/np.sqrt(2);
-        h[4,3,0,1] = 1/np.sqrt(2);
-        h[0,1,4,3] = 1/np.sqrt(2);
-
-        # Sz parts
-        h[2,2,0,0] = 1/2;
-        h[0,0,2,2] = 1/2;
-        h[2,2,1,1] = -1/2;
-        h[1,1,2,2] = -1/2;
-        h[4,4,0,0] = -1/2;
-        h[0,0,4,4] = -1/2;
-        h[4,4,1,1] = 1/2;
-        h[1,1,4,4] = 1/2;
-
-        # scale with J
-        h = J*h;
-
-    else: raise ValueError("Unsupported s2");
-
+        h[0,0] = 1;
+        h[1,1] = -1;
+        h[2,2] = -1;
+        h[3,3] = 1;
+        h[1,2] = 2;
+        h[2,1] = 2;
+        h *= J/4;
+    else: raise NotImplementedError;
     return h;
 
 #################################################################
@@ -106,12 +52,17 @@ def h_kondo_2e(J,s2):
 
 if True:
 
+    # tight binding params
+    tl = 1.0;
+    Msites = 1;
+    Jval = -0.5;
+
     # range of energies
     logElims = -4,0
     Evals = np.logspace(*logElims,myxvals, dtype = complex);
 
     # R and T matrices
-    alphas = [0,1,2,3];
+    alphas = [1,2];
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
     hspacesize = len(alphas);
     Rvals = np.empty((hspacesize,hspacesize,len(Evals)), dtype = float);
@@ -124,15 +75,9 @@ if True:
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
 
     # 2nd qu'd operator for S dot s
-    h1e = np.zeros((hspacesize,hspacesize))
-    g2e = h_kondo_2e(Jval, 0.5); # J, spin
-    states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
-    hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
+    hSR = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
     hLL = np.zeros_like(hSR);
     hRL = np.zeros_like(hSR);
-    #print(hSR)
-    #print(wfm.h_kondo(Jval,0.5));
-    #assert False
 
     # package together hamiltonian blocks
     hblocks = [hLL];
@@ -146,11 +91,12 @@ if True:
     if(verbose): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
 
     # iter over initial states (alpha)
-    for alpha in alphas:
+    for alphai in range(len(alphas)):
+        alpha = alphas[alphai];
 
         # source = up electron, down impurity
         source = np.zeros(hspacesize);
-        source[alpha] = 1;
+        source[alphai] = 1;
 
         # sweep over range of energies
         for Evali in range(len(Evals)):
@@ -162,16 +108,25 @@ if True:
             # R and T
             # kernel returns R[beta], T[beta] at given E
             Rbeta, Tbeta = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False);
-            Rvals[alpha,:,Evali] = Rbeta;
-            Tvals[alpha,:,Evali] = Tbeta;
+            Rvals[alphai,:,Evali] = Rbeta;
+            Tvals[alphai,:,Evali] = Tbeta;
 
     # plot results
-    for alpha in alphas:
-        for beta in alphas:
-            axes[alpha,beta].plot(np.real(Evals), Tvals[alpha,beta]);
-            axes[alpha,beta].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
-    # format and show
-    axes[-1,-1].set_xscale('log', subs = []);
+    for alphai in range(len(alphas)):
+        for betai in range(len(alphas)):
+            alpha, beta = alphas[alphai], alphas[betai];
+            axes[alphai,betai].plot(np.real(Evals), Tvals[alphai,betai], color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth);
+            axes[alphai,betai].plot(np.real(Evals), Rvals[alphai,betai], color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth = mylinewidth);
+            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
+
+            # format
+            axes[-1,betai].set_xlabel('$K_i/t$',fontsize=myfontsize);
+            axes[-1,betai].set_xscale('log', subs = []);
+
+        #check R+T=1
+        axes[alphai,-1].plot(np.real(Evals), Tvals[alphai,0]+Tvals[alphai,1]+Rvals[alphai,0]+Rvals[alphai,1], color=accentcolors[1]);
+
+    # show
     plt.tight_layout();
     plt.show();   
 

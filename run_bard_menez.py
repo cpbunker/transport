@@ -164,6 +164,7 @@ if True:
             axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1,betai].set_xscale('log', subs = []);
+            axes[alphai,0].set_ylabel("$T$");
 
     # show
     plt.tight_layout();
