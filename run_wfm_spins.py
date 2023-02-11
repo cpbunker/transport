@@ -12,7 +12,6 @@ from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
 
 #### top level
 #np.set_printoptions(precision = 4, suppress = True);
@@ -87,7 +86,7 @@ if True: # T+ at different Delta E by changing D
     myspinS = 1;
     n_loc_dof = 3;
     source = np.zeros((n_loc_dof,));
-    sourcei=n_loc_dof-1;
+    sourcei = n_loc_dof-1;
     source[sourcei] = 1.0;
     
     # Evals should be order of D (0.1 meV for Mn to 1 meV for MnPc)
@@ -95,9 +94,6 @@ if True: # T+ at different Delta E by changing D
     Dvals = Esplitvals/(1-2*myspinS);
     for Dvali in range(len(Dvals)):
         Dval = Dvals[Dvali];
-
-        # optical distances, N = 2 fixed
-        N0 = 1; # N0 = N - 1
 
         # construct hblocks
         hblocks = [];
@@ -123,18 +119,18 @@ if True: # T+ at different Delta E by changing D
         hblocks = np.array(hblocks);
         E_shift = hblocks[0,sourcei,sourcei]; # const shift st hLL[sourcei,sourcei] = 0
         for hb in hblocks:
-            hb += -E_shift*np.eye(np.shape(hblocks[0])[0]);
+            hb += -E_shift*np.eye(n_loc_dof);
         if(verbose > 3 ): print("Delta E / t = ", (hblocks[0][0,0] - hblocks[0][2,2])/tl);
 
         # hopping
-        tnn = np.array([-tl*np.eye(len(source)),-tp*np.eye(len(source)),-tl*np.eye(len(source))]);
+        tnn = np.array([-tl*np.eye(n_loc_dof),-tp*np.eye(n_loc_dof),-tl*np.eye(n_loc_dof)]);
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
 
         # iter over E, getting T
         logElims = -6,-2
         Evals = np.logspace(*logElims,myxvals, dtype = complex);
-        Rvals = np.empty((len(Evals),len(source)), dtype = float);
-        Tvals = np.empty((len(Evals),len(source)), dtype = float);
+        Rvals = np.empty((len(Evals),n_loc_dof), dtype = float);
+        Tvals = np.empty((len(Evals),n_loc_dof), dtype = float);
         for Evali in range(len(Evals)):
 
             # energy
