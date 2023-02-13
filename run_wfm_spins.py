@@ -105,7 +105,7 @@ if True: # T+ at different Delta E by changing D
             elif(j == impis[1]): JK2 = JK;
             params = Dval, Dval, J12, JK1, JK2;
             # construct h_SR (determinant basis)
-            hSR = reduced_ham(params,S=myspinS);           
+            hSR = reduced_ham(params,myspinS);           
             # transform to eigenbasis
             hSR_diag = entangle(hSR, 0,1);
             hblocks.append(np.copy(hSR_diag));

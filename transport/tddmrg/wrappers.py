@@ -30,7 +30,7 @@ import time
 #################################################
 #### get current data
 
-def siam_data(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, 
+def SiamData(nleads, nelecs, ndots, timestop, deltat, phys_params, bond_dims, noises, 
 spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     '''
     Walks thru all the steps for plotting current thru a SIAM, using DMRG for equil state
@@ -68,9 +68,6 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     if(not isinstance(nleads, tuple) ): raise TypeError;
     if(not isinstance(nelecs, tuple) ): raise TypeError;
     if(not isinstance(ndots, int) ): raise TypeError;
-    if(not isinstance(timestop, float) ): raise TypeError;
-    if(not isinstance(deltat, float) ): raise TypeError;
-    if(not isinstance(phys_params, tuple) or phys_params == None): raise TypeError;
     if(not bond_dims[0] <= bond_dims[-1]): raise ValueError; # bdims must have increasing behavior 
     if(not noises[0] >= noises[-1] ): raise ValueError; # noises must have decreasing behavior 
 
@@ -97,7 +94,7 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
 
     # initial ansatz for wf, in matrix product state (MPS) form
     psi_mps = h_obj.build_mps(bond_dims[0]);
-    E_mps_init = tddmrg.compute_obs(h_mpo, psi_mps);
+    E_mps_init = ops_dmrg.compute_obs(h_mpo, psi_mps);
     if verbose: print("- Initial gd energy = ", E_mps_init);
 
     # ground-state DMRG
@@ -132,94 +129,29 @@ spinstate = "", prefix = "data/", namevar = "Vg", verbose = 0) -> str:
     # time propagate the noneq state
     # td dmrg uses highest bond dim
     if(verbose): print("3. Time propagation");
-    init, observables = tddmrg.kernel(h_mpo_neq, h_obj_neq, psi_mps, timestop, deltat, imp_i, [bond_dims[-1]], verbose = verbose);
+    observables = tddmrg.kernel(h1e, g2e, h1e_neq, nelecs, bond_dims, timestop, deltat, verbose = verbose);
 
     # write results to external file
     if namevar == "Vg":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
+        fname = prefix+"siam_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";
     elif namevar == "U":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
+        fname = prefix+"siam_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_U"+str(U)+".npy";
     elif namevar == "Vb":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
+        fname = prefix+"siam_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vb"+str(V_bias)+".npy";
     elif namevar == "th":
-        fname = prefix+"fci_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
+        fname = prefix+"siam_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_th"+str(t_hyb)+".npy";
     else: assert(False); # invalid option
     hstring = time.asctime(); # header has lots of important info: phys params, bond dims, etc
     hstring += "\ntf = "+str(timestop)+"\ndt = "+str(deltat);
     hstring += "\nASU formalism, t_hyb noneq. term, td-DMRG,\nbdims = "+str(bond_dims)+"\n noises = "+str(noises); 
     hstring += "\nEquilibrium"+input_str; # write input vals to txt
     hstring += "\nNonequlibrium"+input_str_neq;
-    np.savetxt(fname[:-4]+".txt", init, header = hstring); # saves info to txt
+    np.savetxt(fname[:-4]+".txt", observables[0], header = hstring); # saves info to txt
     np.save(fname, observables);
     if(verbose): print("4. Saved data to "+fname);
     
-    return fname; # end dot data dmrg
-
-def kernel(mpo, h_obj, mps, tf, dt, i_dot, bdims, verbose = 0):
-    '''
-    Drive time prop for dmrg
-    Use real time time dependent dmrg method outlined here:
-    https://pyblock3.readthedocs.io/en/latest/Documentation/rttddmrg.html
-
-    Args:
-    -mpo, a matrix product operator form of the hamiltonian
-    -h_obj, a pyblock3.hamiltonian.Hamiltonian form of the hamiltonian
-    -mps, a matrix product state
-    -tf, float, the time to end the time evolution at
-    -dt, float, the time step of the time evolution
-    -i_dot, int, the site index of the impurity
-    =bdims, list of ints, bond dimension of the DMRG solver
-    '''
-
-    # check inputs
-    assert(isinstance(bdims, list));
-
-    # unpack
-    norbs = mps.n_sites
-    N = int(tf/dt+1e-6); # num steps
-    n_generic_obs = 7; # 7 are time, E, 4 J's, concurrence
-    sites = np.array(range(norbs)).reshape(int(norbs/2),2); # all indices, sep'd by site
-    mpe_obj = MPE(mps, mpo, mps); # init mpe obj
-    # return vals
-    observables = np.zeros((N+1, n_generic_obs+4*len(sites) ), dtype = complex ); # generic plus occ, Sx, Sy, Sz per site
-
-    # mpos for observables
-    obs_mpos = [];
-    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[0] ) );
-    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jup(i_dot, norbs)[1] ) );
-    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[0] ) );
-    obs_mpos.append(h_obj.build_mpo(ops_dmrg.Jdown(i_dot, norbs)[1] ) );
-    obs_mpos.append(h_obj.build_mpo(ops_dmrg.spinflip(i_dot, norbs) ) );
-    for site in sites: # site specific observables
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.occ(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sx(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sy(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sz(site, norbs) ) );
-
-    # loop over time
-    for i in range(N+1):
-
-        if(verbose>2): print("    time: ", i*dt);
-
-        # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        energies = mpe_obj.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
-        mpst = mpe_obj.ket; # update wf
-
-        # compute observables
-        observables[i,0] = i*dt; # time
-        observables[i,1] = energies[-1]; # energy
-        for mi in range(len(obs_mpos)): # iter over mpos
-            print(mi);
-            observables[i,mi+2] = compute_obs(obs_mpos[mi], mpst);
-        
-        # before any time stepping, get initial state
-        if(i==0):
-            # get site specific observables at t=0 in array where rows are sites
-            initobs = np.real(np.reshape(observables[i,n_generic_obs:],(len(sites), 4) ) );
-
-    # return tuple of observables at t=0 and observables as arrays vs time
-    return initobs, observables;
-    
+    return fname; 
+   
 #################################################
 #### exec code
 

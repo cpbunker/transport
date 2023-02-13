@@ -553,7 +553,6 @@ def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
     '''
     from pyscf import fci, ao2mo, gto
     import functools
-    if( not isinstance(mol, gto.mol)): raise TypeError;
 
     # init ci solver with ham from molecule inst
     cisolver = fci.direct_uhf.FCISolver(mol);

@@ -73,7 +73,8 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
 
     # top level inputs
     numplots = len(splots);
-    n_generic_obs = 7;
+    obs_gen = 2; # time, E
+    obs_per_site = 2; # occ, Sz
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     axcounter = 0; # update every time an ax is plotted
@@ -84,17 +85,14 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
     print("Loading data from ",dataf);
     observables = np.load(dataf);
     observables = observables.T; # so that features can now be easily grabbed as rows
-    t, E, JupL, JupR, JdownL, JdownR, concur = observables[0], observables[1], -np.imag(observables[2]), -np.imag(observables[3]), -np.imag(observables[4]), -np.imag(observables[5]), observables[6]
-    Jup = (JupL + JupR)/2;
-    Jdown = (JdownL + JdownR)/2;
-    J = Jup + Jdown;
+    t, E, = observables[0], observables[1];
 
     # site specific observables
     occs, Szs = [], [];
     for sitei in range(len(sites)): # observables has an occ and Sz for every site
-        obsi = n_generic_obs + sitei*4; # 4 total obs per site
+        obsi = obs_gen + sitei*obs_per_site;
         occs.append(observables[obsi]);
-        Szs.append(observables[obsi+3]);
+        Szs.append(observables[obsi+1]);
 
     # plot current vs time
     if 'Jup' in splots:
@@ -138,7 +136,7 @@ def PlotObservables(dataf, sites, splots = ['J','occ','Sz','E'], mytitle = "", p
 
         # inset
         axins = inset_axes(axes[axcounter], width="20%", height="20%");
-        axins.plot(t[:int(2/np.real(t[1]) ) ], Docc[:int(2/np.real(t[1]) ) ], color = colors[1] );
+        axins.plot(t[:int(2/np.real(t[1]) ) ], Docc[:int(2/np.real(t[1]) ) ], color = mycolors[1] );
                 
         axes[axcounter].plot(t, LLocc, color = mycolors[0], label = "LL");
         axes[axcounter].plot(t, Docc, color = mycolors[1], label = "D");

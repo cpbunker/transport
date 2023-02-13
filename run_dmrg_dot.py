@@ -21,12 +21,12 @@ import sys
 
 # top level
 verbose = 3;
+get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
 nleads = (3,3);
 nelecs = (2,0); # one electron on dot and one itinerant
 ndots = 1;
-get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
-spinstate = "ab";
-myprefix = "data/dot/"
+myspinstate = "ab";
+myprefix = "data/dmrg_dot/";
 
 # phys params, must be floats
 tl = 1.0;
@@ -47,17 +47,15 @@ timefinal = 1.0;
 bdims = [700, 800, 900, 1000];
 noises = [1e-4, 1e-5, 1e-6, 0.0];
 
-if get_data: # must actually compute data
-
+if(get_data): # command line tells whether to get data
     params = tl, th, td, Vb, mu, Vg, U, B, theta;
-    tddmrg.wrappers.siam_data(nleads, nelecs, ndots, timefinal, timestep, params, bdims, noises, spinstate = spinstate, prefix = myprefix, verbose = verbose);
+    tddmrg.wrappers.SiamData(nleads, nelecs, ndots, timefinal, timestep, params, bdims, noises, spinstate = myspinstate, prefix = myprefix, verbose = verbose);
 
-else:
-
-    # plot results
-    datafs = sys.argv[2:]
+else: # plot data
+    datafs = sys.argv[2:];
     splots = ['lead_occ','lead_Sz','E']; # which subplots to plot
-    mysites = ['L1','L2','L3','L4','D','R1','R2','R3','R4'];
+    mysites = ['L1','L2','L3','D','R1','R2','R3'];
+    assert(len(mysites) == sum(nleads)+ndots);
     title = "Itinerant electron scatters from spin impurity";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
     fci_mod.plot.PlotObservables(datafs[0], sites = mysites, splots = splots, mytitle = title, paramstr = paramstr);

@@ -97,7 +97,7 @@ axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
 for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize); 
 plt.tight_layout();
 plt.show();
-#plt.savefig('figs/barrier.pdf');
+#plt.savefig('figs/wfm_barrier/T.pdf');
    
 
 

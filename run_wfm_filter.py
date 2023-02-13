@@ -97,7 +97,7 @@ if True:
     for Bval in Bvals:
 
         # range of energies
-        logElims = -4,0
+        logElims = -2,0
         Evals = np.logspace(*logElims,myxvals, dtype = complex);
 
         # R and T matrices
@@ -161,7 +161,7 @@ if True:
                 alpha, beta = alphas[alphai], alphas[betai];
                 axes[alphai,betai].plot(np.real(Evals), Tvals[alphai,betai], color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth);
                 axes[alphai,betai].plot(np.real(Evals), Rvals[alphai,betai], color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth = mylinewidth);
-                axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
+                axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
                 
                 # format
                 axes[-1,betai].set_xlabel('$K_i/t$',fontsize=myfontsize);
@@ -169,7 +169,7 @@ if True:
                 
             #check R+T=1
             #axes[alphai,-1].plot(np.real(Evals), Tvals[alphai,0]+Tvals[alphai,1]+Rvals[alphai,0]+Rvals[alphai,1], color=accentcolors[1]);
-            axes[alphai,-1].plot(np.real(Evals), np.sqrt(Tvals[alphai,0]*Tvals[alphai,1]), color=accentcolors[1]);
+            #axes[alphai,-1].plot(np.real(Evals), np.sqrt(Tvals[alphai,0]*Tvals[alphai,1]), color=accentcolors[1]);
 
         # show
         plt.tight_layout();

@@ -117,7 +117,7 @@ if True:
             alpha, beta = alphas[alphai], alphas[betai];
             axes[alphai,betai].plot(np.real(Evals), Tvals[alphai,betai], color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth);
             axes[alphai,betai].plot(np.real(Evals), Rvals[alphai,betai], color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth = mylinewidth);
-            axes[alphai,betai].set_title("$"+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+"$");
+            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
 
             # format
             axes[-1,betai].set_xlabel('$K_i/t$',fontsize=myfontsize);

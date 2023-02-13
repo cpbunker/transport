@@ -11,8 +11,8 @@ tdfci module:
 - outputs current and energy vs time
 '''
 
-from transport import ops
 from transport import fci_mod
+from transport.fci_mod import ops
 
 from pyscf import lib, fci, scf, gto, ao2mo
 from pyscf.fci import direct_uhf, direct_nosym, cistring
@@ -26,7 +26,7 @@ einsum = lib.einsum
 ################################################################
 #### kernel
 
-def kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, RK=4, verbose=0):
+def kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, verbose=0):
     '''
     Kernel for getting observables at each time step, for plotting
     Outputs 1d arrays of time, energy, current, occupancy, Sz
@@ -84,7 +84,7 @@ def kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, RK=4, verbose=0):
         (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12();
         
         # time step
-        dr, dr_imag = compute_update(ci, Eeris, dt, RK) # update state (r, an fcivec) at each time step
+        dr, dr_imag = compute_update(ci, Eeris, dt) # update state (r, an fcivec) at each time step
         r = ci.r + dt*dr
         r_imag = ci.i + dt*dr_imag # imag part of fcivec
         norm = np.linalg.norm(r + 1j*r_imag) # normalize complex vector

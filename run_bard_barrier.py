@@ -46,7 +46,7 @@ VL = 0.0*tL;
 VR = 0.0*tL;
 
 # T vs NL
-if False:
+if True:
 
     NLvals = [50,100,500];
     numplots = len(NLvals);
@@ -184,7 +184,7 @@ if False:
     plt.show();
 
 # worst case vs best case
-if True:
+if False:
 
     numplots = 3;
     fig, axes = plt.subplots(numplots, sharex = True);
