@@ -129,6 +129,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
                 if(n_bound_left == n_bound_right):
                     if(not np.any(Enbs-Emas)): interval_width = 1e-9;
+                interval_width = 1e-9;
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
                         Nbma += 1;
@@ -205,20 +206,33 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     if(verbose > 9):
-        for m in range(10):
-            psi0 = psims[m];
-            print(m,Ems[m],np.dot(np.conj(psi0[::2]),psi0[::2]),np.dot(np.conj(psi0[1::2]),psi0[1::2]));
-        assert False
+        # plot the potential
         import matplotlib.pyplot as plt
         jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
-            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d];
-            Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
             for Hi in range(len(Hs)):
-                myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
-        plt.legend();plt.show();assert False;
+                myaxes[alpha].plot(jvals, Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+        plt.legend();plt.show();
+        # properties of the wfs
+        # operators
+        Sz_op = np.diagflat([0.5 if i%2==0 else -0.5 for i in range(len(psims[0]))]);
+        Sx_op = np.zeros_like(Sz_op);
+        for i in range(len(Sx_op)-1): Sx_op[i,i+1] = 0.5; Sx_op[i+1,i] = 0.5;
+        for m in range(6):
+            psim = psims[m];
+            print("-psi_",m,Ems[m]);
+            print("\t",np.dot(np.conj(psim),np.dot(Sz_op,psim)),np.dot(np.conj(psim),np.dot(Sx_op,psim)),not np.any(psim-np.dot(Sz_op,psim)),not np.any(psim-np.dot(Sx_op,psim)));
+            width = NL+len(HC)
+            mid = Ninfty+width//2;
+            print("\t",np.real(np.diag(HL)[-2+2*mid-width:2*(mid+1)-width]),np.real(np.diag(HL)[2*mid+width:2*(mid+1)+width+2]));
+            print("\t",np.real(psim[2*(mid-1):2*(mid+2)].round(2)));
+            print("\t",np.real(psim[2*(mid-1):2*(mid+2)][::-1].round(2)));
+            assert False
+        assert False
+        
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>

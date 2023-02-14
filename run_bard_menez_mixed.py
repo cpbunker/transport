@@ -93,9 +93,11 @@ if True:
         # central region
         tC = 1.0*tL;
         #VC = abs(Jval/4)*tL;
-        NC = 1;
+        NC = 3;
         if barrier: NC = 11;
         my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
+        my_kondo = np.array([[0.3,0],[0,-0.3]]);
+        my_kondo = np.array([[0,1e-9],[1e-9,0]]);
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -146,7 +148,7 @@ if True:
             Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=1);
+                                      E_cutoff=0.1,verbose=10);
         else:
             Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,

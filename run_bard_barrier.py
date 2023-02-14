@@ -104,7 +104,7 @@ if True:
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
         axes[NLi].set_ylabel('$T$',fontsize=myfontsize);
-        axes[NLi].set_title('$N_L = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[NLi].set_title('$N_R = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
@@ -113,7 +113,7 @@ if True:
     plt.show();
 
 # T vs VLR prime
-if False:
+if True:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);
