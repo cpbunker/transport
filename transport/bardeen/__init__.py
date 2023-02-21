@@ -179,11 +179,15 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
 
     # left well 
     HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+        ##### hacky code
+        #####
+    HL_4d[Ninfty,Ninfty] += np.array([[1/8,-1/4],[-1/4,1/8]]);
+        #####
+        #####
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     interval = 2;
     interval_tup = (n_loc_dof*(n_spatial_dof//2-interval),n_loc_dof*(n_spatial_dof//2+interval+1) );
     if verbose: print("-HL[:,:] =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
-
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
     psims = psims.T[Ems+2*tLa < E_cutoff];
@@ -193,6 +197,11 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+        ##### hacky code
+        #####
+    HR_4d[-Ninfty-1,-Ninfty-1] += np.array([[1/8,-1/4],[-1/4,1/8]]);
+        #####
+        #####
     HR = fci_mod.mat_4d_to_2d(HR_4d);
     if verbose: print("-HR[:,:] =\n",np.real(HR[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
     
@@ -214,25 +223,32 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
         for alpha in range(n_loc_dof):
             Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
             for Hi in range(len(Hs)):
-                myaxes[alpha].plot(jvals, Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
         plt.legend();plt.show();
         # properties of the wfs
         # operators
-        Sz_op = np.diagflat([0.5 if i%2==0 else -0.5 for i in range(len(psims[0]))]);
+        Sz_op = np.diagflat([1.0 if i%2==0 else -1.0 for i in range(len(psims[0]))]);
         Sx_op = np.zeros_like(Sz_op);
-        for i in range(len(Sx_op)-1): Sx_op[i,i+1] = 0.5; Sx_op[i+1,i] = 0.5;
-        for m in range(6):
+        for i in range(len(Sx_op)-1): Sx_op[i,i+1] = 1.0; Sx_op[i+1,i] = 1.0;
+        for m in range(8):
             psim = psims[m];
-            print("-psi_",m,Ems[m]);
-            print("\t",np.dot(np.conj(psim),np.dot(Sz_op,psim)),np.dot(np.conj(psim),np.dot(Sx_op,psim)),not np.any(psim-np.dot(Sz_op,psim)),not np.any(psim-np.dot(Sx_op,psim)));
+            print("-psi_",m,"<S_z> = ",np.array([np.dot(np.conj(psim),np.dot(Sz_op,psim))]),"<S_x> =",np.array([np.dot(np.conj(psim),np.dot(Sx_op,psim))]));
             width = NL+len(HC)
             mid = Ninfty+width//2;
+            myfig, (wfax, derivax) = plt.subplots(2);
+            mycolors=['tab:blue','tab:orange']; # differentiates spin comps
+            mystyles=['solid','dashed']; # differentiates real vs imaginary
+            for sigma in [0,1]:
+                psimup = psim[sigma::2];
+                wfax.plot(np.real(jvals), 1e-6*sigma+np.real(psimup),color=mycolors[sigma],linestyle=mystyles[0]);
+                wfax.plot(np.real(jvals), 1e-6*sigma+np.imag(psimup),color=mycolors[sigma],linestyle=mystyles[1]);
+                derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[0]);
+                derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[1]);
+            plt.show();
             print("\t",np.real(np.diag(HL)[-2+2*mid-width:2*(mid+1)-width]),np.real(np.diag(HL)[2*mid+width:2*(mid+1)+width+2]));
             print("\t",np.real(psim[2*(mid-1):2*(mid+2)].round(2)));
             print("\t",np.real(psim[2*(mid-1):2*(mid+2)][::-1].round(2)));
-            assert False
-        assert False
-        
+        assert False       
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
