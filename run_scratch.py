@@ -60,32 +60,25 @@ def h_kondo(J,s2):
     else: raise NotImplementedError;
     return h;
 
-def h_simple(Vinfty,V,Ninfty,N):
-    if(not isinstance(Vinfty, np.ndarray)): raise TypeError;
-    spatial_orbs = 2*Ninfty+N;
-    n_loc_dof = len(Vinfty);
+def h_tb(V,N):
+    if(not isinstance(V, np.ndarray)): raise TypeError;
+    spatial_orbs = N;
+    n_loc_dof = len(V);
     h_4d = np.zeros((spatial_orbs,spatial_orbs,n_loc_dof,n_loc_dof),dtype=complex);
     t = np.eye(n_loc_dof);
     for spacei in range(spatial_orbs):
-        if(spacei < Ninfty):
-            h_4d[spacei,spacei] += Vinfty;
-        elif(spacei < Ninfty+N):
-            h_4d[spacei,spacei] += V;
-        else:
-            h_4d[spacei,spacei] += Vinfty;
+        h_4d[spacei,spacei] += V;
         if(spacei < spatial_orbs-1):
             h_4d[spacei+1,spacei] += -t;
             h_4d[spacei,spacei+1] += -t;
     return h_4d;
 
-def self_energy(E,Vinfty):
-    if(not isinstance(Vinfty, np.ndarray)): raise TypeError;
-    Vs = np.diag(Vinfty);
+def self_energy(E,V):
+    if(not isinstance(V, np.ndarray)): raise TypeError;
+    Vs = np.diag(V);
     Es = E*np.ones_like(Vs);
     dummy = (Es-Vs)/(-2);
     self = np.diagflat(-(dummy+np.lib.scimath.sqrt(dummy*dummy-1)));
-    # should be retarded
-    #if(np.imag(self[0,0] > 0)): self = np.conj(self);
     return self;
 
 def get_eigs(h_4d):
@@ -97,7 +90,7 @@ def get_eigs(h_4d):
     eigvecs = eigvecs[:,inds];
     return eigvals, eigvecs.T;
 
-def plot_eigs(ham,jvals,n_loc_dof,num=None) -> None:
+def plot_eigs(ham,jvals,n_loc_dof,num=None,myenergy=0.0) -> None:
     mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
     mystyles=['solid','dashed']; # differentiates real vs imaginary
 
@@ -114,9 +107,11 @@ def plot_eigs(ham,jvals,n_loc_dof,num=None) -> None:
         Sz_op[0,0], Sx_op[0,0] = np.nan, np.nan
 
     # plot eigenfunctions
+    coupled_continuum = False;
     for m in range(num):
         print(m,Es[m]);
-        if(abs(np.real(Es[m])) < 1e-9):
+        if(abs(np.real(Es[m]-myenergy)) < 1e-9):
+            coupled_continuum = True;
             psim = psis[m];
             Szm = np.dot(np.conj(psim),np.dot(Sz_op,psim));
             Sxm = np.dot(np.conj(psim),np.dot(Sx_op,psim));
@@ -131,29 +126,37 @@ def plot_eigs(ham,jvals,n_loc_dof,num=None) -> None:
                     wfax.plot(np.real(jvals), 1e-6*sigma+np.imag(psimup),color=mycolors[sigma],linestyle=mystyles[1]);
                     derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[0]);
                     derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[1]); 
-                    wfax.set_title("<S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
+            # show
+            wfax.set_ylabel('$\psi$');
+            derivax.set_ylabel('$-i\hbar d \psi/dj$');
+            wfax.set_title("<S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
             plt.show();
+
+    # check
+    if(not coupled_continuum): raise Exception("bound state energy not coupled to continuum");
 
 #################################################################
 #### visualize eigenspectrum of different HL's
 
-if True: # spinless case
+# redo 1d spinless bardeen theory with absorbing/emitting bcs
+# for no reflection, absorbing bcs should be smooth
+# look at xgz paper for better spin-flip bcs
+# spin rotation region + infinite wall
+
+if False: # spinless case
 
     # setup
-    Ninfty = 1;
-    NL = 15;
-    Ntot = 2*Ninfty+NL;
-    assert(Ntot % 2 == 1);
-    mid = Ntot // 2;
+    NL = 17;
+    assert(NL % 2 == 1);
+    mid = NL // 2;
     js = np.array(range(-mid,mid+1));
     loc_dof = 1;
-    Vinfty = 0.0*np.eye(loc_dof);
     V = 0.0*np.eye(loc_dof);
 
     # construct well and add spin parts
-    Energy = -0.0;
-    HL = h_simple(Vinfty,V,Ninfty,NL);
-    selfenergy = self_energy(Energy,Vinfty);
+    Energy = -1.9;
+    HL = h_tb(V,NL);
+    selfenergy = self_energy(Energy,V);
     HL[0,0] += np.conj(selfenergy);
     HL[-1,-1] += selfenergy;
     print_H_alpha(HL);
@@ -165,10 +168,10 @@ if True: # spinless case
     plt.show();
 
     # plot HL eigenfunctions
-    plot_eigs(HL,js,loc_dof);
+    plot_eigs(HL,js,loc_dof,myenergy=Energy);
 
     # plot e^ikx
-    Es = [0.0];
+    Es = [Energy];
     Es = np.sort(Es);
     ks = np.arccos((Es-V[0,0])/(-2));
     for m in range(len(Es)):
@@ -183,40 +186,40 @@ if True: # spinless case
         derivax.plot(np.real(js), np.imag(complex(0,-1)*np.gradient(psi)),color='tab:blue',linestyle='dashed');
         plt.show();
 
-if False:
+if True:
 
     # setup
-    Ninfty = 2;
-    NL = 13;
-    Ntot = 2*Ninfty+NL;
-    assert(Ntot % 2 == 1);
-    mid = Ntot // 2;
+    NL = 17;
+    assert(NL % 2 == 1);
+    mid = NL // 2;
     js = np.array(range(-mid,mid+1));
     loc_dof = 2;
-    Vinfty = 0.0*np.eye(loc_dof);
     V = 0.0*np.eye(loc_dof);
 
     # construct well and add spin parts
-    Energy = -0.0
-    HL = h_simple(Vinfty,V,Ninfty,NL);
-    spinpart = np.array([[0,complex(1,0)],[complex(1,0),0]]);
-    selfenergy = self_energy(Energy,Vinfty);
-    selfenergy = np.array([[np.conj(selfenergy[0,0]),0],[0,selfenergy[1,1]]]);
-    HL[0,0] += selfenergy;
-    HL[-1,-1] += spinpart;
+    Energy = -1.833
+    HL = h_tb(V,NL);
+    spinpart = -0.5*np.array([[-1,2],[2,-1]])/4;
+    selfenergy = self_energy(Energy,V);
+    # emit up and absorb down at left
+    HL[0,0] += np.array([[np.conj(selfenergy[0,0]),0],[0,selfenergy[1,1]]]);
+    # spin mix
+    HL[-2,-2] += spinpart;
+    # absorb up and down at right
+    HL[-1,-1] += np.array([[selfenergy[0,0],0],[0,selfenergy[1,1]]]);
     print_H_alpha(HL);
     fig, axes = plt.subplots(loc_dof);
     for sigma in range(loc_dof):
-        axes[sigma].plot(js,np.diag(HL[:,:,sigma,sigma]));
+        axes[sigma].plot(js,np.real(np.diag(HL[:,:,sigma,sigma])),linestyle='solid');
+        axes[sigma].plot(js,np.imag(np.diag(HL[:,:,sigma,sigma])),linestyle='dashed');
     plt.show();
 
     # plot HL eigenfunctions
-    Es, psis = get_eigs(HL);
-    print(Es);
-    plot_eigs(psis,js,loc_dof);
-    assert False
+    plot_eigs(HL,js,loc_dof,myenergy=Energy);
 
     # plot e^ikx
+    Es = [Energy];
+    Es = np.sort(Es);
     ks = np.arccos((Es-V[0,0])/(-2));
     for m in range(4):
         print(Es[m]);

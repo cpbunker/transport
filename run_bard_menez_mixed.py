@@ -63,7 +63,7 @@ def h_kondo(J,s2):
 
 if True:
     barrier = False; # benchmark w/out spin flips
-    mixed = True; # unperturbed ham (HCprime) mixes spin
+    mixed = False; # unperturbed ham (HCprime) mixes spin
                   # likely cannot resolve final spins in this case
 
     # iter over J
@@ -148,16 +148,18 @@ if True:
             Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=1);
+                                      E_cutoff=0.1,verbose=10);
         else:
-            Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
+            Evals, Tvals = bardeen.kernel_projected(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=1);
+                                      E_cutoff=0.1,verbose=10);
 
         # benchmark
         if mixed:
             Tvals_bench = bardeen.benchmark_mixed(tL, tR, VL, VR, HC, Evals, verbose=0);
+        else:
+            Tvals_bench = bardeen.benchmark();
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
