@@ -376,7 +376,6 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
 
             # debugging
             if(verbose > 9):
-                import matplotlib.pyplot as plt
                 mycolors=['tab:blue','tab:orange']; # differentiates spin comps
                 mystyles=['solid','dashed']; # differentiates real vs imaginary
                 print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
@@ -387,13 +386,16 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
                         coupled_continuum = True;
                         # plot spin components in different colors
                         myfig, (wfax, derivax) = plt.subplots(2);
-                        for sigma in range(n_loc_dof):
-                                psimup = psims_self[mprime][sigma::n_loc_dof];
-                                # real is solid, dashed is imaginary
-                                wfax.plot(np.real(jvals), 1e-6*sigma+np.real(psimup),color=mycolors[sigma],linestyle=mystyles[0]);
-                                wfax.plot(np.real(jvals), 1e-6*sigma+np.imag(psimup),color=mycolors[sigma],linestyle=mystyles[1]);
-                                derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[0]);
-                                derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[1]); 
+                        for alphaprime in range(n_loc_dof):
+                            
+                            psimup = psims_self[mprime][alphaprime::n_loc_dof];
+                            # real is solid, dashed is imaginary
+                            wfax.plot(np.real(jvals), 1e-6*alphaprime+np.real(psimup),color=mycolors[alphaprime],linestyle=mystyles[0]);
+                            wfax.plot(np.real(jvals), 1e-6*alphaprime+np.imag(psimup),color=mycolors[alphaprime],linestyle=mystyles[1]);
+                            wfax.plot(np.real(jvals), np.real(np.diag(HLself_4d[:,:,alphaprime,alphaprime])),color='black',linestyle='solid');
+                            wfax.plot(np.real(jvals), np.imag(np.diag(HLself_4d[:,:,alphaprime,alphaprime])),color='black',linestyle='dashed');
+                            derivax.plot(np.real(jvals), 1e-6*alphaprime+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[alphaprime],linestyle=mystyles[0]);
+                            derivax.plot(np.real(jvals), 1e-6*alphaprime+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[alphaprime],linestyle=mystyles[1]); 
 
                         # show
                         wfax.set_ylabel('$\psi$');
