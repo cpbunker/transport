@@ -159,20 +159,31 @@ def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
         for n in range(-ninf,ninf+1):
             if(n>0): # right moving
                 wf_right += cns[n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
-            elif(n<0): # left moving
+            elif(n<=0): # left moving
                 wf_left += cns[n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
+
+    if False:
+        axright.plot(jvals,np.real(wf),linestyle='solid',color='tab:blue');
+        axright.plot(jvals,np.imag(wf),linestyle='dashed',color='tab:blue');
+        axleft.plot(jvals,np.real(wf_left+wf_right),linestyle='solid',color='tab:blue');
+        axleft.plot(jvals,np.imag(wf_left+wf_right),linestyle='dashed',color='tab:blue');
+        plt.show();
+        assert False
+
+    else:
 
         axright.plot(jvals, np.real(wf_right),linestyle=mystyles[0],color=mycolors[sigma]);
         axright.plot(jvals, np.imag(wf_right),linestyle=mystyles[1],color=mycolors[sigma]);
         axleft.plot(jvals, np.real(wf_left),linestyle=mystyles[0],color=mycolors[sigma]);
         axleft.plot(jvals, np.imag(wf_left),linestyle=mystyles[1],color=mycolors[sigma]);
-        axcomp.plot(jvals, np.real((np.conj(wf_left)*wf_left)/(np.conj(wf)*wf)),linestyle=mystyles[0],color=mycolors[sigma]);
+        axcomp.plot(jvals, np.real(np.append(wf_right[1:],wf_right[0])/wf_right),linestyle=mystyles[0],color=mycolors[sigma]);
+        axcomp.plot(jvals, np.imag(np.append(wf_right[1:],wf_right[0])/wf_right),linestyle=mystyles[1],color=mycolors[sigma]);
 
     # show
     axright.set_ylabel("Right going");
     axleft.set_ylabel("Left going");
     axright.set_title("Bound state Fourier decomposition");
-    axcomp.set_ylabel("|Left going|/|all|");
+    axcomp.set_ylabel("$\psi_{j+1}/\psi_j$");
     plt.show();
     
 
@@ -210,15 +221,17 @@ def plot_eigs(H, E0, alpha0, E_cutoff) -> None:
     V_cont, t_cont = np.real(H[0,0,alpha0,alpha0]), -np.real(H[0,1,alpha0,alpha0]);
     ks = np.arccos((Es - V_cont)/(-2*t_cont));
     k_cont = np.arccos((E0 - V_cont)/(-2*t_cont));
-    print("--->",k_cont)
+    print("continuum E, k --->",E0, k_cont)
     coupled_continuum = False;
     for m in range(len(Es)):
         psim = psis[m];
-        klocal = psim[alpha0+n_loc_dof]/psim[alpha0+0];
-        print(m,Es[m].round(4),ks[m].round(4),klocal.round(4));
+        ratio = psim[alpha0+2*n_loc_dof]/psim[alpha0+1*n_loc_dof]
+        klocal = np.arccos(np.real(ratio));
+        klocal_sin = np.arcsin(np.imag(ratio));
+        print(m,Es[m].round(4),ks[m].round(4),klocal.round(4),klocal_sin.round(4),ratio);
 
         # only plot the coupled state
-        if(abs(np.real(Es[m]-E0)) < 1e-9 or True):
+        if(abs(np.real(Es[m]-E0)) < 1e-9):
             coupled_continuum = True;
             Szm = np.dot(np.conj(psim),np.dot(Sz_op,psim));
             Sxm = np.dot(np.conj(psim),np.dot(Sx_op,psim));
@@ -232,11 +245,12 @@ def plot_eigs(H, E0, alpha0, E_cutoff) -> None:
                     # real is solid, dashed is imaginary
                     wfax.plot(np.real(jvals), 1e-6*sigma+np.real(psimup),color=mycolors[sigma],linestyle=mystyles[0]);
                     wfax.plot(np.real(jvals), 1e-6*sigma+np.imag(psimup),color=mycolors[sigma],linestyle=mystyles[1]);
-                    derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[0]);
-                    derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[1]); 
+                    derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.append(psimup[1:],psimup[0])/psimup),color=mycolors[sigma],linestyle=mystyles[0]);
+                    derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.append(psimup[1:],psimup[0])/psimup),color=mycolors[sigma],linestyle=mystyles[1]); 
+                    print(np.append(psimup[1:],psimup[0])/psimup)
             # show
             wfax.set_ylabel('$\psi$');
-            derivax.set_ylabel('$-i\hbar d \psi/dj$');
+            derivax.set_ylabel("$\psi_{j+1}/\psi_j$")
             wfax.set_title("Bound state: <S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
             plt.show();
 
@@ -257,16 +271,18 @@ def plot_eigs(H, E0, alpha0, E_cutoff) -> None:
 if True: # spinless case
 
     # setup
-    NL = 17;
+    NL = 77;
     tL = 1.0*np.eye(1);
     VL = 0.0*np.eye(len(tL));
 
     # construct well and add spin parts
-    E_cut = -1.7;
-    E_cont = -1.733; # energy of the continuum state
+    E_cut = -1.8;
+    E_cont = -1.933; # energy of the continuum state
     alpha_cont = 0; # spin of the continuum state
     HL = h_tb(tL,VL,NL);
     HL = couple_to_cont(HL,E_cont,alpha_cont);
+    x0, V0 = 2, 0.0;
+    HL[NL//2-x0:NL//2+x0] += V0*np.ones_like(tL);
     print_H_alpha(HL);
     plot_H_alpha(HL);
 
