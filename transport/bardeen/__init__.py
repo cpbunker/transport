@@ -284,7 +284,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
 
     return Ems, Tms;
 
-def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
+def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=-1.9,verbose=0) -> tuple:
     '''
     Calculate a transmission probability for each left well bound state
     as a function of the bound state energies
@@ -320,26 +320,25 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     # left well eigenstates
-    Ems, _ = np.linalg.eigh(HL);
-    Ems = Ems[Ems+2*tLa < E_cutoff].astype(complex);
-    n_bound_left = len(Ems)//n_loc_dof;
-    Emas = np.reshape(Ems, (n_loc_dof,n_bound_left));
-    kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
+    Emas, _ = np.linalg.eigh(HL);
+    Emas = Emas[Emas < E_cutoff].astype(complex);
+    n_bound_left = len(Emas)//n_loc_dof;
+    Emas = np.reshape(Emas, (n_loc_dof,n_bound_left));
+    kmas = np.arccos((Emas-VLa)/(-2*tLa)); # wavenumbers in the left well
     
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
     # right well eigenstates
-    Ens, psins = np.linalg.eigh(HR);
-    psins = psins.T[Ens+2*tRa < E_cutoff];
-    Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
-    n_bound_right = len(Ens)//n_loc_dof;
-    knbs = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
+    Enbs, psinbs = np.linalg.eigh(HR);
+    psinbs = psinbs.T[Enbs < E_cutoff];
+    Enbs = Enbs[Enbs+2*tRa < E_cutoff].astype(complex);
+    n_bound_right = len(Enbs)//n_loc_dof;
+    knbs = np.arccos((Enbs-VRa)/(-2*tRa)); # wavenumbers in the right well
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    if(verbose > 9):
-        # plot the potential
+    if(verbose > 9):   # plot the potential
         import matplotlib.pyplot as plt
         jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
@@ -355,56 +354,25 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
     Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
     # need ham with no left barrier and left lead self energies
-    HLself_4d_base, _ = Hsysmat(tinfty, tL, tRprime, VL, VL, VRprime, Ninfty, NL, NR, HCprime); 
+    HLself_4d_base, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime); 
     for m in range(n_bound_left):
         for alpha in range(n_loc_dof):
-
+            Emas[alpha,m] = -1.933 # might preserve more mixing at higher energies ...
             # self energy bcs in HL to get psim as a spin-pol plane wave
-            selfenergy_ret = -( (Emas[alpha,m]-VLa)/(-2*tLa) + np.lib.scimath.sqrt((Ems[m]-VLa)/(-2*tLa)*(Ems[m]-VLa)/(-2*tLa)-1));
-            HLself_4d = np.copy(HLself_4d_base);
-            # transmit alpha state
-            HLself_4d[0,0,alpha,alpha] += np.conj(selfenergy_ret);
-            # absorb all other states
-            for alphaprime in range(n_loc_dof):
-                if(alphaprime != alpha): HLself_4d[0,0,alphaprime,alphaprime] += selfenergy_ret;
-            HLself = fci_mod.mat_4d_to_2d(HLself_4d);
-            Ems_self, psims_self = np.linalg.eig(HLself);
-            Ems_self = Ems_self[Ems_self+2*tLa < E_cutoff].astype(complex);
-            inds = np.argsort(Ems_self);
-            Ems_self = Ems_self[inds];
-            psims_self = psims_self[:,inds].T;
+            HLself_4d = np.copy(HLself_4d_base)
+            HLself_4d = couple_to_cont(HLself_4d_base,Emas[alpha,m],alpha); 
+            ####
+            #### seems like coupling to continuum destroys the spin mixing
+            #### try commenting and uncommenting the above
+            ####
+            print(HLself_4d[0,0]);
+            print(HLself_4d[-1,-1]);
 
             # debugging
             if(verbose > 9):
-                mycolors=['tab:blue','tab:orange']; # differentiates spin comps
-                mystyles=['solid','dashed']; # differentiates real vs imaginary
                 print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
-                coupled_continuum = False;
-                for mprime in range(len(Ems_self)):
-                    print(mprime, Ems_self[mprime]);
-                    if(abs(Ems_self[mprime] - Emas[alpha,m])<1e-3):
-                        coupled_continuum = True;
-                        # plot spin components in different colors
-                        myfig, (wfax, derivax) = plt.subplots(2);
-                        for alphaprime in range(n_loc_dof):
-                            
-                            psimup = psims_self[mprime][alphaprime::n_loc_dof];
-                            # real is solid, dashed is imaginary
-                            wfax.plot(np.real(jvals), 1e-6*alphaprime+np.real(psimup),color=mycolors[alphaprime],linestyle=mystyles[0]);
-                            wfax.plot(np.real(jvals), 1e-6*alphaprime+np.imag(psimup),color=mycolors[alphaprime],linestyle=mystyles[1]);
-                            wfax.plot(np.real(jvals), np.real(np.diag(HLself_4d[:,:,alphaprime,alphaprime])),color='black',linestyle='solid');
-                            wfax.plot(np.real(jvals), np.imag(np.diag(HLself_4d[:,:,alphaprime,alphaprime])),color='black',linestyle='dashed');
-                            derivax.plot(np.real(jvals), 1e-6*alphaprime+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[alphaprime],linestyle=mystyles[0]);
-                            derivax.plot(np.real(jvals), 1e-6*alphaprime+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[alphaprime],linestyle=mystyles[1]); 
-
-                        # show
-                        wfax.set_ylabel('$\psi$');
-                        derivax.set_ylabel('$-i\hbar d \psi/dj$');
-                        #wfax.set_title("<S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
-                        plt.show();
-
-                if(not coupled_continuum): raise Exception("bound state energy not coupled to continuum");
-                assert False;
+                plot_wfs(HLself_4d,Emas[alpha,m],alpha,E_cutoff,E_tol=1e-3);
+                assert False
 
         # average over final state energy
         Mm = 0.0;
@@ -563,86 +531,40 @@ def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC) -> np.ndarray:
     nsites = -minusinfty + plusinfty + 1;
     n_loc_dof = np.shape(tinfty)[0];
 
+    #### super hacky code
+    print("\n\nWARNING: SUPER HACKY CODE IN HSYSMAT\n\n");
+    VinftyL = VL; VinftyR = Vinfty; del Vinfty;
+
     # Hamiltonian matrix
     Hmat = np.zeros((nsites,nsites,n_loc_dof,n_loc_dof),dtype=complex);
     for j in range(minusinfty, plusinfty+1):
 
         # diag outside HC
-        if(j < -NL - littleNC):           
-            Hmat[j-minusinfty,j-minusinfty] += Vinfty
-        elif(j >= -NL-littleNC and j < -littleNC):
+        if(j < -NL - littleNC):  # far left        
+            Hmat[j-minusinfty,j-minusinfty] += VinftyL;
+        elif(j >= -NL-littleNC and j < -littleNC): # left well
             Hmat[j-minusinfty,j-minusinfty] += VL;
-        elif(j > littleNC and j <= littleNC+NR):
+        elif(j > littleNC and j <= littleNC+NR): # right well
             Hmat[j-minusinfty,j-minusinfty] += VR;
-        elif(j > littleNC+NR):
-            Hmat[j-minusinfty,j-minusinfty] += Vinfty;
+        elif(j > littleNC+NR): # far right
+            Hmat[j-minusinfty,j-minusinfty] += VinftyR;
 
         # off diag outside HC
-        if(j < -NL - littleNC):           
+        if(j < -NL - littleNC):  # far left         
             Hmat[j-minusinfty,j+1-minusinfty] += -tinfty;
             Hmat[j+1-minusinfty,j-minusinfty] += -tinfty;
-        elif(j >= -NL-littleNC and j < -littleNC):
+        elif(j >= -NL-littleNC and j < -littleNC): # left well
             Hmat[j-minusinfty,j+1-minusinfty] += -tL;
             Hmat[j+1-minusinfty,j-minusinfty] += -tL;
-        elif(j > littleNC and j <= littleNC+NR):
+        elif(j > littleNC and j <= littleNC+NR): # right well
             Hmat[j-minusinfty,j-1-minusinfty] += -tR;
             Hmat[j-1-minusinfty,j-minusinfty] += -tR; 
-        elif(j > littleNC+NR):
+        elif(j > littleNC+NR): # far right
             Hmat[j-minusinfty,j-1-minusinfty] += -tinfty;
             Hmat[j-1-minusinfty,j-minusinfty] += -tinfty;
 
     # HC
     Hmat[-littleNC-minusinfty:littleNC+1-minusinfty,-littleNC-minusinfty:littleNC+1-minusinfty] = HC;
-            
-    return Hmat, minusinfty;
-
-def Hwellmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR) -> np.ndarray:
-    '''
-    Make the TB Hamiltonian for the full system, 1D well case
-    '''
-    for N in [Ninfty, NL, NC, NR]:
-        if(not isinstance(N, int)): raise TypeError;
-    for N in [Ninfty, NL, NR]:
-        if(N <= 0): raise ValueError;
-    if(NC % 2 != 1): raise ValueError; # NC must be odd
-    littleNC = NC // 2;
-    del NC
-    minusinfty = -littleNC - NL - Ninfty;
-    plusinfty = littleNC + NR + Ninfty;
-    Nsites = -minusinfty + plusinfty + 1;
-
-    # Hamiltonian matrix
-    Hmat = np.zeros((Nsites,Nsites));
-    for j in range(minusinfty, plusinfty+1):
-
-        # diag
-        if(j < -NL - littleNC):           
-            Hmat[j-minusinfty,j-minusinfty] += Vinfty
-        elif(j >= -NL-littleNC and j < -littleNC):
-            Hmat[j-minusinfty,j-minusinfty] += VL;
-        elif(j >= -littleNC and j <= littleNC):
-            Hmat[j-minusinfty,j-minusinfty] += VC;
-        elif(j > littleNC and j <= littleNC+NR):
-            Hmat[j-minusinfty,j-minusinfty] += VR;
-        elif(j > littleNC+NR):
-            Hmat[j-minusinfty,j-minusinfty] += Vinfty;
-
-        # off diag
-        if(j < -NL - littleNC):           
-            Hmat[j-minusinfty,j+1-minusinfty] += -tinfty;
-            Hmat[j+1-minusinfty,j-minusinfty] += -tinfty;
-        elif(j >= -NL-littleNC and j < -littleNC):
-            Hmat[j-minusinfty,j+1-minusinfty] += -tL;
-            Hmat[j+1-minusinfty,j-minusinfty] += -tL;
-        if(j >= -littleNC and j < littleNC):
-            Hmat[j-minusinfty,j+1-minusinfty] += -tC;
-            Hmat[j+1-minusinfty,j-minusinfty] += -tC;
-        elif(j > littleNC and j <= littleNC+NR):
-            Hmat[j-minusinfty,j-1-minusinfty] += -tR;
-            Hmat[j-1-minusinfty,j-minusinfty] += -tR; 
-        elif(j > littleNC+NR):
-            Hmat[j-minusinfty,j-1-minusinfty] += -tinfty;
-            Hmat[j-1-minusinfty,j-minusinfty] += -tinfty;         
             
     return Hmat, minusinfty;
 
@@ -699,76 +621,189 @@ def matrix_element(beta,psin,op,alpha,psim) -> complex:
     assert(is_alpha_conserving(psinbeta,n_loc_dof));
     return np.dot(np.conj(psinbeta), np.dot(op,psimalpha));
 
-##################################################################################
-#### test code
+def get_self_energy(t, V, E) -> np.ndarray:
+    if(not isinstance(t, float) or t < 0): raise TypeError;
+    if(not isinstance(V, float)): raise TypeError;
+    if(not isinstance(E, float)): raise TypeError;
+    dummy = (E-V)/(-2*t);
+    return-(dummy+np.lib.scimath.sqrt(dummy*dummy-1));
 
-def plot_wfs(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR, tLprime = None, VLprime = None, tRprime = None, VRprime = None) -> None:
+def couple_to_cont(H, E, alpha0) -> np.ndarray:
     '''
-    Visualize the problem by plotting some LL wfs against Hsys
+    Couple a 4d Hamiltonian H to a continuum state with energy E and spin alpha0
+    by using absorbing/emitting bcs
     '''
-    if tLprime == None: tLprime = tC;
-    if VLprime == None: VLprime = VC;
-    if tRprime == None: tRprime = tC;
-    if VRprime == None: VRprime = VC;
+    if(len(np.shape(H)) != 4): raise ValueError;
+    n_loc_dof = np.shape(H)[-1];
 
-    # plot
-    wffig, wfaxes = plt.subplots(4, sharex = True);
+    # right and left
+    for sidei in [0,-1]:
 
-    # plot left well eigenstates
-    HL, offset = Hsysmat(tinfty, tL, tC, tRprime, Vinfty, VL, VC, VRprime, Ninfty, NL, NC, NR);
-    jvals = np.array(range(len(HL))) + offset;
-    wfaxes[0].plot(jvals, np.diag(HL), color=accentcolors[0], linestyle='dashed', linewidth=2*mylinewidth);
-    Ems, psims = np.linalg.eigh(HL);
-    Ems_bound = Ems[Ems + 2*tL < VC];
-    ms_bound = np.linspace(0,len(Ems_bound)-1,3,dtype = int);
-    for counter in range(len(ms_bound)):
-        m = ms_bound[counter]
-        if False: # wfs and energies
-            mask = jvals <= NC+NR; 
-        else: # just wfs
-            mask = jvals <= len(HL); 
-        wfaxes[0].plot(jvals[mask], -psims[:,m][mask], color=mycolors[counter]);
-        wfaxes[0].plot([NC+NR,jvals[-1]],(2*tL+ Ems[m])*np.ones((2,)), color=mycolors[counter]);
-    wfaxes[0].set_ylabel('$\langle j | k_m \\rangle $');
-    wfaxes[0].set_ylim(VL-2*VC,VL+2*VC);
+        # get the self energy
+        #print("----->",-np.real(H[sidei,sidei+1+sidei*2,alpha0,alpha0]),np.real(H[sidei,sidei,alpha0,alpha0]),np.real(E))
+        selfenergy = get_self_energy(-np.real(H[sidei,sidei+1+sidei*2,alpha0,alpha0]),np.real(H[sidei,sidei,alpha0,alpha0]),np.real(E));
 
-    # plot system ham
-    if True:
-        Hsys, _ = Hsysmat(tinfty, tL, tC, tR, Vinfty, VL, VC, VR, Ninfty, NL, NC, NR);
-        wfaxes[1].plot(jvals, np.diag(Hsys-HL), color=accentcolors[0], linestyle='dashed', linewidth=2*mylinewidth);
-        wfaxes[1].set_ylabel('$H_{sys}-H_L$');
+        # for all others just absorb
+        for alpha in range(n_loc_dof):
+            if(alpha == alpha0 and sidei == 0): # emit in alpha0 on left only
+                H[sidei,sidei,alpha,alpha] += np.conj(selfenergy);
+            else: # absorb
+                H[sidei,sidei,alpha,alpha] += selfenergy;
 
-    # plot (Hsys-HL)*psi_m
-    if True:
-        for counter in range(len(ms_bound)):
-            m = ms_bound[counter];
-            wfaxes[2].plot(jvals, np.dot(Hsys-HL,psims[:,m]), color = mycolors[counter]);
-        wfaxes[2].set_ylabel('$\langle j |(H_{sys}-H_L)| k_m \\rangle $');
+    return H;
 
-    # plot right well eigenstates
-    HR, _ = Hsysmat(tinfty, tLprime, tC, tR, Vinfty, VLprime, VC, VR, Ninfty, NL, NC, NR);
-    wfaxes[3].plot(jvals, np.diag(HR), color=accentcolors[0], linestyle='dashed', linewidth=2*mylinewidth);
-    Emprimes, psimprimes = np.linalg.eigh(HR);
-    for counter in range(len(ms_bound)):
-        mprime = ms_bound[counter];
-        if False: # wfs and energies
-            mask = jvals > -NL-NC; 
-        else: # just wfs
-            mask = jvals <= len(HL); 
-        wfaxes[3].plot(jvals[mask], -psimprimes[:,mprime][mask], color=mycolors[counter]);
-        wfaxes[3].plot([jvals[0],-NL-NC],(2*tL+ Emprimes[mprime])*np.ones((2,)), color = mycolors[counter]);
-    wfaxes[3].set_ylabel("$\langle j |k_{m'} \\rangle $");
-    wfaxes[3].set_ylim(VR-2*VC,VR+2*VC);
-    for H in [HL,HR]: 
-        for jp1 in range(1,len(HL)):
-            el = np.diagonal(H,1)[jp1-1]
-            if el != -1.0:
-                print(el, jp1-1+offset, len(HL));
-        
-    # format
-    wfaxes[-1].set_xlabel('$j$');
-    plt.tight_layout();
-    plt.show();
+def get_eigs(h_4d, E_cutoff) -> tuple:
+    '''
+    Get eigenvalues and eigenvectors of a 4d (non hermitian) hamiltonian
+    '''
+    h_2d = fci_mod.mat_4d_to_2d(h_4d);
+    eigvals, eigvecs = np.linalg.eig(h_2d);
+    
+    # sort
+    inds = np.argsort(eigvals);
+    eigvals = eigvals[inds];
+    eigvecs = eigvecs[:,inds].T;
+    
+    # truncate
+    eigvecs = eigvecs[eigvals < E_cutoff];
+    eigvals = eigvals[eigvals < E_cutoff];
+    
+    return eigvals, eigvecs;
+
+def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
+    '''
+    Get the comple fourier coefficients for a wf
+    '''
+    if(not isinstance(wf_full, np.ndarray)): raise TypeError;
+    if(not isinstance(ninf,int)): raise TypeError;
+
+    # decompose left and right
+    import matplotlib
+    import matplotlib.pyplot as plt
+    mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
+    mystyles=['solid','dashed']; # differentiates real vs imaginary
+
+    # color by spin
+    cmas = np.empty((n_loc_dof,2*ninf+1),dtype=complex);
+    for alpha in range(n_loc_dof):
+        figtest, (axright, axleft, axcomp) = plt.subplots(3, sharex=True);
+        wf = wf_full[alpha::n_loc_dof];
+        assert(len(wf) % 2 == 1);
+        L = len(wf) // 2;
+        jvals = np.array(range(-L,L+1));
+
+        # get fourier coef c_n for n \in {-ninf,...+ninf}
+        for n in range(-ninf,ninf+1):
+            cmas[alpha,n] = np.trapz(wf*np.exp(-complex(0,1)*n*np.pi*jvals/L)/(2*L), jvals);
+
+        # break up into right moving and left moving parts
+        wf_right, wf_left = np.zeros_like(wf), np.zeros_like(wf);
+        for n in range(-ninf,ninf+1):
+            if(n>0): # right moving
+                wf_right += cmas[alpha,n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
+            elif(n<=0): # left moving
+                wf_left += cmas[alpha,n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
+
+        if False:
+            axright.plot(jvals,np.real(wf),linestyle='solid',color='tab:blue');
+            axright.plot(jvals,np.imag(wf),linestyle='dashed',color='tab:blue');
+            axleft.plot(jvals,np.real(wf_left+wf_right),linestyle='solid',color='tab:blue');
+            axleft.plot(jvals,np.imag(wf_left+wf_right),linestyle='dashed',color='tab:blue');
+            plt.show();
+            assert False
+
+        else:
+            axright.plot(jvals, np.real(wf_right),linestyle=mystyles[0],color=mycolors[alpha]);
+            axright.plot(jvals, np.imag(wf_right),linestyle=mystyles[1],color=mycolors[alpha]);
+            axleft.plot(jvals, np.real(wf_left),linestyle=mystyles[0],color=mycolors[alpha]);
+            axleft.plot(jvals, np.imag(wf_left),linestyle=mystyles[1],color=mycolors[alpha]);
+            axcomp.plot(jvals, np.real(np.append(wf_right[1:],wf_right[0])/wf_right),linestyle=mystyles[0],color=mycolors[alpha]);
+            axcomp.plot(jvals, np.imag(np.append(wf_right[1:],wf_right[0])/wf_right),linestyle=mystyles[1],color=mycolors[alpha]);
+
+        # show
+        axright.set_ylabel("Right going");
+        axright.set_title("Bound state Fourier decomposition");
+        axleft.set_ylabel("Left going");
+        axcomp.set_ylabel("Right going $\psi_{j+1}/\psi_j$");
+        axcomp.set_ylim(-2,2);
+        plt.show();
+    
+    return cmas;
+
+def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2) -> None:
+    '''
+    '''
+    if(len(np.shape(H)) != 4): raise ValueError;
+    n_loc_dof = np.shape(H)[-1];
+    spatial_orbs = np.shape(H)[0];
+    assert(spatial_orbs % 2 == 1);
+    mid = spatial_orbs // 2;
+    jvals = np.array(range(-mid,mid+1));
+
+    # eigenstates
+    Es, psis = get_eigs(H,E_cutoff);
+
+    # operators
+    Sz_op = np.diagflat([complex(1,0) if i%2==0 else -1.0 for i in range(len(psis[0]))]);
+    Sx_op = np.zeros_like(Sz_op);
+    for i in range(len(Sx_op)-1): Sx_op[i,i+1] = 1.0; Sx_op[i+1,i] = 1.0;
+    if(n_loc_dof != 2): # these operators are not valid
+        Sz_op, Sx_op = np.zeros_like(Sz_op), np.zeros_like(Sx_op);
+        Sz_op[0,0], Sx_op[0,0] = np.nan, np.nan
+
+    #### plot bound states
+    import matplotlib
+    import matplotlib.pyplot as plt
+    mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
+    mystyles=['solid','dashed']; # differentiates real vs imaginary
+    print("Plotting bound states with absorbing/emitting bcs.");
+
+    # look for the bound state coupled to the continuum
+    V_cont, t_cont = np.real(H[0,0,alpha0,alpha0]), -np.real(H[0,1,alpha0,alpha0]);
+    ks = np.arccos((Es - V_cont)/(-2*t_cont));
+    k_cont = np.arccos((E0 - V_cont)/(-2*t_cont));
+    print("continuum E, k =",E0, k_cont)
+    coupled_continuum = False;
+    for m in range(len(Es)):
+        psim = psis[m];
+        print(m,Es[m].round(4),ks[m].round(4));
+
+        # only plot the coupled state
+        if(abs(np.real(Es[m]-E0)) < E_tol):
+            coupled_continuum = True;
+            Szm = np.dot(np.conj(psim),np.dot(Sz_op,psim));
+            Sxm = np.dot(np.conj(psim),np.dot(Sx_op,psim));
+
+            # plot spin components in different colors
+            myfig, (hamax, wfax, derivax) = plt.subplots(3);
+            for alpha in range(n_loc_dof):
+                # plot ham
+                hamax.plot(jvals,np.real(np.diag(H[:,:,alpha,alpha])),color=mycolors[alpha],linestyle=mystyles[0]);
+                hamax.plot(jvals,np.imag(np.diag(H[:,:,alpha,alpha])),color=mycolors[alpha],linestyle=mystyles[1]);
+                # plot wf
+                psimup = psim[alpha::n_loc_dof];
+                wfax.plot(np.real(jvals), 1e-6*alpha+np.real(psimup),color=mycolors[alpha],linestyle=mystyles[0]);
+                wfax.plot(np.real(jvals), 1e-6*alpha+np.imag(psimup),color=mycolors[alpha],linestyle=mystyles[1]);
+                derivax.plot(np.real(jvals), 1e-6*alpha+np.real(np.append(psimup[1:],psimup[0])/psimup),color=mycolors[alpha],linestyle=mystyles[0]);
+                derivax.plot(np.real(jvals), 1e-6*alpha+np.imag(np.append(psimup[1:],psimup[0])/psimup),color=mycolors[alpha],linestyle=mystyles[1]); 
+
+            # show
+            hamax.set_ylabel('$H_L$');
+            wfax.set_ylabel('$\psi$');
+            wfax.set_title("Bound state: <S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
+            derivax.set_ylabel("$\psi_{j+1}/\psi_j$");
+            derivax.set_ylim(-2,2)
+            plt.tight_layout();
+            plt.show();
+
+            # fourier decomp
+            get_fourier_coefs(psim,n_loc_dof);
+
+    # check
+    if(not coupled_continuum): raise Exception("bound state energy not coupled to continuum");
+
+#####################################################################################################
+#### run code
 
 if __name__ == "__main__":
 

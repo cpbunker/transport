@@ -113,7 +113,7 @@ if True:
         tCprime = tC;
         HCprime = np.zeros_like(HC);
         kondo_replace = np.diagflat(np.diagonal(my_kondo));
-        if mixed: kondo_replace = np.copy(my_kondo);
+        kondo_replace = np.copy(my_kondo);
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): 
@@ -148,12 +148,12 @@ if True:
             Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=10);
+                                      E_cutoff=-1.9,verbose=10);
         else:
             Evals, Tvals = bardeen.kernel_projected(tinfty,tL,tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,verbose=10);
+                                      E_cutoff=-1.9,verbose=10);
 
         # benchmark
         if mixed:
