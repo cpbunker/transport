@@ -33,7 +33,7 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 tl = 1.0;
 Vb = 0.0; # barrier height
 VR = 0.0; # right well height
-Vinfty = 0.1; # far right potential
+Vinfty = 0.0002; # far right potential
 NC = 11; # barrier width
 NR = 0; # right well width
 Ninfty = 5;
@@ -70,7 +70,7 @@ source[0] = 1;
 
 # sweep over range of energies
 # def range
-logElims = -2,0
+logElims = -4,0
 Evals = np.logspace(*logElims,myxvals, dtype=complex);
 
 # test main wfm kernel
@@ -89,23 +89,26 @@ for Evali in range(len(Evals)):
     Tvals[Evali] = Tdum;
 
 # plot Tvals vs E
-numplots = 1;
+numplots = 2;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
 fig.set_size_inches(7/2,3*numplots/2);
 axes[0].plot(Evals, np.real(Tvals[:,0]), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
-axes[0].plot(Evals, np.real(Rvals[:,0]), color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth=mylinewidth); 
+axes[1].plot(Evals, np.real(Rvals[:,0]), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
 
 # ideal
 kavals = np.arccos((Evals-2*tl-hblocks[0][0,0])/(-2*tl));
 kappavals = np.arccos((Evals-2*tl-hblocks[-1][0,0])/(-2*tl));
 ideal_Rvals = np.power((kavals-kappavals)/(kavals+kappavals),2);
-
-# ideal comparison
-axes[0].plot(np.real(Evals),np.real(ideal_Rvals), marker=mymarkers[0], markevery=mymarkevery, color = accentcolors[0], linewidth = mylinewidth);
-#axes[0].set_ylim(-0.1,1.1);
+ideal_Tvals = 1-ideal_Rvals;
+axes[0].plot(np.real(Evals),np.real(ideal_Tvals), marker=mymarkers[0], markevery=mymarkevery, color = accentcolors[0], linewidth = mylinewidth);
+axes[1].plot(np.real(Evals),np.real(ideal_Rvals), marker=mymarkers[0], markevery=mymarkevery, color = accentcolors[0], linewidth = mylinewidth);
+axes[0].axvline(Vinfty,color='lightgray',linestyle='dashed');
+axes[1].axvline(Vinfty,color='lightgray',linestyle='dashed');
         
 # format and show
+axes[0].set_ylabel('$T$');
+axes[1].set_ylabel('$R$');
 axes[-1].set_xscale('log', subs = []);
 axes[-1].set_xlim(10**(logElims[0]), 10**(logElims[1]));
 axes[-1].set_xticks([10**(logElims[0]), 10**(logElims[1])]);
