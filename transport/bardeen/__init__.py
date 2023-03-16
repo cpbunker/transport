@@ -9,6 +9,7 @@ Bardeen tunneling theory in 1D
 from transport import fci_mod, wfm
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 ##################################################################################
 #### driver of transmission coefficient calculations
@@ -99,9 +100,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     Hdiff = Hsys - HL;
 
     # visualize
+    jvals = np.array(range(len(Hsys))) + offset;
     if(verbose > 9):
-        import matplotlib.pyplot as plt
-        jvals = np.array(range(len(Hsys))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
@@ -119,6 +119,18 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     # initial energy and spin states
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):
+
+            if True:
+                print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********")
+                psima = psimas[:,m]
+                fig, axes = plt.subplots(n_loc_dof);
+                for sigma in range(n_loc_dof):
+                    axes[sigma].plot(jvals, np.real(psima[sigma]));
+                    axes[sigma].plot(jvals, np.imag(psima[sigma]),linestyle='dashed');
+                    axes[sigma].set_xlim(0,5); axes[sigma].set_ylim(0,-0.05);
+                plt.show();
+                if(m>5): assert False;
+                
             # final spin states
             for beta in range(n_loc_dof):
                 # average over final state energy
@@ -185,8 +197,8 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     if verbose: print("-HL[:,:] =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
-    psims = psims.T[Ems+2*tLa < E_cutoff];
-    Ems = Ems[Ems+2*tLa < E_cutoff].astype(complex);
+    psims = psims.T[Ems < E_cutoff];
+    Ems = Ems[Ems < E_cutoff].astype(complex);
     n_bound_left = len(Ems);
     kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
     
@@ -197,8 +209,8 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
-    psins = psins.T[Ens+2*tRa < E_cutoff];
-    Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
+    psins = psins.T[Ens < E_cutoff];
+    Ens = Ens[Ens < E_cutoff].astype(complex);
     n_bound_right = len(Ens);
     knbs = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
 
@@ -206,7 +218,6 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     if(verbose > 9):
         # plot the potential
-        import matplotlib.pyplot as plt
         jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
@@ -304,43 +315,41 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
 
-    # convert from matrices to spin-diagonal, spin-independent elements
+    # convert from matrices to _{alpha alpha} elements
     to_convert = [tL, VL, tR, VR];
     converted = [];
     for convert in to_convert:
-        # check spin-diagonal
-        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
-        # check spin-independent
-        diag = np.diagonal(convert);
-        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
-        converted.append(convert[0,0]);
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ):
+            raise ValueError; # VL must be diag
+        converted.append(np.diagonal(convert));
     tLa, VLa, tRa, VRa = tuple(converted);
 
     # left well 
-    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime, bound=False);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     # left well eigenstates
     Emas, _ = np.linalg.eigh(HL);
     Emas = Emas[Emas < E_cutoff].astype(complex);
     n_bound_left = len(Emas)//n_loc_dof;
-    Emas = np.reshape(Emas, (n_loc_dof,n_bound_left));
-    kmas = np.arccos((Emas-VLa)/(-2*tLa)); # wavenumbers in the left well
-    
+    Emas = np.reshape(Emas, (n_bound_left, n_loc_dof)).T;
+    kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
+                    /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in left well 
+
     # right well 
-    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime, bound=False);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
     # right well eigenstates
-    Enbs, psinbs = np.linalg.eigh(HR);
-    psinbs = psinbs.T[Enbs < E_cutoff];
-    Enbs = Enbs[Enbs+2*tRa < E_cutoff].astype(complex);
+    Enbs, _ = np.linalg.eigh(HR);
+    Enbs = Enbs[Enbs < E_cutoff].astype(complex);
     n_bound_right = len(Enbs)//n_loc_dof;
-    knbs = np.arccos((Enbs-VRa)/(-2*tRa)); # wavenumbers in the right well
+    Enbs = np.reshape(Enbs, (n_bound_right, n_loc_dof)).T;
+    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_bound_right))
+                    /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in right well 
 
     # physical system
-    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC, bound=False);
+    jvals = np.array(range(len(Hsys_4d))) + offset;
     if(verbose > 9):   # plot the potential
-        import matplotlib.pyplot as plt
-        jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
@@ -357,46 +366,55 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     HLself_4d_base, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime); 
     for m in range(n_bound_left):
         for alpha in range(n_loc_dof):
-            Emas[alpha,m] = -1.933 # might preserve more mixing at higher energies ...
-            # self energy bcs in HL to get psim as a spin-pol plane wave
-            HLself_4d = np.copy(HLself_4d_base)
-            HLself_4d = couple_to_cont(HLself_4d_base,Emas[alpha,m],alpha); 
-            ####
-            #### seems like coupling to continuum destroys the spin mixing
-            #### try commenting and uncommenting the above
-            ####
-            print(HLself_4d[0,0]);
-            print(HLself_4d[-1,-1]);
+            print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
+            kma_js = np.lib.scimath.arccos((Emas[alpha,m]-np.diag(HL_4d[:,:,alpha,alpha]))/(-2*tLa[alpha]));
+            psima = np.exp(jvals*kma_js*complex(0,1));
+            #psima = psima/np.dot(psima,np.conj(psima));
+            psima = np.array((psima,)*n_loc_dof);
+            if True:
+                fig, axes = plt.subplots(n_loc_dof);
+                for sigma in range(n_loc_dof):
+                    axes[sigma].plot(jvals, np.real(psima[sigma]));
+                    axes[sigma].plot(jvals, np.imag(psima[sigma]),linestyle='dashed');
+                    axes[sigma].set_xlim(1,5); axes[sigma].set_ylim(0,0.05);
+                plt.show();
+                if(m>5): assert False;
 
-            # debugging
-            if(verbose > 9):
-                print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
-                plot_wfs(HLself_4d,Emas[alpha,m],alpha,E_cutoff,E_tol=1e-3);
-                assert False
+            # final spin states
+            for beta in range(n_loc_dof):
+                # average over final state energy
+                Mbma = 0.0;
 
-        # average over final state energy
-        Mm = 0.0;
+                # inelastic means averaging over an interval
+                Nbma = 0; # num states in the interval
+                interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
+                interval_width = 1e-9;
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
+                        Nbma += 1;
 
-        # inelastic means averaging over an interval
-        Nm = 0; # num states in the interval
-        interval_width = abs(Ems[-2]-Ems[-1]);
-        if(n_bound_left == n_bound_right):
-            if(not np.any(Ens-Ems)): interval_width = 1e-9;    
-        interval_width = 1e-9;    
-        for n in range(n_bound_right):
-            if( abs(Ems[m] - Ens[n]) < interval_width/2):
-                Nm += 1;
-                melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psim));
-                Mm += np.real(melement*np.conj(melement));
-                print(interval_width, Nm);
+                        # construct psinb and get matrix element
+                        knb_js = -np.lib.scimath.arccos((Enbs[beta,n]-np.diag(HR_4d[:,:,beta,beta]))/(-2*tRa[beta]));
+                        psinb = np.exp(jvals*knb_js*complex(0,1));
+                        psinb = psinb/np.dot(psinb, np.conj(psinb));
+                        psinb = np.array([psinb, psinb]);
+                        if False:
+                            fig, axes = plt.subplots(n_loc_dof);
+                            for sigma in range(n_loc_dof):
+                                axes[sigma].plot(jvals, np.real(psinb[sigma]));
+                                axes[sigma].plot(jvals, np.imag(psinb[sigma]),linestyle='dashed');
+                            plt.show();
+                            if(n>5): assert False
+                        melement = matrix_element(beta,psinb,Hdiff,alpha,psima);
+                        Mbma += np.real(melement*np.conj(melement));
 
-        # update T based on average
-        #print(interval_width, Nm, psims[m]);
-        if(Nm == 0): Mm = 0.0;
-        else: Mm = Mm/Nm;
-        Tms[m] = NL/(kms[m]*tLa) *NR/(kms[m]*tRa) *Mm;
+                # update T based on average
+                print(interval_width, Nbma);
+                if Nbma == 0: Mbma = 0.0;
+                else: Mbma = Mbma / Nbma;
+                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbma;
 
-    return Ems, Tms;
+    return Emas, Tbmas; 
 
 def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''
@@ -509,7 +527,7 @@ def benchmark_mixed(tL, tR, VL, VR, HC_4d, Ems, verbose=0) -> np.ndarray:
 ############################################################################
 #### Hamiltonian construction
 
-def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC) -> np.ndarray:
+def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC, bound=True) -> np.ndarray:
     '''
     Make the TB Hamiltonian for the full system, general 1D case
     Physical params are classified by region: infty, L, R.
@@ -531,9 +549,12 @@ def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC) -> np.ndarray:
     nsites = -minusinfty + plusinfty + 1;
     n_loc_dof = np.shape(tinfty)[0];
 
-    #### super hacky code
-    print("\n\nWARNING: SUPER HACKY CODE IN HSYSMAT\n\n");
-    VinftyL = VL; VinftyR = Vinfty; del Vinfty;
+    # whether L and R states are bound at ends or not
+    if bound:
+        VinftyL = Vinfty; VinftyR = Vinfty; del Vinfty;
+    else:
+        print("\n\nWARNING: NOT BOUND\n\n");
+        VinftyL = VL; VinftyR = VR; del Vinfty;
 
     # Hamiltonian matrix
     Hmat = np.zeros((nsites,nsites,n_loc_dof,n_loc_dof),dtype=complex);
@@ -571,6 +592,30 @@ def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC) -> np.ndarray:
 ##################################################################################
 #### utils
 
+def matrix_element(beta,psin,op,alpha,psim) -> complex:
+    '''
+    Take the matrix element of a
+    -not in general alpha conserving 2d operator, with spin/spatial dofs mixed
+    -alpha conserving 2d state vector, with spin/spatial dofs separated
+    '''
+    if(len(np.shape(op))!=2): raise ValueError; # op should be flattened
+    n_loc_dof = np.shape(psim)[0];
+    n_spatial_dof = np.shape(psim)[1]
+    n_ov_dof = len(op);
+    if(n_ov_dof % n_spatial_dof != 0): raise ValueError;
+    if(n_ov_dof // n_spatial_dof != n_loc_dof): raise ValueError;
+
+    # flatten psis's
+    psimalpha = np.zeros_like(psim);
+    psimalpha[alpha] = psim[alpha]; # all zeros except for psi[alphas]
+    psimalpha = fci_mod.vec_2d_to_1d(psimalpha.T); # flatten
+    assert(is_alpha_conserving(psimalpha,n_loc_dof));
+    psinbeta = np.zeros_like(psin);
+    psinbeta[beta] = psin[beta]; # all zeros except for psi[beta]
+    psinbeta = fci_mod.vec_2d_to_1d(psinbeta.T); # flatten
+    assert(is_alpha_conserving(psinbeta,n_loc_dof));
+    return np.dot(np.conj(psinbeta), np.dot(op,psimalpha));
+
 def is_alpha_conserving(T,n_loc_dof,tol=1e-9) -> bool:
     '''
     Determines if a tensor T conserves alpha in the sense that it has
@@ -595,31 +640,6 @@ def is_alpha_conserving(T,n_loc_dof,tol=1e-9) -> bool:
         return True;
 
     else: raise Exception; # not supported
-
-def matrix_element(beta,psin,op,alpha,psim) -> complex:
-    '''
-    Take the matrix element of a
-    -not in general alpha conserving 2d operator, with spin/spatial dofs mixed
-    -alpha conserving 2d state vector, with spin/spatial dofs separated
-    '''
-    from transport import wfm
-    if(len(np.shape(op))!=2): raise ValueError; # op should be flattened
-    n_loc_dof = np.shape(psim)[0];
-    n_spatial_dof = np.shape(psim)[1]
-    n_ov_dof = len(op);
-    if(n_ov_dof % n_spatial_dof != 0): raise ValueError;
-    if(n_ov_dof // n_spatial_dof != n_loc_dof): raise ValueError;
-
-    # flatten psis's
-    psimalpha = np.zeros_like(psim);
-    psimalpha[alpha] = psim[alpha]; # all zeros except for psi[alphas]
-    psimalpha = fci_mod.vec_2d_to_1d(psimalpha.T); # flatten
-    assert(is_alpha_conserving(psimalpha,n_loc_dof));
-    psinbeta = np.zeros_like(psin);
-    psinbeta[beta] = psin[beta]; # all zeros except for psi[beta]
-    psinbeta = fci_mod.vec_2d_to_1d(psinbeta.T); # flatten
-    assert(is_alpha_conserving(psinbeta,n_loc_dof));
-    return np.dot(np.conj(psinbeta), np.dot(op,psimalpha));
 
 def get_self_energy(t, V, E) -> np.ndarray:
     if(not isinstance(t, float) or t < 0): raise TypeError;
@@ -678,8 +698,6 @@ def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
     if(not isinstance(ninf,int)): raise TypeError;
 
     # decompose left and right
-    import matplotlib
-    import matplotlib.pyplot as plt
     mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
     mystyles=['solid','dashed']; # differentiates real vs imaginary
 
@@ -752,8 +770,6 @@ def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2) -> None:
         Sz_op[0,0], Sx_op[0,0] = np.nan, np.nan
 
     #### plot bound states
-    import matplotlib
-    import matplotlib.pyplot as plt
     mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
     mystyles=['solid','dashed']; # differentiates real vs imaginary
     print("Plotting bound states with absorbing/emitting bcs.");

@@ -75,10 +75,10 @@ def h_tb(t, V, N) -> np.ndarray:
 # look at xgz paper for better spin-flip bcs
 # spin rotation region + infinite wall
 
-if False: # spinless case
+if True: # spinless case
 
     # setup
-    NL = 77;
+    NL = 7;
     tL = 1.0*np.eye(1);
     VL = 0.0*np.eye(len(tL));
 
@@ -87,15 +87,24 @@ if False: # spinless case
     E_cont = -1.933; # energy of the continuum state
     alpha_cont = 0; # spin of the continuum state
     HL = h_tb(tL,VL,NL);
-    HL = bardeen.couple_to_cont(HL,E_cont,alpha_cont);
-    x0, V0 = 5, 0.0;
-    HL[NL//2-x0:NL//2+x0] += V0*np.ones_like(tL);
+    x0, V0 = NL//2, (2.0+E_cont)/0.5;
+    for xi in range(NL):
+        if(xi > x0):
+            HL[xi,xi] += V0*np.ones_like(tL);
+    # couple to continuum
+    if False:
+        HL = bardeen.couple_to_cont(HL,E_cont,alpha_cont);
+    else:
+        kaval = np.lib.scimath.arccos((E_cont)/(-2));
+        kapaval = np.lib.scimath.arccos((E_cont-V0)/(-2));
+        HL[0,0] += -tL*np.exp(complex(0,-kaval));
+        HL[-1,-1] += -tL*np.exp(complex(0,kapaval));
     print_H_alpha(HL);
 
     # plot HL eigenfunctions
     bardeen.plot_wfs(HL,E_cont,alpha_cont,E_cut);
     
-if True: # spinful case
+if False: # spinful case
 
     # setup
     NL = 17;
