@@ -141,10 +141,10 @@ if True:
                                   Ninfty, NL, NR, HC, HCprime,
                                   E_cutoff=-1.9,verbose=1);
     else: # absorbing emitting bcs
-        Evals, Tvals = bardeen.kernel_projected(tinfty,tL,tinfty, tR, tinfty,
+        Evals, Tvals = bardeen.kernel_constructed(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=-1.9,verbose=10);
+                                  E_cutoff=-1.9,verbose=1);
 
     # benchmark
     if mixed:

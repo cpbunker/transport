@@ -45,13 +45,13 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     tLa, VLa, tRa, VRa = tuple(converted);
 
     # left well eigenstates
-    HL, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL),n_loc_dof));
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_bound_left = 0;
     interval = 3;
     for alpha in range(n_loc_dof):
-        Ems, psims = np.linalg.eigh(HL[:,:,alpha,alpha]);
+        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
         psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
         Ems = Ems[Ems+2*tLa[alpha] < E_cutoff];
         Emas.append(Ems);
@@ -71,12 +71,12 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                     /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
     
     # right well eigenstates  
-    HR, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR),n_loc_dof));
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     n_bound_right = 0;
     for beta in range(n_loc_dof):
-        Ens, psins = np.linalg.eigh(HR[:,:,beta,beta]);
+        Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
         psins = psins.T[Ens+2*tRa[alpha] < E_cutoff];
         Ens = Ens[Ens+2*tRa[alpha] < E_cutoff];
         Enbs.append(Ens.astype(complex));
@@ -96,16 +96,15 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                     /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in the left well
 
     # operator
-    Hsys, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    Hdiff = Hsys - HL;
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
 
     # visualize
-    jvals = np.array(range(len(Hsys))) + offset;
+    jvals = np.array(range(len(Hsys_4d))) + offset;
     if(verbose > 9):
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
-            Hs = [HL,HR,Hsys,Hdiff,Hsys-HR];
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d];
             Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
@@ -114,7 +113,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
     # average over energy but keep spin separate
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys - HL);
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
     Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
     # initial energy and spin states
     for alpha in range(n_loc_dof):
@@ -127,7 +126,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 for sigma in range(n_loc_dof):
                     axes[sigma].plot(jvals, np.real(psima[sigma]));
                     axes[sigma].plot(jvals, np.imag(psima[sigma]),linestyle='dashed');
-                    axes[sigma].set_xlim(0,5); axes[sigma].set_ylim(0,-0.05);
+                    axes[sigma].set_xlim(0,5); axes[sigma].set_ylim(-0.05,0);
                 plt.show();
                 if(m>5): assert False;
                 
@@ -139,13 +138,156 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 # inelastic means averaging over an interval
                 Nbma = 0; # num states in the interval
                 interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
+                interval_width = 1e-9;
                 if(n_bound_left == n_bound_right):
                     if(not np.any(Enbs-Emas)): interval_width = 1e-9;
-                interval_width = 1e-9;
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
                         Nbma += 1;
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                        Mbma += np.real(melement*np.conj(melement));
+
+                # update T based on average
+                print(interval_width, Nbma);
+                if Nbma == 0: Mbma = 0.0;
+                else: Mbma = Mbma / Nbma;
+                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbma;
+
+    return Emas, Tbmas;
+
+def kernel_constructed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=-1.9,verbose=0) -> tuple:
+    '''
+    Calculate a transmission probability for each left well bound state
+    as a function of the bound state energies
+
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+
+    intended to RESOLVE initial and final spin
+    simply posits a normalized plane wave with desired spin
+
+    Optional args:
+    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
+        than this. That way we limit to bound states
+    '''
+    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
+    n_loc_dof = np.shape(HC)[-1];
+
+    # convert from matrices to _{alpha alpha} elements
+    to_convert = [tL, VL, tR, VR, Vinfty];
+    converted = [];
+    for convert in to_convert:
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ):
+            raise ValueError; # VL must be diag
+        converted.append(np.diagonal(convert));
+    tLa, VLa, tRa, VRa, Vinfa = tuple(converted);
+
+    # left well 
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime, bound=False);
+    HL = fci_mod.mat_4d_to_2d(HL_4d);
+    # left well eigenstates
+    Emas, _ = np.linalg.eigh(HL);
+    Emas = Emas[Emas < E_cutoff].astype(complex);
+    n_bound_left = len(Emas)//n_loc_dof;
+    Emas = np.reshape(Emas, (n_bound_left, n_loc_dof)).T;
+    #n_bound_left = 1000
+    #Emas = np.array([np.linspace(-2.0,-1.0,n_bound_left),np.linspace(-2.0,-1.0,n_bound_left)], dtype=complex);
+    kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
+                    /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in left well 
+    kapmas = np.arccosh((-Emas+fci_mod.scal_to_vec(Vinfa,n_bound_left))
+                    /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in left well 
+    fig, axes = plt.subplots(2)
+    axes[0].plot(Emas[0], kmas[0]);
+    axes[0].plot(Emas[0], np.sqrt( (Emas[0]+2*tLa[0]-VLa[0])/2*tLa[0]) );
+    axes[1].plot(Emas[0],kapmas[0]);
+    axes[1].plot(Emas[0], np.sqrt( (Vinfa[0] - (Emas[0]+2*tLa[0]))/2*tLa[0]) );
+    #plt.show();
+    #assert False
+    # right well 
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime, bound=False);
+    HR = fci_mod.mat_4d_to_2d(HR_4d);
+    # right well eigenstates
+    Enbs, _ = np.linalg.eigh(HR);
+    Enbs = Enbs[Enbs < E_cutoff].astype(complex);
+    n_bound_right = len(Enbs)//n_loc_dof;
+    Enbs = np.reshape(Enbs, (n_bound_right, n_loc_dof)).T;
+    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_bound_right))
+                    /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in right well 
+
+    # physical system
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC, bound=False);
+    jvals = np.array(range(len(Hsys_4d))) + offset;
+    if(verbose > 9):   # plot the potential
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
+            for Hi in range(len(Hs)):
+                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
+        plt.legend();plt.show();      
+
+    # average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    # need ham with no left barrier and left lead self energies
+    HLself_4d_base, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime); 
+    for m in range(n_bound_left):
+        for alpha in range(n_loc_dof):
+            print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
+            kma_js = np.lib.scimath.arccos((Emas[alpha,m]-np.diag(HL_4d[:,:,alpha,alpha]))/(-2*tLa[alpha]));
+            psima = np.exp(jvals*kma_js*complex(0,1));
+            psima = psima/np.dot(psima,np.conj(psima));
+            psima = np.array((psima,)*n_loc_dof);
+            ####
+            #### problem: exponential decay hardly changes with energy compared
+            #### to HL eigenfunctions in regular kernel
+            #### looking at the latter, see psi(j=0) varies a lot with energy
+            #### by definition not the case here since psi ~ e^(-\kappa j)
+            #### as a consequence of continuity with a propagating wave
+            ####
+            psim_prop = np.exp(jvals*kmas[alpha,m]*complex(0,1));
+            psim_dec = np.exp(jvals*kapmas[alpha,m]*(-1));
+            psim_dec = [el if abs(el) <= 1.0 else 0.0 for el in psim_dec];
+            if(verbose > 9):
+                fig, axes = plt.subplots(n_loc_dof);
+                for sigma in range(n_loc_dof):
+                    axes[sigma].plot(jvals, np.real(psima[sigma]));
+                    axes[sigma].plot(jvals, np.imag(psima[sigma]),linestyle='dashed');
+                    axes[sigma].plot(jvals, np.real(psim_dec) );
+                    axes[sigma].set_xlim(0,5); axes[sigma].set_ylim(0,0.05);
+                plt.show();
+                if(m>5): assert False;
+
+            # final spin states
+            for beta in range(n_loc_dof):
+                # average over final state energy
+                Mbma = 0.0;
+
+                # inelastic means averaging over an interval
+                Nbma = 0; # num states in the interval
+                interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
+                interval_width = 1e-9;
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
+                        Nbma += 1;
+
+                        # construct psinb and get matrix element
+                        knb_js = -np.lib.scimath.arccos((Enbs[beta,n]-np.diag(HR_4d[:,:,beta,beta]))/(-2*tRa[beta]));
+                        psinb = np.exp(jvals*knb_js*complex(0,1));
+                        psinb = psinb/np.dot(psinb, np.conj(psinb));
+                        psinb = np.array((psinb,)*n_loc_dof);
+                        if(verbose>9):
+                            fig, axes = plt.subplots(n_loc_dof);
+                            for sigma in range(n_loc_dof):
+                                axes[sigma].plot(jvals, np.real(psinb[sigma]));
+                                axes[sigma].plot(jvals, np.imag(psinb[sigma]),linestyle='dashed');
+                            plt.show();
+                            if(n>5): assert False
+                        melement = matrix_element(beta,psinb,Hdiff,alpha,psima);
                         Mbma += np.real(melement*np.conj(melement));
 
                 # update T based on average
@@ -216,9 +358,9 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+    jvals = np.array(range(len(Hsys_4d))) + offset;
     if(verbose > 9):
         # plot the potential
-        jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
@@ -226,33 +368,12 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
         plt.legend();plt.show();
-        # properties of the wfs
-        # operators
-        Sz_op = np.diagflat([1.0 if i%2==0 else -1.0 for i in range(len(psims[0]))]);
-        Sx_op = np.zeros_like(Sz_op);
-        for i in range(len(Sx_op)-1): Sx_op[i,i+1] = 1.0; Sx_op[i+1,i] = 1.0;
-        for m in range(8):
-            psim = psims[m];
-            print("-psi_",m,"<S_z> = ",np.array([np.dot(np.conj(psim),np.dot(Sz_op,psim))]),"<S_x> =",np.array([np.dot(np.conj(psim),np.dot(Sx_op,psim))]));
-            width = NL+len(HC)
-            mid = Ninfty+width//2;
-            myfig, (wfax, derivax) = plt.subplots(2);
-            mycolors=['tab:blue','tab:orange']; # differentiates spin comps
-            mystyles=['solid','dashed']; # differentiates real vs imaginary
-            for sigma in [0,1]:
-                psimup = psim[sigma::2];
-                wfax.plot(np.real(jvals), 1e-6*sigma+np.real(psimup),color=mycolors[sigma],linestyle=mystyles[0]);
-                wfax.plot(np.real(jvals), 1e-6*sigma+np.imag(psimup),color=mycolors[sigma],linestyle=mystyles[1]);
-                derivax.plot(np.real(jvals), 1e-6*sigma+np.real(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[0]);
-                derivax.plot(np.real(jvals), 1e-6*sigma+np.imag(complex(0,-1)*np.gradient(psimup)),color=mycolors[sigma],linestyle=mystyles[1]);
-            plt.show();
-            print("\t",np.real(np.diag(HL)[-2+2*mid-width:2*(mid+1)-width]),np.real(np.diag(HL)[2*mid+width:2*(mid+1)+width+2]));
-            print("\t",np.real(psim[2*(mid-1):2*(mid+2)].round(2)));
-            print("\t",np.real(psim[2*(mid-1):2*(mid+2)][::-1].round(2)));
-        assert False       
+        # plot the wfs
+        for m in range(2):
+            plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9);
 
-    # average matrix elements over final states |k_n \beta>
-    # with the same energy as the intial state |k_m \alpha>
+    # average matrix elements over final states |k_n >
+    # with the same energy as the intial state |k_m >
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
     Mnms = np.empty((n_bound_right,n_bound_left),dtype=float);
     Tms = np.empty((n_bound_left,),dtype=float);
@@ -264,9 +385,9 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
         # inelastic means averaging over an interval
         Nm = 0; # num states in the interval
         interval_width = abs(Ems[-2]-Ems[-1]);
+        interval_width = 1e-9;
         if(n_bound_left == n_bound_right):
-            if(not np.any(Ens-Ems)): interval_width = 1e-9;    
-        interval_width = 1e-9;    
+            if(not np.any(Ens-Ems)): interval_width = 1e-9;       
         for n in range(n_bound_right):
             if( abs(Ems[m] - Ens[n]) < interval_width/2):
                 Nm += 1;
@@ -295,7 +416,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
 
     return Ems, Tms;
 
-def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=-1.9,verbose=0) -> tuple:
+def kernel_fourier(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
     '''
     Calculate a transmission probability for each left well bound state
     as a function of the bound state energies
@@ -305,7 +426,9 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
 
-    intended to RESOLVE initial and final spin
+    This kernel allows the initial and final states to lack definite spin,
+    but then fourier expands to separate right and left going parts by spin
+    and so CAN RESOLVE the spin -> spin transitions
 
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -315,71 +438,69 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
 
-    # convert from matrices to _{alpha alpha} elements
+    # convert from matrices to spin-diagonal, spin-independent elements
     to_convert = [tL, VL, tR, VR];
     converted = [];
     for convert in to_convert:
-        if( np.any(convert - np.diagflat(np.diagonal(convert))) ):
-            raise ValueError; # VL must be diag
-        converted.append(np.diagonal(convert));
+        # check spin-diagonal
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
+        # check spin-independent
+        diag = np.diagonal(convert);
+        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
+        converted.append(convert[0,0]);
     tLa, VLa, tRa, VRa = tuple(converted);
 
     # left well 
-    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime, bound=False);
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
+    interval = 2;
+    interval_tup = (n_loc_dof*(n_spatial_dof//2-interval),n_loc_dof*(n_spatial_dof//2+interval+1) );
+    if verbose: print("-HL[:,:] =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
     # left well eigenstates
-    Emas, _ = np.linalg.eigh(HL);
-    Emas = Emas[Emas < E_cutoff].astype(complex);
-    n_bound_left = len(Emas)//n_loc_dof;
-    Emas = np.reshape(Emas, (n_bound_left, n_loc_dof)).T;
-    kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
-                    /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in left well 
-
+    Ems, psims = np.linalg.eigh(HL);
+    psims = psims.T[Ems < E_cutoff];
+    Ems = Ems[Ems < E_cutoff].astype(complex);
+    n_bound_left = len(Ems);
+    kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
+    
     # right well 
-    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime, bound=False);
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
+    if verbose: print("-HR[:,:] =\n",np.real(HR[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+    
     # right well eigenstates
-    Enbs, _ = np.linalg.eigh(HR);
-    Enbs = Enbs[Enbs < E_cutoff].astype(complex);
-    n_bound_right = len(Enbs)//n_loc_dof;
-    Enbs = np.reshape(Enbs, (n_bound_right, n_loc_dof)).T;
-    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_bound_right))
-                    /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in right well 
+    Ens, psins = np.linalg.eigh(HR);
+    psins = psins.T[Ens < E_cutoff];
+    Ens = Ens[Ens < E_cutoff].astype(complex);
+    n_bound_right = len(Ens);
+    knbs = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
+
 
     # physical system
-    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC, bound=False);
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     jvals = np.array(range(len(Hsys_4d))) + offset;
-    if(verbose > 9):   # plot the potential
+    if(verbose > 9):
+        # plot the potential
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
             Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
-        plt.legend();plt.show();      
+        plt.legend();plt.show();
+        # plot the wfs
+        for m in range(2):
+            plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9);      
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
+    # average over energy but keep spin separate
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
     Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    # need ham with no left barrier and left lead self energies
-    HLself_4d_base, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime); 
+    # initial energy and spin states
     for m in range(n_bound_left):
         for alpha in range(n_loc_dof):
-            print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********");
-            kma_js = np.lib.scimath.arccos((Emas[alpha,m]-np.diag(HL_4d[:,:,alpha,alpha]))/(-2*tLa[alpha]));
-            psima = np.exp(jvals*kma_js*complex(0,1));
-            #psima = psima/np.dot(psima,np.conj(psima));
-            psima = np.array((psima,)*n_loc_dof);
-            if True:
-                fig, axes = plt.subplots(n_loc_dof);
-                for sigma in range(n_loc_dof):
-                    axes[sigma].plot(jvals, np.real(psima[sigma]));
-                    axes[sigma].plot(jvals, np.imag(psima[sigma]),linestyle='dashed');
-                    axes[sigma].set_xlim(1,5); axes[sigma].set_ylim(0,0.05);
-                plt.show();
-                if(m>5): assert False;
-
+                
             # final spin states
             for beta in range(n_loc_dof):
                 # average over final state energy
@@ -387,34 +508,50 @@ def kernel_projected(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, 
 
                 # inelastic means averaging over an interval
                 Nbma = 0; # num states in the interval
-                interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
+                interval_width = abs(Ens[-2]-Ens[-1]);
                 interval_width = 1e-9;
+                if(n_bound_left == n_bound_right):
+                    if(not np.any(Ens-Ems)): interval_width = 1e-9;
                 for n in range(n_bound_right):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
+                    if( abs(Ems[m] - Ens[n]) < interval_width/2):
                         Nbma += 1;
-
-                        # construct psinb and get matrix element
-                        knb_js = -np.lib.scimath.arccos((Enbs[beta,n]-np.diag(HR_4d[:,:,beta,beta]))/(-2*tRa[beta]));
-                        psinb = np.exp(jvals*knb_js*complex(0,1));
-                        psinb = psinb/np.dot(psinb, np.conj(psinb));
-                        psinb = np.array([psinb, psinb]);
+                        
+                        # convert psim and psin
                         if False:
-                            fig, axes = plt.subplots(n_loc_dof);
+                            psim = psims[m].reshape(n_spatial_dof, n_loc_dof).T;
+                            psim4d = fourfold_decompose(psim, ninf=100);
+                            psin = psins[n].reshape(n_spatial_dof, n_loc_dof).T;
+                            psin4d = fourfold_decompose(psim);
                             for sigma in range(n_loc_dof):
-                                axes[sigma].plot(jvals, np.real(psinb[sigma]));
-                                axes[sigma].plot(jvals, np.imag(psinb[sigma]),linestyle='dashed');
-                            plt.show();
-                            if(n>5): assert False
-                        melement = matrix_element(beta,psinb,Hdiff,alpha,psima);
+                                fig, ax = plt.subplots();
+                                ax.plot(jvals,psim[alpha]);
+                                ax.plot(jvals,psim4d[0,sigma]+psim4d[1,sigma]);
+                                ax.set_xlim(0,20); ax.set_ylim(-0.01,0.0);
+                                plt.show();
+
+                            assert False
+
+                        # get matrix element
+                        psi_i = np.array([psims[m][eli] if eli % n_loc_dof == alpha else 0.0 for eli in range(len(psims[m]))]);
+                        psi_f = np.array([psims[n][eli] if eli % n_loc_dof == beta else 0.0 for eli in range(len(psins[n]))]);
+                        melement = np.dot(np.conj(psi_f), np.dot(Hdiff,psi_i));
+                        if(m==n_bound_left-1 and is_alpha_conserving(Hdiff, n_loc_dof)): print("WARNING: overlap of different spin components is strictly zero without off diagonal elements in Hdiff");
                         Mbma += np.real(melement*np.conj(melement));
+
+                        if False:
+                            if(m>20): assert False
+                            print("--->",alpha,beta);
+                            print(sum(psi_i.reshape(n_spatial_dof, n_loc_dof)[:,0]),sum(psi_i.reshape(n_spatial_dof, n_loc_dof)[:,1]) );
+                            print(sum(psi_f.reshape(n_spatial_dof, n_loc_dof)[:,0]),sum(psi_f.reshape(n_spatial_dof, n_loc_dof)[:,1]) );
+                            print(melement)
 
                 # update T based on average
                 print(interval_width, Nbma);
                 if Nbma == 0: Mbma = 0.0;
                 else: Mbma = Mbma / Nbma;
-                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbma;
+                Tbmas[beta,m,alpha] = NL/(kms[m]*tLa) *NR/(kms[m]*tRa) *Mbma;
 
-    return Emas, Tbmas; 
+    return np.array([Ems, Ems]), Tbmas;
 
 def benchmark(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''
@@ -690,15 +827,55 @@ def get_eigs(h_4d, E_cutoff) -> tuple:
     
     return eigvals, eigvecs;
 
+def fourfold_decompose(psi2d, ninf=10):
+    '''
+    decompose a wf into up right going, up left going, down right, down left parts
+    '''
+    if(not isinstance(psi2d, np.ndarray)): raise TypeError;
+    if(not isinstance(ninf,int)): raise TypeError;
+    n_loc_dof, n_spatial_dof = np.shape(psi2d);
+    assert(n_spatial_dof % 2 == 1);
+
+    # 4d wf
+    psi4d = np.zeros((2,n_loc_dof, n_spatial_dof));
+    cmas = np.empty((n_loc_dof,2*ninf+1),dtype=complex);
+    for alpha in range(n_loc_dof):
+
+        # fourier expand
+        psi = psi2d[alpha];
+        L = n_spatial_dof // 2;
+        jvals = np.array(range(-L,L+1));
+        psi_right, psi_left = np.zeros_like(psi), np.zeros_like(psi);
+
+        # get fourier coef c_n for n \in {-ninf,...+ninf}
+        for n in range(-ninf,ninf+1):
+            cmas[alpha,n] = np.trapz(psi*np.exp(-complex(0,1)*n*np.pi*jvals/L)/(2*L), jvals);
+
+        # break up into right moving and left moving parts
+        for n in range(-ninf,ninf+1):
+            if(n>0): # right moving
+                psi_right += cmas[alpha,n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
+            elif(n<=0): # left moving
+                psi_left += cmas[alpha,n]*np.exp(complex(0,1)*n*np.pi*jvals/L);
+
+        # put together
+        psi4d[0,alpha] = psi_right;
+        psi4d[1,alpha] = psi_left;
+
+    return psi4d;
+ 
+
 def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
     '''
     Get the comple fourier coefficients for a wf
     '''
     if(not isinstance(wf_full, np.ndarray)): raise TypeError;
     if(not isinstance(ninf,int)): raise TypeError;
+    n_spatial_dof = len(wf_full) // n_loc_dof;
+    assert(n_spatial_dof % 2 == 1);
 
     # decompose left and right
-    mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
+    mycolors= ['tab:blue','tab:orange','tab:green','tab:red']; # differentiates spin comps
     mystyles=['solid','dashed']; # differentiates real vs imaginary
 
     # color by spin
@@ -706,8 +883,7 @@ def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
     for alpha in range(n_loc_dof):
         figtest, (axright, axleft, axcomp) = plt.subplots(3, sharex=True);
         wf = wf_full[alpha::n_loc_dof];
-        assert(len(wf) % 2 == 1);
-        L = len(wf) // 2;
+        L = n_spatial_dof // 2;
         jvals = np.array(range(-L,L+1));
 
         # get fourier coef c_n for n \in {-ninf,...+ninf}
@@ -770,7 +946,7 @@ def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2) -> None:
         Sz_op[0,0], Sx_op[0,0] = np.nan, np.nan
 
     #### plot bound states
-    mycolors=matplotlib.colormaps['tab10'].colors; # differentiates spin comps
+    mycolors= ['tab:blue','tab:orange','tab:green','tab:red']; # differentiates spin comps
     mystyles=['solid','dashed']; # differentiates real vs imaginary
     print("Plotting bound states with absorbing/emitting bcs.");
 
