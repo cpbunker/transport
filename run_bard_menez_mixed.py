@@ -134,9 +134,9 @@ if True:
     # I am setting VLprime = VRprime = Vinfty for best results according
     # tests performed in run_barrier_bardeen 
     # returns two arrays of size (n_loc_dof, n_left_bound)
-    mixed = False;
+    mixed = True;
     if mixed:
-        Evals, Tvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
+        Evals, Tvals, Sxvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
                                   E_cutoff=-1.9,verbose=1);
@@ -148,9 +148,10 @@ if True:
 
     # benchmark
     if mixed:
-        Tvals_bench = bardeen.benchmark_mixed(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench =  bardeen.benchmark_mixed(tL, tR, VL, VR, HC, Evals, verbose=0); # np.zeros_like(Tvals)
         alphas = [0];
         Evals, Tvals, Tvals_bench = Evals.reshape(1,len(Evals)), Tvals.reshape(1,len(Tvals),1), Tvals_bench.reshape(1,len(Tvals_bench),1);
+        Sxvals = Sxvals.reshape(1,len(Sxvals));
     else:
         Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
     print("Output shapes:");
@@ -163,7 +164,8 @@ if True:
 
              # truncate to bound states and plot
             xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai, betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
+            colorvals = ["tab:blue" if val > 0 else "tab:red" for val in Sxvals[alphai]];
+            axes[alphai, betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=colorvals);
 
             # % error
             axright = axes[alphai,betai].twinx();

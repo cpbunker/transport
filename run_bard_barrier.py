@@ -113,7 +113,7 @@ if True:
     plt.show();
 
 # T vs VLR prime
-if True:
+if False:
 
     Vprimevals = [Vinfty/10,Vinfty/5,Vinfty];
     numplots = len(Vprimevals);

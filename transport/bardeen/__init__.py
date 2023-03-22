@@ -119,7 +119,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):
 
-            if True:
+            if False:
                 print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********")
                 psima = psimas[:,m]
                 fig, axes = plt.subplots(n_loc_dof);
@@ -336,18 +336,25 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     interval = 2;
     interval_tup = (n_loc_dof*(n_spatial_dof//2-interval),n_loc_dof*(n_spatial_dof//2+interval+1) );
-    if verbose: print("-HL[:,:] =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+    if verbose: print("-HL[:,:] near barrier =\n",np.real(HL[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
     psims = psims.T[Ems < E_cutoff];
     Ems = Ems[Ems < E_cutoff].astype(complex);
     n_bound_left = len(Ems);
     kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
+
+    # get Sx for each psim
+    Sxms = np.zeros_like(Ems);
+    Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
+    for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
+    for m in range(len(psims)):
+        Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
     
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
-    if verbose: print("-HR[:,:] =\n",np.real(HR[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+    if verbose: print("-HR[:,:] near barrier =\n",np.real(HR[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
     
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
@@ -369,8 +376,9 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
                 myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
         plt.legend();plt.show();
         # plot the wfs
-        for m in range(2):
-            plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9);
+        for m in range(6):
+            plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9, fourier = False);
+        assert False;
 
     # average matrix elements over final states |k_n >
     # with the same energy as the intial state |k_m >
@@ -395,17 +403,10 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
                 Mm += np.real(melement*np.conj(melement));
                 print(interval_width, Nm);
                 if False:
-                    #print(np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
-                    print("->",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
-                    print("->",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
-                    print("->",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
-                    Sz = np.zeros_like(HL_4d);
-                    for Szi in range(np.shape(HL_4d)[0]):
-                        for Szj in range(np.shape(HL_4d)[0]):
-                            if Szi==Szj:
-                                Sz[Szi,Szj] = np.array([[0,1],[1,0]]);
-                    Sz = fci_mod.mat_4d_to_2d(Sz);
-                    print("->",np.dot(psims[m],np.dot(Sz,psins[n])));
+                    print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+                    print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
+                    print("- psin near barrier\n",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
+                    print("- barrier overlap of psim and psin: ",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
                     assert False
 
         # update T based on average
@@ -414,7 +415,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpr
         else: Mm = Mm/Nm;
         Tms[m] = NL/(kms[m]*tLa) *NR/(kms[m]*tRa) *Mm;
 
-    return Ems, Tms;
+    return Ems, Tms, Sxms;
 
 def kernel_fourier(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
     '''
@@ -924,7 +925,7 @@ def get_fourier_coefs(wf_full,n_loc_dof,ninf=10) -> np.ndarray:
     
     return cmas;
 
-def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2) -> None:
+def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2, fourier = True) -> None:
     '''
     '''
     if(len(np.shape(H)) != 4): raise ValueError;
@@ -982,14 +983,14 @@ def plot_wfs(H, E0, alpha0, E_cutoff, E_tol = 1e-2) -> None:
             # show
             hamax.set_ylabel('$H_L$');
             wfax.set_ylabel('$\psi$');
-            wfax.set_title("Bound state: <S_z> = "+str(Szm)+", <S_x> = "+str(Sxm));
+            wfax.set_title("Bound state: <S_z> = "+str(int(1000*Szm)/1000)+", <S_x> = "+str(int(1000*Sxm)/1000));
             derivax.set_ylabel("$\psi_{j+1}/\psi_j$");
             derivax.set_ylim(-2,2)
             plt.tight_layout();
             plt.show();
 
             # fourier decomp
-            get_fourier_coefs(psim,n_loc_dof);
+            if fourier: get_fourier_coefs(psim,n_loc_dof);
 
     # check
     if(not coupled_continuum): raise Exception("bound state energy not coupled to continuum");
@@ -1001,14 +1002,4 @@ if __name__ == "__main__":
 
     pass;
     
-
-
-    
-
-
-
-
-
-
-
 
