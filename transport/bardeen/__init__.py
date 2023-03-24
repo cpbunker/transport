@@ -131,27 +131,31 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 if(m>5): assert False;
                 
             # final spin states
+            myfig, myaxes = plt.subplots(2, sharex=True)
             for beta in range(n_loc_dof):
-                # average over final state energy
-                Mbma = 0.0;
-
                 # inelastic means averaging over an interval
-                Nbma = 0; # num states in the interval
+                Mbmas = [];
                 interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
-                interval_width = 1e-9;
+                interval_width = 4 #1e-9;
                 if(n_bound_left == n_bound_right):
                     if(not np.any(Enbs-Emas)): interval_width = 1e-9;
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval_width/2):
-                        Nbma += 1;
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                        Mbma += np.real(melement*np.conj(melement));
+                        Mbmas.append(np.real(melement*np.conj(melement)));
+
+                myaxes[beta].scatter(2+Enbs[beta],Mbmas);
+                myaxes[beta].set_title(str(alpha)+"$\\rightarrow$"+str(beta)+" (N="+str(len(Mbmas))+")");
+            #myaxes[-1].set_xscale('log', subs = []);
+            plt.show();
+            assert False;
+            if False:
 
                 # update T based on average
-                print(interval_width, Nbma);
-                if Nbma == 0: Mbma = 0.0;
-                else: Mbma = Mbma / Nbma;
-                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbma;
+                print(interval_width, len(Mbma));
+                if Mbmas: Mbmas = sum(Mbmas)/len(Mbmas);
+                else: Mbmas = 0.0;
+                Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbmas;
 
     return Emas, Tbmas;
 

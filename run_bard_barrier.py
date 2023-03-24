@@ -48,7 +48,7 @@ VR = 0.0*tL;
 # T vs NL
 if True:
 
-    NLvals = [50,100,500];
+    NLvals = [500,100,500];
     numplots = len(NLvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
