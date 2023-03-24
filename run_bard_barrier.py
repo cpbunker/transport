@@ -48,7 +48,7 @@ VR = 0.0*tL;
 # T vs NL
 if True:
 
-    NLvals = [500,100,500];
+    NLvals = [50,100,500];
     numplots = len(NLvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -104,13 +104,14 @@ if True:
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
         axes[NLi].set_ylabel('$T$',fontsize=myfontsize);
-        axes[NLi].set_title('$N_R = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[NLi].set_title('$N_L = '+str(NLvals[NLi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
+    #plt.savefig("figs/bard_barrier/NL.pdf");
 
 # T vs VLR prime
 if False:
@@ -181,7 +182,8 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
+    #plt.show();
+    plt.savefig("figs/bard_barrier/VLprime.pdf");
 
 # worst case vs best case
 if False:

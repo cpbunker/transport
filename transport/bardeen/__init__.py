@@ -105,9 +105,10 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
             Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d];
-            Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
+            Hstrs = ["$H_L$","$H_R$","$H_{sys}$","$H_{sys}-H_L$","$H_{sys}-H_{R}$"];
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+            myaxes[alpha].set_xlabel("$j$"); myaxes[alpha].set_ylabel("$V_j$");
         plt.legend();plt.show();assert False;
 
     # average matrix elements over final states |k_n \beta>
@@ -131,12 +132,12 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 if(m>5): assert False;
                 
             # final spin states
-            myfig, myaxes = plt.subplots(2, sharex=True)
+            #myfig, myaxes = plt.subplots(2, sharex=True)
             for beta in range(n_loc_dof):
                 # inelastic means averaging over an interval
                 Mbmas = [];
                 interval_width = abs(Enbs[alpha,-2]-Enbs[alpha,-1]);
-                interval_width = 4 #1e-9;
+                interval_width = 1e-9;
                 if(n_bound_left == n_bound_right):
                     if(not np.any(Enbs-Emas)): interval_width = 1e-9;
                 for n in range(n_bound_right):
@@ -144,15 +145,15 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
                         Mbmas.append(np.real(melement*np.conj(melement)));
 
-                myaxes[beta].scatter(2+Enbs[beta],Mbmas);
-                myaxes[beta].set_title(str(alpha)+"$\\rightarrow$"+str(beta)+" (N="+str(len(Mbmas))+")");
+                #myaxes[beta].scatter(2+Enbs[beta],Mbmas);
+                #myaxes[beta].set_title(str(alpha)+"$\\rightarrow$"+str(beta)+" (N="+str(len(Mbmas))+")");
             #myaxes[-1].set_xscale('log', subs = []);
-            plt.show();
-            assert False;
-            if False:
+            #plt.show();
+            #assert False;
+            #if False:
 
                 # update T based on average
-                print(interval_width, len(Mbma));
+                print(interval_width, len(Mbmas));
                 if Mbmas: Mbmas = sum(Mbmas)/len(Mbmas);
                 else: Mbmas = 0.0;
                 Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbmas;
