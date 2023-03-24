@@ -120,7 +120,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):
 
-            if False:
+            if False: # investigate scaling of the decaying part
                 print("******** E(",alpha,m,") = ",Emas[alpha,m]," ********")
                 psima = psimas[:,m]
                 fig, axes = plt.subplots(n_loc_dof);
@@ -145,13 +145,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
                         Mbmas.append(np.real(melement*np.conj(melement)));
 
-                #myaxes[beta].scatter(2+Enbs[beta],Mbmas);
-                #myaxes[beta].set_title(str(alpha)+"$\\rightarrow$"+str(beta)+" (N="+str(len(Mbmas))+")");
-            #myaxes[-1].set_xscale('log', subs = []);
-            #plt.show();
-            #assert False;
-            #if False:
-
                 # update T based on average
                 print(interval_width, len(Mbmas));
                 if Mbmas: Mbmas = sum(Mbmas)/len(Mbmas);
@@ -159,6 +152,122 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
                 Tbmas[beta,m,alpha] = NL/(kmas[alpha,m]*tLa[alpha]) *NR/(kmas[alpha,m]*tRa[alpha]) *Mbmas;
 
     return Emas, Tbmas;
+
+def kernel_mels(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=1.0,verbose=0) -> tuple:
+    '''
+    Calculate a transmission probability for each left well bound state
+    as a function of the bound state energies
+
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+
+    This kernel requires the initial and final states to have definite spin,
+    and so CAN RESOLVE the spin -> spin transitions
+
+    Optional args:
+    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
+        than this. That way we limit to bound states
+    '''
+    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
+    n_loc_dof = np.shape(HC)[-1];
+
+    # convert from matrices to _{alpha alpha} elements
+    to_convert = [tL, VL, tR, VR];
+    converted = [];
+    for convert in to_convert:
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ):
+            raise ValueError; # VL must be diag
+        converted.append(np.diagonal(convert));
+    tLa, VLa, tRa, VRa = tuple(converted);
+
+    # left well eigenstates
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
+    Emas, psimas = [], []; # will index as Emas[alpha,m]
+    n_bound_left = 0;
+    interval = 3;
+    for alpha in range(n_loc_dof):
+        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+        psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
+        Ems = Ems[Ems+2*tLa[alpha] < E_cutoff];
+        Emas.append(Ems);
+        psimas.append(psims);
+        n_bound_left = max(n_bound_left, len(Emas[alpha]));
+    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ems = Emas[alpha];
+        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
+        Emas_arr[alpha] = Ems_arr;
+        psims = psimas[alpha];
+        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+        psimas_arr[alpha] = psims_arr;
+    Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
+    kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
+                    /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
+    
+    # right well eigenstates  
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
+    Enbs, psinbs = [], []; # will index as Enbs[beta,n]
+    n_bound_right = 0;
+    for beta in range(n_loc_dof):
+        Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
+        psins = psins.T[Ens+2*tRa[alpha] < E_cutoff];
+        Ens = Ens[Ens+2*tRa[alpha] < E_cutoff];
+        Enbs.append(Ens.astype(complex));
+        psinbs.append(psins);
+        n_bound_right = max(n_bound_right, len(Ens));
+    Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
+    psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ens = Enbs[alpha];
+        Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
+        Enbs_arr[alpha] = Ens_arr;
+        psins = psinbs[alpha];
+        psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
+        psinbs_arr[alpha] = psins_arr;
+    Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
+    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_bound_right))
+                    /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in the left well
+
+    # operator
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+
+    # visualize
+    jvals = np.array(range(len(Hsys_4d))) + offset;
+    if(verbose > 9):
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d];
+            Hstrs = ["$H_L$","$H_R$","$H_{sys}$","$H_{sys}-H_L$","$H_{sys}-H_{R}$"];
+            for Hi in range(len(Hs)):
+                myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+            myaxes[alpha].set_xlabel("$j$"); myaxes[alpha].set_ylabel("$V_j$");
+        plt.legend();plt.show();assert False;
+
+    # matrix elements
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mnbmas = np.empty((n_loc_dof,n_bound_right,n_loc_dof,n_bound_left),dtype=float);
+    overlaps = np.empty_like(Mnbmas);
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):
+            
+            # final spin states
+            for beta in range(n_loc_dof):
+                for n in range(n_bound_right):
+                    if True:
+                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                        Mnbmas[beta,n,alpha,m] = np.real(melement*np.conj(melement));
+                        over = matrix_element(beta,psinbs[:,n],np.eye(len(Hdiff)),alpha,psimas[:,m]);
+                        overlaps[beta,n,alpha,m] = np.real(over*np.conj(over));
+
+    return Emas, Mnbmas, overlaps;
 
 def kernel_constructed(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, Ninfty, NL, NR, HC,HCprime,E_cutoff=-1.9,verbose=0) -> tuple:
     '''
