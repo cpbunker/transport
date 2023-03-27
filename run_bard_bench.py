@@ -33,7 +33,7 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 cm_reds = matplotlib.cm.get_cmap("seismic");
 def get_color(colori,numcolors):
     denominator = 2*numcolors
-    assert(colori >=0 and colori < numcolors);
+    assert(colori >=0 and colori <= numcolors);
     if colori <= numcolors // 2: # get a blue
         return cm_reds((1+colori)/denominator);
     else:
@@ -60,13 +60,13 @@ VR = 0.0*tL;
 if True:
 
     numplots = n_loc_dof;
-    fig, axes = plt.subplots(nrows=numplots, ncols=2, sharex = True);
-    if numplots == 1: axes = np.array([axes]);
+    fig, axes = plt.subplots(nrows=2, ncols=n_loc_dof, sharex = True);
+    if n_loc_dof == 1: axes = axes.reshape((2,n_loc_dof));
     fig.set_size_inches(7/2,3*numplots/2);
 
     # central region
     tC = 1*tL;
-    VC = 0.1*tL;
+    VC = 2.0*tL;
     NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
     for j in range(NC):
@@ -80,7 +80,7 @@ if True:
     HCprime = np.copy(HC);
 
     Ninfty = 20;
-    NL = 500;
+    NL = 200;
     NR = 1*NL;
     # bardeen.kernel syntax:
     # tinfty, tL, tLprime, tR, tRprime,
@@ -89,35 +89,35 @@ if True:
     Evals, Mels, overlaps = bardeen.kernel_mels(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0], verbose=1);
-    # truncate number of ms
-    num_ms = 4; # len(Mels) // 4
-    inds = np.linspace(0,len(Mels)-1,num_ms,dtype = int);
-    Mels = np.array([Mels[i] for i in inds]);
-    overlaps = np.array([overlaps[i] for i in inds]);
-    print(inds);
+                                  E_cutoff=2.0, verbose=1);
     print("Output shapes:");
     for arr in [Evals, Mels, overlaps]: print(np.shape(arr));
 
+    # truncate number of ms
+    num_ms = 4; # len(Mels) // 4
+    minds = np.linspace(0,np.shape(Mels)[1]-1,num_ms,dtype = int);
+
     # only one loc dof, and transmission is diagonal
     alphai = 0;
+    print(np.shape(axes),minds)
     for betai in range(n_loc_dof):
 
         # m is color
         xvals = np.real(Evals[betai])+2*tL[betai,betai];
-        for m in range(num_ms):
-            axes[betai,0].plot(xvals, Mels[alphai,m,betai], color=get_color(m,num_ms));
-            axes[betai,1].plot(xvals, overlaps[alphai,m,betai], color=get_color(m,num_ms));
+        for mi in range(num_ms):
+            print(minds[mi])
+            axes[0,betai].plot(xvals, Mels[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]),label="$\\varepsilon_m = $"+str(int(1000*np.real(Evals[alphai,minds[mi]]))/1000));
+            axes[1,betai].plot(xvals, overlaps[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]));
 
         # format
-        axes[betai,0].set_ylabel('$\langle'+str(alphai)+'|H_{sys}-H_L|'+str(betai)+'\\rangle$',fontsize=myfontsize);
-        axes[betai,1].set_ylabel('$\langle'+str(alphai)+'|'+str(betai)+'\\rangle$',fontsize=myfontsize)
+        axes[0,betai].set_ylabel('$\langle k_n |H_{sys}-H_L| k_m \\rangle$',fontsize=myfontsize);
+        axes[1,betai].set_ylabel('$\langle k_n | k_m \\rangle$',fontsize=myfontsize);
+        axes[0,betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[1,betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        #axes[-1,betai].set_xscale('log', subs = []);
+        axes[-1,betai].set_xlabel('$(\\varepsilon_n + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+        axes[0,betai].legend();
 
-# format and show
-axes[-1,0].set_xscale('log', subs = []);
-axes[-1,0].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
-axes[-1,1].set_xscale('log', subs = []);
-axes[-1,1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
 plt.tight_layout();
 plt.show();
 
