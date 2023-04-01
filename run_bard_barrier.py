@@ -45,9 +45,9 @@ VL = 0.0*tL;
 VR = 0.0*tL;
 
 # T vs NL
-if True:
+if False:
 
-    NLvals = [50,100];
+    NLvals = [50,100,500];
     numplots = len(NLvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -77,14 +77,12 @@ if True:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0], verbose=1);
-        Evals, Tvals = bardeen.Ts_bardeen(tinfty, tL, tinfty, tR, tinfty,
-                                      Vinfty, VL, Vinfty, VR, Vinfty,
-                                      Ninfty, NL, NR, HC, Mvals,
-                                      E_cutoff=VC[0,0], verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tL, tR, VL, VR, NL, NR, verbose=1);
 
         # benchmark
         Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
@@ -152,20 +150,21 @@ if False:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0],verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tL, tR, VL, VR, NL, NR, verbose=1);
 
         # benchmark
-        axright = axes[Vprimei].twinx();
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
         # only one loc dof, and transmission is diagonal
-        for alpha in range(n_loc_dof): 
+        for alpha in range(n_loc_dof):
+            axright = axes[Vprimei].twinx();
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
@@ -185,13 +184,13 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    #plt.show();
-    plt.savefig("figs/bard_barrier/VLprime.pdf");
+    plt.show();
+    #plt.savefig("figs/bard_barrier/VLprime.pdf");
 
 # worst case vs best case
-if False:
+if True:
 
-    numplots = 3;
+    numplots = 2;
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     fig.set_size_inches(7/2,3*numplots/2);
@@ -223,19 +222,20 @@ if False:
     # tinfty, tL, tLprime, tR, tRprime,
     # Vinfty, VL, VLprime, VR, VRprime,
     # Ninfty, NL, NR, HC,HCprime,
-    Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+    Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, VLprime, VR, VRprime,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0],verbose=verbose);
+                                  E_cutoff=VC[0,0],verbose=1);
+    Tvals = bardeen.Ts_bardeen(Evals, Mvals, tL, tR, VL, VR, NL, NR, verbose=1);
 
     # benchmark
-    axright = axes[axno].twinx();
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
     # only one loc dof, and transmission is diagonal
-    for alpha in range(n_loc_dof): 
+    for alpha in range(n_loc_dof):
+        axright = axes[axno].twinx();
 
         # truncate to bound states and plot
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
@@ -262,19 +262,20 @@ if False:
     # tinfty, tL, tLprime, tR, tRprime,
     # Vinfty, VL, VLprime, VR, VRprime,
     # Ninfty, NL, NR, HC,HCprime,
-    Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+    Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, VLprime, VR, VRprime,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0],verbose=verbose);
+                                  E_cutoff=VC[0,0],verbose=1);
+    Tvals = bardeen.Ts_bardeen(Evals, Mvals, tL, tR, VL, VR, NL, NR, verbose=1);
     
     # benchmark
-    axright = axes[axno].twinx();
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
     # only one loc dof, and transmission is diagonal
-    for alpha in range(n_loc_dof): 
+    for alpha in range(n_loc_dof):
+        axright = axes[axno].twinx();
 
         # truncate to bound states and plot
         xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
@@ -289,58 +290,6 @@ if False:
     axright.set_ylim(0,50);
     axes[axno].set_ylabel('$T$',fontsize=myfontsize);
     axes[axno].set_title("Best", x=0.2, y = 0.7, fontsize=myfontsize);
-
-    # bardeen results for best case + burying
-    axno = 2;
-    Ninfty = 20;
-    NL = 500;
-    NR = 1*NL;
-    VLprime = Vinfty;
-    VRprime = Vinfty;
-
-    # central region prime
-    tCprime = 1*tL;
-    VCprime = Vinfty;
-    #VCprime = VC;
-    HCprime = np.zeros_like(HC);
-    for j in range(NC):
-        HCprime[j,j] += VCprime;
-    for j in range(NC-1):
-        HCprime[j,j+1] += -tCprime;
-        HCprime[j+1,j] += -tCprime;
-    print_H_j(HCprime);
-        
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
-                                  Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0],verbose=verbose);
-
-    # benchmark
-    axright = axes[axno].twinx();
-    Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-    # only one loc dof, and transmission is diagonal
-    for alpha in range(n_loc_dof): 
-
-        # truncate to bound states and plot
-        xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
-        # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-    # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-    axright.set_ylim(0,105);
-    axes[axno].set_ylabel('$T$',fontsize=myfontsize);
-    axes[axno].set_title("Best + burying", x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);

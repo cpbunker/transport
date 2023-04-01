@@ -86,16 +86,18 @@ if True:
     # tinfty, tL, tLprime, tR, tRprime,
     # Vinfty, VL, VLprime, VR, VRprime,
     # Ninfty, NL, NR, HC,HCprime,
-    Evals, Mels, overlaps = bardeen.kernel_mels(tinfty, tL, tinfty, tR, tinfty,
+    Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
                                   E_cutoff=2*VC[0,0], verbose=1);
+    overlaps = np.zeros_like(Mvals);
+    
     print("Output shapes:");
-    for arr in [Evals, Mels, overlaps]: print(np.shape(arr));
+    for arr in [Evals, Mvals, overlaps]: print(np.shape(arr));
 
     # truncate number of ms
-    num_ms = 6; # len(Mels) // 4
-    minds = np.linspace(0,np.shape(Mels)[1]-1,num_ms,dtype = int);
+    num_ms = 6; # len(Mvals) // 4
+    minds = np.linspace(0,np.shape(Mvals)[1]-1,num_ms,dtype = int);
 
     # only one loc dof, and transmission is diagonal
     alphai = 0;
@@ -104,7 +106,7 @@ if True:
         # m is color
         xvals = np.real(Evals[betai])+2*tL[betai,betai];
         for mi in range(num_ms):
-            axes[0,betai].plot(xvals, Mels[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]),label="$\\varepsilon_m = $"+str(int(1000*np.real(2+Evals[alphai,minds[mi]]))/1000));
+            axes[0,betai].plot(xvals, Mvals[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]),label="$\\varepsilon_m = $"+str(int(1000*np.real(2+Evals[alphai,minds[mi]]))/1000));
             axes[1,betai].plot(xvals, overlaps[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]));
 
         # format

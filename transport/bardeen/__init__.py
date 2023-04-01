@@ -136,17 +136,32 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
                 else: Mns = 0.0;
                 Mbmas[beta,m,alpha] = Mns;
 
-    return Mbmas;
+    return Emas, Mbmas;
 
-def Ts_bardeen(tinfty, tL, tLprime, tR, tRprime,
-           Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HCprime, Mbmas, E_cutoff = 1.0, verbose = 0) -> tuple:
+def current(Emas, Mbmas, muR, eVb, kBT) -> np.ndarray:
+    '''
+    current as a function of bias voltage
+    '''
+    n_loc_dof, n_bound_left = np.shape(Emas);
+
+    # bias voltage window
+    stat_part = nFD(Emas, muR+eVb,kBT)*(1-nFD(Emas,muR,kBT)) - nFD(Emas,muR,kBT)*(1-nFD(Emas, muR+eVb,kBT));
+    print(stat_part);
+    # sum over spin
+    Iab = np.empty((n_loc_dof, n_loc_dof));
+    for alpha in range(n_loc_dof):
+        for beta in range(n_loc_dof):
+
+            # sum over initial energy m
+            Iab[alpha,beta] = 2*np.pi*np.dot(stat_part[alpha],Mbmas[alpha,:,beta]);
+
+def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
     '''
     Using the n-averaged Oppenheimer matrix elements from bardeen.kernel,
     get the transmission coefficients.
     '''
-    n_spatial_dof = Ninfty+NL+len(HCprime)+NR+Ninfty;
-    n_loc_dof = np.shape(HCprime)[-1];
+    #n_spatial_dof = Ninfty+NL+len(HCprime)+NR+Ninfty;
+    n_loc_dof, n_bound_left = np.shape(Emas);
     if(len(np.shape(Mbmas)) != 3): raise ValueError;
     if(np.shape(Mbmas)[0] != n_loc_dof): raise ValueError;
 
@@ -159,50 +174,15 @@ def Ts_bardeen(tinfty, tL, tLprime, tR, tRprime,
         converted.append(np.diagonal(convert));
     tLa, VLa, tRa, VRa = tuple(converted);
 
-    # left well energies
-    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
-    Emas = []; # will index as Emas[alpha,m]
-    n_bound_left = 0;
-    for alpha in range(n_loc_dof):
-        Ems, _ = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-        Ems = Ems[Ems+2*tLa[alpha] < E_cutoff];
-        Emas.append(Ems);
-        n_bound_left = max(n_bound_left, len(Emas[alpha]));
-    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
-    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ems = Emas[alpha];
-        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
-        Emas_arr[alpha] = Ems_arr;
-    Emas = Emas_arr; # shape is (n_loc_dof, n_bound_left)
-
-    # right well eigenstates  
-    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
-    Enbs, psinbs = [], []; # will index as Enbs[beta,n]
-    n_bound_right = 0;
-    for beta in range(n_loc_dof):
-        Ens, _ = np.linalg.eigh(HR_4d[:,:,beta,beta]);
-        Ens = Ens[Ens+2*tRa[alpha] < E_cutoff];
-        Enbs.append(Ens.astype(complex));
-        n_bound_right = max(n_bound_right, len(Ens));
-    Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
-    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ens = Enbs[alpha];
-        Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
-        Enbs_arr[alpha] = Ens_arr;
-    Enbs = Enbs_arr; # shape is (n_loc_dof, n_bound_right)
-
-
-
+    # transmission probs
+    Tbmas = np.empty_like(Mbmas);
     kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
                     /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
-    knbs = np.arccos((Enbs-fci_mod.scal_to_vec(VRa,n_bound_right))
-                    /(-2*fci_mod.scal_to_vec(tRa,n_bound_right))); # wavenumbers in the right well
-    print(np.shape(Mbmas));
-    print(np.shape(kmas));
-    print(np.shape(knbs));
-    assert False
+    for alpha in range(n_loc_dof):
+        for beta in range(n_loc_dof):
+            Tbmas[beta,:,alpha] = NL/(kmas[alpha]*tLa[alpha]) * NR/(kmas[beta]*tRa[alpha]) *Mbmas[alpha,:,beta];
+
+    return Tbmas;
 
 def Ts_wfm(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''
@@ -373,6 +353,12 @@ def is_alpha_conserving(T,n_loc_dof,tol=1e-9) -> bool:
         return True;
 
     else: raise Exception; # not supported
+
+def nFD(epsilon,mu,kBT):
+    '''
+    Fermi-Dirac distribution function
+    '''
+    return 1/(np.exp((np.real(epsilon)-mu)/kBT )+1)
 
 def get_self_energy(t, V, E) -> np.ndarray:
     if(not isinstance(t, float) or t < 0): raise TypeError;

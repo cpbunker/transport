@@ -19,7 +19,7 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
 
 # fig standardizing
-myxvals = 199;
+myxvals = 49;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
@@ -59,10 +59,10 @@ def h_kondo(J,s2):
     return h;
 
 #################################################################
-#### all possible T_{\alpha -> \beta} for single J
+#### I vs Vb
 
 if True:
-    
+
     # alpha -> beta
     alphas = [1,2];
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
@@ -82,7 +82,7 @@ if True:
     Jval = -0.5;
 
     # central region
-    tC = 1.0*tL;
+    tC = 1.0*tL; # 100 meV
     #VC = abs(Jval/4)*tL;
     NC = 1;
     my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
@@ -118,7 +118,7 @@ if True:
     print("HC - HCprime =");
     print_H_alpha(HC-HCprime);
 
-    # bardeen results for spin flip scattering
+    # matrix elements for spin flip scattering
     Ninfty = 20;
     NL = 200;
     NR = 1*NL;
@@ -135,13 +135,14 @@ if True:
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
                               E_cutoff=0.1,verbose=1);
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                               tL, tR, VL, VR, NL, NR,verbose=1);
 
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+    # current at finite temperature, vs bias
+    kBT = (0.01*26)/100; # 1% of room temp (26 meV) in units of t (100 meV)
+    muR = 0.01 #1000/100; # 1 eV, in units of t (100 meV)
+    Vbvals = np.linspace(-0.01*muR,0.01*muR,myxvals);
+    Ivals = np.empty((n_loc_dof,n_loc_dof,myxvals));
+    for Vbi in range(myxvals):
+        Ivals[:,:,Vbi] = bardeen.current(Evals, Mvals, muR, Vbvals[Vbi], kBT);
 
     # initial and final states
     for alphai in range(len(alphas)):
@@ -149,21 +150,9 @@ if True:
             alpha, beta = alphas[alphai], alphas[betai];
 
             # plot based on initial state
-            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
+            axes[alphai,betai].plot(Vbvals, Ivals[betai,alphai], color=mycolors[0]);
 
-            # % error
-            axright = axes[alphai,betai].twinx();
-            axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
-            
             #format
-            if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            axright.set_ylim(0,50);
-            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-            axes[-1,betai].set_xscale('log', subs = []);
-            axes[alphai,0].set_ylabel("$T$");
 
     # show
     plt.tight_layout();
