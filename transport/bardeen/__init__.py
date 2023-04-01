@@ -53,7 +53,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRprime, N
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_bound_left = 0;
-    interval = 3;
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
         psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
@@ -300,7 +299,6 @@ def kernel_mels(tinfty, tL, tLprime, tR, tRprime, Vinfty, VL, VLprime, VR, VRpri
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_bound_left = 0;
-    interval = 3;
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
         psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
