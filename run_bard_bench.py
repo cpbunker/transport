@@ -66,7 +66,7 @@ if True:
 
     # central region
     tC = 1*tL;
-    VC = 2.0*tL;
+    VC = 1.5*tL;
     NC = 11;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
     for j in range(NC):
@@ -89,24 +89,22 @@ if True:
     Evals, Mels, overlaps = bardeen.kernel_mels(tinfty, tL, tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=2.0, verbose=1);
+                                  E_cutoff=2*VC[0,0], verbose=1);
     print("Output shapes:");
     for arr in [Evals, Mels, overlaps]: print(np.shape(arr));
 
     # truncate number of ms
-    num_ms = 4; # len(Mels) // 4
+    num_ms = 6; # len(Mels) // 4
     minds = np.linspace(0,np.shape(Mels)[1]-1,num_ms,dtype = int);
 
     # only one loc dof, and transmission is diagonal
     alphai = 0;
-    print(np.shape(axes),minds)
     for betai in range(n_loc_dof):
 
         # m is color
         xvals = np.real(Evals[betai])+2*tL[betai,betai];
         for mi in range(num_ms):
-            print(minds[mi])
-            axes[0,betai].plot(xvals, Mels[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]),label="$\\varepsilon_m = $"+str(int(1000*np.real(Evals[alphai,minds[mi]]))/1000));
+            axes[0,betai].plot(xvals, Mels[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]),label="$\\varepsilon_m = $"+str(int(1000*np.real(2+Evals[alphai,minds[mi]]))/1000));
             axes[1,betai].plot(xvals, overlaps[alphai,minds[mi],betai], marker='o', color=get_color(minds[mi],minds[-1]));
 
         # format
@@ -114,7 +112,10 @@ if True:
         axes[1,betai].set_ylabel('$\langle k_n | k_m \\rangle$',fontsize=myfontsize);
         axes[0,betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
         axes[1,betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[0,betai].axvline(VC[betai,betai],color='black',linestyle='dashed');
+        axes[1,betai].axvline(VC[betai,betai],color='black',linestyle='dashed');
         #axes[-1,betai].set_xscale('log', subs = []);
+        #axes[-1,betai].set_xlim(0,VC[betai,betai]);
         axes[-1,betai].set_xlabel('$(\\varepsilon_n + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
         axes[0,betai].legend();
 
