@@ -139,12 +139,12 @@ if True:
         Evals, Tvals, Sxvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=-1.9,verbose=1);
+                                  E_cutoff=0.1,verbose=10);
     else: # absorbing emitting bcs
         Evals, Tvals = bardeen.kernel_constructed(tinfty,tL,tinfty, tR, tinfty,
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=-1.9,verbose=1);
+                                  E_cutoff=0.1,verbose=1);
 
     # benchmark
     if mixed:
@@ -166,7 +166,7 @@ if True:
             xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
             colorvals = ["tab:blue" if val > 0 else "tab:red" for val in Sxvals[alphai]];
             axes[alphai, betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=colorvals);
-
+            axes[alphai,betai].set_ylim(0.0,1.0);
             # % error
             axright = axes[alphai,betai].twinx();
             axes[alphai, betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);

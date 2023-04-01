@@ -134,7 +134,7 @@ if True:
     # I am setting VLprime = VRprime = Vinfty for best results according
     # tests performed in run_barrier_bardeen 
     # returns two arrays of size (n_loc_dof, n_left_bound)
-    Evals, Tvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
+    Evals, Tvals = bardeen.kernel_projected(tinfty,tL,tinfty, tR, tinfty,
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
                               E_cutoff=0.1,verbose=1);
