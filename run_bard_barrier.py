@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 
 # top level
 np.set_printoptions(precision = 4, suppress = True);
-verbose = 3;
 
 # fig standardizing
 myxvals = 199;
@@ -48,7 +47,7 @@ VR = 0.0*tL;
 # T vs NL
 if True:
 
-    NLvals = [50,100,500];
+    NLvals = [50,100];
     numplots = len(NLvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -78,19 +77,23 @@ if True:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Tvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0], verbose=1);
+        Evals, Tvals = bardeen.Ts_bardeen(tinfty, tL, tinfty, tR, tinfty,
+                                      Vinfty, VL, Vinfty, VR, Vinfty,
+                                      Ninfty, NL, NR, HC, Mvals,
+                                      E_cutoff=VC[0,0], verbose=1);
 
         # benchmark
-        axright = axes[NLi].twinx();
-        Tvals_bench = bardeen.benchmark(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
         # only one loc dof, and transmission is diagonal
-        for alpha in range(n_loc_dof): 
+        for alpha in range(n_loc_dof):
+            axright = axes[NLi].twinx();
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
