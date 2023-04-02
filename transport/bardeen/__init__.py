@@ -146,14 +146,17 @@ def current(Emas, Mbmas, muR, eVb, kBT) -> np.ndarray:
 
     # bias voltage window
     stat_part = nFD(Emas, muR+eVb,kBT)*(1-nFD(Emas,muR,kBT)) - nFD(Emas,muR,kBT)*(1-nFD(Emas, muR+eVb,kBT));
-    print(stat_part);
+    print(Emas.T,"\n",nFD(Emas,muR,kBT).T,"\n",stat_part.T);
     # sum over spin
     Iab = np.empty((n_loc_dof, n_loc_dof));
     for alpha in range(n_loc_dof):
         for beta in range(n_loc_dof):
 
             # sum over initial energy m
+            #print( 2*np.pi*np.dot(stat_part[alpha],Mbmas[alpha,:,beta] ) ); assert False
             Iab[alpha,beta] = 2*np.pi*np.dot(stat_part[alpha],Mbmas[alpha,:,beta]);
+
+    return Iab;
 
 def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
     '''
@@ -358,6 +361,7 @@ def nFD(epsilon,mu,kBT):
     '''
     Fermi-Dirac distribution function
     '''
+    assert isinstance(mu,float);
     return 1/(np.exp((np.real(epsilon)-mu)/kBT )+1)
 
 def get_self_energy(t, V, E) -> np.ndarray:

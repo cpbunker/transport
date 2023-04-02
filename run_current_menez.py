@@ -73,19 +73,20 @@ if True:
     
     # tight binding params
     n_loc_dof = len(alphas); # spin up and down for each
-    tL = 1.0*np.eye(n_loc_dof);
+    tL = 100.0*np.eye(n_loc_dof); # all units meV
     tinfty = 1.0*tL;
     tR = 1.0*tL;
-    Vinfty = 0.5*tL;
+    Vinfty = 2.0*tL;
     VL = 0.0*tL;
     VR = 0.0*tL;
-    Jval = -0.5;
+    Jval = -4*tL[0,0];
 
     # central region
     tC = 1.0*tL; # 100 meV
     #VC = abs(Jval/4)*tL;
     NC = 1;
     my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
+    #my_kondo = np.diagflat(np.diagonal(my_kondo));
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
@@ -134,12 +135,13 @@ if True:
     Evals, Mvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
-                              E_cutoff=0.1,verbose=1);
+                              E_cutoff=-Jval/4,verbose=1);
 
     # current at finite temperature, vs bias
-    kBT = (0.01*26)/100; # 1% of room temp (26 meV) in units of t (100 meV)
-    muR = 0.01 #1000/100; # 1 eV, in units of t (100 meV)
-    Vbvals = np.linspace(-0.01*muR,0.01*muR,myxvals);
+    kBT = (0.01*26); # 1% of room temp (26 meV) in units of t (100 meV)
+    muR = (0.5-2)*tL[0,0] #1000/100; # 1 eV, in units of t (100 meV)
+    Vbvals = np.linspace(tL[0,0]*(-0.2),tL[0,0]*(0.2),myxvals);
+    #print(muR); assert False;
     Ivals = np.empty((n_loc_dof,n_loc_dof,myxvals));
     for Vbi in range(myxvals):
         Ivals[:,:,Vbi] = bardeen.current(Evals, Mvals, muR, Vbvals[Vbi], kBT);
@@ -150,8 +152,9 @@ if True:
             alpha, beta = alphas[alphai], alphas[betai];
 
             # plot based on initial state
-            axes[alphai,betai].plot(Vbvals, Ivals[betai,alphai], color=mycolors[0]);
-
+            axes[betai,alphai].plot(muR+Vbvals, Ivals[betai,alphai], color=mycolors[0], linewidth=mylinewidth);
+            axes[betai,alphai].plot(muR+Vbvals, np.gradient(Ivals[betai,alphai],muR+Vbvals), color = mycolors[1], linewidth=mylinewidth);
+            axes[betai,alphai].axvline(muR,color=accentcolors[0],linestyle='dashed');
             #format
 
     # show
