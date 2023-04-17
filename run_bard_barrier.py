@@ -188,7 +188,7 @@ if False:
     #plt.savefig("figs/bard_barrier/VLprime.pdf");
 
 # worst case vs best case
-if True:
+if False:
 
     numplots = 2;
     fig, axes = plt.subplots(numplots, sharex = True);
@@ -298,6 +298,84 @@ if True:
     plt.show();
 
 
+# island in barrier for 2nd order processes
+if True:
+
+    # central region
+    tC = 1*tL;
+    VC = 0.1*tL;
+    NC = 11;
+    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+    for j in range(NC):
+        HC[j,j] += VC;
+    for j in range(NC-1):
+        HC[j,j+1] += -tC;
+        HC[j+1,j] += -tC;
+    print_H_j(HC);
+
+    # central region prime
+    HCprime = np.copy(HC);
+
+    VIvals = VC[0,0]*np.array([0.1,0.5,1.0]);
+    numplots = len(VIvals);
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3*numplots/2);
+
+    # V primes
+    VLprime = 1*Vinfty;
+    VRprime = 1*Vinfty;
+    Ninfty = 20;
+    NL = 1000;
+    NR = 1*NL;
+
+    # bardeen results vs heights of island
+    for VIi in range(len(VIvals)):
+
+        # island
+        VIval = VIvals[VIi]*tL;
+        HC[NC//2,NC//2] = VIval;
+        
+        # bardeen.kernel syntax:
+        # tinfty, tL, tLprime, tR, tRprime,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime,
+        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+                                      Vinfty, VL, VLprime, VR, VRprime,
+                                      Ninfty, NL, NR, HC, HCprime,
+                                      E_cutoff=0.01*VC[0,0],verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tL, tR, VL, VR, NL, NR, verbose=1);
+
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
+        # only one loc dof, and transmission is diagonal
+        for alpha in range(n_loc_dof):
+            axright = axes[VIi].twinx();
+
+            # truncate to bound states and plot
+            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
+            axes[VIi].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+
+            # % error
+            axes[VIi].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
+
+        # format
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+        axright.set_ylim(0,50);
+        axes[VIi].set_ylabel('$T$',fontsize=myfontsize);
+        axes[VIi].set_title("$V_I' = "+str(VIvals[VIi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+
+    # format and show
+    axes[-1].set_xscale('log', subs = []);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    plt.tight_layout();
+    plt.show();
+    #plt.savefig("figs/bard_barrier/VLprime.pdf");
 
 
 
