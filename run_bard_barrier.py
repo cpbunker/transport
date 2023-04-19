@@ -316,7 +316,7 @@ if True:
     # central region prime
     HCprime = np.copy(HC);
 
-    VIvals = VC[0,0]*np.array([0.1,0.5,1.0]);
+    VIvals = np.array([0.01,0.05,0.1]);
     numplots = len(VIvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -326,7 +326,7 @@ if True:
     VLprime = 1*Vinfty;
     VRprime = 1*Vinfty;
     Ninfty = 20;
-    NL = 1000;
+    NL = 500;
     NR = 1*NL;
 
     # bardeen results vs heights of island
@@ -343,7 +343,7 @@ if True:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.01*VC[0,0],verbose=1);
+                                      E_cutoff=0.1*VC[0,0],verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
 
