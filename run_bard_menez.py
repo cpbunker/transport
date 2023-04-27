@@ -63,7 +63,7 @@ def h_kondo(J,s2):
 
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
@@ -174,7 +174,7 @@ if False:
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if True:
+if False:
     
     # alpha -> beta
     alphas = [1,2];

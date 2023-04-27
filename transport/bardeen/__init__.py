@@ -210,16 +210,6 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     for n in range(len(psins)):
         Sxns[n] = np.dot( np.conj(psins[n]), np.dot(Sx_op, psins[n]));
 
-    print(np.shape(Ems));
-    print(np.shape(Ens));
-
-    # filter by Sx val
-    Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
-    Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
-    print(np.shape(Ems));
-    print(np.shape(Ens));
-    assert False;
-
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     jvals = np.array(range(len(Hsys_4d))) + offset;
@@ -237,6 +227,54 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         # plot the wfs
         #for m in range(0): plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9, fourier = False);
         assert False;
+
+    # filter by Sx val
+    Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
+    n_bound_left = n_bound_left // 2;
+    Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
+    n_bound_right = n_bound_right // 2;
+
+    # reshape
+    print(n_spatial_dof, n_bound_left, n_bound_right);
+    Emas = np.array([np.copy(Ems), np.copy(Ems)]);
+    Enbs = np.array([np.copy(Ens), np.copy(Ens)]);
+    assert(n_loc_dof == 2);
+    psimas = np.empty((n_loc_dof, n_bound_left, n_spatial_dof), dtype=complex);
+    for m in range(n_bound_left):
+        psimas[0,m] = psims[m,0::2];
+        psimas[1,m] = psims[m,1::2];
+    psinbs = np.empty((n_loc_dof, n_bound_right, n_spatial_dof), dtype=complex);
+    for n in range(n_bound_right):
+        psinbs[0,n] = psins[n,0::2];
+        psinbs[1,n] = psins[n,1::2];
+    print(np.shape(psins));
+    print(np.shape(psinbs));
+    del Ems, psims, Ens, psins;
+
+    # average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    # average over energy but keep spin separate
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):
+                
+            for beta in range(n_loc_dof):
+                # inelastic means averaging over an interval
+                Mns = [];
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
+                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                        Mns.append(np.real(melement*np.conj(melement)));
+
+                # update T based on average
+                if(verbose): print("\tinterval = ",interval, len(Mns));
+                if Mns: Mns = sum(Mns)/len(Mns);
+                else: Mns = 0.0;
+                Mbmas[beta,m,alpha] = Mns;
+
+    return Emas, Mbmas;
 
     # average matrix elements over final states |k_n >
     # with the same energy as the intial state |k_m >
