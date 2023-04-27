@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 def kernel(tinfty, tL, tLprime, tR, tRprime,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, interval=1e-9,E_cutoff=1.0,verbose=0) -> np.ndarray:
+           Ninfty, NL, NR, HC,HCprime, interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nbma averaged over n in a
     nearby interval
@@ -137,6 +137,133 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
                 Mbmas[beta,m,alpha] = Mns;
 
     return Emas, Mbmas;
+
+def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
+           Vinfty, VL, VLprime, VR, VRprime,
+           Ninfty, NL, NR, HC,HCprime, interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
+    '''
+    Calculate the Oppenheimer matrix elements M_nm averaged over n in a
+    nearby interval
+    
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+    
+    This kernel allows the initial and final states to lack definite spin,
+    but as a result CANNOT RESOLVE the spin -> spin transitions
+    
+    Optional args:
+    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
+        than this. That way we limit to bound states
+    '''
+    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
+    n_loc_dof = np.shape(HC)[-1];
+
+    # convert from matrices to spin-diagonal, spin-independent elements
+    to_convert = [tL, VL, tR, VR];
+    converted = [];
+    for convert in to_convert:
+        # check spin-diagonal
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
+        # check spin-independent
+        diag = np.diagonal(convert);
+        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
+        converted.append(convert[0,0]);
+    tLa, VLa, tRa, VRa = tuple(converted);
+
+    # left well 
+    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    HL = fci_mod.mat_4d_to_2d(HL_4d);
+    my_interval = 2;
+    my_interval_tup = (n_loc_dof*(n_spatial_dof//2-my_interval),n_loc_dof*(n_spatial_dof//2+my_interval+1) );
+    if verbose: print("-HL[:,:] near barrier =\n",np.real(HL[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
+    # left well eigenstates
+    Ems, psims = np.linalg.eigh(HL);
+    psims = psims.T[Ems+2*tLa < E_cutoff];
+    Ems = Ems[Ems+2*tLa < E_cutoff].astype(complex);
+    n_bound_left = len(Ems);
+    kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
+
+    # get Sx val for each psim
+    Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
+    for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
+    Sxms = np.zeros_like(Ems);
+    for m in range(len(psims)):
+        Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
+    
+    # right well 
+    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    HR = fci_mod.mat_4d_to_2d(HR_4d);
+    if verbose: print("-HR[:,:] near barrier =\n",np.real(HR[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
+    
+    # right well eigenstates
+    Ens, psins = np.linalg.eigh(HR);
+    psins = psins.T[Ens+2*tRa < E_cutoff];
+    Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
+    n_bound_right = len(Ens);
+    kns = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
+
+    # get Sx val for each psin
+    Sxns = np.zeros_like(Ens);
+    for n in range(len(psins)):
+        Sxns[n] = np.dot( np.conj(psins[n]), np.dot(Sx_op, psins[n]));
+
+    print(np.shape(Ems));
+    print(np.shape(Ens));
+
+    # filter by Sx val
+    Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
+    Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
+    print(np.shape(Ems));
+    print(np.shape(Ens));
+    assert False;
+
+    # physical system
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+    jvals = np.array(range(len(Hsys_4d))) + offset;
+    if(verbose > 9):
+        # plot the potential
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
+            for Hi in range(len(Hs)):
+                print(Hstrs[Hi]);
+                print(Hs[Hi][0-offset,0-offset]);
+                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
+        plt.legend();plt.show();
+        # plot the wfs
+        #for m in range(0): plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9, fourier = False);
+        assert False;
+
+    # average matrix elements over final states |k_n >
+    # with the same energy as the intial state |k_m >
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mms = np.empty((n_bound_left,),dtype=float);
+    for m in range(n_bound_left):
+        
+        # inelastic means averaging over an interval
+        Mns = [];      
+        for n in range(n_bound_right):
+            if( abs(Ems[m] - Ens[n]) < interval/2):
+                melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
+                Mns.append( np.real(melement*np.conj(melement)) );
+                if False:
+                    print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+                    print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
+                    print("- psin near barrier\n",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
+                    print("- barrier overlap of psim and psin: ",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
+                    assert False
+
+        # update T based on average
+        if verbose: print("\tinterval = ",interval, len(Mns));
+        if(Mns): Mns = sum(Mns)/len(Mns);
+        else: Mns = 0.0;
+        Mms[m] = Mns;
+
+    return Ems, Mms
 
 def current(Emas, Mbmas, muR, eVb, kBT) -> np.ndarray:
     '''
