@@ -297,44 +297,66 @@ if False:
     plt.tight_layout();
     plt.show();
 
-
-# island in barrier for 2nd order processes
+# perturbation is hopping from central region to right lead ONLY
 if True:
 
+    # sizes
+    NC = 3;
+    Ninfty = 20;
+    NL = 200;
+    NR = 1*NL;
+
     # central region
-    tC = 1*tL;
+    tC = 1.0*tL;
     VC = 0.1*tL;
-    NC = 11;
+    thyb = 1.0*tL;
+    Vhyb = 1.0*VL;
+
+    # construct ham
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
     for j in range(NC):
         HC[j,j] += VC;
     for j in range(NC-1):
         HC[j,j+1] += -tC;
         HC[j+1,j] += -tC;
+    # overwrite hyb
+    HC[0,0] = Vhyb;
+    HC[-1,-1] = Vhyb;
+    HC[0,1] = -thyb;
+    HC[1,0] = -thyb;
+    HC[-2,-1] = -thyb;
+    HC[-1,-2] = -thyb;
     print_H_j(HC);
 
-    # central region prime
-    HCprime = np.copy(HC);
-
-    VIvals = np.array([0.01,0.05,0.1]);
-    numplots = len(VIvals);
+    hopvals = np.array([0.0*tC,1.0*tC]);
+    numplots = len(hopvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     fig.set_size_inches(7/2,3*numplots/2);
 
-    # V primes
-    VLprime = 1*Vinfty;
-    VRprime = 1*Vinfty;
-    Ninfty = 20;
-    NL = 500;
-    NR = 1*NL;
+    # compare perturb being thyb vs VRprime
+    for hopvali in range(len(hopvals)):
+        hopval = hopvals[hopvali];
 
-    # bardeen results vs heights of island
-    for VIi in range(len(VIvals)):
+        # central region prime
+        HCprime = np.copy(HC);
+        HCprime[0,0] = Vhyb;
+        HCprime[-1,-1] = Vhyb;
+        #HCprime[0,1] = -hopval;
+        #HCprime[1,0] = -hopval;
+        HCprime[-2,-1] = -hopval;
+        HCprime[-1,-2] = -hopval;
 
-        # island
-        VIval = VIvals[VIi]*tL;
-        HC[NC//2,NC//2] = VIval;
+        # V primes
+        if(hopvali == 0):
+            VLprime = 1*VL;
+            VRprime = 1*VR;
+            HT_perturb = True;
+        else:
+            VLprime = 1*Vinfty;
+            VRprime = 1*Vinfty;
+            HT_perturb = False;
+        print_H_j(HC-HCprime);
         
         # bardeen.kernel syntax:
         # tinfty, tL, tLprime, tR, tRprime,
@@ -343,7 +365,7 @@ if True:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1*VC[0,0],verbose=1);
+                                      E_cutoff=0.1,interval=1e-2,HT_perturb=HT_perturb,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
 
@@ -354,28 +376,139 @@ if True:
 
         # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof):
-            axright = axes[VIi].twinx();
+            axright = axes[hopvali].twinx();
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[VIi].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+            axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
-            axes[VIi].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axright.set_ylim(0,50);
-        axes[VIi].set_ylabel('$T$',fontsize=myfontsize);
-        axes[VIi].set_title("$V_I' = "+str(VIvals[VIi])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
+        axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
-    #plt.savefig("figs/bard_barrier/VLprime.pdf");
+
+# perturbation is HT
+if False:
+
+    # sizes
+    NC = 3;
+    Ninfty = 20;
+    NL = 200;
+    NR = 1*NL;
+
+    # central region
+    tC = 1.0*tL;
+    VC = 5.0*tL;
+    thyb = 1.0*tL;
+    Vhyb = 1.0*VL;
+    Ueff = 0.0;
+    Weff = (2*VC+Ueff)*thyb*np.conj(thyb)/( 2*(VC+Ueff)*(-VC));
+    #Weff = 0.0;
+
+    # construct ham
+    assert(Ueff == 0.0);
+    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+    for j in range(NC):
+        HC[j,j] += VC;
+    for j in range(NC-1):
+        HC[j,j+1] += -tC;
+        HC[j+1,j] += -tC;
+    # overwrite hyb
+    HC[0,0] = Vhyb;
+    HC[-1,-1] = Vhyb;
+    HC[0,1] = -thyb;
+    HC[1,0] = -thyb;
+    HC[-2,-1] = -thyb;
+    HC[-1,-2] = -thyb;
+    assert(Ueff == 0.0 and NC == 3);
+    HC[0,2] = Weff;
+    HC[2,0] = Weff;
+    print_H_j(HC);
+
+    hopvals = np.array([0.0*tC,1.0*tC]);
+    numplots = len(hopvals);
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3*numplots/2);
+
+    # compare perturb being thyb vs VRprime
+    for hopvali in range(len(hopvals)):
+        hopval = hopvals[hopvali];
+
+        # central region prime
+        HCprime = np.copy(HC);
+        HCprime[0,0] = Vhyb;
+        HCprime[-1,-1] = Vhyb;
+        HCprime[0,1] = -hopval;
+        HCprime[1,0] = -hopval;
+        HCprime[-2,-1] = -hopval;
+        HCprime[-1,-2] = -hopval;
+        HCprime[0,2] = 0.0;
+        HCprime[2,0] = 0.0;
+
+        # V primes
+        if(hopvali == 0):
+            VLprime = 1*VL;
+            VRprime = 1*VR;
+            HT_perturb = True;
+        else:
+            VLprime = 1*Vinfty;
+            VRprime = 1*Vinfty;
+            HT_perturb = False;
+            HC[0,2] = 0.0;
+            HC[2,0] = 0.0;
+        print_H_j(HC-HCprime);
+        
+        # bardeen.kernel syntax:
+        # tinfty, tL, tLprime, tR, tRprime,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime,
+        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+                                      Vinfty, VL, VLprime, VR, VRprime,
+                                      Ninfty, NL, NR, HC, HCprime,
+                                      E_cutoff=0.1,HT_perturb=HT_perturb,verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tL, tR, VL, VR, NL, NR, verbose=1);
+
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
+        # only one loc dof, and transmission is diagonal
+        for alpha in range(n_loc_dof):
+            axright = axes[hopvali].twinx();
+
+            # truncate to bound states and plot
+            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
+            axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+
+            # % error
+            axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
+
+        # format
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+        axright.set_ylim(0,50);
+        axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
+        axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+
+    # format and show
+    axes[-1].set_xscale('log', subs = []);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    plt.tight_layout();
+    plt.show();
 
 
 

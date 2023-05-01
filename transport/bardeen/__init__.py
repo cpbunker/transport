@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 
 def kernel(tinfty, tL, tLprime, tR, tRprime,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
+           Ninfty, NL, NR, HC,HCprime,
+           interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nbma averaged over n in a
     nearby interval
@@ -72,6 +73,7 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
         psims = psimas[alpha];
         psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
         psimas_arr[alpha] = psims_arr;
+    del Ems, psims
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
 
     # right well eigenstates  
@@ -95,14 +97,38 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
         psins = psinbs[alpha];
         psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
         psinbs_arr[alpha] = psins_arr;
+    del Ens, psins;
     Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
 
     # operator
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
 
-    # visualize
+
+    # filter left and right
     jvals = np.array(range(len(Hsys_4d))) + offset;
+    mid = len(jvals) // 2;
+    if(HT_perturb):
+        for alpha in range(n_loc_dof):
+            for m in range(n_bound_left):
+                psim = psimas[alpha,m];
+                weight_left = np.dot( np.conj(psim[:mid]), psim[:mid]);
+                weight_right = np.dot( np.conj(psim[mid:]), psim[mid:]);
+                if(weight_left < weight_right):
+                    Emas[alpha,m] = 0.0;
+                    psimas[alpha,m] = np.zeros_like(psim);
+        for beta in range(n_loc_dof):
+            for n in range(n_bound_right):
+                psin = psinbs[beta,n];
+                weight_left = np.dot( np.conj(psin[:mid]), psin[:mid]);
+                weight_right = np.dot( np.conj(psin[mid:]), psin[mid:]);
+                if(weight_left > weight_right):
+                    Enbs[beta,n] = 0.0
+                    psinbs[beta,n] = np.zeros_like(psin);
+
+    # visualize
     if(verbose > 9):
+
+        # plot hams
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
@@ -111,7 +137,31 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
             for Hi in range(len(Hs)):
                 myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
             myaxes[alpha].set_xlabel("$j$"); myaxes[alpha].set_ylabel("$V_j$");
-        plt.legend();plt.show();assert False;
+        plt.legend();plt.show();
+
+        # plot left wfs
+        for m in range(min(n_bound_left,6)):
+            fig, wfax = plt.subplots();
+            for alpha in range(n_loc_dof):
+                print(Emas[alpha,m],"\n",Enbs[alpha,m+1]);
+                psim = psimas[alpha,m];
+                wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
+                wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
+                wfax.plot(jvals, np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psim), color='red');
+                wfax.plot(jvals, np.real(psinbs[alpha,m+1]),color="tab:orange");
+                wfax.plot(jvals, np.real(psim),color="tab:blue");
+            plt.show();
+
+        # plot right wfs
+        for n in range(min(n_bound_right,0)):
+            fig, wfax = plt.subplots();
+            for beta in range(n_loc_dof):
+                psin = psinbs[beta,n];
+                wfax.set_title("Right: "+str(Enbs[beta,n].round(4)));
+                wfax.plot(jvals,np.diag(HR_4d[:,:,0,0]),color="black");
+                wfax.plot(jvals, np.real(psin),color="tab:blue");
+            plt.show();
+        assert False;
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -129,6 +179,14 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
                         Mns.append(np.real(melement*np.conj(melement)));
+
+                        if False:
+                            print(np.real(melement*np.conj(melement)));
+                            fig, wfax = plt.subplots();
+                            wfax.plot(jvals, np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m]), color='red');
+                            wfax.plot(jvals, np.real(psinbs[beta,n]),color="tab:orange");
+                            wfax.plot(jvals, np.real(psimas[alpha,m]),color="tab:blue");
+                            plt.show(); assert False;
 
                 # update T based on average
                 if(verbose): print("\tinterval = ",interval, len(Mns));
@@ -577,6 +635,23 @@ def get_eigs(h_4d, E_cutoff) -> tuple:
     eigvals = eigvals[eigvals < E_cutoff];
     
     return eigvals, eigvecs;
+
+def plot_wfs(h_4d, E_cutoff):
+    '''
+    '''
+    raise NotImplementedError
+    if(len(np.shape(h_4d)) != 4): raise ValueError;
+    n_loc_dof = np.shape(h_4d)[-1];
+    spatial_orbs = np.shape(h_4d)[0];
+    assert(spatial_orbs % 2 == 1);
+    mid = spatial_orbs // 2;
+    jvals = np.array(range(-mid,mid+1));
+
+    # eigenstates
+    Es, psis = get_eigs(h_4d,E_cutoff);
+
+
+
 
 #####################################################################################################
 #### run code
