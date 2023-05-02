@@ -1,10 +1,11 @@
+'''
+My edits to Shuanglong's Simmons formula code
+'''
 import numpy as np
 from scipy.optimize import curve_fit
-import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-from scipy.spatial.transform import Rotation as R
-from pylib import sph2cart
 
+'''
 e = 1
 me = 1
 hbar = 1
@@ -25,64 +26,63 @@ microm2bohr = 10**3 * nm2bohr
 
 tec = 0.5 * 10**(-4)   # Thermal expansion coefficient
 zoom = 10**10          # factor for magnifying the current
+'''
 
-ms = [0.32, 0.36, 0.36, 0.42, 0.41]
-ds = [5.01, 5.02, 5.03, 5.04, 5.05]
+def J_of_Vb_lowbias(Vb, d, phibar, m_r):
+    '''
+    Get the current density J as function of applied bias Vb
+    from Simmons Eq 24, ie the low bias (ohmic) limit
 
-def IV_per_T_linear(V, V0, I0, alpha):
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    d, barrier width, units nm
+    phibar, avg barrier height, units eV
+    m_r, ratio of eff electron mass to me, unitless
+    
+    Returns:
+    J, current density, units amps/(nm^2)
+    '''
 
-    I = alpha * (V - V0) + I0
+    # decay length
+    d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
+    d_d = d_d_prefactor/np.sqrt(m_r*phibar); # decay length, units nm
 
-    return I
+    # current
+    J_prefactor = 9.685*1e-6 # =e^2/(8*\pi*\hbar), units amp/volt
+    return J_prefactor * Vb/(d*d_d) * np.exp(-d/d_d);
 
-def IV_per_T(V, phi, m, d):
+def J_of_Vb(Vb, d, phibar, m_r):
+    '''
+    Get the current density J as function of applied bias Vb
+    from Simmons Eq 20
 
-    if T == 40:
-        V0 = -0.0308
-    elif T == 80:
-        V0 = -0.0161
-    elif T == 120:
-        V0 = -0.0443
-    elif T == 160:
-        V0 = -0.0351
-    elif T == 200:
-        V0 = -0.0661
-    else:
-        pass
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    d, barrier width, units nm
+    phibar, avg barrier height, units eV
+    m_r, ratio of eff electron mass to me, unitless
+    
+    Returns:
+    J, current density, units amps/(nm^2)
+    '''
 
-    r0 = 200               # micro meter
+    # beta
+    beta = 1.0; # unitless, depends on the specifics of \phi(x), see Simmons Eq A6
 
-    d = d * nm2bohr
+    # decay length
+    d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
+    d_d = d_d_prefactor/np.sqrt(m_r*phibar); # decay length, units nm
 
-    r0 = r0 * microm2bohr
-    r = (1 + tec * T) * r0
-    A = np.pi * r**2
-    #print(A)
+    # current
+    J_prefactor = 9.685*1e-6 # =e^2/(8*\pi*\hbar), units amp/volt
+    return J_prefactor * Vb/(d*d_d) * np.exp(-d/d_d);
+    
 
-    V = V - V0
-
-    c1 = 1 + (e*V/phi)**2/48
-
-    V = V/au2si_voltage
-
-    phi = phi / har2eV
-    phi_p = phi + e*V/2
-    phi_m = phi - e*V/2
-
-    S = 4*np.pi*np.sqrt(2*m)/h
-    S_prime = S / np.sqrt(c1)
-    c_p = phi_p + 3*np.sqrt(phi_p)/(S_prime * d) + 3/(S_prime * d)**2
-    c_m = phi_m + 3*np.sqrt(phi_m)/(S_prime * d) + 3/(S_prime * d)**2
-
-    J = e/(2*np.pi*h*d**2) * c1 * \
-        ( c_m * np.exp(-S_prime * d * np.sqrt(phi_m)) - \
-          c_p * np.exp(-S_prime * d * np.sqrt(phi_p)) )
-
-    I = zoom * ( au2si_current * A * J + 10**(-10) )
-
-    return I
-
-def fit_IV(phi0=1, m0=1, d0=5.0):
+def fit_IV(phi0, m0, d0):
 
     ### Read in the data
 
@@ -160,9 +160,15 @@ def fit_IV(phi0=1, m0=1, d0=5.0):
 
 if __name__ == "__main__":
 
-    T=40;  print("T = {:.0f} K".format(T)); fit_IV(phi0=1.85, m0=ms[0], d0=ds[0]-0.1)
-    T=80;  print("T = {:.0f} K".format(T)); fit_IV(phi0=1.65, m0=ms[1], d0=ds[1]-0.12)
-    T=120; print("T = {:.0f} K".format(T)); fit_IV(phi0=1.60, m0=ms[2], d0=ds[2]-0.1)
-    T=160; print("T = {:.0f} K".format(T)); fit_IV(phi0=1.35, m0=ms[3], d0=ds[3]+0.1)
-    T=200; print("T = {:.0f} K".format(T)); fit_IV(phi0=1.35, m0=ms[4], d0=ds[4]-0.13)
+    # data at different temps
+    Ts = [40, 80, 120, 160, 200];
+
+    # fitting param guesses
+    phis = [1.85, 1.65, 1.60, 1.35, 1.35];
+    ms = [0.32, 0.36, 0.36, 0.42, 0.41];
+    ds = [5.01, 5.02, 5.03, 5.04, 5.05];
+
+    for datai in range(1):
+        print("T = {:.0f} K".format(Ts[datai]));
+        fit_IV(phi0=phis[datai], m0=ms[datai], d0=ds[datai]-0.1)
 
