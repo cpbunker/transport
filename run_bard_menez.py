@@ -63,7 +63,7 @@ def h_kondo(J,s2):
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
@@ -166,6 +166,10 @@ if False:
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1,betai].set_xscale('log', subs = []);
             axes[alphai,0].set_ylabel("$T$");
+    
+            if( (alphai,betai)==(1,0) ):
+                axes[alphai,betai].plot(xvals,Tvals[1,:,0]/Tvals[0,:,0],color="darkgreen",linestyle='solid');
+                #axes[alphai,betai].axhline((Jval/2)**2,color="darkgreen",linestyle='solid')
 
     # show
     plt.tight_layout();

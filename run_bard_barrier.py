@@ -314,7 +314,7 @@ if True:
 
     # central region
     tC = 1.0*tL;
-    VC = 0.5*tL; #### do for 0.5, 5.0, 50.0 ####
+    VC = 50.0*tL; #### do for 0.5, 5.0, 50.0 ####
     thyb = 1.0*tL;
     Vhyb = 1.0*VL;
 
@@ -397,7 +397,7 @@ if True:
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
             axes[hopvali].set_xlim(min(xvals),0.1);
-            axes[hopvali].set_ylim(0.0,np.real(max(Tvals[alpha,:,alpha])).round(4) );
+            for ax in axes: ax.set_ylim(0.0,np.real(max(Tvals[alpha,:,alpha])).round(4) );
             
             # % error
             axright = axes[hopvali].twinx();
@@ -406,9 +406,8 @@ if True:
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,100);
-        axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
-        axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axright.set_ylim(0,20);
+        axes[hopvali].set_ylabel("$T (t_{DR} = "+str(hopvals[hopvali][0,0])+")$",fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
