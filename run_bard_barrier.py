@@ -63,10 +63,13 @@ if False:
     for j in range(NC-1):
         HC[j,j+1] = -tC;
         HC[j+1,j] = -tC;
+    print("HC =");
     print_H_j(HC);
 
     # central region prime
     HCprime = np.copy(HC);
+    print("HC - HCprime =");
+    print_H_j(HC-HCprime);
 
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):
@@ -133,10 +136,13 @@ if False:
     for j in range(NC-1):
         HC[j,j+1] += -tC;
         HC[j+1,j] += -tC;
+    print("HC =");
     print_H_j(HC);
 
     # central region prime
     HCprime = np.copy(HC);
+    print("HC - HCprime =");
+    print_H_j(HC-HCprime);
 
     # bardeen results for heights of barrier covering well
     for Vprimei in range(len(Vprimevals)):
@@ -308,7 +314,7 @@ if True:
 
     # central region
     tC = 1.0*tL;
-    VC = 0.1*tL;
+    VC = 0.5*tL; #### do for 0.5, 5.0, 50.0 ####
     thyb = 1.0*tL;
     Vhyb = 1.0*VL;
 
@@ -326,6 +332,7 @@ if True:
     HC[1,0] = -thyb;
     HC[-2,-1] = -thyb;
     HC[-1,-2] = -thyb;
+    print("HC =");
     print_H_j(HC);
 
     hopvals = np.array([0.0*tC,1.0*tC]);
@@ -352,10 +359,13 @@ if True:
             VLprime = 1*VL;
             VRprime = 1*VR;
             HT_perturb = True;
+            myinterval = 1e-3;
         else:
             VLprime = 1*Vinfty;
             VRprime = 1*Vinfty;
             HT_perturb = False;
+            myinterval = 1e-9;
+        print("HC - HCprime =");
         print_H_j(HC-HCprime);
         
         # bardeen.kernel syntax:
@@ -365,10 +375,10 @@ if True:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=1e-2,HT_perturb=HT_perturb,verbose=1);
+                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
-
+        
         # benchmark
         Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
@@ -376,19 +386,27 @@ if True:
 
         # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof):
-            axright = axes[hopvali].twinx();
+
+            # sort
+            sortis = np.argsort(Evals[alpha]);
+            Evals[alpha] = Evals[alpha][sortis];
+            Tvals[alpha,:,alpha] = Tvals[alpha,:,alpha][sortis];
+            Tvals_bench[alpha,:,alpha] = Tvals_bench[alpha,:,alpha][sortis];
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
+            axes[hopvali].set_xlim(min(xvals),0.1);
+            axes[hopvali].set_ylim(0.0,np.real(max(Tvals[alpha,:,alpha])).round(4) );
+            
             # % error
+            axright = axes[hopvali].twinx();
             axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,50);
+        axright.set_ylim(0,100);
         axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
         axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
@@ -409,14 +427,14 @@ if False:
 
     # central region
     tC = 1.0*tL;
-    VC = 5.0*tL;
+    VC = 0.5*tL;
     thyb = 1.0*tL;
     Vhyb = 1.0*VL;
     Ueff = 0.0;
     Weff = (2*VC+Ueff)*thyb*np.conj(thyb)/( 2*(VC+Ueff)*(-VC));
     #Weff = 0.0;
 
-    # construct ham
+    # construct central region ham
     assert(Ueff == 0.0);
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
     for j in range(NC):
@@ -434,6 +452,7 @@ if False:
     assert(Ueff == 0.0 and NC == 3);
     HC[0,2] = Weff;
     HC[2,0] = Weff;
+    print("HC =");
     print_H_j(HC);
 
     hopvals = np.array([0.0*tC,1.0*tC]);
@@ -468,6 +487,7 @@ if False:
             HT_perturb = False;
             HC[0,2] = 0.0;
             HC[2,0] = 0.0;
+        print("HC - HCprime =");
         print_H_j(HC-HCprime);
         
         # bardeen.kernel syntax:
@@ -477,7 +497,7 @@ if False:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,HT_perturb=HT_perturb,verbose=1);
+                                      E_cutoff=0.1,HT_perturb=HT_perturb,verbose=10);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
 
@@ -488,19 +508,25 @@ if False:
 
         # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof):
-            axright = axes[hopvali].twinx();
+
+            # sort
+            sortis = np.argsort(Evals[alpha]);
+            Evals[alpha] = Evals[alpha][sortis];
+            Tvals[alpha,:,alpha] = Tvals[alpha,:,alpha][sortis];
+            Tvals_bench[alpha,:,alpha] = Tvals_bench[alpha,:,alpha][sortis];
 
             # truncate to bound states and plot
             xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
             axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
 
             # % error
+            axright = axes[hopvali].twinx();
             axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,50);
+        axright.set_ylim(0,100);
         axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
         axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 

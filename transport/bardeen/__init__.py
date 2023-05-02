@@ -103,7 +103,6 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
     # operator
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
 
-
     # filter left and right
     jvals = np.array(range(len(Hsys_4d))) + offset;
     mid = len(jvals) // 2;
@@ -142,24 +141,15 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
         # plot left wfs
         for m in range(min(n_bound_left,6)):
             fig, wfax = plt.subplots();
+            alpha_colors=["tab:blue","tab:orange"];
             for alpha in range(n_loc_dof):
-                print(Emas[alpha,m],"\n",Enbs[alpha,m+1]);
-                psim = psimas[alpha,m];
+                print(Emas[alpha,m]);
+                print(Enbs[alpha,m+1]);
                 wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
                 wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
-                wfax.plot(jvals, np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psim), color='red');
-                wfax.plot(jvals, np.real(psinbs[alpha,m+1]),color="tab:orange");
-                wfax.plot(jvals, np.real(psim),color="tab:blue");
-            plt.show();
-
-        # plot right wfs
-        for n in range(min(n_bound_right,0)):
-            fig, wfax = plt.subplots();
-            for beta in range(n_loc_dof):
-                psin = psinbs[beta,n];
-                wfax.set_title("Right: "+str(Enbs[beta,n].round(4)));
-                wfax.plot(jvals,np.diag(HR_4d[:,:,0,0]),color="black");
-                wfax.plot(jvals, np.real(psin),color="tab:blue");
+                wfax.plot(jvals, np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
+                wfax.plot(jvals, np.real(psinbs[alpha,m+1]),color=alpha_colors[alpha],linestyle="dotted");
+                wfax.plot(jvals[mid-1:mid+1], np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])[mid-1:mid+1], color=alpha_colors[alpha],linestyle="solid",marker='s')               
             plt.show();
         assert False;
 
@@ -198,7 +188,8 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
 
 def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
+           Ninfty, NL, NR, HC,HCprime,
+           interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
     nearby interval
@@ -248,7 +239,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
     for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
     Sxms = np.zeros_like(Ems);
-    for m in range(len(psims)):
+    for m in range(n_bound_left):
         Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
     
     # right well 
@@ -262,29 +253,33 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
     n_bound_right = len(Ens);
     kns = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
-
     # get Sx val for each psin
     Sxns = np.zeros_like(Ens);
-    for n in range(len(psins)):
+    for n in range(n_bound_right):
         Sxns[n] = np.dot( np.conj(psins[n]), np.dot(Sx_op, psins[n]));
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+
+    # filter left and right
     jvals = np.array(range(len(Hsys_4d))) + offset;
-    if(verbose > 9):
-        # plot the potential
-        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
-        if n_loc_dof == 1: myaxes = [myaxes];
-        for alpha in range(n_loc_dof):
-            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
-            for Hi in range(len(Hs)):
-                print(Hstrs[Hi]);
-                print(Hs[Hi][0-offset,0-offset]);
-                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
-        plt.legend();plt.show();
-        # plot the wfs
-        #for m in range(0): plot_wfs(HL_4d, Ems[m], 0, E_cutoff, E_tol=1e-9, fourier = False);
-        assert False;
+    mid = len(jvals) // 2;
+    if(HT_perturb):
+        for m in range(n_bound_left):
+            psim = psims[m];
+            weight_left = np.dot( np.conj(psim[:2*mid]), psim[:2*mid]);
+            weight_right = np.dot( np.conj(psim[2*mid:]), psim[2*mid:]);
+            if(weight_left < weight_right):
+                Ems[m] = 0.0;
+                psims[m] = np.zeros_like(psim);
+        for n in range(n_bound_right):
+            psin = psins[n];
+            weight_left = np.dot( np.conj(psin[:2*mid]), psin[:2*mid]);
+            weight_right = np.dot( np.conj(psin[2*mid:]), psin[2*mid:]);
+            if(weight_left > weight_right):
+                Ens[n] = 0.0
+                psins[n] = np.zeros_like(psin);
+
 
     # filter by Sx val
     Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
@@ -293,7 +288,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     n_bound_right = n_bound_right // 2;
 
     # reshape
-    print(n_spatial_dof, n_bound_left, n_bound_right);
+    print("n_spatial_dof, n_bound_left, n_bound_right = ",n_spatial_dof, n_bound_left, n_bound_right);
     Emas = np.array([np.copy(Ems), np.copy(Ems)]);
     Enbs = np.array([np.copy(Ens), np.copy(Ens)]);
     assert(n_loc_dof == 2);
@@ -305,9 +300,40 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     for n in range(n_bound_right):
         psinbs[0,n] = psins[n,0::2];
         psinbs[1,n] = psins[n,1::2];
-    print(np.shape(psins));
-    print(np.shape(psinbs));
+    print("psims -> psimas = ",np.shape(psims),np.shape(psimas));
+    print("psins -> psinbs = ",np.shape(psins),np.shape(psinbs));
+    print("E shapes = ",np.shape(Ems), np.shape(Emas), np.shape(Ens), np.shape(Enbs));
     del Ems, psims, Ens, psins;
+    assert False
+    
+    # visualize
+    if(verbose > 9):
+        
+        # plot hams
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
+            for Hi in range(len(Hs)):
+                print(Hstrs[Hi]);
+                print(Hs[Hi][0-offset,0-offset]);
+                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
+        plt.legend();plt.show();
+
+        # plot left wfs
+        for m in range(min(n_bound_left,6)):
+            fig, wfax = plt.subplots();
+            alpha_colors=["tab:blue","tab:orange"];
+            for alpha in range(n_loc_dof):
+                print(Emas[alpha,m]);
+                print(Enbs[alpha,m+1]);
+                wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
+                wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
+                wfax.plot(jvals, alpha*0.01+np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
+                wfax.plot(jvals, alpha*0.01+np.real(psinbs[alpha,m+1]),color=alpha_colors[alpha],linestyle="dotted");
+                wfax.plot(jvals[mid-1:mid+1], np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])[mid-1:mid+1], color=alpha_colors[alpha],linestyle="solid",marker='s')               
+            plt.show();
+        assert False;
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -406,7 +432,7 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
                     /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
     for alpha in range(n_loc_dof):
         for beta in range(n_loc_dof):
-            Tbmas[beta,:,alpha] = NL/(kmas[alpha]*tLa[alpha]) * NR/(kmas[beta]*tRa[alpha]) *Mbmas[alpha,:,beta];
+            Tbmas[alpha,:,beta] = NL/(kmas[alpha]*tLa[alpha]) * NR/(kmas[beta]*tRa[alpha]) *Mbmas[alpha,:,beta];
 
     return Tbmas;
 
