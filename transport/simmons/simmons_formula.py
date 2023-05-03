@@ -5,28 +5,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-'''
-e = 1
-me = 1
-hbar = 1
-h = 2*np.pi*hbar
-
-au2si_energy = 4.35975*10**(-18)
-au2si_length = 5.29177*10**(-11)
-au2si_charge = 1.602188*10**(-19)
-au2si_time = 2.41888*10**(-17)
-au2si_current = au2si_charge/au2si_time
-au2si_current_density = au2si_current/au2si_length**2
-au2si_voltage = au2si_energy/au2si_charge
-
-har2eV=27.211396641308
-nm2bohr = 18.897161646321
-mm2bohr = 10**6 * nm2bohr
-microm2bohr = 10**3 * nm2bohr
-
-tec = 0.5 * 10**(-4)   # Thermal expansion coefficient
-zoom = 10**10          # factor for magnifying the current
-'''
+###############################################################
+#### current and current density functions
 
 def J_of_Vb_lowbias(Vb, d, phibar, m_r):
     '''
@@ -44,14 +24,15 @@ def J_of_Vb_lowbias(Vb, d, phibar, m_r):
     Returns:
     J, current density, units amps/(nm^2)
     '''
+    if( len(np.shape(Vb)) != 1): raise TypeError;
 
     # decay length
     d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
     d_d = d_d_prefactor/np.sqrt(m_r*phibar); # decay length, units nm
 
-    # current
+    # current density
     J_prefactor = 9.685*1e-6 # =e^2/(8*\pi*\hbar), units amp/volt
-    return J_prefactor * Vb/(d*d_d) * np.exp(-d/d_d);
+    return J_prefactor * Vb/(d*d_d) * np.exp(-d/d_d); # units amps/(nm^2)
 
 def J_of_Vb(Vb, d, phibar, m_r):
     '''
@@ -69,18 +50,82 @@ def J_of_Vb(Vb, d, phibar, m_r):
     Returns:
     J, current density, units amps/(nm^2)
     '''
+    if( len(np.shape(Vb)) != 1): raise TypeError;
+    if(phibar < max(abs(Vb))): raise ValueError;
 
     # beta
     beta = 1.0; # unitless, depends on the specifics of \phi(x), see Simmons Eq A6
 
     # decay length
     d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
-    d_d = d_d_prefactor/np.sqrt(m_r*phibar); # decay length, units nm
+    d_d = beta*d_d_prefactor/np.sqrt(m_r*phibar); # decay length, units nm
+    d_d_withbias = beta*d_d_prefactor/np.sqrt(m_r*(phibar+Vb)); # decay length
+                # when phibar is shifted by eVb, NB Vb has units eV
 
-    # current
-    J_prefactor = 9.685*1e-6 # =e^2/(8*\pi*\hbar), units amp/volt
-    return J_prefactor * Vb/(d*d_d) * np.exp(-d/d_d);
+    # current density
+    J_prefactor = 6.166*1e-6 # =e^2/(4*\pi^2*\hbar), units amp/volt
+    J_0 = J_prefactor/(beta*d)**2 ; # units amp/(volt*nm^2)
+    J_right = J_0*phibar*np.exp(-d/d_d); # NB phibar here has units volts
+    J_left = J_0*(phibar+Vb)*np.exp(-d/d_d_withbias); # same
+    return J_right - J_left; # units amp/nm^2
+
+def J_of_Vb_asym(Vb, d, phi1, phi2, m_r):
+    '''
+    Get the current density J as function of applied bias Vb
+    from Li Eq 1
+
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    d, barrier width, units nm
+    phibar, avg barrier height, units eV
+    m_r, ratio of eff electron mass to me, unitless
     
+    Returns:
+    J, current density, units amps/(nm^2)
+    '''
+    if( len(np.shape(Vb)) != 1): raise TypeError;
+
+    # current density
+    J_prefactor = 6.166*1e-6 # =e^2/(4*\pi^2*\hbar), units amp/volt
+    J_0 = J_prefactor/(d)**2 ; # units amp/(volt*nm^2)
+
+    # asymmetry
+    phibar = (phi1+phi2)/2; # average barrier height in eV
+    D_asym = (phi2-Vb-phi1)**2 /(48*phibar*phibar); # asymmetry parameter, unitless
+
+    # S factors
+    d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
+    S_sym = np.sqrt(m_r)/d_d_prefactor; # units 1/(nm*eV^1/2)
+    S_asym = S_sym/np.sqrt(1+D_asym); # units 1/(nm*eV^1/2)
+    # NB for m_r = 1, S_sym = 10.25
+    # m_r = 1; S_sym = np.sqrt(m_r)/d_d_prefactor; print(S_sym); assert False;
+
+    # asymmetric decay lengths, units nm
+    d_d_minus = d_d_prefactor*np.sqrt(1+D_asym)/np.sqrt(m_r*(phibar-Vb/2)); # decay length for lowered side
+    d_d_plus = d_d_prefactor*np.sqrt(1+D_asym)/np.sqrt(m_r*(phibar+Vb/2)); # decay length for lowered side
+
+    # current density
+    J_right = J_0*(1+D_asym)*(phibar-Vb/2)*(1+3*d_d_minus/d + 3*(d_d_minus/d)**2);
+    J_right *= np.exp(-d/d_d_minus);
+    J_left =  J_0*(1+D_asym)*(phibar+Vb/2)*(1+3*d_d_plus/d + 3*(d_d_plus/d)**2);
+    J_left *= np.exp(-d/d_d_plus);
+    return J_right - J_left;
+
+def I_of_T(Js, temp, area, thermal_exp = 0.5*1e-4):
+    '''
+    Given a Simmons formula for current density J(Vb) in amps/nm^2
+    gets the current in amps at a given temperature
+    '''
+    if( len(np.shape(Js)) != 1): raise TypeError;
+
+    # temperature affects on area
+    area_temp = area*( 1+thermal_exp*temp)**2;
+    return Js*area_temp;
+
+###############################################################
+#### fitting functions
 
 def fit_IV(phi0, m0, d0):
 
@@ -158,9 +203,40 @@ def fit_IV(phi0, m0, d0):
     fname = "I_fitted_" + "{:.0f}".format(T) + ".pdf"
     plt.savefig(fname)
 
-if __name__ == "__main__":
+###############################################################
+#### wrappers
 
-    # data at different temps
+def plot_data():
+
+    # experimental params
+    Vmax = 1.0;
+    Vbs = np.linspace(-Vmax,Vmax,11);
+    temp = 0.0;
+    radius = 200*1e3; # 200 micro meter
+    area = np.pi*radius*radius;
+
+    # fitting params
+    d0 = 4.91; # nm
+    phi0 = 1.95; # eV
+    m0 = 0.32; # m_*/m_e
+
+    # current density
+    Js = J_of_Vb_asym(Vbs, d0, phi0, phi0, m0);
+    #print(Js); # should be of order 1e-22
+    #assert False
+
+    # current
+    Is = I_of_T(Js, temp, area);
+
+    # plot
+    fig, ax = plt.subplots();
+    ax.plot(Vbs, Is);
+    plt.show();
+    
+
+def fit_data():
+
+    # experimental params
     Ts = [40, 80, 120, 160, 200];
 
     # fitting param guesses
@@ -170,5 +246,11 @@ if __name__ == "__main__":
 
     for datai in range(1):
         print("T = {:.0f} K".format(Ts[datai]));
-        fit_IV(phi0=phis[datai], m0=ms[datai], d0=ds[datai]-0.1)
+        fit_IV(phi0=phis[datai], m0=ms[datai], d0=ds[datai]-0.1);
+
+###############################################################
+#### exec
+if __name__ == "__main__":
+
+    plot_data();
 
