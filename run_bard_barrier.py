@@ -314,26 +314,7 @@ if True:
 
     # central region
     tC = 1.0*tL;
-    VC = 0.5*tL; #### do for 0.5, 5.0, 50.0 ####
-    thyb = 1.0*tL;
-    Vhyb = 1.0*VL;
-
-    # construct ham
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
-    for j in range(NC):
-        HC[j,j] += VC;
-    for j in range(NC-1):
-        HC[j,j+1] += -tC;
-        HC[j+1,j] += -tC;
-    # overwrite hyb
-    HC[0,0] = Vhyb;
-    HC[-1,-1] = Vhyb;
-    HC[0,1] = -thyb;
-    HC[1,0] = -thyb;
-    HC[-2,-1] = -thyb;
-    HC[-1,-2] = -thyb;
-    print("HC =");
-    print_H_j(HC);
+    VC = 0.5*tL; #### do for 0.5, 2.5, 5.0, 50.0 ####
 
     hopvals = np.array([0.0*tC,1.0*tC]);
     numplots = len(hopvals);
@@ -346,6 +327,37 @@ if True:
         #hopvali=1;
         hopval = hopvals[hopvali];
 
+        # V primes
+        if(hopvali == 0): # thyb is perturbation
+            VLprime = 1*VL;
+            VRprime = 1*VR;
+            HT_perturb = True;
+            myinterval = 1e-3;
+        else: # VRprime is perturbation
+            VLprime = 1*Vinfty;
+            VRprime = 1*Vinfty;
+            HT_perturb = False;
+            myinterval = 1e-9;
+        thyb = 1.0*tL;
+        Vhyb = 1.0*VLprime;
+
+        # construct ham
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+        for j in range(NC):
+            HC[j,j] += VC;
+        for j in range(NC-1):
+            HC[j,j+1] += -tC;
+            HC[j+1,j] += -tC;
+        # overwrite hyb
+        HC[0,0] = Vhyb;
+        HC[-1,-1] = Vhyb;
+        HC[0,1] = -thyb;
+        HC[1,0] = -thyb;
+        HC[-2,-1] = -thyb;
+        HC[-1,-2] = -thyb;
+        print("HC =");
+        print_H_j(HC);
+
         # central region prime
         HCprime = np.copy(HC);
         HCprime[0,0] = Vhyb;
@@ -354,18 +366,6 @@ if True:
         #HCprime[1,0] = -hopval;
         HCprime[-2,-1] = -hopval;
         HCprime[-1,-2] = -hopval;
-
-        # V primes
-        if(hopvali == 0):
-            VLprime = 1*VL;
-            VRprime = 1*VR;
-            HT_perturb = True;
-            myinterval = 1e-3;
-        else:
-            VLprime = 1*Vinfty;
-            VRprime = 1*Vinfty;
-            HT_perturb = False;
-            myinterval = 1e-9;
         print("HC - HCprime =");
         print_H_j(HC-HCprime);
         
@@ -376,7 +376,7 @@ if True:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=1);
+                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=10);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
         
@@ -407,7 +407,8 @@ if True:
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,20);
+        axrighttops = [100,50,50,20]; VCoptions = [0.5,2.5,5.0,50];
+        axright.set_ylim(0,axrighttops[VCoptions.index(VC)]);
         axes[hopvali].set_ylabel("$T (t_{DR} = "+str(hopvals[hopvali][0,0])+")$",fontsize=myfontsize);
 
     # format and show
