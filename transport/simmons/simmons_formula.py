@@ -113,6 +113,15 @@ def J_of_Vb_asym(Vb, d, phi1, phi2, m_r):
     J_left *= np.exp(-d/d_d_plus);
     return J_right - J_left;
 
+def J_of_Vb_asym_simple(Vb, d, phibar, m_r):
+    '''
+    Wraps J_of_Vb_asym so that instead of phi1, phi2 separate fittable params,
+    there is just one, phibar
+    
+    Args: see J_of_Vb
+    '''
+    return J_of_Vb_asym(Vb, d, phibar, phibar, m_r);
+
 def I_of_T(Js, temp, area, thermal_exp = 0.5*1e-4):
     '''
     Given a Simmons formula for current density J(Vb) in amps/nm^2
@@ -127,13 +136,28 @@ def I_of_T(Js, temp, area, thermal_exp = 0.5*1e-4):
 ###############################################################
 #### fitting functions
 
-def fit_IV(phi0, m0, d0):
+def load_IV(temp):
+    '''
+    Get I vs V data at a certain temp
+    '''
 
-    ### Read in the data
+    IV = np.loadtxt("{:.0f}".format(temp) + "KExp.txt");
+    Vs = IV[:, 0];
+    Is = IV[:, 1];
+    if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(Is) ): raise TypeError;
 
-    IV = np.loadtxt("{:.0f}".format(T) + "KExp.txt")
-    V = IV[:, 0]
-    I = zoom * IV[:, 1]
+    return Is, Vs;
+
+def fit_IV(temp, area, phi0, m0, d0):
+
+    # read in the data
+    Is, Vs = load_IV(temp);
+
+    # convert from Is to Js
+    convert_J2I = I_of_T(np.ones_like(Is), temp, area);
+    Js = Is/convert_J2I;
+    print(Js); assert False;
+
 
     ### Fitting
 
@@ -238,19 +262,22 @@ def fit_data():
 
     # experimental params
     Ts = [40, 80, 120, 160, 200];
+    V0s = [-0.0308,-0.0161,-0.0443,-0.0351,-0.0661];
+    radius = 200*1e3; # 200 micro meter
+    area = np.pi*radius*radius;
 
     # fitting param guesses
-    phis = [1.85, 1.65, 1.60, 1.35, 1.35];
-    ms = [0.32, 0.36, 0.36, 0.42, 0.41];
-    ds = [5.01, 5.02, 5.03, 5.04, 5.05];
+    phi0s = [1.85, 1.65, 1.60, 1.35, 1.35];
+    m0s = [0.32, 0.36, 0.36, 0.42, 0.41];
+    d0s = [5.01, 5.02, 5.03, 5.04, 5.05];
 
     for datai in range(1):
         print("T = {:.0f} K".format(Ts[datai]));
-        fit_IV(phi0=phis[datai], m0=ms[datai], d0=ds[datai]-0.1);
+        fit_IV(Ts[datai], area, phi0s[datai], m0s[datai], d0s[datai]-0.1);
 
 ###############################################################
 #### exec
 if __name__ == "__main__":
 
-    plot_data();
+    fit_data();
 
