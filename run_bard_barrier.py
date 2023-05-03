@@ -307,14 +307,14 @@ if False:
 if True:
 
     # sizes
-    NC = 3;
+    NC = 5;
     Ninfty = 20;
     NL = 200;
     NR = 1*NL;
 
     # central region
     tC = 1.0*tL;
-    VC = 50.0*tL; #### do for 0.5, 5.0, 50.0 ####
+    VC = 0.5*tL; #### do for 0.5, 5.0, 50.0 ####
     thyb = 1.0*tL;
     Vhyb = 1.0*VL;
 
@@ -343,6 +343,7 @@ if True:
 
     # compare perturb being thyb vs VRprime
     for hopvali in range(len(hopvals)):
+        #hopvali=1;
         hopval = hopvals[hopvali];
 
         # central region prime

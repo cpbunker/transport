@@ -139,17 +139,19 @@ def kernel(tinfty, tL, tLprime, tR, tRprime,
         plt.legend();plt.show();
 
         # plot left wfs
+        energy_off = 0;
+        if HT_perturb: energy_off = 1;
         for m in range(min(n_bound_left,6)):
             fig, wfax = plt.subplots();
             alpha_colors=["tab:blue","tab:orange"];
             for alpha in range(n_loc_dof):
                 print(Emas[alpha,m]);
-                print(Enbs[alpha,m+1]);
+                print(Enbs[alpha,m+energy_off]);
                 wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
                 wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
                 wfax.plot(jvals, np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
                 wfax.plot(jvals, np.real(psinbs[alpha,m+1]),color=alpha_colors[alpha],linestyle="dotted");
-                wfax.plot(jvals[mid-1:mid+1], np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])[mid-1:mid+1], color=alpha_colors[alpha],linestyle="solid",marker='s')               
+                wfax.plot(jvals[mid-1:mid+len(HC)+1], np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])[mid-1:mid+len(HC)+1], color=alpha_colors[alpha],linestyle="solid",marker='s')               
             plt.show();
         assert False;
 
