@@ -6,52 +6,14 @@ from scipy.optimize import curve_fit as scipy_curve_fit
 import matplotlib.pyplot as plt
 
 ###############################################################
-#### current and current density functions
-
-def J_of_Vb_linear(Vb, J0, slope):
-    '''
-    Get the current density J as function of applied bias Vb
-    for a simple linear model
-
-    NB this function is designed to be passed to scipy.optimize.curve_fit
-    Independent variable:
-    Vb, applied bias voltage, units volts
-    Fitting params:
-    J0, y-intercept
-    slope, slope
-
-    Returns:
-    J, current density, units amps/(nm^2)
-    '''
-
-    return slope*Vb + J0;
-
-def J_of_Vb_cubic(Vb, V0, slope):
-    '''
-    Get the current density J as function of applied bias Vb
-    for a simple cubic model
-
-    NB this function is designed to be passed to scipy.optimize.curve_fit
-    Independent variable:
-    Vb, applied bias voltage, units volts
-    Fitting params:
-    V0, x intercept
-
-    Returns:
-    J, current density, units amps/(nm^2)
-    '''
-
-    return slope*np.power(Vb-V0,3)
+#### current density functions
 
 def J_of_Vb_lowbias(Vb, d, phibar, m_r):
     '''
     Get the current density J as function of applied bias Vb
     from Simmons Eq 24, ie the low bias (ohmic) limit
 
-    NB this function is designed to be passed to scipy.optimize.curve_fit
-    Independent variable:
     Vb, applied bias voltage, units volts
-    Fitting params:
     d, barrier width, units nm
     phibar, avg barrier height, units eV
     m_r, ratio of eff electron mass to me, unitless
@@ -74,10 +36,7 @@ def J_of_Vb(Vb, d, phibar, m_r):
     Get the current density J as function of applied bias Vb
     from Simmons Eq 20
 
-    NB this function is designed to be passed to scipy.optimize.curve_fit
-    Independent variable:
     Vb, applied bias voltage, units volts
-    Fitting params:
     d, barrier width, units nm
     phibar, avg barrier height, units eV
     m_r, ratio of eff electron mass to me, unitless
@@ -87,6 +46,7 @@ def J_of_Vb(Vb, d, phibar, m_r):
     '''
     if( len(np.shape(Vb)) != 1): raise TypeError;
     if(phibar < max(abs(Vb))): raise ValueError;
+    raise NotImplementedError;
 
     # beta
     beta = 1.0; # unitless, depends on the specifics of \phi(x), see Simmons Eq A6
@@ -145,9 +105,6 @@ def J_of_Vb_asym(Vb, d, phi1, phi2, m_r):
         start = len(Vb)//2;
         thru = 1;
         print("Vb = ",Vb[start:start+thru]);
-        my_radius = 200*1e3; my_tec = 0.5*1e-4;
-        my_area = (my_radius*(1+my_tec*40))**2 * np.pi;
-        print(" I = ",my_area*(J_right-J_left)[start:start+thru]);
         print("c_1 = ", (1+D_asym)[start:start+thru], ", unitless");
         print("c_minus = ", (1+3*d_d_minus/d + 3*(d_d_minus/d)**2)[start:start+thru], ", unitless");
         print("c_plus = ", (1+3*d_d_plus/d + 3*(d_d_plus/d)**2)[start:start+thru], ", unitless");
@@ -155,12 +112,50 @@ def J_of_Vb_asym(Vb, d, phi1, phi2, m_r):
         
     return J_right - J_left;
 
-def J_of_Vb_asym_wrapped(Vb, d, phibar, m_r):
+###############################################################
+#### current functions
+
+def I_of_Vb_linear(Vb, I0, slope):
     '''
-    Wraps J_of_Vb_asym so that
+    Get the current density J as function of applied bias Vb
+    for a simple linear model
+
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    I0, y-intercept
+    slope, slope
+
+    Returns:
+    I, current, nano amps
+    '''
+
+    return slope*Vb + I0;
+
+def I_of_Vb_cubic(Vb, V0, slope):
+    '''
+    Get the current density J as function of applied bias Vb
+    for a simple cubic model
+
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    V0, x intercept
+
+    Returns:
+    I, current, nano amps
+    '''
+
+    return slope*np.power(Vb-V0,3);
+
+def I_of_Vb_lowbias(Vb, d, phibar, m_r):
+    '''
+    Wraps J_of_Vb_lowbias so that
     - instead of phi1, phi2 separate fittable params, there is just phibar
-    - Vbs are scaled to
-    - Js are scaled to
+    - Vbs are shifted by V0_kwarg
+    - Is are put in nano amps and shifted by I0_kwarg
     
     NB this function is designed to be passed to scipy.optimize.curve_fit
     Independent variable:
@@ -169,9 +164,38 @@ def J_of_Vb_asym_wrapped(Vb, d, phibar, m_r):
     d, barrier width, units nm
     phibar, avg barrier height, units eV
     m_r, ratio of eff electron mass to me, unitless
+
+    Returns:
+    I, current, nano amps
     '''
 
-    return J0_kwarg+J_of_Vb_asym(Vb-V0_kwarg, d, phibar, phibar, m_r) + 1e-10/((200e3)**2 *np.pi);
+    Js = J_of_Vb_lowbias(Vb-V0_kwarg, d, phibar, m_r);
+    Is = Js*convert_J2I_kwarg*1e9; # in nano amps
+    return Is + I0_kwarg;
+
+def I_of_Vb_asym(Vb, d, phibar, m_r):
+    '''
+    Wraps J_of_Vb_asym so that
+    - instead of phi1, phi2 separate fittable params, there is just phibar
+    - Vbs are shifted by V0_kwarg
+    - Is are put in nano amps and shifted by I0_kwarg
+    
+    NB this function is designed to be passed to scipy.optimize.curve_fit
+    Independent variable:
+    Vb, applied bias voltage, units volts
+    Fitting params:
+    d, barrier width, units nm
+    phibar, avg barrier height, units eV
+    m_r, ratio of eff electron mass to me, unitless
+
+    Returns:
+    I, current, nanao amps
+    '''
+
+
+    Js = J_of_Vb_asym(Vb-V0_kwarg, d, phibar, phibar, m_r);
+    Is = Js*convert_J2I_kwarg*1e9; # in nano amps
+    return Is + I0_kwarg;
 
 def J2I(temp, area, thermal_exp = 0.5*1e-4):
     '''
@@ -187,6 +211,9 @@ def J2I(temp, area, thermal_exp = 0.5*1e-4):
 def load_IVb(temp):
     '''
     Get I vs V data at a certain temp
+
+    returns:
+    V in volts, I in nano amps
     '''
 
     IV = np.loadtxt("{:.0f}".format(temp) + "KExp.txt");
@@ -194,9 +221,10 @@ def load_IVb(temp):
     Is = IV[:, 1];
     if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(Is) ): raise TypeError;
 
-    return Vs, Is;
+    return Vs, 1e9*Is;
 
-def fit_JVb(temp, area, d_not, phibar_not, m_r_not,verbose=0):
+def fit_JVb(temp, area, d_not, phibar_not, m_r_not,
+            d_percent, phibar_percent, m_r_percent, error_multiplier = 1.1,verbose=0):
     '''
     Given data for a specific temp, taken for a sample of certain area,
     1) fit a linear model of J(Vb) to get an x-intercept V0,
@@ -212,75 +240,86 @@ def fit_JVb(temp, area, d_not, phibar_not, m_r_not,verbose=0):
     '''
 
     # read in the experimental data
-    V_exp, I_exp = load_IVb(temp);
-
-    # convert from Is to Js
-    convert_J2I = J2I(temp, area);
-    J_exp = I_exp/convert_J2I;
-    nano = 1e9;
-    #print(J_exp); assert False; # should be of order 1e-22
+    V_exp, I_exp = load_IVb(temp); # in volts nano amps
 
     #### fit expermental data
 
     # interpolate V0, I0, and slope guesses from exp data
     V0_not = V_exp[len(V_exp)//2];
-    I0_not = I_exp[len(V_exp)//2];
-    J0_not = I0_not/convert_J2I;
-    slope_not = (J_exp[1+len(V_exp)//2] - J_exp[len(V_exp)//2])/(V_exp[1+len(V_exp)//2] - V_exp[len(V_exp)//2]);
-    init_params_linear = [J0_not, slope_not];
-    bounds_linear = [[J0_not*0.5, slope_not*0.5],
-                     [J0_not*1.5, slope_not*1.5]];
-    init_params_cubic = [V0_not, slope_not];
-    bounds_cubic = [[V0_not*0.5, slope_not*0.5],
-                 [V0_not*1.5, slope_not*1.5]];
+    I0_not = I_exp[len(I_exp)//2];
+    slope_not = (I_exp[1+len(V_exp)//2] - I_exp[len(V_exp)//2])/(V_exp[1+len(V_exp)//2] - V_exp[len(V_exp)//2]);
+
+    # set up linear fit
+    init_params_linear = [I0_not, slope_not];
+    bounds_linear = [[I0_not*0.01, slope_not*0.01],
+                     [I0_not*100, slope_not*100]];
 
     # linear fit gives I0
-    params_linear, pcov_linear = scipy_curve_fit(J_of_Vb_linear, V_exp, J_exp,
-                                sigma = 0.001*np.copy(J_exp), p0=init_params_linear, bounds=bounds_linear);
-    J0, slopeJ = tuple(params_linear);
-    J_fit_linear = J_of_Vb_linear(V_exp, J0, slopeJ);
+    params_linear, pcov_linear = scipy_curve_fit(I_of_Vb_linear, V_exp, I_exp,
+                                p0=init_params_linear, bounds=bounds_linear);
+    I0, slopeI = tuple(params_linear);
+    I_fit_linear = I_of_Vb_linear(V_exp, I0, slopeI);
     if(verbose):
-        print("J_of_Vb_linear fitting results:");
-        print("           I0 = {:6.4f} nA\n\
-        slope = {:6.4f} nA/V".format(J0*convert_J2I*nano, slopeJ*convert_J2I*nano));
-    if(verbose > 4): plot_fit(V_exp, I_exp*nano, J_fit_linear*convert_J2I*nano,
-                              mytitle = "I0 = {:1.4f} nA, Slope = {:1.4f} nA/V".format(J0*convert_J2I*nano, slopeJ*convert_J2I*nano ));
+        print("I_of_Vb_linear fitting results:");
+        print_str = "           I0 = {:6.4f} "+str((bounds_linear[0][0],bounds_linear[1][0]))+"nA\n\
+        slope = {:6.4f} "+str((bounds_linear[0][1],bounds_linear[1][1]))+" nA/V"
+        print(print_str.format(I0, slopeI));
+    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_linear, mytitle = print_str[:print_str.find("(")].format(I0));
+    del init_params_linear, bounds_linear, params_linear, pcov_linear;
 
+    # set up cubic fit
+    init_params_cubic = [V0_not, slope_not];
+    bounds_cubic = [[V_exp[0], slope_not*0.01],
+                 [V_exp[-1], slope_not*100]];
+    
     # cubic fit gives V0
-    params_cubic, pcov_cubic = scipy_curve_fit(J_of_Vb_cubic, V_exp, J_exp-J0,
-                                sigma = 0.001*np.copy(J_exp-J0), p0=init_params_cubic, bounds=bounds_cubic);
-    V0, slopeJ = tuple(params_cubic);
-    J_fit_cubic = J_of_Vb_cubic(V_exp, V0, slopeJ);
+    params_cubic, pcov_cubic = scipy_curve_fit(I_of_Vb_cubic, V_exp, I_exp-I0,
+                                p0=init_params_cubic, bounds=bounds_cubic);
+    V0, slopeI = tuple(params_cubic);
+    I_fit_cubic = I_of_Vb_cubic(V_exp, V0, slopeI);
     if(verbose):
-        print("J_of_Vb_cubic fitting results:");
-        print("           V0 = {:6.4f} V\n\
-        slope = {:6.4f} nA/V".format(V0, slopeJ*convert_J2I*nano));
-    if(verbose > 4): plot_fit(V_exp, I_exp*nano, (J_fit_cubic+J0)*convert_J2I*nano,
-                              mytitle = "V0 = {:1.4f} V, I0 = {:1.4f} nA, Slope = {:1.4f} nA/V".format(V0, J0*convert_J2I*nano, slopeJ*convert_J2I*nano ));
-    assert False
+        print("I_of_Vb_cubic fitting results:");
+        print_str = "           V0 = {:6.4f} "+str((bounds_cubic[0][0],bounds_cubic[1][0]))+" V\n\
+        slope = {:6.4f} "+str((bounds_cubic[0][1],bounds_cubic[1][1]))+" nA/V"
+        print(print_str.format(V0, slopeI));
+    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_cubic+I0, mytitle = print_str[:print_str.find("(")].format(V0));
+    del init_params_cubic, bounds_cubic, params_cubic, pcov_cubic;
 
-    # simmons fit
+    # results of linear and cubic fits
+    global V0_kwarg; V0_kwarg = V0; # very bad practice
+    global I0_kwarg; I0_kwarg = I0;
+    global convert_J2I_kwarg; convert_J2I_kwarg = J2I(temp, area);
+
+    # set up simmons fit
+    #fitter_func = I_of_Vb_lowbias;
     init_params = [d_not, phibar_not, m_r_not];
-    d_percent = 0.5;
-    phibar_percent = 0.2;
-    m_r_percent = 0.5;
     bounds = np.array([[d_not*(1-d_percent),phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
               [d_not*(1+d_percent),phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
-    params, pcov = scipy_curve_fit(J_of_Vb_asym_wrapped, V_exp, J_exp,
-                            sigma = 0.001*np.copy(J_exp), p0 = init_params, bounds = bounds);
+
+    # fine meshed linear simmons fit to narrow in on d
+    which = 0; # for d
+    lowbias_d, lowbias_errors = my_curve_fit(I_of_Vb_lowbias, V_exp, I_exp, init_params, bounds, which, focus_meshpts=100, verbose=1);
+    lowbias_error_min = np.min(lowbias_errors);
+    lowbias_d = lowbias_d[lowbias_errors < error_multiplier*lowbias_error_min];
+    lowbias_errors = lowbias_errors[lowbias_errors < error_multiplier*lowbias_error_min];
+    bounds[0][which] = lowbias_d[0];
+    bounds[1][which] = lowbias_d[-1];
+
+    # full simmons fit in narrowed bounds
+    params, pcov = scipy_curve_fit(I_of_Vb_asym, V_exp, I_exp,
+                            p0 = init_params, bounds = bounds, max_nfev = 1e6);
     d, phibar, m_r = tuple(params);
-    J_fit = J_of_Vb_asym_wrapped(V_exp, d, phibar, m_r, V0_kwarg = V0, J0_kwarg = J0);
+    I_fit = I_of_Vb_asym(V_exp, d, phibar, m_r);
+    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/np.mean(I_exp);
     if(verbose):
-        print("J_of_Vb_asym_wrapped fitting results:");
+        print("I_of_Vb_asym_wrapped fitting results:");
         print_str = "            d = {:6.4f} "+str((bounds[0][0],bounds[1][0]))+" nm\n\
           phi = {:6.4f} "+str((bounds[0][1],bounds[1][1]))+" eV\n\
-          m_r = {:6.4f} "+str((bounds[0][2],bounds[1][2]));
-        print(print_str.format(d, phibar, m_r));
-    if(verbose > 4): plot_fit(V_exp, I_exp*nano, J_fit*convert_J2I*nano,
-                              mytitle = "d = {:1.2f} nm, phi = {:1.2f} eV, m_r = {:1.2f} ".format(d, phibar, m_r));
+          m_r = {:6.4f} "+str((bounds[0][2],bounds[1][2]))+"\n\
+          err = {:6.4f}";
+        print(print_str.format(d, phibar, m_r, rmse_final));
+    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit, mytitle = print_str[:print_str.find("(")].format(d)+" nm");
 
-    # fine meshed simmons fit
-    #my_curve_fit(J_of_Vb_asym_wrapped, V_exp, J_exp, init_params, bounds, 1, verbose=verbose);
 
 def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=10, verbose=0):
     '''
@@ -307,8 +346,8 @@ def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=
         # fit within this narrow range
         nano, convert_J2I = 1e9, 1;
         #plot_guess(myT, myA, 0.0, 1e-10/convert_J2I, init_params[0], ):
-        fparams, pcov = scipy_curve_fit(fx, xvals, fxvals, sigma = 0.001*np.copy(fxvals), method = 'dogbox',
-                                 p0 = init_fparams, bounds = fbounds);
+        fparams, pcov = scipy_curve_fit(fx, xvals, fxvals,
+                                 p0 = init_fparams, bounds = fbounds, max_nfev = 1e6);
         fxvals_fit = fx(xvals, *fparams);
         ferror = np.sqrt( np.mean( (fxvals-fxvals_fit)*(fxvals-fxvals_fit) ))/np.mean(fxvals);
 
@@ -317,25 +356,27 @@ def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=
         focus_errors[fvali] = ferror;
 
         # visualize
-        if(verbose):
+        if(verbose > 2):
             print("my_curve_fit fitting results, focus_i = ",focus_i);
             print_str = "            d = {:6.4f} "+str((fbounds[0][0],fbounds[1][0]))+" nm\n\
             phi = {:6.4f} "+str((fbounds[0][1],fbounds[1][1]))+" eV\n\
             m_r = {:6.4f} "+str((fbounds[0][2],fbounds[1][2]))+"\n\
             err = {:6.4f}";
             print(print_str.format(*fparams, ferror));
-        if(verbose > 4 and True): plot_fit(xvals, fxvals*convert_J2I*nano, fxvals_fit*convert_J2I*nano,
+        if(verbose > 4): plot_fit(xvals, fxvals*convert_J2I*nano, fxvals_fit*convert_J2I*nano,
                                   mytitle = "d = {:1.2f} nm, phi = {:1.2f} eV, m_r = {:1.2f} ".format(*fparams));
 
     # show the results of the mesh search
-    fig, ax = plt.subplots();
-    ax.plot(focus_opts, focus_errors, color=accentcolors[0]);
+    if verbose:
+        fig, ax = plt.subplots();
+        ax.plot(focus_opts, focus_errors, color=accentcolors[0]);
 
-    # format
-    ax.set_xlabel("Params["+str(focus_i)+"]");
-    ax.set_ylabel("Norm. RMS Error");
-    ax.set_yscale('log');
-    plt.show();
+        # format
+        ax.set_xlabel("Params["+str(focus_i)+"]");
+        ax.set_ylabel("Norm. RMS Error");
+        #ax.set_yscale('log');
+        plt.show();
+    return focus_opts, focus_errors;
 
 ###############################################################
 #### plots
@@ -423,10 +464,14 @@ def fit_data():
     phi_guess = np.array([1.85, 1.65, 1.60, 1.35, 1.35]);
     m_guess = np.array([0.32, 0.36, 0.36, 0.42, 0.41]);
     d_guess = np.array([5.01, 5.02, 5.03, 5.04, 5.05]);
+    d_guess_percent = 0.99;
+    phi_guess_percent = 0.2;
+    m_guess_percent = 0.6;
 
     for datai in range(1):
         print("\nT = {:.0f} K".format(Ts[datai]));
-        fit_JVb(Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai], verbose=10);
+        fit_JVb(Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+                d_guess_percent, phi_guess_percent, m_guess_percent, verbose=10);
 
 ###############################################################
 #### exec
