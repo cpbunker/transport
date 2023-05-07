@@ -376,7 +376,7 @@ if True:
         Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=10);
+                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
         

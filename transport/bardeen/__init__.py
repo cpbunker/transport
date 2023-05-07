@@ -18,13 +18,103 @@ import matplotlib.pyplot as plt
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(tinfty, tL, tLprime, tR, tRprime,
+def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0) -> tuple:
+    '''
+    Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
+    states n in aninterval close to the initial energy state m
+
+    Instead of setting up Hsys explicitly as below, takes any TB Hsys
+    and generates HL (HR) by cutting the hopping at site cutiL (cutiR)
+    '''
+    if( not isinstance(Hsys_4d, np.ndarray)): raise TypeError;
+    n_spatial_dof, _, n_loc_dof, _ = np.shape(Hsys_4d);
+    if(cutiL >= n_spatial_dof-1 or cutiR >= n_spatial_dof-1): raise ValueError;
+
+    # generate HL and HR
+    HL_4d = np.copy(Hsys_4d);
+    HL_4d[cutiL,cutiL+1] = np.zeros_like(HL_4d[cutiL,cutiL+1]);
+    HL_4d[cutiL+1,cutiL] = np.zeros_like(HL_4d[cutiL+1,cutiL]);
+    HR_4d = np.copy(Hsys_4d);
+    HR_4d[cutiR,cutiR+1] = np.zeros_like(HR_4d[cutiR,cutiR+1]);
+    HR_4d[cutiR+1,cutiR] = np.zeros_like(HR_4d[cutiR+1,cutiR]);
+
+    # eigenstates of HL
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
+    Emas, psimas = [], []; # will index as Emas[alpha,m]
+    n_bound_left = 0;
+    for alpha in range(n_loc_dof):
+        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+        psims = psims.T[Ems+2*tbulk < E_cutoff];
+        Ems = Ems[Ems+2*tbulk < E_cutoff];
+        Emas.append(Ems);
+        psimas.append(psims);
+        n_bound_left = max(n_bound_left, len(Emas[alpha]));
+    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ems = Emas[alpha];
+        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
+        Emas_arr[alpha] = Ems_arr;
+        psims = psimas[alpha];
+        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+        psimas_arr[alpha] = psims_arr;
+    del Ems, psims
+    Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left);
+
+    # right well eigenstates  
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
+    Enbs, psinbs = [], []; # will index as Enbs[beta,n]
+    n_bound_right = 0;
+    for beta in range(n_loc_dof):
+        Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
+        psins = psins.T[Ens+2*tbulk < E_cutoff];
+        Ens = Ens[Ens+2*tbulk < E_cutoff];
+        Enbs.append(Ens.astype(complex));
+        psinbs.append(psins);
+        n_bound_right = max(n_bound_right, len(Ens));
+    Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
+    psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ens = Enbs[alpha];
+        Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
+        Enbs_arr[alpha] = Ens_arr;
+        psins = psinbs[alpha];
+        psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
+        psinbs_arr[alpha] = psins_arr;
+    del Ens, psins;
+    Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
+
+    # visualize
+    if(verbose > 9):
+
+        # plot left wfs
+        mid = len(Hsys_4d)//2;
+        jvals = np.linspace(-mid, -mid +len(Hsys_4d)-1,len(Hsys_4d), dtype=int);
+        energy_off = 0;
+        energy_off = 1;
+        for m in range(n_bound_left):
+            fig, wfax = plt.subplots();
+            alpha_colors=["tab:blue","tab:orange"];
+            for alpha in range(n_loc_dof):
+                print(Emas[alpha,m]);
+                print(Enbs[alpha,m+energy_off]);
+                wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
+                wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
+                wfax.plot(jvals, np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
+                wfax.plot(jvals, np.real(psinbs[alpha,m+energy_off]),color=alpha_colors[alpha],linestyle="dotted");
+            plt.show();
+        assert False;
+
+    return Emas, np.copy(Emas);
+
+
+def kernel_well(tinfty, tL, tLprime, tR, tRprime,
            Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC,HCprime,
            interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
     '''
-    Calculate the Oppenheimer matrix elements M_nbma averaged over n in a
-    nearby interval
+    Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
+    states n in aninterval close to the initial energy state m
 
     Physical params are classified by region: infty, L, R.
     tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
@@ -387,7 +477,10 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         else: Mns = 0.0;
         Mms[m] = Mns;
 
-    return Ems, Mms
+    return Ems, Mms;
+
+#######################################################################
+#### generate observables from matrix elements
 
 def current(Emas, Mbmas, muR, eVb, kBT) -> np.ndarray:
     '''
@@ -438,7 +531,49 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
 
     return Tbmas;
 
-def Ts_wfm(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
+def Ts_wfm(Hsys, Emas, tbulk, verbose=0) -> np.ndarray:
+    '''
+    Given bound state energies and Hsys, calculate the transmission
+    probability for each energy using wfm code
+
+    Used when the initial and final states have definite spin,
+    and so CAN RESOLVE the spin -> spin transitions
+    '''
+    n_spatial_dof = np.shape(Hsys)[0];
+    n_loc_dof = np.shape(Hsys)[-1];
+    n_bound_left = np.shape(Emas)[-1];
+    if(np.shape(Emas)[0] != n_loc_dof): raise ValueError;
+
+    # convert from Hsys to hblocks, tnn, tnnn 
+    hblocks = np.empty((n_spatial_dof,n_loc_dof,n_loc_dof),dtype=complex);
+    for sitei in range(n_spatial_dof):
+        hblocks[sitei] = Hsys[sitei, sitei];
+    tnn = np.empty((n_spatial_dof-1,n_loc_dof,n_loc_dof),dtype=complex);
+    for sitei in range(n_spatial_dof-1):
+        tnn[sitei] = Hsys[sitei, sitei+1];
+    tnnn = np.empty((n_spatial_dof-2,n_loc_dof,n_loc_dof),dtype=complex);
+    for sitei in range(n_spatial_dof-2):
+        tnnn[sitei] = Hsys[sitei, sitei+2];
+    for sitei in range(n_spatial_dof-3):
+        assert(not np.any(Hsys[sitei, sitei+3]));
+    if(verbose > 9):
+        print(hblocks);
+        print(tnn);
+        print(tnnn);
+        assert False;
+
+    # get probabilities, final spin state resolved
+    Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    for alpha in range(n_loc_dof):
+        source = np.zeros((n_loc_dof,));
+        source[alpha] = 1.0;
+        for m in range(n_bound_left):
+            Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tbulk, Emas[alpha,m], source, verbose = verbose);
+            Tbmas[:,m,alpha] = Tdum;
+            
+    return Tbmas;
+
+def Ts_wfm_well(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
     '''
     Given bound state energies and HC from kernel, calculate the transmission
     probability for each energy using wfm code
