@@ -132,7 +132,7 @@ def fit_IV(phi0=1, m0=1, d0=5.0):
 
     #### check my J function with fitted params
     ####
-    from simmons_formula import J_of_Vb_asym_wrapped as my_J_func
+    from simmons_formula import I_of_Vb_asym as my_I_func
     from simmons_formula import J2I
 
     # experimental params
@@ -141,9 +141,7 @@ def fit_IV(phi0=1, m0=1, d0=5.0):
     my_Ishift, my_Vshift = T_dict[T]; # if we do this my curve should agree perfectly
 
     # convert
-    convert_J2I = J2I(T, my_area, thermal_exp = tec);
-    my_Jshift = my_Ishift/convert_J2I;
-    my_Js = my_J_func(V-my_Vshift, d, phi, m)+my_Jshift;
+    my_Is = my_I_func(V-my_Vshift, d, phi, m)+my_Jshift;
     my_Is = my_Js * J2I(T, my_area, thermal_exp = tec);
     ####
     #### end my addition
