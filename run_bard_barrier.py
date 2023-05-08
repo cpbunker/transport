@@ -373,11 +373,11 @@ if True:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=1);
-        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=10);
+        Tvals = bardeen.Ts_bardeen_well(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
         
         # benchmark
