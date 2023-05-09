@@ -80,7 +80,7 @@ if False:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, Vinfty, VR, Vinfty,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0], verbose=1);
@@ -88,7 +88,7 @@ if False:
                                    tL, tR, VL, VR, NL, NR, verbose=1);
 
         # benchmark
-        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
@@ -156,7 +156,7 @@ if False:
         # tinfty, tL, tLprime, tR, tRprime,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
                                       E_cutoff=VC[0,0],verbose=1);
@@ -164,7 +164,7 @@ if False:
                                    tL, tR, VL, VR, NL, NR, verbose=1);
 
         # benchmark
-        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
@@ -192,116 +192,6 @@ if False:
     plt.tight_layout();
     plt.show();
     #plt.savefig("figs/bard_barrier/VLprime.pdf");
-
-# worst case vs best case
-if False:
-
-    numplots = 2;
-    fig, axes = plt.subplots(numplots, sharex = True);
-    if numplots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*numplots/2);
-
-    # central region
-    tC = 1*tL;
-    VC = 0.1*tL;
-    NC = 11;
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
-    for j in range(NC):
-        HC[j,j] = VC;
-    for j in range(NC-1):
-        HC[j,j+1] = -tC;
-        HC[j+1,j] = -tC;
-    print_H_j(HC);
-
-    # central region prime
-    HCprime = np.copy(HC);
-    print_H_j(HCprime);
-
-    # bardeen results for worst case
-    axno = 0;
-    Ninfty = 20;
-    NL = 50;
-    NR = 1*NL;
-    VLprime = Vinfty/10;
-    VRprime = Vinfty/10;
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
-                                  Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0],verbose=1);
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals, tL, tR, VL, VR, NL, NR, verbose=1);
-
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-    # only one loc dof, and transmission is diagonal
-    for alpha in range(n_loc_dof):
-        axright = axes[axno].twinx();
-
-        # truncate to bound states and plot
-        xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
-        # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-    # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-    axright.set_ylim(0,50);
-    axes[axno].set_ylabel('$T$',fontsize=myfontsize);
-    axes[axno].set_title("Worst", x=0.2, y = 0.7, fontsize=myfontsize);
-
-    # bardeen results for best case
-    axno = 1;
-    Ninfty = 20;
-    NL = 500;
-    NR = 1*NL;
-    VLprime = Vinfty;
-    VRprime = Vinfty;
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
-                                  Vinfty, VL, VLprime, VR, VRprime,
-                                  Ninfty, NL, NR, HC, HCprime,
-                                  E_cutoff=VC[0,0],verbose=1);
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals, tL, tR, VL, VR, NL, NR, verbose=1);
-    
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-    # only one loc dof, and transmission is diagonal
-    for alpha in range(n_loc_dof):
-        axright = axes[axno].twinx();
-
-        # truncate to bound states and plot
-        xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-        axes[axno].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
-        # % error
-        axes[axno].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-        axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-    # format
-    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-    axright.set_ylim(0,50);
-    axes[axno].set_ylabel('$T$',fontsize=myfontsize);
-    axes[axno].set_title("Best", x=0.2, y = 0.7, fontsize=myfontsize);
-
-    # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
-    plt.tight_layout();
-    plt.show();
 
 # perturbation is hopping from central region to right lead ONLY
 if True:
@@ -376,12 +266,13 @@ if True:
         Evals, Mvals = bardeen.kernel_well(tinfty, tL, tinfty, tR, tinfty,
                                       Vinfty, VL, VLprime, VR, VRprime,
                                       Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=myinterval,HT_perturb=HT_perturb,verbose=10);
-        Tvals = bardeen.Ts_bardeen_well(Evals, Mvals,
+                                      E_cutoff=0.1,interval=myinterval,
+                                      HT_perturb=HT_perturb,verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tL, tR, VL, VR, NL, NR, verbose=1);
         
         # benchmark
-        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 

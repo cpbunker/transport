@@ -63,7 +63,7 @@ def h_kondo(J,s2):
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if True:
+if False:
     
     # alpha -> beta
     alphas = [1,2];
@@ -133,7 +133,7 @@ if True:
     # Ninfty, NL, NR, HC,HCprime,
     # I am setting VLprime = VRprime = Vinfty for best results according
     # tests performed in run_barrier_bardeen 
-    Evals, Mvals = bardeen.kernel(tinfty,tL,tinfty, tR, tinfty,
+    Evals, Mvals = bardeen.kernel_well(tinfty,tL,tinfty, tR, tinfty,
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
                               E_cutoff=0.1,verbose=1);
@@ -141,7 +141,7 @@ if True:
                                tL, tR, VL, VR, NL, NR,verbose=1);
 
     # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
+    Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
@@ -177,7 +177,7 @@ if True:
 
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
@@ -246,7 +246,7 @@ if False:
     # Ninfty, NL, NR, HC,HCprime,
     # I am setting VLprime = VRprime = Vinfty for best results according
     # tests performed in run_barrier_bardeen 
-    Evals, Mvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
+    Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
                               E_cutoff=0.1,verbose=1);
@@ -254,19 +254,20 @@ if False:
                                tL, tR, VL, VR, NL, NR,verbose=1);
 
     # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-    #Tvals_bench = np.copy(Tvals);
+    #Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
+    Tvals_bench = np.copy(Tvals);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
     # initial and final states
+    alphas = alphas[0:1]
     for alphai in range(len(alphas)):
         for betai in range(len(alphas)):
             alpha, beta = alphas[alphai], alphas[betai];
 
             # plot based on initial state
             xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
+            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], c=Sxvals[alphai]);
 
             # % error
             axright = axes[alphai,betai].twinx();

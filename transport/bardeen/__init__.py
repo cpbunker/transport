@@ -363,6 +363,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
     n_bound_right = len(Ens);
     kns = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
+    
     # get Sx val for each psin
     Sxns = np.zeros_like(Ens);
     for n in range(n_bound_right):
@@ -392,29 +393,30 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
 
 
     # filter by Sx val
-    Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
-    n_bound_left = n_bound_left // 2;
-    Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
-    n_bound_right = n_bound_right // 2;
+    if False:
+        Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
+        n_bound_left = n_bound_left // 2;
+        Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
+        n_bound_right = n_bound_right // 2;
 
-    # reshape
-    print("n_spatial_dof, n_bound_left, n_bound_right = ",n_spatial_dof, n_bound_left, n_bound_right);
-    Emas = np.array([np.copy(Ems), np.copy(Ems)]);
-    Enbs = np.array([np.copy(Ens), np.copy(Ens)]);
-    assert(n_loc_dof == 2);
-    psimas = np.empty((n_loc_dof, n_bound_left, n_spatial_dof), dtype=complex);
-    for m in range(n_bound_left):
-        psimas[0,m] = psims[m,0::2];
-        psimas[1,m] = psims[m,1::2];
-    psinbs = np.empty((n_loc_dof, n_bound_right, n_spatial_dof), dtype=complex);
-    for n in range(n_bound_right):
-        psinbs[0,n] = psins[n,0::2];
-        psinbs[1,n] = psins[n,1::2];
-    print("psims -> psimas = ",np.shape(psims),np.shape(psimas));
-    print("psins -> psinbs = ",np.shape(psins),np.shape(psinbs));
-    print("E shapes = ",np.shape(Ems), np.shape(Emas), np.shape(Ens), np.shape(Enbs));
-    del Ems, psims, Ens, psins;
-    assert False
+        # reshape
+        print("n_spatial_dof, n_bound_left, n_bound_right = ",n_spatial_dof, n_bound_left, n_bound_right);
+        Emas = np.array([np.copy(Ems), np.copy(Ems)]);
+        Enbs = np.array([np.copy(Ens), np.copy(Ens)]);
+        assert(n_loc_dof == 2);
+        psimas = np.empty((n_loc_dof, n_bound_left, n_spatial_dof), dtype=complex);
+        for m in range(n_bound_left):
+            psimas[0,m] = psims[m,0::2];
+            psimas[1,m] = psims[m,1::2];
+        psinbs = np.empty((n_loc_dof, n_bound_right, n_spatial_dof), dtype=complex);
+        for n in range(n_bound_right):
+            psinbs[0,n] = psins[n,0::2];
+            psinbs[1,n] = psins[n,1::2];
+        print("psims -> psimas = ",np.shape(psims),np.shape(psimas));
+        print("psins -> psinbs = ",np.shape(psins),np.shape(psinbs));
+        print("E shapes = ",np.shape(Ems), np.shape(Emas), np.shape(Ens), np.shape(Enbs));
+        del Ems, psims, Ens, psins;
+        assert False
     
     # visualize
     if(verbose > 9):
@@ -445,31 +447,6 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
             plt.show();
         assert False;
 
-    # average matrix elements over final states |k_n \beta>
-    # with the same energy as the intial state |k_m \alpha>
-    # average over energy but keep spin separate
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    # initial energy and spin states
-    for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):
-                
-            for beta in range(n_loc_dof):
-                # inelastic means averaging over an interval
-                Mns = [];
-                for n in range(n_bound_right):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
-                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                        Mns.append(np.real(melement*np.conj(melement)));
-
-                # update T based on average
-                if(verbose): print("\tinterval = ",interval, len(Mns));
-                if Mns: Mns = sum(Mns)/len(Mns);
-                else: Mns = 0.0;
-                Mbmas[beta,m,alpha] = Mns;
-
-    return Emas, Mbmas;
-
     # average matrix elements over final states |k_n >
     # with the same energy as the intial state |k_m >
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
@@ -495,7 +472,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         else: Mns = 0.0;
         Mms[m] = Mns;
 
-    return Ems, Mms;
+    return Ems.reshape((1,len(Ems))), Mms.reshape((1,len(Mms),1)), Sxms.reshape((1,len(Sxms)));
 
 #######################################################################
 #### generate observables from matrix elements
