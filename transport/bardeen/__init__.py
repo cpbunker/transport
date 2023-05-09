@@ -11,10 +11,6 @@ from transport import fci_mod, wfm
 import numpy as np
 import matplotlib.pyplot as plt
 
-####
-#### spin flip has to happen through the matrix element !!!
-####
-
 ##################################################################################
 #### driver of transmission coefficient calculations
 
@@ -418,8 +414,48 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         del Ems, psims, Ens, psins;
         assert False
     
+
+    # average matrix elements over final states |k_n >
+    # with the same energy as the intial state |k_m >
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mms = np.empty((n_bound_left,),dtype=float);
+    Mmns = np.empty((n_bound_left,n_bound_right),dtype=complex);
+    for m in range(n_bound_left):
+        
+        # inelastic means averaging over an interval
+        Mns = [];      
+        for n in range(n_bound_right):
+            phasefactor=-1
+            melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
+            Mmns[m,n] = melement;
+            if( abs(Ems[m] - Ens[n]) < interval/2):
+                Mns.append( np.real(melement*np.conj(melement)) );
+                if False:
+                    print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
+                    print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
+                    print("- psin near barrier\n",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
+                    print("- barrier overlap of psim and psin: ",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
+                    assert False
+
+        # update T based on average
+        if verbose: print("\tinterval = ",interval, len(Mns));
+        if(Mns): Mns = sum(Mns)/len(Mns);
+        else: Mns = 0.0;
+        Mms[m] = Mns;
+
     # visualize
     if(verbose > 9):
+
+        #
+        Ems_p = Ems[Sxms > 0];
+        Ems_m = Ems[Sxms < 0];
+        Efig, Eax = plt.subplots();
+        Eax.plot(2*tLa+Ems_p,color="yellow",label="$\\varepsilon_{m+}$");
+        Eax.plot(2*tLa+Ems_m,color="purple",label="$\\varepsilon_{m-}$");
+        Eax.plot(Ems_p-Ems_m,color="black",label="$\\varepsilon_{m+}-\\varepsilon_{m-}$")
+        plt.legend();
+        plt.show();
+        assert False
         
         # plot hams
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
@@ -435,42 +471,15 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         # plot left wfs
         for m in range(min(n_bound_left,6)):
             fig, wfax = plt.subplots();
-            alpha_colors=["tab:blue","tab:orange"];
-            for alpha in range(n_loc_dof):
-                print(Emas[alpha,m]);
-                print(Enbs[alpha,m+1]);
-                wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
-                wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
-                wfax.plot(jvals, alpha*0.01+np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
-                wfax.plot(jvals, alpha*0.01+np.real(psinbs[alpha,m+1]),color=alpha_colors[alpha],linestyle="dotted");
-                wfax.plot(jvals[mid-1:mid+1], np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])[mid-1:mid+1], color=alpha_colors[alpha],linestyle="solid",marker='s')               
+            wfax.plot(jvals,np.diag(Hsys_4d[:,:,0,0]),color="black");
+            offset = 0;
+            alpha_colors = ["tab:blue", "tab:orange"];
+            for alpha in range(len(alpha_colors)):
+                wfax.plot(jvals, 1e-3*alpha+np.real(psims[m][alpha::n_loc_dof]),color=alpha_colors[alpha],linestyle="solid");
+                wfax.plot(jvals, 1e-3*alpha+np.real(psins[m+offset][alpha::n_loc_dof]),color=alpha_colors[alpha],linestyle="dotted");
+            wfax.set_title("Em = {:.4f}, Sxm = {:.2f},\nEn = {:.4f}, Sxn = {:.2f},\nM_mn = {:.2e}".format(np.real(Ems[m]),np.real(Sxms[m]),np.real(Ens[m+offset]),np.real(Sxns[m+offset]), Mmns[m,m+offset]));
             plt.show();
         assert False;
-
-    # average matrix elements over final states |k_n >
-    # with the same energy as the intial state |k_m >
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mms = np.empty((n_bound_left,),dtype=float);
-    for m in range(n_bound_left):
-        
-        # inelastic means averaging over an interval
-        Mns = [];      
-        for n in range(n_bound_right):
-            if( abs(Ems[m] - Ens[n]) < interval/2):
-                melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
-                Mns.append( np.real(melement*np.conj(melement)) );
-                if False:
-                    print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
-                    print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
-                    print("- psin near barrier\n",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
-                    print("- barrier overlap of psim and psin: ",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
-                    assert False
-
-        # update T based on average
-        if verbose: print("\tinterval = ",interval, len(Mns));
-        if(Mns): Mns = sum(Mns)/len(Mns);
-        else: Mns = 0.0;
-        Mms[m] = Mns;
 
     return Ems.reshape((1,len(Ems))), Mms.reshape((1,len(Mms),1)), Sxms.reshape((1,len(Sxms)));
 

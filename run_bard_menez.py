@@ -195,7 +195,7 @@ if True:
     Vinfty = 0.5*tL;
     VL = 0.0*tL;
     VR = 0.0*tL;
-    Jval = -0.5;
+    Jval = 0.5;
 
     # central region
     tC = 1.0*tL;
@@ -237,9 +237,9 @@ if True:
     Ninfty = 20;
     NL = 200;
     NR = 1*NL;
-    ##
-    #### Notes
-    ##
+    #
+    #### Notes:
+    #
     # bardeen.kernel syntax:
     # tinfty, tL, tLprime, tR, tRprime,
     # Vinfty, VL, VLprime, VR, VRprime,
@@ -268,7 +268,7 @@ if True:
             # plot based on initial state
             xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
             axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], c=Sxvals[alphai]);
-
+            
             # % error
             axright = axes[alphai,betai].twinx();
             axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
@@ -281,6 +281,8 @@ if True:
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1,betai].set_xscale('log', subs = []);
             axes[alphai,0].set_ylabel("$T$");
+            #axes[alphai,betai].plot([0],[0],color=Sxvals[alphai,0],label=Sxvals[alphai,0]);
+            print("Sx of upper branch = "+str(Sxvals[alphai,np.argmax(Tvals[betai,:,alphai])]));
 
     # show
     plt.tight_layout();
