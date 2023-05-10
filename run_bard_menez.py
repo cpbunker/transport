@@ -195,7 +195,7 @@ if True:
     Vinfty = 0.5*tL;
     VL = 0.0*tL;
     VR = 0.0*tL;
-    Jval = 0.5;
+    Jval = -0.5;
 
     # central region
     tC = 1.0*tL;
@@ -245,11 +245,14 @@ if True:
     # Vinfty, VL, VLprime, VR, VRprime,
     # Ninfty, NL, NR, HC,HCprime,
     # I am setting VLprime = VRprime = Vinfty for best results according
-    # tests performed in run_barrier_bardeen 
+    # tests performed in run_barrier_bardeen
     Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
                               Vinfty, VL, Vinfty, VR, Vinfty,
                               Ninfty, NL, NR, HC, HCprime,
                               E_cutoff=0.1,verbose=1);
+    Mvals = np.real(np.conj(Mvals)*Mvals);
+    Evals, Mvals, Sxvals = Evals.reshape((1,len(Evals))), Mvals.reshape((1,len(Evals),1)), Sxvals.reshape((1,len(Sxvals),1));
+
     Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                tL, tR, VL, VR, NL, NR,verbose=1);
 
@@ -258,6 +261,7 @@ if True:
     Tvals_bench = np.copy(Tvals);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
 
     # initial and final states
     alphas = alphas[0:1]

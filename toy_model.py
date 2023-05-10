@@ -38,12 +38,21 @@ def print_H_alpha(H):
 n_loc_dof = 2;
 t = 1.0*np.eye(n_loc_dof);
 if(n_loc_dof==2):
-    J = -0.25*np.array([[0,1],[1,0]]);
+    Jnumber = -0.5
+    J = (Jnumber/2)*np.array([[0,1],[1,0]]);
 else:
     raise NotImplementedError;
 
 if True: # typical 1D well with spin mixing
          # VRprime is perturbation
+
+    # alpha -> beta
+    alphas = [1,2];
+    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
+    nplots_x = len(alphas);
+    nplots_y = len(alphas);
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True, sharey=True);
+    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
 
     # set up the 1D well physics
     # explicit LR symmetry
@@ -58,7 +67,7 @@ if True: # typical 1D well with spin mixing
 
     # central region physics: barrier with spin mixing
     tC = 1.0*tLR;
-    VC = 0.5*tLR;
+    VC = 0.4*tLR; # compare 0.4 vs 0.3
     NC = 5;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
@@ -88,7 +97,72 @@ if True: # typical 1D well with spin mixing
     Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tLR,tLRprime, tLR, tLRprime,
                               Vinfty, VLR, VLRprime, VLR, VLRprime,
                               Ninfty, NLR, NLR, HC, HCprime,
-                              E_cutoff=0.1,verbose=10);
+                              E_cutoff=0.1,verbose=1);
+    if(len(Evals)%2!=0): Evals, Mvals, Sxvals = Evals[2:-1], Mvals[2:-1], Sxvals[2:-1];
+
+    # effective matrix elements
+    E_plus = Evals[Sxvals>0];
+    E_minus = Evals[Sxvals<0];
+    E_ab = np.array([ (E_plus+E_minus)/2, (E_plus+E_minus)/2]);
+    M_plus = Mvals[Sxvals>0];
+    M_minus = Mvals[Sxvals<0];
+    M2_nsf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
+    M2_nsf += (1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
+    M2_sf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
+    M2_sf += (-1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
+    M2_ab = np.empty((n_loc_dof,np.shape(E_ab)[1], n_loc_dof));
+    M2_ab[0,:,0] = M2_nsf;
+    M2_ab[1,:,1] = M2_nsf;
+    M2_ab[0,:,1] = M2_sf;
+    M2_ab[1,:,0] = M2_sf;
+    if False:
+        Mfig, Max = plt.subplots();
+        Max.plot(np.real(np.conj(M_plus)*M_plus),label="a");
+        Max.plot(np.real(np.conj(M_minus)*M_minus),label="b");
+        Max.plot(np.real(np.conj(M_plus)*M_minus),label="c");
+        Max.plot(np.real(np.conj(M_minus)*M_plus),label="d");
+        Max.plot(M2_nsf,label="M2_nsf");
+        Max.plot(M2_sf,label="M2_sf");
+        plt.legend();
+        plt.show();
+        assert False;
+    Evals, Mvals = E_ab, M2_ab;
+
+    # bardeen Ts
+    print(Evals)
+    Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                               tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
+
+    # benchmark
+    Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
+    print("Output shapes:");
+    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
+  # initial and final states
+    for alphai in range(len(alphas)):
+        for betai in range(len(alphas)):
+            alpha, beta = alphas[alphai], alphas[betai];
+
+            # plot based on initial state
+            xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
+            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0]);
+            
+            # % error
+            axright = axes[alphai,betai].twinx();
+            axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
+            
+            #format
+            if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            axes[-1,betai].set_xscale('log', subs = []);
+            axes[alphai,0].set_ylabel("$T$");
+            
+    # show
+    plt.tight_layout();
+    plt.show();
+    
     
 
 if False: # 2 site Hamiltonian with spin mixing

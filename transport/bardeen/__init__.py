@@ -418,18 +418,17 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     # average matrix elements over final states |k_n >
     # with the same energy as the intial state |k_m >
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mms = np.empty((n_bound_left,),dtype=float);
+    Mms = np.empty((n_bound_left,),dtype=complex);
     Mmns = np.empty((n_bound_left,n_bound_right),dtype=complex);
     for m in range(n_bound_left):
         
         # inelastic means averaging over an interval
         Mns = [];      
         for n in range(n_bound_right):
-            phasefactor=-1
             melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
             Mmns[m,n] = melement;
             if( abs(Ems[m] - Ens[n]) < interval/2):
-                Mns.append( np.real(melement*np.conj(melement)) );
+                Mns.append(melement);
                 if False:
                     print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
                     print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
@@ -481,7 +480,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
             plt.show();
         assert False;
 
-    return Ems.reshape((1,len(Ems))), Mms.reshape((1,len(Mms),1)), Sxms.reshape((1,len(Sxms)));
+    return Ems, Mms, Sxms;
 
 #######################################################################
 #### generate observables from matrix elements
@@ -511,7 +510,7 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
     Using the n-averaged Oppenheimer matrix elements from bardeen.kernel,
     get the transmission coefficients.
     '''
-    #n_spatial_dof = Ninfty+NL+len(HCprime)+NR+Ninfty;
+    if(Mbmas.dtype != float): raise TypeError;
     n_loc_dof, n_bound_left = np.shape(Emas);
     if(len(np.shape(Mbmas)) != 3): raise ValueError;
     if(np.shape(Mbmas)[0] != n_loc_dof): raise ValueError;
