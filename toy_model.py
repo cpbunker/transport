@@ -97,7 +97,7 @@ if True: # typical 1D well with spin mixing
     Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tLR,tLRprime, tLR, tLRprime,
                               Vinfty, VLR, VLRprime, VLR, VLRprime,
                               Ninfty, NLR, NLR, HC, HCprime,
-                              E_cutoff=0.1,verbose=1);
+                              E_cutoff=0.1,verbose=10);
     if(len(Evals)%2!=0): Evals, Mvals, Sxvals = Evals[2:-1], Mvals[2:-1], Sxvals[2:-1];
 
     # effective matrix elements
@@ -129,7 +129,6 @@ if True: # typical 1D well with spin mixing
     Evals, Mvals = E_ab, M2_ab;
 
     # bardeen Ts
-    print(Evals)
     Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 

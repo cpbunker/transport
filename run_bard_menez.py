@@ -63,14 +63,14 @@ def h_kondo(J,s2):
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
     nplots_x = len(alphas);
     nplots_y = len(alphas);
-    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True, sharey=True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
     
     # tight binding params
@@ -86,8 +86,9 @@ if False:
     # central region
     tC = 1.0*tL;
     #VC = abs(Jval/4)*tL;
-    NC = 1;
+    NC = 5;
     my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
+    my_kondo += (0.4-0.125)*tL;
     HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
     for NCi in range(NC):
         for NCj in range(NC):
@@ -95,7 +96,7 @@ if False:
                 if(NCi == NC //2): # exchange in middle of barrier
                     HC[NCi,NCj] += my_kondo;
                 else: # buffer zone
-                    HC[NCi,NCj] += 0.0; 
+                    HC[NCi,NCj] += my_kondo #0.0; 
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] += -tC;
 
@@ -110,7 +111,7 @@ if False:
                 if(NCi == NC //2):#  replace exchange
                     HCprime[NCi,NCj] += kondo_replace;
                 else:  # buffer zone
-                    HCprime[NCi,NCj] += 0.0; 
+                    HCprime[NCi,NCj] += kondo_replace #0.0; 
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HCprime[NCi,NCj] += -tC;
 
@@ -161,14 +162,14 @@ if False:
             
             #format
             if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            axright.set_ylim(0,50);
             axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1,betai].set_xscale('log', subs = []);
             axes[alphai,0].set_ylabel("$T$");
     
             if( (alphai,betai)==(1,0) ):
-                axes[alphai,betai].plot(xvals,Tvals[1,:,0]/Tvals[0,:,0],color="darkgreen",linestyle='solid');
+                pass;
+                #axes[alphai,betai].plot(xvals,Tvals[1,:,0]/Tvals[0,:,0],color="darkgreen",linestyle='solid');
                 #axes[alphai,betai].axhline((Jval/2)**2,color="darkgreen",linestyle='solid')
 
     # show
@@ -177,7 +178,7 @@ if False:
 
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
-if True:
+if False:
     
     # alpha -> beta
     alphas = [1,2];
@@ -257,8 +258,8 @@ if True:
                                tL, tR, VL, VR, NL, NR,verbose=1);
 
     # benchmark
-    #Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
-    Tvals_bench = np.copy(Tvals);
+    Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
+    #Tvals_bench = np.copy(Tvals);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 

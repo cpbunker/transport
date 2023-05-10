@@ -295,7 +295,7 @@ def kernel_well(tinfty, tL, tLprime, tR, tRprime,
 def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
            Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC,HCprime,
-           interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
+           interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
     nearby interval
@@ -333,7 +333,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     HL = fci_mod.mat_4d_to_2d(HL_4d);
     my_interval = 2;
     my_interval_tup = (n_loc_dof*(n_spatial_dof//2-my_interval),n_loc_dof*(n_spatial_dof//2+my_interval+1) );
-    if verbose: print("-HL[:,:] near barrier =\n",np.real(HL[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
+    #if verbose: print("-HL[:,:] near barrier =\n",np.real(HL[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
     psims = psims.T[Ems+2*tLa < E_cutoff];
@@ -351,7 +351,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
-    if verbose: print("-HR[:,:] near barrier =\n",np.real(HR[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
+    #if verbose: print("-HR[:,:] near barrier =\n",np.real(HR[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
     
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
@@ -366,54 +366,7 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         Sxns[n] = np.dot( np.conj(psins[n]), np.dot(Sx_op, psins[n]));
 
     # physical system
-    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-
-    # filter left and right
-    jvals = np.array(range(len(Hsys_4d))) + offset;
-    mid = len(jvals) // 2;
-    if(HT_perturb):
-        for m in range(n_bound_left):
-            psim = psims[m];
-            weight_left = np.dot( np.conj(psim[:2*mid]), psim[:2*mid]);
-            weight_right = np.dot( np.conj(psim[2*mid:]), psim[2*mid:]);
-            if(weight_left < weight_right):
-                Ems[m] = 0.0;
-                psims[m] = np.zeros_like(psim);
-        for n in range(n_bound_right):
-            psin = psins[n];
-            weight_left = np.dot( np.conj(psin[:2*mid]), psin[:2*mid]);
-            weight_right = np.dot( np.conj(psin[2*mid:]), psin[2*mid:]);
-            if(weight_left > weight_right):
-                Ens[n] = 0.0
-                psins[n] = np.zeros_like(psin);
-
-
-    # filter by Sx val
-    if False:
-        Ems, psims = Ems[Sxms > 0], psims[Sxms > 0];
-        n_bound_left = n_bound_left // 2;
-        Ens, psins = Ens[Sxns > 0], psins[Sxns > 0];
-        n_bound_right = n_bound_right // 2;
-
-        # reshape
-        print("n_spatial_dof, n_bound_left, n_bound_right = ",n_spatial_dof, n_bound_left, n_bound_right);
-        Emas = np.array([np.copy(Ems), np.copy(Ems)]);
-        Enbs = np.array([np.copy(Ens), np.copy(Ens)]);
-        assert(n_loc_dof == 2);
-        psimas = np.empty((n_loc_dof, n_bound_left, n_spatial_dof), dtype=complex);
-        for m in range(n_bound_left):
-            psimas[0,m] = psims[m,0::2];
-            psimas[1,m] = psims[m,1::2];
-        psinbs = np.empty((n_loc_dof, n_bound_right, n_spatial_dof), dtype=complex);
-        for n in range(n_bound_right):
-            psinbs[0,n] = psins[n,0::2];
-            psinbs[1,n] = psins[n,1::2];
-        print("psims -> psimas = ",np.shape(psims),np.shape(psimas));
-        print("psins -> psinbs = ",np.shape(psins),np.shape(psinbs));
-        print("E shapes = ",np.shape(Ems), np.shape(Emas), np.shape(Ens), np.shape(Enbs));
-        del Ems, psims, Ens, psins;
-        assert False
-    
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
 
     # average matrix elements over final states |k_n >
     # with the same energy as the intial state |k_m >
@@ -448,10 +401,18 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
         #
         Ems_p = Ems[Sxms > 0];
         Ems_m = Ems[Sxms < 0];
+        Eps_p = Ems[Sxns > 0];
+        Eps_m = Ems[Sxns < 0];
+        ps = np.array(range(len(Eps_p)),dtype=int);
         Efig, Eax = plt.subplots();
-        Eax.plot(2*tLa+Ems_p,color="yellow",label="$\\varepsilon_{m+}$");
-        Eax.plot(2*tLa+Ems_m,color="purple",label="$\\varepsilon_{m-}$");
-        Eax.plot(Ems_p-Ems_m,color="black",label="$\\varepsilon_{m+}-\\varepsilon_{m-}$")
+        Eax.plot(ps,Eps_p-Ems_p[0],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkblue");
+        Eax.plot(ps,Eps_m-Ems_m[0],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkblue",linestyle="dashed");
+        Eax.scatter(ps, (Eps_p-Ems_p[0])-(Eps_m-Ems_m[0]),label="$(\\varepsilon_{p+}-\\varepsilon_{0+})-(\\varepsilon_{p-}-\\varepsilon_{0-})$",color="darkblue",marker='s',linestyle="solid");
+        Eax.plot(ps,Eps_p-Ems_p[ps[-1]],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkgreen");
+        Eax.plot(ps,Eps_m-Ems_m[ps[-1]],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkgreen",linestyle="dashed");
+        Eax.scatter(ps, (Eps_p-Ems_p[ps[-1]])-(Eps_m-Ems_m[ps[-1]]),label="$(\\varepsilon_{p+}-\\varepsilon_{"+str(ps[-1])+"+})-(\\varepsilon_{p-}-\\varepsilon_{"+str(ps[-1])+"-})$",color="darkgreen",marker='s',linestyle="solid");
+        Eax.axhline(0.0,color="black",linestyle="dotted");
+        Eax.set_xlabel("p");
         plt.legend();
         plt.show();
         assert False
