@@ -196,10 +196,9 @@ def I_of_Vb_lowbias(Vb, d, phibar, m_r):
     Is = Js*convert_J2I_kwarg*1e9; # in nano amps
     return Is + I0_kwarg;
 
-def I_of_Vb_asym(Vb, d, phibar, m_r):
+def I_of_Vb_asym(Vb, d, phi1, phi2, m_r):
     '''
     Wraps J_of_Vb_asym so that
-    - instead of phi1, phi2 separate fittable params, there is just phibar
     - Vbs are shifted by V0_kwarg
     - Is are put in nano amps and shifted by I0_kwarg
     
@@ -208,15 +207,15 @@ def I_of_Vb_asym(Vb, d, phibar, m_r):
     Vb, applied bias voltage, units volts
     Fitting params:
     d, barrier width, units nm
-    phibar, avg barrier height, units eV
+    phi1, effective barrier height near left lead, units eV
+    phi2, effective barrier height near right lead, units eV
     m_r, ratio of eff electron mass to me, unitless
 
     Returns:
     I, current, nanao amps
     '''
 
-
-    Js = J_of_Vb_asym(Vb-V0_kwarg, d, phibar, phibar, m_r);
+    Js = J_of_Vb_asym(Vb-V0_kwarg, d, phi1, phi2, m_r);
     Is = Js*convert_J2I_kwarg*1e9; # in nano amps
     return Is + I0_kwarg;
 
@@ -244,7 +243,7 @@ myxvals = 199;
 myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","+","^","s","d","*","X"];
+mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -379,9 +378,9 @@ def fit_I_combined(temp, area, dtilde_not, deltaphi_not,
     del init_params_cubic, bounds_cubic, params_cubic, pcov_cubic;
 
     # results of linear and cubic fits
-    global V0_kwarg; V0_kwarg = V0; # very bad practice
-    global I0_kwarg; I0_kwarg = I0;
-    global convert_J2I_kwarg; convert_J2I_kwarg = J2I(temp, area);
+    #global V0_kwarg; V0_kwarg = V0; # very bad practice
+    #global I0_kwarg; I0_kwarg = I0;
+    #global convert_J2I_kwarg; convert_J2I_kwarg = J2I(temp, area);
 
     # set up simmons fit
     init_params = [dtilde_not, deltaphi_not];
@@ -465,7 +464,8 @@ def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=
 #### main
 
 def fit_I(temp, area, d_not, phibar_not, m_r_not,
-            d_percent, phibar_percent, m_r_percent, verbose=0):
+            d_percent, phibar_percent, m_r_percent,
+            lowbias_fit=True, verbose=0):
     '''
     Given data for a specific temp, taken for a sample of certain area,
     1) fit a linear model of J(Vb) to get an x-intercept V0,
@@ -475,9 +475,18 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
         mass ratio m_r (unitless)
 
     Args:
+    Experimental params:
     temp, temperature in Kelvin
     area, area in nm^2
+    Fitting params:
+    d, barrier width, units nm
+    phibar, avg barrier height, units eV.
+            NB \phi_1 + \phi_2 =2\\bar{phi} eventually have to be fit independently
+    m_r, ratio of eff electron mass to me, unitless
+    
     the _not args are the initial guesses for the above fitting parameters
+    the _percent args determine the fitting bounds for the above fitting parameters
+    
     '''
 
     # read in the experimental data
@@ -498,6 +507,8 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
                                 p0=init_params_linear, bounds=bounds_linear);
     I0, slopeI = tuple(params_linear);
     I_fit_linear = I_of_Vb_linear(V_exp, I0, slopeI);
+
+    # visualize linear fit
     if(verbose):
         print("I_of_Vb_linear fitting results:");
         print_str = "           I0 = {:6.4f} "+str((bounds_linear[0][0],bounds_linear[1][0]))+"nA\n\
@@ -514,6 +525,8 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
                                 p0=init_params_cubic, bounds=bounds_cubic);
     V0, slopeI = tuple(params_cubic);
     I_fit_cubic = I_of_Vb_cubic(V_exp, V0, slopeI);
+
+    # visualize cubic fit
     if(verbose):
         print("I_of_Vb_cubic fitting results:");
         print_str = "           V0 = {:6.4f} "+str((bounds_cubic[0][0],bounds_cubic[1][0]))+" V\n\
@@ -528,43 +541,48 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
     global convert_J2I_kwarg; convert_J2I_kwarg = J2I(temp, area);
 
     # low bias simmons fit at fixed d to narrow down phibar and m_r
-    if True:
+    if lowbias_fit:
         init_params_lowbias = [d_not, phibar_not, m_r_not];
         bounds_lowbias = np.array([[d_not*0.999,phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
                   [d_not*1.001,phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
         params_lowbias, pcov_lowbias = scipy_curve_fit(I_of_Vb_lowbias, V_exp, I_exp,
                                 p0 = init_params_lowbias, bounds = bounds_lowbias, max_nfev = 1e6);
         I_fit_lowbias = I_of_Vb_lowbias(V_exp, *params_lowbias);
-        phibar_not, m_r_not = tuple(params_lowbias[1:]); # update guesses
-        phibar_percent, m_r_percent = phibar_percent/10, m_r_percent/10; # and narrow bounds
+
+        # visualize low bias fit
         if(verbose):
             print("I_of_Vb_lowbias fitting results:");
             print_str = "            d = {:6.4f} "+str((bounds_lowbias[0][0],bounds_lowbias[1][0]))+" nm\n\
-              phi = {:6.4f} "+str((bounds_lowbias[0][1],bounds_lowbias[1][1]))+" eV\n\
-              m_r = {:6.4f} "+str((bounds_lowbias[0][2],bounds_lowbias[1][2]));
+            phi = {:6.4f} "+str((bounds_lowbias[0][1],bounds_lowbias[1][1]))+" eV\n\
+            m_r = {:6.4f} "+str((bounds_lowbias[0][2],bounds_lowbias[1][2]));
             print(print_str.format(*params_lowbias));
         if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_lowbias, mytitle = print_str[:print_str.find("(")].format(params_lowbias[0])+" nm");
+
+        # update guesses and narrow bounds
+        phibar_not, m_r_not = tuple(params_lowbias[1:]); 
+        phibar_percent, m_r_percent = phibar_percent/10, m_r_percent/10;
         del init_params_lowbias, bounds_lowbias, params_lowbias, pcov_lowbias;
     
     # full simmons fit in narrowed bounds
-    init_params = [d_not, phibar_not, m_r_not];
-    bounds = np.array([[d_not*(1-d_percent),phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
-              [d_not*(1+d_percent),phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
+    init_params = [d_not, phibar_not, phibar_not, m_r_not]; # phi1, phi2 now independent!
+    bounds = np.array([[d_not*(1-d_percent),phibar_not*(1-phibar_percent),phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
+              [d_not*(1+d_percent),phibar_not*(1+phibar_percent),phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
     params, pcov = scipy_curve_fit(I_of_Vb_asym, V_exp, I_exp,
                             p0 = init_params, bounds = bounds, max_nfev = 1e6);
-    d, phibar, m_r = tuple(params);
-    I_fit = I_of_Vb_asym(V_exp, d, phibar, m_r);
+    d, phi1, phi2, m_r = tuple(params);
+    I_fit = I_of_Vb_asym(V_exp, d, phi1, phi2, m_r);
     rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/np.mean(I_exp);
     if(verbose):
         print("I_of_Vb_asym fitting results:");
         print_str = "            d = {:6.4f} "+str((bounds[0][0],bounds[1][0]))+" nm\n\
-          phi = {:6.4f} "+str((bounds[0][1],bounds[1][1]))+" eV\n\
-          m_r = {:6.4f} "+str((bounds[0][2],bounds[1][2]))+"\n\
+          ph1 = {:6.4f} "+str((bounds[0][1],bounds[1][1]))+" eV\n\
+          ph2 = {:6.4f} "+str((bounds[0][2],bounds[1][2]))+" eV\n\
+          m_r = {:6.4f} "+str((bounds[0][3],bounds[1][3]))+"\n\
           err = {:6.4f}";
-        print(print_str.format(d, phibar, m_r, rmse_final));
+        print(print_str.format(d, phi1, phi2, m_r, rmse_final));
     if(verbose > 4): plot_fit(V_exp, I_exp, I_fit, mytitle = print_str[:print_str.find("(")].format(d)+" nm");
 
-    return (d, phibar, m_r, rmse_final);
+    return (d, phi1, phi2, m_r, rmse_final);
 
 ###############################################################
 #### wrappers
@@ -599,20 +617,24 @@ def fit_data():
     d_guess_percent = 0.5;
     phi_guess_percent = 0.5;
     m_guess_percent = 0.5;
-    bounds = np.array([[d_guess[0]*(1-d_guess_percent),phi_guess[0]*(1-phi_guess_percent),m_guess[0]*(1-m_guess_percent),0.0],
-              [d_guess[0]*(1+d_guess_percent),phi_guess[0]*(1+phi_guess_percent),m_guess[0]*(1+m_guess_percent),0.2]]);
+    bounds = np.array([[d_guess[0]*(1-d_guess_percent),phi_guess[0]*(1-phi_guess_percent),phi_guess[0]*(1-phi_guess_percent),m_guess[0]*(1-m_guess_percent),0.0],
+              [d_guess[0]*(1+d_guess_percent),phi_guess[0]*(1+phi_guess_percent),phi_guess[0]*(1+phi_guess_percent),m_guess[0]*(1+m_guess_percent),0.2]]);
     
     # fitting results
+    combined = False;
+    lowbias_fit = True;
     Ts = Ts[:];
     results = [];
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
-        if True: # normal way
-            rlabels = ["$d$ (nm)", "$\\bar{\phi}$ (eV)", "$m_r$", "rmse"];
+        if not combined: # normal way
+            rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
             results.append(fit_I(Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
-                    d_guess_percent, phi_guess_percent, m_guess_percent, verbose=4));
-        else: # combined way as in arxiv paper
-            rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "rmse"];
+                    d_guess_percent, phi_guess_percent, m_guess_percent,
+                                 lowbias_fit=lowbias_fit, verbose=4));
+            
+        else: # d and sqrt(m_r) combined as in arxiv paper
+            rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "RMSE"];
             results.append(fit_I_combined(Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
                     d_guess_percent, phi_guess_percent, verbose=4));
 
@@ -624,8 +646,8 @@ def fit_data():
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        #axes[resulti].axhline(bounds[0][resulti], color=accentcolors[0],linestyle='dashed');
-        #axes[resulti].axhline(bounds[1][resulti], color=accentcolors[0],linestyle='dashed');
+        if not lowbias_fit: axes[resulti].axhline(bounds[0][resulti], color=accentcolors[0],linestyle='dashed');
+        if not lowbias_fit: axes[resulti].axhline(bounds[1][resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
     plt.show();
 
