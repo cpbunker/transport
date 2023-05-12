@@ -36,7 +36,7 @@ def print_H_alpha(H):
 #### toy model for Oppenheimer calculation
 
 n_loc_dof = 2;
-t = 1.0*np.eye(n_loc_dof);
+#t = 1.0*np.eye(n_loc_dof);
 if(n_loc_dof==2):
     Jnumber = -0.5
     J = (Jnumber/2)*np.array([[0,1],[1,0]]);
@@ -58,7 +58,6 @@ if True: # typical 1D well with spin mixing
     # explicit LR symmetry
     tLR = 1.0*np.eye(n_loc_dof);
     tinfty = 1.0*tLR;
-    tLRprime = 1.0*tLR;
     VLR = 0.0*tLR;
     Vinfty = 0.5*tLR;
     VLRprime = 0.5*tLR;
@@ -97,7 +96,7 @@ if True: # typical 1D well with spin mixing
     Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tLR,tLRprime, tLR, tLRprime,
                               Vinfty, VLR, VLRprime, VLR, VLRprime,
                               Ninfty, NLR, NLR, HC, HCprime,
-                              E_cutoff=0.1,verbose=10);
+                              E_cutoff=0.1,verbose=1);
     if(len(Evals)%2!=0): Evals, Mvals, Sxvals = Evals[2:-1], Mvals[2:-1], Sxvals[2:-1];
 
     # effective matrix elements
@@ -223,7 +222,7 @@ if False: # 2 site Hamiltonian with spin mixing
     Dcoefs = np.empty((len(psis),len(ks_all)));
     for f in range(len(psis)):
         for m in range(len(ks_all)):
-            Dcoefs[f,m] = np.dot( np.conj(ks_all[m]), psis[f]);
+            Dcoefs[m,f] = np.dot( np.conj(ks_all[m]), psis[f]);
     print("Dcoefs =\n",Dcoefs);
 
 

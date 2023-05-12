@@ -122,7 +122,7 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
     return Emas, Mbmas;
 
 
-def kernel_well(tinfty, tL, tLprime, tR, tRprime,
+def kernel_well(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC,HCprime,
            interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
@@ -157,7 +157,7 @@ def kernel_well(tinfty, tL, tLprime, tR, tRprime,
     tLa, VLa, tRa, VRa = tuple(converted);
 
     # left well eigenstates
-    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
     n_bound_left = 0;
@@ -181,7 +181,7 @@ def kernel_well(tinfty, tL, tLprime, tR, tRprime,
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
 
     # right well eigenstates  
-    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
     Enbs, psinbs = [], []; # will index as Enbs[beta,n]
     n_bound_right = 0;
@@ -211,6 +211,7 @@ def kernel_well(tinfty, tL, tLprime, tR, tRprime,
     jvals = np.array(range(len(Hsys_4d))) + offset;
     mid = len(jvals) // 2;
     if(HT_perturb):
+        raise(Exception("Don't do this!"));
         for alpha in range(n_loc_dof):
             for m in range(n_bound_left):
                 psim = psimas[alpha,m];
@@ -292,9 +293,9 @@ def kernel_well(tinfty, tL, tLprime, tR, tRprime,
 
     return Emas, Mbmas;
 
-def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
+def kernel_well_super(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime,
+           Ninfty, NL, NR, HC,HCprime, change_basis,
            interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
@@ -305,8 +306,11 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
     
-    This kernel allows the initial and final states to lack definite spin,
-    but as a result CANNOT RESOLVE the spin -> spin transitions
+    For this kernel, the initial and final states are superpositions of
+    the eigenstates of HL and HR. If the latter are in the basis |\alpha>,
+    then the former are in the basis |\tilde{\alpha} >
+    the arg coefs gives the change of basis:
+    |\tilde{\alpha} > = \sum_\alpha coefs[\alpha, |tilde{\alpha} ] |\alpha>
     
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -329,41 +333,68 @@ def kernel_mixed(tinfty, tL, tLprime, tR, tRprime,
     tLa, VLa, tRa, VRa = tuple(converted);
 
     # left well 
-    HL_4d, _ = Hsysmat(tinfty, tL, tRprime, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
-    my_interval = 2;
-    my_interval_tup = (n_loc_dof*(n_spatial_dof//2-my_interval),n_loc_dof*(n_spatial_dof//2+my_interval+1) );
-    #if verbose: print("-HL[:,:] near barrier =\n",np.real(HL[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
+    
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
     psims = psims.T[Ems+2*tLa < E_cutoff];
     Ems = Ems[Ems+2*tLa < E_cutoff].astype(complex);
+    if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
     n_bound_left = len(Ems);
-    kms = np.arccos((Ems-VLa)/(-2*tLa)); # wavenumbers in the left well
 
-    # get Sx val for each psim
-    Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
-    for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
-    Sxms = np.zeros_like(Ems);
+    # recall \alpha basis is eigenstates of HC[j=0,j=0]
+    alpha_eigvals, _ = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
+    eigval_tol = 1e-9;
+
+    # measure HC[j=0,j=0] for each k_m
+    HC00_op_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
+    for sitej in range(n_spatial_dof):
+        HC00_op_4d[sitej,sitej] = HC[len(HC)//2,len(HC)//2];
+    HC00_op = fci_mod.mat_4d_to_2d(HC00_op_4d);
+    alphams = np.empty((n_bound_left,),dtype=complex);
     for m in range(n_bound_left):
-        Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
+        alphams[m] = np.dot( np.conj(psims[m]), np.matmul(HC00_op, psims[m]));
+    n_bound_left = n_bound_left // n_loc_dof;
+
+    # classify left well eigenstates in the \alpha basis
+    Emas = np.empty((n_loc_dof,n_bound_left),dtype=complex);
+    psimas = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
+    for eigvali in range(len(alpha_eigvals)):
+        Es_this_a, psis_this_a = [], [];
+        for m in range(n_bound_left*n_loc_dof):
+            if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
+                Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
+        Emas[eigvali], psimas[eigvali] = Es_this_a, psis_this_a;
+    del Ems, psims;
     
     # right well 
-    HR_4d, _ = Hsysmat(tinfty, tLprime, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
-    #if verbose: print("-HR[:,:] near barrier =\n",np.real(HR[my_interval_tup[0]:my_interval_tup[1],my_interval_tup[0]:my_interval_tup[1]]));
-    
+
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
     psins = psins.T[Ens+2*tRa < E_cutoff];
     Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
+    if(len(Ens) % n_loc_dof != 0): Ens, psins = Ens[:-1], psins[:-1]; # must be even
     n_bound_right = len(Ens);
-    kns = np.arccos((Ens-VRa)/(-2*tRa)); # wavenumbers in the right well
-    
-    # get Sx val for each psin
-    Sxns = np.zeros_like(Ens);
+
+    # measure HC[j=0,j=0] for each k_n
+    alphans = np.empty((n_bound_right,),dtype=complex);
     for n in range(n_bound_right):
-        Sxns[n] = np.dot( np.conj(psins[n]), np.dot(Sx_op, psins[n]));
+        alphans[n] = np.dot( np.conj(psins[n]), np.matmul(HC00_op, psins[n]));
+    n_bound_right= n_bound_right // n_loc_dof;
+    
+    # classify left well eigenstates in the \alpha basis
+    Enbs = np.empty((n_loc_dof,n_bound_right),dtype=complex);
+    psinbs = np.empty((n_loc_dof,n_bound_right,len(psins[0])),dtype=complex);
+    for eigvali in range(len(alpha_eigvals)):
+        Es_this_b, psis_this_b = [], [];
+        for n in range(n_bound_right*n_loc_dof):
+            if(abs(np.real(alphans[n] - alpha_eigvals[eigvali])) < eigval_tol):
+                Es_this_b.append(Ens[n]); psis_this_b.append(psins[n]);
+        Enbs[eigvali], psinbs[eigvali] = Es_this_b, psis_this_b;
+    del Ens, psins;
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  

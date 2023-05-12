@@ -41,12 +41,12 @@ def print_H_alpha(H):
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",H[i,j,:,:]);
 
-def h_kondo(J,s2):
+def h_kondo(J,s2,nlocdof):
     '''
     Kondo interaction between spin 1/2 and spin s2
     '''
-    n_loc_dof = int(2*(2*s2+1));
-    h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
+    spin_dof = int(2*(2*s2+1));
+    h = np.zeros((spin_dof,spin_dof),dtype=complex);
     if(s2 == 0.5):
         h[0,0] = 1;
         h[1,1] = -1;
@@ -56,14 +56,27 @@ def h_kondo(J,s2):
         h[2,1] = 2;
         h *= J/4;
     else: raise NotImplementedError;
-    return h;
+
+    if(nlocdof==2):
+        return h[1:3,1:3];
+    else:
+        return h;
 
 #################################################################
 #### all possible T_{\alpha -> \beta} for single J
 
+# tight binding params
+n_loc_dof = 2; 
+tLR = 1.0*np.eye(n_loc_dof);
+tinfty = 1.0*tLR;
+VLR = 0.0*tLR;
+Vinfty = 0.5*tLR;
+NLR = 200;
+Ninfty = 20;
+
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if True:
+if False:
     
     # alpha -> beta
     alphas = [1,2];
@@ -73,112 +86,90 @@ if True:
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True, sharey=True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
     
-    # tight binding params
-    n_loc_dof = len(alphas); # spin up and down for each
-    tL = 1.0*np.eye(n_loc_dof);
-    tinfty = 1.0*tL;
-    tR = 1.0*tL;
-    Vinfty = 0.5*tL;
-    VL = 0.0*tL;
-    VR = 0.0*tL;
-    Jval = -0.5;
+    # iter over
+    dumvals = np.array([1.0]);
+    for _ in range(len(dumvals)):
 
-    # central region
-    tC = 1.0*tL;
-    #VC = abs(Jval/4)*tL;
-    NC = 5;
-    my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
-    my_kondo += (0.4-0.125)*tL;
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2): # exchange in middle of barrier
+        # central region
+        Jval = -0.5;
+        tC = 1.0*tLR;
+        VC = (0.4+Jval/4)*tLR;
+        NC = 5;
+        my_kondo = VC + h_kondo(Jval,0.5,n_loc_dof);
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): 
                     HC[NCi,NCj] += my_kondo;
-                else: # buffer zone
-                    HC[NCi,NCj] += my_kondo #0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HC[NCi,NCj] += -tC;
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC[NCi,NCj] += -tC;
 
-    # central region prime
-    tCprime = tC;
-    HCprime = np.zeros_like(HC);
-    kondo_replace = np.diagflat(np.diagonal(my_kondo));
-    assert(bardeen.is_alpha_conserving(kondo_replace, n_loc_dof));
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2):#  replace exchange
-                    HCprime[NCi,NCj] += kondo_replace;
-                else:  # buffer zone
-                    HCprime[NCi,NCj] += kondo_replace #0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HCprime[NCi,NCj] += -tC;
+        # central region prime
+        tCprime = tC;
+        HCprime = np.zeros_like(HC);
+        kondo_replace = np.diagflat(np.diagonal(my_kondo));
+        assert(bardeen.is_alpha_conserving(kondo_replace, n_loc_dof));
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): 
+                    HCprime[NCi,NCj] += kondo_replace; 
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HCprime[NCi,NCj] += -tC;
 
-    # print
-    print("HC =");
-    print_H_alpha(HC);
-    print("HC - HCprime =");
-    print_H_alpha(HC-HCprime);
+        # print
+        print("HC =");
+        print_H_alpha(HC);
+        print("HC - HCprime =");
+        print_H_alpha(HC-HCprime);
 
-    # bardeen results for spin flip scattering
-    Ninfty = 20;
-    NL = 200;
-    NR = 1*NL;
-    ##
-    #### Notes
-    ##
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    # I am setting VLprime = VRprime = Vinfty for best results according
-    # tests performed in run_barrier_bardeen 
-    Evals, Mvals = bardeen.kernel_well(tinfty,tL,tinfty, tR, tinfty,
-                              Vinfty, VL, Vinfty, VR, Vinfty,
-                              Ninfty, NL, NR, HC, HCprime,
-                              E_cutoff=0.1,verbose=1);
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                               tL, tR, VL, VR, NL, NR,verbose=1);
+        # bardeen results for spin flip scattering
+        ##
+        #### Notes
+        ##
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
+                                  Vinfty, VLR, Vinfty, VLR, Vinfty,
+                                  Ninfty, NLR, NLR, HC, HCprime,
+                                  E_cutoff=my_kondo[0,0],verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-    # initial and final states
-    for alphai in range(len(alphas)):
-        for betai in range(len(alphas)):
-            alpha, beta = alphas[alphai], alphas[betai];
+        # initial and final states
+        for alphai in range(len(alphas)):
+            for betai in range(len(alphas)):
+                alpha, beta = alphas[alphai], alphas[betai];
 
-            # plot based on initial state
-            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
+                # plot based on initial state
+                xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
+                axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
 
-            # % error
-            axright = axes[alphai,betai].twinx();
-            axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
-            
-            #format
-            if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-            axes[-1,betai].set_xscale('log', subs = []);
-            axes[alphai,0].set_ylabel("$T$");
-    
-            if( (alphai,betai)==(1,0) ):
-                pass;
-                #axes[alphai,betai].plot(xvals,Tvals[1,:,0]/Tvals[0,:,0],color="darkgreen",linestyle='solid');
-                #axes[alphai,betai].axhline((Jval/2)**2,color="darkgreen",linestyle='solid')
+                # % error
+                axright = axes[alphai,betai].twinx();
+                axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+                axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
+                
+                #format
+                if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+                axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+                axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+                axes[-1,betai].set_xscale('log', subs = []);
+                axes[alphai,0].set_ylabel("$T$");
 
-    # show
-    plt.tight_layout();
-    plt.show();
+        # show
+        plt.tight_layout();
+        plt.show();
 
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
@@ -188,74 +179,56 @@ if False:
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
     
-    # tight binding params
-    n_loc_dof = len(alphas); # spin up and down for each
-    tL = 1.0*np.eye(n_loc_dof);
-    tinfty = 1.0*tL;
-    tR = 1.0*tL;
-    Vinfty = 0.5*tL;
-    VL = 0.0*tL;
-    VR = 0.0*tL;
-    Jval = -0.5;
+    # iter over
+    dumvals = np.array([1.0]);
+    for _ in range(len(dumvals)):
 
-    # central region
-    tC = 1.0*tL;
-    #VC = abs(Jval/4)*tL;
-    NC = 1;
-    my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2): # exchange in middle of barrier
+        # central region
+        Jval = -0.5;
+        tC = 1.0*tLR;
+        VC = (0.4+Jval/4)*tLR;
+        NC = 5;
+        my_kondo = VC + h_kondo(Jval,0.5,n_loc_dof);
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): 
                     HC[NCi,NCj] += my_kondo;
-                else: # buffer zone
-                    HC[NCi,NCj] += 0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HC[NCi,NCj] += -tC;
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC[NCi,NCj] += -tC;
+        print("HC =");
+        print_H_alpha(HC);
 
-    # central region prime
-    tCprime = tC;
-    HCprime = np.zeros_like(HC);
-    kondo_replace = np.copy(my_kondo);
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2):#  replace exchange
-                    HCprime[NCi,NCj] += kondo_replace;
-                else:  # buffer zone
-                    HCprime[NCi,NCj] += 0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HCprime[NCi,NCj] += -tC;
+        # change of basis
+        # alpha basis is eigenstates of HC[j=0,j=0]
+        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
+        alphastates = alphastates.T;
+        tildestates = np.eye(n_loc_dof);
+        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
+        coefs = np.empty_like(alphastates);
+        for astatei in range(len(alphastates)):
+            for tstatei in range(len(tildestates)):
+                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
 
-    # print
-    print("HC =");
-    print_H_alpha(HC);
-    print("HC - HCprime =");
-    print_H_alpha(HC-HCprime);
+        if False:
+            print(alphastates);
+            print(tildestates);
+            print(coefs);
+            print(np.matmul(coefs,alphastates[0]));
+            print(np.matmul(coefs,alphastates[1]));
+            assert False
 
-    # bardeen results for spin flip scattering
-    Ninfty = 20;
-    NL = 200;
-    NR = 1*NL;
-    #
-    #### Notes:
-    #
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    # I am setting VLprime = VRprime = Vinfty for best results according
-    # tests performed in run_barrier_bardeen
-    Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
-                              Vinfty, VL, Vinfty, VR, Vinfty,
-                              Ninfty, NL, NR, HC, HCprime,
-                              E_cutoff=0.1,verbose=1);
-    Mvals = np.real(np.conj(Mvals)*Mvals);
-    Evals, Mvals, Sxvals = Evals.reshape((1,len(Evals))), Mvals.reshape((1,len(Evals),1)), Sxvals.reshape((1,len(Sxvals),1));
-
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                               tL, tR, VL, VR, NL, NR,verbose=1);
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime, change_basis
+        # where change_basis are coefs that take us from alpha to \tilde{\alpha}
+        Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
+                                  Vinfty, VLR, Vinfty, VLR, Vinfty,
+                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
+                                  E_cutoff=my_kondo[0,0],verbose=10);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tL, tR, VL, VR, NL, NR,verbose=1);
 
     # benchmark
     Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
@@ -288,138 +261,6 @@ if False:
             axes[alphai,0].set_ylabel("$T$");
             #axes[alphai,betai].plot([0],[0],color=Sxvals[alphai,0],label=Sxvals[alphai,0]);
             print("Sx of upper branch = "+str(Sxvals[alphai,np.argmax(Tvals[betai,:,alphai])]));
-
-    # show
-    plt.tight_layout();
-    plt.show();
-
-# matrix elements are the right hopping being turned on only
-# the Kondo term is included in HL and HR
-if False:
-    
-    # alpha -> beta
-    alphas = [1,2];
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
-    nplots_x = len(alphas);
-    nplots_y = len(alphas);
-    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
-    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
-    
-    # tight binding params
-    n_loc_dof = len(alphas); # spin up and down for each
-    tL = 1.0*np.eye(n_loc_dof);
-    tinfty = 1.0*tL;
-    tR = 1.0*tL;
-    Vinfty = 0.5*tL;
-    VL = 0.0*tL;
-    VR = 0.0*tL;
-    VLprime = 1.0*VL;
-    VRprime = 1.0*VR;
-
-    # sizes
-    Ninfty = 20;
-    NL = 200;
-    NR = 1*NL;
-    NC = 3;
-
-    # central region
-    tC = 1.0*tL;
-    Jval = -0.5;
-    thyb = 1.0*tL;
-    Vhyb = 1.0*VL;
-
-    # construct central region ham
-    my_kondo = h_kondo(Jval,0.5)[alphas[0]:alphas[-1]+1,alphas[0]:alphas[-1]+1];
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2): # exchange in middle of barrier
-                    HC[NCi,NCj] += my_kondo;
-                else: # buffer zone
-                    HC[NCi,NCj] += 0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HC[NCi,NCj] += -tC;
-    # overwrite hyb
-    HC[0,0] = Vhyb;
-    HC[-1,-1] = Vhyb;
-    HC[0,1] = -thyb;
-    HC[1,0] = -thyb;
-    HC[-2,-1] = -thyb;
-    HC[-1,-2] = -thyb;
-
-    # central region prime
-    tCprime = tC;
-    HCprime = np.zeros_like(HC);
-    kondo_replace = np.copy(my_kondo);
-    for NCi in range(NC):
-        for NCj in range(NC):
-            if(NCi == NCj): 
-                if(NCi == NC //2):#  replace exchange
-                    HCprime[NCi,NCj] += kondo_replace;
-                else:  # buffer zone
-                    HCprime[NCi,NCj] += 0.0; 
-            elif(abs(NCi -NCj) == 1): # nn hopping
-                HCprime[NCi,NCj] += -tC;
-    # overwrite
-    HCprime[0,0] = Vhyb;
-    HCprime[-1,-1] = Vhyb;
-    #HCprime[0,1] = -0.0;
-    #HCprime[1,0] = -0.0;
-    HCprime[-2,-1] = -0.0;
-    HCprime[-1,-2] = -0.0;
-
-    # print
-    print("HC =");
-    print_H_alpha(HC);
-    print("HC - HCprime =");
-    print_H_alpha(HC-HCprime);
-
-    # bardeen results for spin flip scattering
-    ##
-    #### Notes
-    ##
-    # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
-    # Ninfty, NL, NR, HC,HCprime,
-    # I am setting VLprime = VRprime = Vinfty for best results according
-    # tests performed in run_barrier_bardeen 
-    Evals, Mvals = bardeen.kernel_mixed(tinfty,tL,tinfty, tR, tinfty,
-                              Vinfty, VL, VLprime, VR, VRprime,
-                              Ninfty, NL, NR, HC, HCprime,
-                              E_cutoff=0.1,interval=1e-3,HT_perturb=True,verbose=1);
-    print(np.shape(Evals), np.shape(Mvals))
-    Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                               tL, tR, VL, VR, NL, NR,verbose=1);
-
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-    #Tvals_bench = np.copy(Tvals);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-    # initial and final states
-    for alphai in range(len(alphas)):
-        for betai in range(len(alphas)):
-            alpha, beta = alphas[alphai], alphas[betai];
-
-            # plot based on initial state
-            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], color=mycolors[0]);
-
-            # % error
-            axright = axes[alphai,betai].twinx();
-            axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
-            
-            #format
-            if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            axright.set_ylim(0,50);
-            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-            axes[-1,betai].set_xscale('log', subs = []);
-            axes[alphai,0].set_ylabel("$T$");
 
     # show
     plt.tight_layout();
