@@ -36,7 +36,6 @@ def print_H_alpha(H):
 #### toy model for Oppenheimer calculation
 
 n_loc_dof = 2;
-#t = 1.0*np.eye(n_loc_dof);
 if(n_loc_dof==2):
     Jnumber = -0.5
     J = (Jnumber/2)*np.array([[0,1],[1,0]]);
@@ -61,7 +60,7 @@ if True: # typical 1D well with spin mixing
     VLR = 0.0*tLR;
     Vinfty = 0.5*tLR;
     VLRprime = 0.5*tLR;
-    NLR = 200;
+    NLR = 50;
     Ninfty = 20;
 
     # central region physics: barrier with spin mixing
@@ -75,46 +74,36 @@ if True: # typical 1D well with spin mixing
                 HC[NCi,NCj] = VC+J;
             elif(abs(NCi -NCj) == 1): # nn hopping
                 HC[NCi,NCj] += -tC;
-    HCprime = np.copy(HC);
-
-    # print
     print("HC =");
     print_H_alpha(HC);
-    print("HC - HCprime =");
-    print_H_alpha(HC-HCprime);
 
     # bardeen results for spin flip scattering
-    #
-    #### Notes:
-    #
     # bardeen.kernel syntax:
-    # tinfty, tL, tLprime, tR, tRprime,
-    # Vinfty, VL, VLprime, VR, VRprime,
+    # tinfty, tL, tR, 
+    # Vinfty, VL, VLprime, VR, VRprime
     # Ninfty, NL, NR, HC,HCprime,
-    # I am setting VLprime = VRprime = Vinfty for best results according
-    # tests performed in run_barrier_bardeen 
-    Evals, Mvals, Sxvals = bardeen.kernel_mixed(tinfty,tLR,tLRprime, tLR, tLRprime,
+    Evals, Mvals, Sxvals = bardeen.kernel_well_super(tinfty,tLR, tLR,
                               Vinfty, VLR, VLRprime, VLR, VLRprime,
-                              Ninfty, NLR, NLR, HC, HCprime,
+                              Ninfty, NLR, NLR, HC, HC, tLR,
                               E_cutoff=0.1,verbose=1);
-    if(len(Evals)%2!=0): Evals, Mvals, Sxvals = Evals[2:-1], Mvals[2:-1], Sxvals[2:-1];
 
     # effective matrix elements
-    E_plus = Evals[Sxvals>0];
-    E_minus = Evals[Sxvals<0];
-    E_ab = np.array([ (E_plus+E_minus)/2, (E_plus+E_minus)/2]);
-    M_plus = Mvals[Sxvals>0];
-    M_minus = Mvals[Sxvals<0];
-    M2_nsf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
-    M2_nsf += (1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
-    M2_sf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
-    M2_sf += (-1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
-    M2_ab = np.empty((n_loc_dof,np.shape(E_ab)[1], n_loc_dof));
-    M2_ab[0,:,0] = M2_nsf;
-    M2_ab[1,:,1] = M2_nsf;
-    M2_ab[0,:,1] = M2_sf;
-    M2_ab[1,:,0] = M2_sf;
-    if False:
+    if True:
+
+        E_plus = Evals[Sxvals>0];
+        E_minus = Evals[Sxvals<0];
+        E_ab = np.array([ (E_plus+E_minus)/2, (E_plus+E_minus)/2]);
+        M_plus = Mvals[Sxvals>0];
+        M_minus = Mvals[Sxvals<0];
+        M2_nsf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
+        M2_nsf += (1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
+        M2_sf = (1/4)*np.real(np.conj(M_plus)*M_plus + np.conj(M_minus)*M_minus);
+        M2_sf += (-1/4)*np.real(np.conj(M_plus)*M_minus + np.conj(M_minus)*M_plus);
+        M2_ab = np.empty((n_loc_dof,np.shape(E_ab)[1], n_loc_dof));
+        M2_ab[0,:,0] = M2_nsf;
+        M2_ab[1,:,1] = M2_nsf;
+        M2_ab[0,:,1] = M2_sf;
+        M2_ab[1,:,0] = M2_sf;
         Mfig, Max = plt.subplots();
         Max.plot(np.real(np.conj(M_plus)*M_plus),label="a");
         Max.plot(np.real(np.conj(M_minus)*M_minus),label="b");
@@ -125,7 +114,7 @@ if True: # typical 1D well with spin mixing
         plt.legend();
         plt.show();
         assert False;
-    Evals, Mvals = E_ab, M2_ab;
+        Evals, Mvals = E_ab, M2_ab;
 
     # bardeen Ts
     Tvals = bardeen.Ts_bardeen(Evals, Mvals,

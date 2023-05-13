@@ -28,6 +28,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+error_lims = (0,20);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -73,10 +74,11 @@ VLR = 0.0*tLR;
 Vinfty = 0.5*tLR;
 NLR = 200;
 Ninfty = 20;
+Ecut = 0.1;
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if False:
+if True:
     
     # alpha -> beta
     alphas = [1,2];
@@ -123,9 +125,6 @@ if False:
         print_H_alpha(HC-HCprime);
 
         # bardeen results for spin flip scattering
-        ##
-        #### Notes
-        ##
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
@@ -133,7 +132,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HCprime,
-                                  E_cutoff=my_kondo[0,0],verbose=1);
+                                  E_cutoff=Ecut,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
@@ -226,26 +225,25 @@ if True:
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, coefs,                                                
-                                  E_cutoff=my_kondo[0,0],verbose=10);
+                                  E_cutoff=Ecut,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                                   tL, tR, VL, VR, NL, NR,verbose=1);
+                                   tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
     # benchmark
-    Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
+    Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
     #Tvals_bench = np.copy(Tvals);
     print("Output shapes:");
     for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
 
     # initial and final states
-    alphas = alphas[0:1]
     for alphai in range(len(alphas)):
         for betai in range(len(alphas)):
             alpha, beta = alphas[alphai], alphas[betai];
 
             # plot based on initial state
-            xvals = np.real(Evals[alphai])+2*tL[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0], c=Sxvals[alphai]);
+            xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
+            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0]);
             
             # % error
             axright = axes[alphai,betai].twinx();
@@ -254,13 +252,11 @@ if True:
             
             #format
             if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            axright.set_ylim(0,50);
+            #axright.set_ylim(*error_lims);
             axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
             axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1,betai].set_xscale('log', subs = []);
             axes[alphai,0].set_ylabel("$T$");
-            #axes[alphai,betai].plot([0],[0],color=Sxvals[alphai,0],label=Sxvals[alphai,0]);
-            print("Sx of upper branch = "+str(Sxvals[alphai,np.argmax(Tvals[betai,:,alphai])]));
 
     # show
     plt.tight_layout();

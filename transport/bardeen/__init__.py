@@ -103,8 +103,7 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
     Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
     # initial energy and spin states
     for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):
-                
+        for m in range(n_bound_left):               
             for beta in range(n_loc_dof):
                 # inelastic means averaging over an interval
                 Mns = [];
@@ -267,8 +266,7 @@ def kernel_well(tinfty, tL, tR,
     Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
     # initial energy and spin states
     for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):
-                
+        for m in range(n_bound_left):               
             for beta in range(n_loc_dof):
                 # inelastic means averaging over an interval
                 Mns = [];
@@ -277,15 +275,7 @@ def kernel_well(tinfty, tL, tR,
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
                         Mns.append(np.real(melement*np.conj(melement)));
 
-                        if False:
-                            print(np.real(melement*np.conj(melement)));
-                            fig, wfax = plt.subplots();
-                            wfax.plot(jvals, np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m]), color='red');
-                            wfax.plot(jvals, np.real(psinbs[beta,n]),color="tab:orange");
-                            wfax.plot(jvals, np.real(psimas[alpha,m]),color="tab:blue");
-                            plt.show(); assert False;
-
-                # update T based on average
+                # update M with average
                 if(verbose): print("\tinterval = ",interval, len(Mns));
                 if Mns: Mns = sum(Mns)/len(Mns);
                 else: Mns = 0.0;
@@ -343,6 +333,13 @@ def kernel_well_super(tinfty, tL, tR,
     if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
     n_bound_left = len(Ems);
 
+    # get Sx val for each psim
+    Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
+    for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
+    Sxms = np.zeros_like(Ems);
+    for m in range(n_bound_left):
+        Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
+
     # recall \alpha basis is eigenstates of HC[j=0,j=0]
     alpha_eigvals, _ = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
     eigval_tol = 1e-9;
@@ -355,6 +352,7 @@ def kernel_well_super(tinfty, tL, tR,
     alphams = np.empty((n_bound_left,),dtype=complex);
     for m in range(n_bound_left):
         alphams[m] = np.dot( np.conj(psims[m]), np.matmul(HC00_op, psims[m]));
+        if(verbose>5): print(m, Ems[m], alphams[m], Sxms[m]);
     n_bound_left = n_bound_left // n_loc_dof;
 
     # classify left well eigenstates in the \alpha basis
@@ -385,7 +383,7 @@ def kernel_well_super(tinfty, tL, tR,
         alphans[n] = np.dot( np.conj(psins[n]), np.matmul(HC00_op, psins[n]));
     n_bound_right= n_bound_right // n_loc_dof;
     
-    # classify left well eigenstates in the \alpha basis
+    # classify right well eigenstates in the \alpha basis
     Enbs = np.empty((n_loc_dof,n_bound_right),dtype=complex);
     psinbs = np.empty((n_loc_dof,n_bound_right,len(psins[0])),dtype=complex);
     for eigvali in range(len(alpha_eigvals)):
@@ -399,56 +397,55 @@ def kernel_well_super(tinfty, tL, tR,
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
 
-    # average matrix elements over final states |k_n >
-    # with the same energy as the intial state |k_m >
+    # average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    # average over energy but keep spin separate
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mms = np.empty((n_bound_left,),dtype=complex);
-    Mmns = np.empty((n_bound_left,n_bound_right),dtype=complex);
-    for m in range(n_bound_left):
-        
-        # inelastic means averaging over an interval
-        Mns = [];      
-        for n in range(n_bound_right):
-            melement = np.dot(np.conj(psins[n]), np.dot(Hdiff,psims[m]));
-            Mmns[m,n] = melement;
-            if( abs(Ems[m] - Ens[n]) < interval/2):
-                Mns.append(melement);
-                if False:
-                    print("-Hdiff[:,:] near barrier =\n",np.real(Hdiff[interval_tup[0]:interval_tup[1],interval_tup[0]:interval_tup[1]]));
-                    print("- psim near barrier\n",np.real(psims[m,interval_tup[0]:interval_tup[1]]));
-                    print("- psin near barrier\n",np.real(psins[n,interval_tup[0]:interval_tup[1]]));
-                    print("- barrier overlap of psim and psin: ",np.dot( psims[m,interval_tup[0]:interval_tup[1]][-4:],psins[n,interval_tup[0]:interval_tup[1]][-4:]));
-                    assert False
+    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=complex);
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):               
+            for beta in range(n_loc_dof):
+                # inelastic means averaging over an interval
+                Mns = [];
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
+                        melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));  
+                        Mns.append(melement);
 
-        # update T based on average
-        if verbose: print("\tinterval = ",interval, len(Mns));
-        if(Mns): Mns = sum(Mns)/len(Mns);
-        else: Mns = 0.0;
-        Mms[m] = Mns;
+                # update M with average
+                if(verbose): print("\tinterval = ",interval, len(Mns));
+                if Mns: Mns = sum(Mns)/len(Mns);
+                else: Mns = 0.0;
+                Mbmas[beta,m,alpha] = Mns;
 
+    # get effective matrix elements
+    Mbmas_tilde = np.zeros_like(Mbmas);
+    for atilde in range(n_loc_dof):
+        for btilde in range(n_loc_dof):
+            for alpha in range(n_loc_dof):
+                Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
+    del Mbmas
+    Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
+    Mbmas_tilde = Mbmas_tilde.astype(float);
+    
     # visualize
     if(verbose > 9):
 
-        #
-        Ems_p = Ems[Sxms > 0];
-        Ems_m = Ems[Sxms < 0];
-        Eps_p = Ems[Sxns > 0];
-        Eps_m = Ems[Sxns < 0];
-        ps = np.array(range(len(Eps_p)),dtype=int);
-        Efig, Eax = plt.subplots();
-        Eax.plot(ps,Eps_p-Ems_p[0],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkblue");
-        Eax.plot(ps,Eps_m-Ems_m[0],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkblue",linestyle="dashed");
-        Eax.scatter(ps, (Eps_p-Ems_p[0])-(Eps_m-Ems_m[0]),label="$(\\varepsilon_{p+}-\\varepsilon_{0+})-(\\varepsilon_{p-}-\\varepsilon_{0-})$",color="darkblue",marker='s',linestyle="solid");
-        Eax.plot(ps,Eps_p-Ems_p[ps[-1]],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkgreen");
-        Eax.plot(ps,Eps_m-Ems_m[ps[-1]],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkgreen",linestyle="dashed");
-        Eax.scatter(ps, (Eps_p-Ems_p[ps[-1]])-(Eps_m-Ems_m[ps[-1]]),label="$(\\varepsilon_{p+}-\\varepsilon_{"+str(ps[-1])+"+})-(\\varepsilon_{p-}-\\varepsilon_{"+str(ps[-1])+"-})$",color="darkgreen",marker='s',linestyle="solid");
-        Eax.axhline(0.0,color="black",linestyle="dotted");
-        Eax.set_xlabel("p");
-        plt.legend();
-        plt.show();
-        assert False
+        # compare matrix elements
+        if False:
+            ps = np.array(range(len(Emas[0])),dtype=int);
+            Efig, Eax = plt.subplots();
+            which = 0;
+            Eax.plot(ps,Enbs[0]-Emas[0,which],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkblue");
+            Eax.plot(ps,Enbs[1]-Emas[1,which],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkblue",linestyle="dashed");
+            Eax.scatter(ps, (Enbs[0]-Emas[0,which])-(Enbs[1]-Emas[1,which]),label="$(\\varepsilon_{p+}-\\varepsilon_{0+})-(\\varepsilon_{p-}-\\varepsilon_{0-})$",color="darkblue",marker='s',linestyle="solid");
+            plt.legend();
+            plt.show();
+            assert False;
         
         # plot hams
+        jvals = np.array(range(len(Hsys_4d))) + offset;
         myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
         if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
@@ -463,16 +460,16 @@ def kernel_well_super(tinfty, tL, tR,
         for m in range(min(n_bound_left,6)):
             fig, wfax = plt.subplots();
             wfax.plot(jvals,np.diag(Hsys_4d[:,:,0,0]),color="black");
-            offset = 0;
             alpha_colors = ["tab:blue", "tab:orange"];
             for alpha in range(len(alpha_colors)):
-                wfax.plot(jvals, 1e-3*alpha+np.real(psims[m][alpha::n_loc_dof]),color=alpha_colors[alpha],linestyle="solid");
-                wfax.plot(jvals, 1e-3*alpha+np.real(psins[m+offset][alpha::n_loc_dof]),color=alpha_colors[alpha],linestyle="dotted");
-            wfax.set_title("Em = {:.4f}, Sxm = {:.2f},\nEn = {:.4f}, Sxn = {:.2f},\nM_mn = {:.2e}".format(np.real(Ems[m]),np.real(Sxms[m]),np.real(Ens[m+offset]),np.real(Sxns[m+offset]), Mmns[m,m+offset]));
+                wfax.plot(jvals, 1e-3*alpha+np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
+                wfax.plot(jvals, 1e-3*alpha+np.real(psinbs[alpha,m]),color=alpha_colors[alpha],linestyle="dotted");
+            wfax.set_title("Ema = {:.4f}, alpha = {:.2f},\nEnb = {:.4f}, beta = {:.2f},\nM_bma = {:.2e}"
+                           .format(np.real(Emas[alpha,m]),alpha,np.real(Enbs[alpha,m]),beta, Mbmas[alpha,m,alpha]));
             plt.show();
         assert False;
 
-    return Ems, Mms, Sxms;
+    return Emas, Mbmas_tilde;
 
 #######################################################################
 #### generate observables from matrix elements
