@@ -28,7 +28,6 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-error_lims = (0,20);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -53,7 +52,9 @@ VLR = 0.0*tLR;
 Vinfty = 0.5*tLR;
 NLR = 200;
 Ninfty = 20;
+NC = 11;
 Ecut = 0.1;
+error_lims = (0,20);
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
@@ -64,7 +65,7 @@ if False:
     alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
     nplots_x = len(alphas);
     nplots_y = len(alphas);
-    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True, sharey=True);
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
     
     # iter over
@@ -72,10 +73,9 @@ if False:
     for _ in range(len(dumvals)):
 
         # central region
-        Jval = -0.5;
+        Jval = -0.05;
         tC = 1.0*tLR;
         VC = 0.4*tLR;
-        NC = 5;
         my_kondo = VC + (Jval/2)*np.array([[0,1],[1,0]]);
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
@@ -143,7 +143,11 @@ if False:
 
         # show
         plt.tight_layout();
-        plt.show();
+        fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
+        fname = "figs/bard_menez/kernel_well_NC"+str(NC)+".pdf";
+        print("Saving data as",fname);
+        plt.savefig(fname);
+        #plt.show();
 
 #############################
 # matrix elements are the right barrier being removed only
@@ -153,15 +157,16 @@ if False:
 if False:
     
     # alpha -> beta
-    alphas = [1,2];
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
+    alphas = [0,1];
+    alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = False;
+    plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([-0.05]);
+        indvals = np.array([-0.5]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
+        alpha_initial, alpha_final = -999,-999;
     else:
         indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1
@@ -170,15 +175,13 @@ if False:
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
-    # iter over
-
+    # iter over J
     for indvali in range(len(indvals)):
 
         # central region
         Jval = indvals[indvali];
         tC = 1.0*tLR;
         VC = 0.4*tLR;
-        NC = 5;
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -216,7 +219,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, coefs,                                                
-                                  E_cutoff=Ecut,verbose=1);
+                                  E_cutoff=Ecut,verbose=10);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -227,12 +230,11 @@ if False:
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        # initial and final states
-        for alphai in range(len(alphas)):
-            for betai in range(len(alphas)):
-                alpha, beta = alphas[alphai], alphas[betai];
-
-                if plot_alpha:
+        if plot_alpha:
+            # iter over initial and final states
+            for alphai in range(len(alphas)):
+                for betai in range(len(alphas)):
+                    alpha, beta = alphas[alphai], alphas[betai];
                     # plot based on initial state
                     xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
                     axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0],color=mycolors[0]);
@@ -248,58 +250,64 @@ if False:
                     axes[-1,betai].set_xscale('log', subs = []);
                     axes[alphai,0].set_ylabel("$T$");
 
-                else:
-                    # plot based on initial state
-                    xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
-                    axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
-                    # % error
-                    axright = axes[indvali].twinx();
-                    axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-                    axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
-                    #format
-                    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
-                    axes[indvali].set_title("$J = "+str(Jval)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
-                    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-                    axes[-1].set_xscale('log', subs = []);
-                    axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
-                    axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        else:
+            # plot based on initial state
+            xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
+            axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
+            # % error
+            axright = axes[indvali].twinx();
+            axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
+            #format
+            axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+            #axright.set_ylim(*error_lims);
+            axes[indvali].set_title("$J = "+str(Jval)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
+            axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            axes[-1].set_xscale('log', subs = []);
+            axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
+            axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
     plt.tight_layout();
+    fig.suptitle("$N_C = "+str(NC)+"$");
+    fname = "figs/bard_menez/bard_menez_Jval";
+    if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
+    elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
+    print("Saving data as",fname);
+    #plt.savefig(fname);
     plt.show();
 
 # T vs NJ
 if True:
     
     # alpha -> beta
-    alphas = [1,2];
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
-
+    alphas = [0,1];
+    alpha_strs = ["\\uparrow","\downarrow"];
+    
     # plotting
-    plot_alpha = True;
+    plot_alpha = False;
     if(plot_alpha):
-        indvals = np.array([11]);
+        indvals = np.array([1]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
         indvals = np.array([1,5,11]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,0;
+        alpha_initial, alpha_final = 0,1;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
+    if(nplots_y == 1 and nplots_x == 1): axes=[axes]
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
-    # iter over
-
+    # iter over NJ
     for indvali in range(len(indvals)):
 
         # central region
         Jval = -0.05;
         tC = 1.0*tLR;
         VC = 0.4*tLR;
-        NC = 11;
         NJ = indvals[indvali]; assert(NJ <= NC);
+        #NC, NJ = 5,1
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -351,11 +359,10 @@ if True:
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
         # initial and final states
-        for alphai in range(len(alphas)):
-            for betai in range(len(alphas)):
-                alpha, beta = alphas[alphai], alphas[betai];
-
-                if plot_alpha:
+        if plot_alpha:
+            for alphai in range(len(alphas)):
+                for betai in range(len(alphas)):
+                    alpha, beta = alphas[alphai], alphas[betai];
                     # plot based on initial state
                     xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
                     axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0],color=mycolors[0]);
@@ -371,24 +378,30 @@ if True:
                     axes[-1,betai].set_xscale('log', subs = []);
                     axes[alphai,0].set_ylabel("$T$");
 
-                else:
-                    # plot based on initial state
-                    xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
-                    axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
-                    # % error
-                    axright = axes[indvali].twinx();
-                    axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-                    axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
-                    #format
-                    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
-                    axes[indvali].set_title("$N_J = "+str(NJ)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
-                    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-                    axes[-1].set_xscale('log', subs = []);
-                    axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
-                    axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        else:
+            # plot based on initial state
+            xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
+            axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
+            # % error
+            axright = axes[indvali].twinx();
+            axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
+            #format
+            axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+            #axright.set_ylim(*error_lims);
+            axes[indvali].set_title("$N_J = "+str(NJ)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
+            axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+            axes[-1].set_xscale('log', subs = []);
+            axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
+            axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
     plt.tight_layout();
-    plt.show();
+    fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
+    fname = "figs/bard_menez/bard_menez_NJ";
+    if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
+    elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
+    print("Saving data as",fname);
+    plt.savefig(fname);
+    #plt.show();
 

@@ -60,7 +60,7 @@ if True: # typical 1D well with spin mixing
     VLR = 0.0*tLR;
     Vinfty = 0.5*tLR;
     VLRprime = 0.5*tLR;
-    NLR = 50;
+    NLR = 50; assert False
     Ninfty = 20;
 
     # central region physics: barrier with spin mixing

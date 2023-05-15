@@ -333,13 +333,6 @@ def kernel_well_super(tinfty, tL, tR,
     if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
     n_bound_left = len(Ems);
 
-    # get Sx val for each psim
-    Sx_op = np.zeros((len(psims[0]),len(psims[0]) ),dtype=complex);
-    for eli in range(len(Sx_op)-1): Sx_op[eli,eli+1] = 1.0; Sx_op[eli+1,eli] = 1.0;
-    Sxms = np.zeros_like(Ems);
-    for m in range(n_bound_left):
-        Sxms[m] = np.dot( np.conj(psims[m]), np.dot(Sx_op, psims[m]));
-
     # recall \alpha basis is eigenstates of HC[j=0,j=0]
     alpha_eigvals, _ = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
     eigval_tol = 1e-9;
@@ -352,7 +345,7 @@ def kernel_well_super(tinfty, tL, tR,
     alphams = np.empty((n_bound_left,),dtype=complex);
     for m in range(n_bound_left):
         alphams[m] = np.dot( np.conj(psims[m]), np.matmul(HC00_op, psims[m]));
-        if(verbose>5): print(m, Ems[m], alphams[m], Sxms[m]);
+        if(verbose>5): print(m, Ems[m], alphams[m]);
     n_bound_left = n_bound_left // n_loc_dof;
 
     # classify left well eigenstates in the \alpha basis
@@ -410,7 +403,10 @@ def kernel_well_super(tinfty, tL, tR,
                 Mns = [];
                 for n in range(n_bound_right):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
-                        melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));  
+                        melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));
+                        if(np.real(melement) < 0):
+                            print("\n\n\nWARNING: changing sign of melement");
+                            melement *= (-1);
                         Mns.append(melement);
 
                 # update M with average
@@ -425,14 +421,15 @@ def kernel_well_super(tinfty, tL, tR,
         for btilde in range(n_loc_dof):
             for alpha in range(n_loc_dof):
                 Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
-    del Mbmas
+    Mbmas_dum = np.copy(Mbmas); # for plotting
     Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
     Mbmas_tilde = Mbmas_tilde.astype(float);
+    del Mbmas
     
     # visualize
     if(verbose > 9):
 
-        # compare matrix elements
+        # compare energies
         if False:
             ps = np.array(range(len(Emas[0])),dtype=int);
             Efig, Eax = plt.subplots();
@@ -443,6 +440,17 @@ def kernel_well_super(tinfty, tL, tR,
             plt.legend();
             plt.show();
             assert False;
+
+        # compare matrix elements
+        if True:
+            Mfig, Max = plt.subplots();
+            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[0,:,0]),label='00 real');
+            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[0,:,1]),label='01 real');
+            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[1,:,0]),label='10 real');
+            Max.plot(np.real(Emas[1]+2*tLa),np.real(Mbmas_dum[1,:,1]),label='11 real');
+            Max.legend();
+            plt.show();
+            assert False
         
         # plot hams
         jvals = np.array(range(len(Hsys_4d))) + offset;

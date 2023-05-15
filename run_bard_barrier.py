@@ -108,8 +108,8 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    #plt.show();
-    plt.savefig("figs/bard_barrier/bard_barrier_NL.pdf");
+    plt.show();
+    #plt.savefig("figs/bard_barrier/bard_barrier_NL.pdf");
 
 # T vs NC
 if False:
@@ -177,8 +177,8 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    #plt.show();
-    plt.savefig("figs/bard_barrier/bard_barrier_NC.pdf");
+    plt.show();
+    #plt.savefig("figs/bard_barrier/bard_barrier_NC.pdf");
 
 # T vs VC
 if False:
@@ -252,7 +252,7 @@ if False:
     plt.savefig(fname);
 
 # T vs VLR prime
-if True:
+if False:
 
     Vprimevals = [Vinfty/5,Vinfty,10*Vinfty];
     numplots = len(Vprimevals);
