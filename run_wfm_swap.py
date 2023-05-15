@@ -26,7 +26,7 @@ mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 
 # constructing the hamiltonian
 def h_cicc(J, i1, i2) -> np.ndarray: 
@@ -77,7 +77,7 @@ def h_cicc(J, i1, i2) -> np.ndarray:
 #########################################################
 #### barrier in right lead for total reflection
 
-if False: # distance of the barrier NB on the x axis
+if True: # distance of the barrier NB on the x axis
 
     # tight binding params
     tl = 1.0;
@@ -89,7 +89,7 @@ if False: # distance of the barrier NB on the x axis
     # axes
     ylabels = ["\downarrow \\uparrow \\uparrow","\downarrow \\uparrow \downarrow","\downarrow \downarrow \\uparrow","\downarrow \downarrow \downarrow"];
     nrows, ncols = n_mol_dof, n_mol_dof;
-    fig, axes = plt.subplots(nrows, ncols, sharex=True);
+    fig, axes = plt.subplots(nrows, ncols, sharex='col', sharey = 'row');
     fig.set_size_inches(ncols*7/2,nrows*3/2);
 
     # iter over E (colors)
@@ -151,9 +151,10 @@ if False: # distance of the barrier NB on the x axis
         for sourcei in range(n_mol_dof):
             for sigmai in range(n_mol_dof):
                 axes[sourcei,sigmai].plot(kNBvals/np.pi, Rvals[4*elecspin+sourcei,4*elecspin+sigmai,Evali], color=mycolors[Evali], marker=mymarkers[1+Evali], markevery=mymarkevery, linewidth=mylinewidth);
-                if(sourcei == sigmai): axes[sourcei,sigmai].axvline(kNBstar/np.pi, color=mycolors[Evali]);
+                #if(sourcei == sigmai): axes[sourcei,sigmai].axvline(kNBstar/np.pi, color=mycolors[Evali]);
                 axes[sourcei,sigmai].set_title("$R("+str(ylabels[sourcei])+"\\rightarrow"+str(ylabels[sigmai])+")$");
-                axes[sourcei,sigmai].set_ylim(-0.1,1.1);
+                axes[sourcei,-1].set_ylim(-0.1,1.1);
+                axes[sourcei,-1].set_yticks([0,1.0]);
                 axes[sourcei,sigmai].axhline(0.0,color='lightgray',linestyle='dashed');
                 axes[sourcei,sigmai].axhline(1.0,color='lightgray',linestyle='dashed');
                 axes[-1,sigmai].set_xlim(0,0.5);
@@ -171,7 +172,7 @@ if False: # distance of the barrier NB on the x axis
     #np.save(fname+"_x", kNBvals/np.pi);
     #np.save(fname, Rvals);
 
-if True: # incident kinetic energy on the x axis
+if False: # incident kinetic energy on the x axis
 
     # tight binding params
     tl = 1.0;

@@ -33,7 +33,7 @@ mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 
 # constructing the hamiltonian
 def reduced_ham(params, S) -> np.ndarray:
@@ -157,12 +157,13 @@ if True: # check similarity to menezes prediction at diff N
     #### end loop over Nvals
         
     # format
-    #axes[0].set_ylim(0,0.4)
+    axes[0].set_ylim(-0.05*1.0,1.0+0.05*1.0)
     axes[0].set_ylabel('$T_{i}$', fontsize = myfontsize );
-    #axes[1].set_ylim(0,1.0);
+    axes[1].set_ylim(-0.05*0.4,0.4);
     axes[1].set_ylabel('$T_{+}$', fontsize = myfontsize );
     #axes[2].set_ylim(0,1.0);
     axes[2].set_ylabel('$T_{-}$', fontsize = myfontsize );
+    axes[2].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
     
     # show
     axes[-1].set_xscale('log', subs = []);
@@ -171,8 +172,8 @@ if True: # check similarity to menezes prediction at diff N
     axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
     #for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize);
     plt.tight_layout();
-    plt.savefig('figs/wfm/Nlimit.pdf');
-    plt.show();
+    plt.savefig('figs/double/Nlimit.pdf');
+    #plt.show();
 
 if False: # compare T- vs N to see how T- is suppressed at small N
     num_plots = 1
@@ -304,12 +305,13 @@ if True: # compare T+ vs E at different J
 
 
     # format
-    #axes[0].set_ylim(0,0.4);
+    axes[0].set_ylim(-0.05*1.0,1.0+0.05*1.0);
     axes[0].set_ylabel('$T_{i}$', fontsize = myfontsize );
-    #axes[1].set_ylim(0,0.4);
+    axes[1].set_ylim(-0.05*0.4,0.4);
     axes[1].set_ylabel('$T_{+}$', fontsize = myfontsize );
     #axes[2].set_ylim(0,0.4);
     axes[2].set_ylabel('$T_{-}$', fontsize = myfontsize );
+    axes[2].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     
     # show
@@ -319,6 +321,6 @@ if True: # compare T+ vs E at different J
     axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
     #for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize);
     plt.tight_layout();
-    plt.savefig('figs/wfm/Jlimit.pdf');
-    plt.show();
+    plt.savefig('figs/double/Jlimit.pdf');
+    #plt.show();
 
