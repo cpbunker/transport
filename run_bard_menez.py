@@ -42,27 +42,6 @@ def print_H_alpha(H):
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",H[i,j,:,:]);
 
-def h_kondo(J,s2,nlocdof):
-    '''
-    Kondo interaction between spin 1/2 and spin s2
-    '''
-    spin_dof = int(2*(2*s2+1));
-    h = np.zeros((spin_dof,spin_dof),dtype=complex);
-    if(s2 == 0.5):
-        h[0,0] = 1;
-        h[1,1] = -1;
-        h[2,2] = -1;
-        h[3,3] = 1;
-        h[1,2] = 2;
-        h[2,1] = 2;
-        h *= J/4;
-    else: raise NotImplementedError;
-
-    if(nlocdof==2):
-        return h[1:3,1:3];
-    else:
-        return h;
-
 #################################################################
 #### all possible T_{\alpha -> \beta} for single J
 
@@ -78,7 +57,7 @@ Ecut = 0.1;
 
 # matrix elements are the right barrier being removed and Kondo term
 # being added to the central region
-if True:
+if False:
     
     # alpha -> beta
     alphas = [1,2];
@@ -95,9 +74,9 @@ if True:
         # central region
         Jval = -0.5;
         tC = 1.0*tLR;
-        VC = (0.4+Jval/4)*tLR;
+        VC = 0.4*tLR;
         NC = 5;
-        my_kondo = VC + h_kondo(Jval,0.5,n_loc_dof);
+        my_kondo = VC + (Jval/2)*np.array([[0,1],[1,0]]);
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -166,33 +145,45 @@ if True:
         plt.tight_layout();
         plt.show();
 
+#############################
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
-if True:
+
+# T vs Jval
+if False:
     
     # alpha -> beta
     alphas = [1,2];
-    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];    # plotting
-    nplots_x = len(alphas);
-    nplots_y = len(alphas);
+    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
+
+    # plotting
+    plot_alpha = False;
+    if(plot_alpha):
+        indvals = np.array([-0.05]);
+        nplots_x = len(alphas);
+        nplots_y = len(alphas);
+    else:
+        indvals = np.array([-0.005,-0.05,-0.5]);
+        nplots_x = 1
+        nplots_y = len(indvals);
+        alpha_initial, alpha_final = 0,0;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
-    
+        
     # iter over
-    dumvals = np.array([1.0]);
-    for _ in range(len(dumvals)):
+
+    for indvali in range(len(indvals)):
 
         # central region
-        Jval = -0.5;
+        Jval = indvals[indvali];
         tC = 1.0*tLR;
-        VC = (0.4+Jval/4)*tLR;
+        VC = 0.4*tLR;
         NC = 5;
-        my_kondo = VC + h_kondo(Jval,0.5,n_loc_dof);
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): 
-                    HC[NCi,NCj] += my_kondo;
+                    HC[NCi,NCj] += VC + (Jval/2)*np.array([[0,1],[1,0]]);
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HC[NCi,NCj] += -tC;
         print("HC =");
@@ -226,37 +217,176 @@ if True:
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, coefs,                                                
                                   E_cutoff=Ecut,verbose=1);
+        # symmetrize
+        Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
-    # benchmark
-    Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
-    #Tvals_bench = np.copy(Tvals);
-    print("Output shapes:");
-    for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
+        # initial and final states
+        for alphai in range(len(alphas)):
+            for betai in range(len(alphas)):
+                alpha, beta = alphas[alphai], alphas[betai];
 
-    # initial and final states
-    for alphai in range(len(alphas)):
-        for betai in range(len(alphas)):
-            alpha, beta = alphas[alphai], alphas[betai];
+                if plot_alpha:
+                    # plot based on initial state
+                    xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
+                    axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0],color=mycolors[0]);
+                    # % error
+                    axright = axes[alphai,betai].twinx();
+                    axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+                    axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
+                    #format
+                    if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+                    #axright.set_ylim(*error_lims);
+                    axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+                    axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+                    axes[-1,betai].set_xscale('log', subs = []);
+                    axes[alphai,0].set_ylabel("$T$");
 
-            # plot based on initial state
-            xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
-            axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0]);
-            
-            # % error
-            axright = axes[alphai,betai].twinx();
-            axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]); 
-            
-            #format
-            if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            #axright.set_ylim(*error_lims);
-            axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
-            axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
-            axes[-1,betai].set_xscale('log', subs = []);
-            axes[alphai,0].set_ylabel("$T$");
+                else:
+                    # plot based on initial state
+                    xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
+                    axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
+                    # % error
+                    axright = axes[indvali].twinx();
+                    axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+                    axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
+                    #format
+                    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+                    #axright.set_ylim(*error_lims);
+                    axes[indvali].set_title("$J = "+str(Jval)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
+                    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+                    axes[-1].set_xscale('log', subs = []);
+                    axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
+                    axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+
+    # show
+    plt.tight_layout();
+    plt.show();
+
+# T vs NJ
+if True:
+    
+    # alpha -> beta
+    alphas = [1,2];
+    alpha_strs = ["\\uparrow \\uparrow","\\uparrow \downarrow","\downarrow \\uparrow","\downarrow \downarrow"];
+
+    # plotting
+    plot_alpha = True;
+    if(plot_alpha):
+        indvals = np.array([11]);
+        nplots_x = len(alphas);
+        nplots_y = len(alphas);
+    else:
+        indvals = np.array([1,5,11]);
+        nplots_x = 1
+        nplots_y = len(indvals);
+        alpha_initial, alpha_final = 0,0;
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
+    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
+        
+    # iter over
+
+    for indvali in range(len(indvals)):
+
+        # central region
+        Jval = -0.05;
+        tC = 1.0*tLR;
+        VC = 0.4*tLR;
+        NC = 11;
+        NJ = indvals[indvali]; assert(NJ <= NC);
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): 
+                    HC[NCi,NCj] += VC;
+                    if( abs(NCi - NC//2) <= NJ//2 ): # off diagonal term also
+                        HC[NCi,NCj] += (Jval/2)*np.array([[0,1],[1,0]]);
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC[NCi,NCj] += -tC;
+        print("HC =");
+        print_H_alpha(HC);
+
+        # change of basis
+        # alpha basis is eigenstates of HC[j=0,j=0]
+        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
+        alphastates = alphastates.T;
+        tildestates = np.eye(n_loc_dof);
+        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
+        coefs = np.empty_like(alphastates);
+        for astatei in range(len(alphastates)):
+            for tstatei in range(len(tildestates)):
+                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
+
+        if False:
+            print(alphastates);
+            print(tildestates);
+            print(coefs);
+            print(np.matmul(coefs,alphastates[0]));
+            print(np.matmul(coefs,alphastates[1]));
+            assert False
+
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime, change_basis
+        # where change_basis are coefs that take us from alpha to \tilde{\alpha}
+        Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
+                                  Vinfty, VLR, Vinfty, VLR, Vinfty,
+                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
+                                  E_cutoff=Ecut,verbose=1);
+        # symmetrize
+        Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
+
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
+        # initial and final states
+        for alphai in range(len(alphas)):
+            for betai in range(len(alphas)):
+                alpha, beta = alphas[alphai], alphas[betai];
+
+                if plot_alpha:
+                    # plot based on initial state
+                    xvals = np.real(Evals[alphai])+2*tLR[alphai,alphai];
+                    axes[alphai,betai].scatter(xvals, Tvals[betai,:,alphai], marker=mymarkers[0],color=mycolors[0]);
+                    # % error
+                    axright = axes[alphai,betai].twinx();
+                    axes[alphai,betai].scatter(xvals, Tvals_bench[betai,:,alphai], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+                    axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
+                    #format
+                    if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+                    #axright.set_ylim(*error_lims);
+                    axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+                    axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+                    axes[-1,betai].set_xscale('log', subs = []);
+                    axes[alphai,0].set_ylabel("$T$");
+
+                else:
+                    # plot based on initial state
+                    xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
+                    axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
+                    # % error
+                    axright = axes[indvali].twinx();
+                    axes[indvali].scatter(xvals, Tvals_bench[alpha_final,:,alpha_initial], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+                    axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
+                    #format
+                    axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+                    #axright.set_ylim(*error_lims);
+                    axes[indvali].set_title("$N_J = "+str(NJ)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
+                    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
+                    axes[-1].set_xscale('log', subs = []);
+                    axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
+                    axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
     plt.tight_layout();
