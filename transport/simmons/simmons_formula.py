@@ -262,7 +262,7 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = ''):
 
     # error
     error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ));
-    norm_error = error/np.mean(I_exp);
+    norm_error = error/abs(np.mean(I_exp));
     ax.plot( [0.0], [error], color='white', label = "Error = {:1.2f} ".format(norm_error));
  
     # format
@@ -300,7 +300,7 @@ def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
 ###############################################################
 #### fitting functions
 
-def load_IVb(temp,folder):
+def load_IVb(folder,temp):
     '''
     Get I vs V data at a certain temp
 
@@ -309,10 +309,18 @@ def load_IVb(temp,folder):
     '''
 
     fname = "{:.0f}".format(temp) + "KExp.txt"
+    print("Loading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
     Is = IV[:, 1];
     if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(Is) ): raise TypeError;
+
+    # truncate
+    if(folder=="Mn/" and False):
+        Vcut = 0.01
+        print("\n\n\nWARNING: truncating "+folder+" data to |V| < "+str(Vcut));
+        Is = Is[abs(Vs)<Vcut];
+        Vs = Vs[abs(Vs)<Vcut];
 
     return Vs, 1e9*Is;
 
@@ -393,7 +401,7 @@ def fit_I_combined(temp, area, dtilde_not, deltaphi_not,
                             p0 = init_params, bounds = bounds, max_nfev = 1e6);
     dtilde, deltaphi = tuple(params);
     I_fit = I_of_Vb_combined(V_exp, dtilde, deltaphi);
-    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/np.mean(I_exp);
+    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/abs(np.mean(I_exp));
     if(verbose):
         print("I_of_Vb_asym_wrapped fitting results:");
         print_str = "            dtilde = {:6.4f} "+str((bounds[0][0],bounds[1][0]))+" nm\n\
@@ -464,7 +472,7 @@ def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=
 ###########################################################################
 #### main
 
-def fit_I(temp, area, d_not, phibar_not, m_r_not,
+def fit_I(metal, temp, area, d_not, phibar_not, m_r_not,
             d_percent, phibar_percent, m_r_percent,
             lowbias_fit=True, verbose=0):
     '''
@@ -477,6 +485,7 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
 
     Args:
     Experimental params:
+    metal, str, Co or Mn, tells which type of metalPc and what folder data is in
     temp, temperature in Kelvin
     area, area in nm^2
     Fitting params:
@@ -487,11 +496,11 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
     
     the _not args are the initial guesses for the above fitting parameters
     the _percent args determine the fitting bounds for the above fitting parameters
-    
     '''
+    if( not isinstance(metal, str)): raise TypeError;
 
     # read in the experimental data
-    V_exp, I_exp = load_IVb(temp); # in volts nano amps
+    V_exp, I_exp = load_IVb(metal,temp); # in volts nano amps
 
     #### fit expermental data
 
@@ -505,7 +514,7 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
     bounds_linear = [[I0_not*0.01, slope_not*0.01],
                      [I0_not*100, slope_not*100]];
     params_linear, pcov_linear = scipy_curve_fit(I_of_Vb_linear, V_exp, I_exp,
-                                p0=init_params_linear, bounds=bounds_linear);
+                                p0=init_params_linear)#, bounds=bounds_linear);
     I0, slopeI = tuple(params_linear);
     I_fit_linear = I_of_Vb_linear(V_exp, I0, slopeI);
 
@@ -523,7 +532,7 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
     bounds_cubic = [[V_exp[0], slope_not*0.01],
                  [V_exp[-1], slope_not*100]];
     params_cubic, pcov_cubic = scipy_curve_fit(I_of_Vb_cubic, V_exp, I_exp-I0,
-                                p0=init_params_cubic, bounds=bounds_cubic);
+                                p0=init_params_cubic)#, bounds=bounds_cubic);
     V0, slopeI = tuple(params_cubic);
     I_fit_cubic = I_of_Vb_cubic(V_exp, V0, slopeI);
 
@@ -572,7 +581,7 @@ def fit_I(temp, area, d_not, phibar_not, m_r_not,
                             p0 = init_params, bounds = bounds, max_nfev = 1e6);
     d, phi1, phi2, m_r = tuple(params);
     I_fit = I_of_Vb_asym(V_exp, d, phi1, phi2, m_r);
-    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/np.mean(I_exp);
+    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/abs(np.mean(I_exp));
     if(verbose):
         print("I_of_Vb_asym fitting results:");
         print_str = "            d = {:6.4f} "+str((bounds[0][0],bounds[1][0]))+" nm\n\
@@ -598,7 +607,8 @@ def SLL_plot():
     SLL_J0 = SLL_I0/convert_J2I;
     plot_guess(SLL_temp, SLL_area,0.0, SLL_J0, 5.01, 1.90, 0.319);
 
-def fit_data():
+def fit_Co_data():
+    metal="Co/"; # points to data folder
 
     # experimental params
     Ts = [40, 80, 120, 160, 200];
@@ -630,13 +640,64 @@ def fit_data():
         print("\nT = {:.0f} K".format(Ts[datai]));
         if not combined: # normal way
             rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
-            results.append(fit_I(Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+            results.append(fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
                     d_guess_percent, phi_guess_percent, m_guess_percent,
                                  lowbias_fit=lowbias_fit, verbose=4));
             
         else: # d and sqrt(m_r) combined as in arxiv paper
             rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "RMSE"];
-            results.append(fit_I_combined(Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
+            results.append(fit_I_combined(metal,Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
+                    d_guess_percent, phi_guess_percent, verbose=4));
+
+    # plot fitting results vs T
+    results = np.array(results);
+    nresults = len(results[0]);
+    fig, axes = plt.subplots(nresults, sharex=True);
+    if(nresults==1): axes = [axes];
+    for resulti in range(nresults):
+        axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
+        axes[resulti].set_ylabel(rlabels[resulti]);
+        if not lowbias_fit: axes[resulti].axhline(bounds[0][resulti], color=accentcolors[0],linestyle='dashed');
+        if not lowbias_fit: axes[resulti].axhline(bounds[1][resulti], color=accentcolors[0],linestyle='dashed');
+    axes[-1].set_xlabel("$T$ (K)");
+    plt.show();
+
+def fit_Mn_data():
+    metal="Mn/"; # points to data folder
+
+    # experimental params
+    Ts = [5];
+    radius = 200*1e3; # 200 micro meter
+    area = np.pi*radius*radius;
+
+    # fitting param guesses
+    d_guess = np.array([2.0]);
+    phi_guess = np.array([1.7]);
+    m_guess = np.array([0.75]);
+
+    # fitting param bounds
+    d_guess_percent = 0.5;
+    phi_guess_percent = 0.5;
+    m_guess_percent = 0.5;
+    bounds = np.array([[d_guess[0]*(1-d_guess_percent),phi_guess[0]*(1-phi_guess_percent),phi_guess[0]*(1-phi_guess_percent),m_guess[0]*(1-m_guess_percent),0.0],
+              [d_guess[0]*(1+d_guess_percent),phi_guess[0]*(1+phi_guess_percent),phi_guess[0]*(1+phi_guess_percent),m_guess[0]*(1+m_guess_percent),0.2]]);
+    
+    # fitting results
+    combined = False;
+    lowbias_fit = False;
+    Ts = Ts[:];
+    results = [];
+    for datai in range(len(Ts)):
+        print("\nT = {:.0f} K".format(Ts[datai]));
+        if not combined: # normal way
+            rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
+            results.append(fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+                    d_guess_percent, phi_guess_percent, m_guess_percent,
+                                 lowbias_fit=lowbias_fit, verbose=10));
+            
+        else: # d and sqrt(m_r) combined as in arxiv paper
+            rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "RMSE"];
+            results.append(fit_I_combined(metal,Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
                     d_guess_percent, phi_guess_percent, verbose=4));
 
     # plot fitting results vs T
@@ -656,5 +717,5 @@ def fit_data():
 #### exec
 if __name__ == "__main__":
 
-    fit_data();
+    fit_Mn_data();
 
