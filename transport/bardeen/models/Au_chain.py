@@ -27,6 +27,7 @@ if True: # experimental model from https://doi.org/10.1126/science.1075242
     dvac = 2*a_r;
     tvac = 1/(m_r*dvac*dvac)*np.eye(n_loc_dof); # simple model of hopping through vacuum
     print(">>>", tvac);
+
     # construct with identical left and right leads
     Ntotal = 2*Nchain+Nvac; # total # sites
     Hsys = np.zeros((Ntotal, Ntotal, n_loc_dof, n_loc_dof));

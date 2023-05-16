@@ -300,7 +300,7 @@ def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
 ###############################################################
 #### fitting functions
 
-def load_IVb(temp):
+def load_IVb(temp,folder):
     '''
     Get I vs V data at a certain temp
 
@@ -308,7 +308,8 @@ def load_IVb(temp):
     V in volts, I in nano amps
     '''
 
-    IV = np.loadtxt("{:.0f}".format(temp) + "KExp.txt");
+    fname = "{:.0f}".format(temp) + "KExp.txt"
+    IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
     Is = IV[:, 1];
     if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(Is) ): raise TypeError;

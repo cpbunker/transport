@@ -25,7 +25,6 @@ mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-error_lims = (0,20);
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 def print_H_j(H):
@@ -43,6 +42,7 @@ tinfty = 1.0*tLR;
 VLR = 0.0*tLR;
 Vinfty = 0.5*tLR;
 Ninfty = 20;
+error_lims = (0,20);
 
 # T vs NL
 if False:
@@ -112,9 +112,9 @@ if False:
     #plt.savefig("figs/bard_barrier/bard_barrier_NL.pdf");
 
 # T vs NC
-if False:
+if True:
 
-    NCvals = [1,3,5,51];
+    NCvals = [1,3,5];
     numplots = len(NCvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -133,8 +133,12 @@ if False:
         for j in range(NCval):
             HC[j,j] += VC;
         for j in range(NCval-1):
-            HC[j,j+1] += -tC;
-            HC[j+1,j] += -tC;
+            if((j==0 or j==NCval-2) and True):
+                HC[j,j+1] += -tC/2;
+                HC[j+1,j] += -tC/2;
+            else:
+                HC[j,j+1] += -tC;
+                HC[j+1,j] += -tC;
         print("HC =");
         print_H_j(HC);
         

@@ -53,7 +53,7 @@ if True:
         Hsys = np.load(fname);
         Ntotal, n_loc_dof = np.shape(Hsys)[0], np.shape(Hsys)[-1];
         tbulk = -Hsys[0,1,0,0];
-        print(">>> tbulk = ",tbulk);
+        print(">>> tbulk = ",tbulk," Ha"); assert False
 
         # visualize Hsys
         figH, axesH = plt.subplots(n_loc_dof, sharex = True);
