@@ -31,10 +31,14 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
     HL_4d = np.copy(Hsys_4d);
     HL_4d[cutiL-1,cutiL] = np.zeros_like(HL_4d[cutiL-1,cutiL]);
     HL_4d[cutiL,cutiL-1] = np.zeros_like(HL_4d[cutiL,cutiL-1]);
+    HR_4d = np.copy(Hsys_4d);
+    HR_4d[cutiR-1,cutiR] = np.zeros_like(HR_4d[cutiR-1,cutiR]);
+    HR_4d[cutiR,cutiR-1] = np.zeros_like(HR_4d[cutiR,cutiR-1]);   
     if(verbose):
+        print("HC = \n"+str(Hsys_4d[mid,mid]))
         print("Hsys = "+str(np.shape(Hsys_4d))+"\n",Hsys_4d[mid-2:mid+2,mid-2:mid+2,0,0]);
         print("HL = "+str(np.shape(HL_4d))+"\n",HL_4d[mid-2:mid+2,mid-2:mid+2,0,0]);
-        print("HR = "+str(np.shape(HL_4d))+"\n",HL_4d[mid-2:mid+2,mid-2:mid+2,0,0]);
+        print("HR = "+str(np.shape(HL_4d))+"\n",HR_4d[mid-2:mid+2,mid-2:mid+2,0,0]);
 
     # eigenstates of HL
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
@@ -44,7 +48,6 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
         Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
         psims = psims.T[Ems+2*tbulk < tbulk*E_cutoff];
         Ems = Ems[Ems+2*tbulk < tbulk*E_cutoff];
-
         Emas.append(Ems);
         psimas.append(psims);
         n_bound_left = max(n_bound_left, len(Emas[alpha]));
@@ -58,20 +61,60 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
         psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
         psimas_arr[alpha] = psims_arr;
     del Ems, psims, Emas, psimas;
-    Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left);
+    #Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left);
 
     # flag initial vs final states
     mid = len(Hsys_4d)//2;
-    flags = np.zeros_like(Emas_arr,dtype=int)
+    flagsL = np.zeros_like(Emas_arr,dtype=int)
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):
             psim = psimas_arr[alpha,m];
             weight_left = np.dot( np.conj(psim[:mid]), psim[:mid]);
             weight_right = np.dot( np.conj(psim[mid:]), psim[mid:]);
             if(weight_left > weight_right): # this is an initial state
-                flags[alpha,m] = 1;
-    Emas = np.where(flags==1,Emas_arr,np.nan);
-    Enbs = np.where(flags==0,Emas_arr,np.nan);
+                flagsL[alpha,m] = 1;
+    Emas = np.where(flagsL==1,Emas_arr,np.nan);
+
+    # eigenstates of HR
+    if False:
+        raise NotImplementedError
+        del alpha
+        assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
+        Enbs, psinbs = [], []; # will index as Emas[alpha,m]
+        n_bound_right = 0;
+        for beta in range(n_loc_dof):
+            Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
+            psins = psins.T[Ens+2*tbulk < tbulk*E_cutoff];
+            Ens = Ens[Ens+2*tbulk < tbulk*E_cutoff];
+            Enbs.append(Ens);
+            psinbs.append(psins);
+            n_bound_right = max(n_bound_right, len(Emas[beta]));
+        Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
+        psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
+        for beta in range(n_loc_dof):# un-ragged the array by filling in highest Es
+            Ens = Enbs[beta];
+            Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
+            Enbs_arr[beta] = Ens_arr;
+            psins = psinbs[beta];
+            psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
+            psinbs_arr[beta] = psins_arr;
+        del Ens, psins, Enbs, psinbs;
+        #Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_left);
+
+        # flag initial vs final states
+        mid = len(Hsys_4d)//2;
+        flagsR = np.zeros_like(Enbs_arr,dtype=int)
+        for beta in range(n_loc_dof):
+            for n in range(n_bound_left):
+                psin = psinbs_arr[beta,n];
+                weight_left = np.dot( np.conj(psin[:mid]), psin[:mid]);
+                weight_right = np.dot( np.conj(psin[mid:]), psin[mid:]);
+                if(weight_left > weight_right): # this is an initial state
+                    flagsR[beta,n] = 1;
+        Enbs = np.where(flagsR==1,Enbs_arr,np.nan);
+
+    else:
+        Enbs = np.where(flagsL==0,Emas_arr,np.nan);
                     
     # visualize
     jvals = np.linspace(-mid, -mid +len(Hsys_4d)-1,len(Hsys_4d), dtype=int);
@@ -82,17 +125,28 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
         print("Emas "+str(np.shape(Emas))+"\n",Emas/tbulk);
         print("Enbs "+str(np.shape(Enbs))+"\n",Enbs/tbulk);
 
+        # plot hams
+        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
+        if n_loc_dof == 1: myaxes = [myaxes];
+        for alpha in range(n_loc_dof):
+            Hs = [Hsys_4d];
+            Hstrs = ["$H_{sys}$","$H_{sys}-H_L$","$H_{sys}-H_{R}$"];
+            for Hi in range(len(Hs)):
+                myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
+            myaxes[alpha].set_xlabel("$j$"); myaxes[alpha].set_ylabel("$V_j$");
+        plt.legend();plt.show();
+
         # plot left wfs
         for m in range(6): #n_bound_left):
             wffig, wfax = plt.subplots();
             alpha_colors=["tab:blue","tab:orange"];
             for alpha in range(n_loc_dof):
                 if(not np.isnan(Emas[alpha,m])):
-                    wfax.set_title("$"+str(np.real(Emas[alpha,m].round(4)))+" \\rightarrow "+str(np.real(Enbs[alpha,m+1].round(4)))+"$");
+                    wfax.set_title("$"+str(np.real(Emas[alpha,m].round(4)))+" \\rightarrow "+str(np.real(Enbs[alpha,m-1].round(4)))+"$");
                     wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha]),color="black");
                     wfax.plot(jvals[:-1], np.diagonal(HL_4d[:,:,alpha,alpha], offset=1), color="black", linestyle="dotted")
                     wfax.plot(jvals, np.real(psimas_arr[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
-                    wfax.plot(jvals, np.real(psimas_arr[alpha,m+1]),color=alpha_colors[alpha],linestyle="dotted");
+                    wfax.plot(jvals, np.real(psimas_arr[alpha,m-1]),color=alpha_colors[alpha],linestyle="dotted");
             plt.show();
         assert False;
 
@@ -228,6 +282,31 @@ def kernel_well(tinfty, tL, tR,
                     Enbs[beta,n] = 0.0
                     psinbs[beta,n] = np.zeros_like(psin);
 
+    # average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    # average over energy but keep spin separate
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    overlaps = np.empty_like(Emas,dtype=float); # <<<<<
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):               
+            for beta in range(n_loc_dof):
+                # inelastic means averaging over an interval
+                Mns = [];
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
+                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
+                        Mns.append(np.real(melement*np.conj(melement)));
+                        overlaps[alpha,m] = np.real( np.conj(np.dot(np.conj(psinbs[beta,n]), psimas[alpha,m]))
+                                                     *np.dot(np.conj(psinbs[beta,n]), psimas[alpha,m]));
+
+                # update M with average
+                if(verbose): print("\tinterval = ",interval, len(Mns));
+                if Mns: Mns = sum(Mns)/len(Mns);
+                else: Mns = 0.0;
+                Mbmas[beta,m,alpha] = Mns;
+
     # visualize
     if(verbose > 9):
 
@@ -258,28 +337,6 @@ def kernel_well(tinfty, tL, tR,
                 wfax.plot(jvals[mid-len(HC)-10:mid+len(HC)+10], abs((np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])/max(abs(np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])))) )[mid-len(HC)-10:mid+len(HC)+10], color=alpha_colors[alpha],linestyle="solid",marker='s')               
             plt.show();
         assert False;
-
-    # average matrix elements over final states |k_n \beta>
-    # with the same energy as the intial state |k_m \alpha>
-    # average over energy but keep spin separate
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    # initial energy and spin states
-    for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):               
-            for beta in range(n_loc_dof):
-                # inelastic means averaging over an interval
-                Mns = [];
-                for n in range(n_bound_right):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
-                        melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
-                        Mns.append(np.real(melement*np.conj(melement)));
-
-                # update M with average
-                if(verbose): print("\tinterval = ",interval, len(Mns));
-                if Mns: Mns = sum(Mns)/len(Mns);
-                else: Mns = 0.0;
-                Mbmas[beta,m,alpha] = Mns;
 
     return Emas, Mbmas;
 
@@ -543,6 +600,7 @@ def Ts_wfm(Hsys, Emas, tbulk, verbose=0) -> np.ndarray:
     n_loc_dof = np.shape(Hsys)[-1];
     n_bound_left = np.shape(Emas)[-1];
     if(np.shape(Emas)[0] != n_loc_dof): raise ValueError;
+    if(Hsys[0,0,0,0] != 0): raise Exception("Is for continuous leads not wells");
 
     # convert from Hsys to hblocks, tnn, tnnn 
     hblocks = np.empty((n_spatial_dof,n_loc_dof,n_loc_dof),dtype=complex);
@@ -569,8 +627,11 @@ def Ts_wfm(Hsys, Emas, tbulk, verbose=0) -> np.ndarray:
         source[alpha] = 1.0;
         for m in range(n_bound_left):
             Energy = Emas[alpha,m];
-            if( np.isnan(Emas[alpha,m])): Energy = Emas[alpha,m-1];
-            Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tbulk, Energy, source, verbose = verbose);
+            if( np.isnan(Emas[alpha,m])):
+                #Energy = Emas[alpha,m-1]
+                Tdum = np.full( (n_loc_dof,), np.nan);
+            else:
+                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tbulk, Energy, source, verbose = verbose);
             Tbmas[:,m,alpha] = Tdum;
             
     return Tbmas;

@@ -3,9 +3,9 @@ Christian Bunker
 M^2QM at UF
 November 2022
 
-Spin independent scattering in a 1d monatomic chain
+Spin independent scattering from a rectangular potential barrier
+benchmarked to exact solution
 solved in time-dependent QM using bardeen theory method in transport/bardeen
-then benchmarked to exact solution
 '''
 
 from transport import bardeen
@@ -34,81 +34,90 @@ def print_H_j(H):
 
 #################################################################
 #### benchmarking T in spinless 1D case
+#### use bardeen.kernel, where perturb is central-right lead hopping
 
-# perturbation is cutting hopping
+# tight binding params
+n_loc_dof = 1; 
+tLR = 1.0*np.eye(n_loc_dof);
+tinfty = 1.0*tLR;
+VLR = 0.0*tLR;
+Vinfty = 0.5*tLR;
+Ninfty = 20;
+error_lims = (0,20);
+
+# T vs NC
 if True:
-    E_cutoff = 2.0;
-    
-    # iter over vaccuum hopping
-    tvacvals = [0.016772,0.000671];
-    numplots = len(tvacvals);
+
+    tCvals = np.array([1.0*tLR,0.8*tLR,0.2*tLR]);
+    numplots = len(tCvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
     fig.set_size_inches(7/2,3*numplots/2);
-    for tvaci in range(len(tvacvals)):
 
-        # load Hsys
-        fname = "transport/bardeen/models/Au_chain_"+str(tvacvals[tvaci])+".npy";
-        print("Loading data from "+fname);
-        Hsys = np.load(fname);
-        Ntotal, n_loc_dof = np.shape(Hsys)[0], np.shape(Hsys)[-1];
-        tbulk = -Hsys[0,1,0,0];
-        print(">>> tbulk = ",tbulk," Ha"); assert False
+    # bardeen results for heights of barrier covering well
+    for tCvali in range(len(tCvals)):
+        NLR = 200;
+        VLRprime = Vinfty;
 
-        # visualize Hsys
-        figH, axesH = plt.subplots(n_loc_dof, sharex = True);
-        if(n_loc_dof == 1): axesH = [axesH];
-        mid = len(Hsys)//2;
-        jvals = np.linspace(-mid, -mid +len(Hsys)-1,len(Hsys), dtype=int);
-        for alpha in range(n_loc_dof):
-            axesH[alpha].plot(jvals, np.diagonal(Hsys[:,:,alpha,alpha]), label = "V", color=accentcolors[0]);
-            axesH[alpha].plot(jvals[:-1], np.diagonal(Hsys[:,:,alpha,alpha], offset=1), label = "t", color=mycolors[0]);
-        axesH[0].legend();
-        axesH[0].set_title("$H_{sys} "+str(np.shape(Hsys))+"$");
-        figH.show();
+        # central region
+        NC = 3;
+        VC = 0.4*tLR;
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+        for j in range(NC):
+            if(j==NC//2): # preserves LR symmetry
+                HC[j,j] += VC;
+        for j in range(NC-1):
+            HC[j,j+1] += -tCvals[tCvali];
+            HC[j+1,j] += -tCvals[tCvali];
+        print("HC =");
+        print_H_j(HC);
 
-        # bardeen.kernel generates initial energies and corresponding matrix elements
-        tcuti = mid;
-        Evals, Mvals = bardeen.kernel(Hsys, tbulk, tcuti, tcuti,
-                                      E_cutoff=E_cutoff, verbose=1);
-
-        # bardeen.Ts_bardeen generates continuum limit transmission probs
-        tL, tR = Hsys[0,1], Hsys[-2,-1];
-        VL, VR = Hsys[0,0], Hsys[-1,-1];
-        NL, NR = mid, mid;
-        Tvals = bardeen.Ts_bardeen(Evals, Mvals, tL, tR, VL, VR, NL, NR, verbose=1);
+        # entire system Hamiltonian. syntax:
+        # tinfty, tL, tR, 
+        # Vinfty, VL, VR, 
+        # Ninfty, NL, NR, HC
+        Hsys, offset = bardeen.Hsysmat(tinfty, tLR, tLR,
+                               Vinfty, VLR, VLR,
+                               Ninfty, NLR, NLR, HC);
         
+        # bardeen.kernel gets matrix elements by cutting the hopping
+        jvals = np.array(range(len(Hsys))) + offset;
+        cuti = len(jvals)//2;
+        print(">>>", len(jvals), cuti, cuti+1);
+        Evals, Mvals = bardeen.kernel(Hsys, tLR[0,0], cuti, cuti+1, 
+                                      E_cutoff=VC[0,0],interval=1e-3,verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
+
         # benchmark
-        Tvals_bench = bardeen.Ts_wfm(Hsys, Evals, tbulk, verbose=0);
+        Tvals_bench = bardeen.Ts_wfm(Hsys[Ninfty:-Ninfty,Ninfty:-Ninfty], Evals, tLR[0,0], verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
         # only one loc dof, and transmission is diagonal
         for alpha in range(n_loc_dof):
+            axright = axes[tCvali].twinx();
 
-            # plot
-            xvals = (np.real(Evals[alpha])+2*tbulk)/(tbulk);
-            axes[tvaci].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-            axes[tvaci].set_xlim(min(xvals),E_cutoff);
-            axes[tvaci].set_ylim(0.0,np.real(max(Tvals_bench[alpha,:,alpha])).round(4) );
-            
+            # truncate to bound states and plot
+            xvals = np.real(Evals[alpha])+2*tLR[alpha,alpha];
+            axes[tCvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+
             # % error
-            axright = axes[tvaci].twinx();
-            axes[tvaci].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axes[tCvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
             axright.scatter(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),marker="_",color=accentcolors[1]); 
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        #axright.set_ylim(0,50);
-        axes[tvaci].set_ylabel("$T (t_{vac} = "+str(tvacvals[tvaci])+")$",fontsize=myfontsize);
-        axes[tvaci].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        #axright.set_ylim(*error_lims);
+        axes[tCvali].set_ylabel('$T$',fontsize=myfontsize);
+        axes[tCvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[tCvali].set_title("$t_C = "+str(tCvals[tCvali][0,0])+'$', x=0.4, y = 0.7, fontsize=myfontsize);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel("$(\\varepsilon_m + 2t_{bulk})/t_{bulk}$",fontsize=myfontsize);
-    axes[0].set_title("$t_{bulk} = "+"{:.4f}".format(tbulk)+"$");
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
-
-
+    fname = "figs/bard_chain/bard_chain.pdf";
+    plt.savefig(fname); print("Saving data to "+fname);
+    #plt.show();
 

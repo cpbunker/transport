@@ -108,13 +108,14 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
+    fname = "figs/bard_barrier/bard_barrier_NL.pdf";
+    #plt.savefig(fname); print("Saving data as",fname);
     plt.show();
-    #plt.savefig("figs/bard_barrier/bard_barrier_NL.pdf");
 
 # T vs NC
-if True:
+if False:
 
-    NCvals = [1,3,5];
+    NCvals = [1,3,5,51];
     numplots = len(NCvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -133,12 +134,8 @@ if True:
         for j in range(NCval):
             HC[j,j] += VC;
         for j in range(NCval-1):
-            if((j==0 or j==NCval-2) and True):
-                HC[j,j+1] += -tC/2;
-                HC[j+1,j] += -tC/2;
-            else:
-                HC[j,j+1] += -tC;
-                HC[j+1,j] += -tC;
+            HC[j,j+1] += -tC;
+            HC[j+1,j] += -tC;
         print("HC =");
         print_H_j(HC);
         
@@ -146,7 +143,7 @@ if True:
         # tinfty, tL, tR, 
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
+        Evals, Mvals, overlaps = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
                                       E_cutoff=VC[0,0],verbose=1);
@@ -168,11 +165,16 @@ if True:
 
             # % error
             axes[NCvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
+            errorvals = 100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]);
+            axright.plot(xvals,errorvals,color=accentcolors[1]);
+            
+            # overlap
+            zoomin = np.max(errorvals)/np.max(overlaps[alpha]);
+            axright.plot(xvals, zoomin*overlaps[alpha],color=accentcolors[1],linestyle="dashed");
 
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(*error_lims);
+        #axright.set_ylim(*error_lims);
         axes[NCvali].set_ylabel('$T$',fontsize=myfontsize);
         axes[NCvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
         axes[NCvali].set_title("$N_C = "+str(NCval)+'$', x=0.4, y = 0.7, fontsize=myfontsize);
@@ -181,11 +183,12 @@ if True:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
+    fname = "figs/bard_barrier/bard_barrier_NC.pdf";
+    #plt.savefig(fname); print("Saving data as",fname);
     plt.show();
-    #plt.savefig("figs/bard_barrier/bard_barrier_NC.pdf");
 
 # T vs VC
-if False:
+if True:
 
     VCvals = np.array([0.1*tLR, 0.4*tLR,0.8*tLR]);
     numplots = len(VCvals);
@@ -195,7 +198,7 @@ if False:
 
     # bardeen results for heights of barrier covering well
     for VCvali in range(len(VCvals)):
-        NC = 3;
+        NC = 11;
         NLR = 200;
         VLRprime = Vinfty;
         VCval = VCvals[VCvali];
@@ -218,7 +221,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=0.1,verbose=1);
+                                      E_cutoff=0.4,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 
@@ -252,8 +255,81 @@ if False:
     plt.tight_layout();
     fname = "figs/bard_barrier/bard_barrier_VC.pdf";
     if(NC != 11): fname = "figs/bard_barrier/bard_barrier_VC_marg.pdf"
+    #plt.savefig(fname); print("Saving data as",fname);
+    plt.show();
+
+# T vs tC (reduced-tC insulating region of width NC=3)
+if False:
+
+    tCvals = [1.0*tLR,0.8*tLR,0.2*tLR];
+    numplots = len(tCvals);
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3*numplots/2);
+
+    # bardeen results for heights of barrier covering well
+    for tCvali in range(len(tCvals)):
+        NLR = 200;
+        VLRprime = Vinfty;
+
+        # central region
+        NC = 3;
+        VC = 0.1*tLR;
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+        for j in range(NC):
+            if(j == NC//2): # middle to keep LR symmetry !!!
+                HC[j,j] += VC; 
+            else:
+                HC[j,j] += VLR;
+        for j in range(NC-1):
+            HC[j,j+1] += -tCvals[tCvali];
+            HC[j+1,j] += -tCvals[tCvali];
+        print("HC =");
+        print_H_j(HC);
+        
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR, 
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
+                                      Vinfty, VLR, VLRprime, VLR, VLRprime,
+                                      Ninfty, NLR, NLR, HC, HC,
+                                      E_cutoff=VC[0,0],verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
+
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
+
+        # only one loc dof, and transmission is diagonal
+        for alpha in range(n_loc_dof):
+            axright = axes[tCvali].twinx();
+
+            # truncate to bound states and plot
+            xvals = np.real(Evals[alpha])+2*tLR[alpha,alpha];
+            axes[tCvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+
+            # % error
+            axes[tCvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
+
+        # format
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+        axright.set_ylim(*error_lims);
+        axes[tCvali].set_ylabel('$T$',fontsize=myfontsize);
+        axes[tCvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[tCvali].set_title("$t_{vac} = "+str(tCvals[tCvali][0,0])+'$', x=0.4, y = 0.7, fontsize=myfontsize);
+
+    # format and show
+    axes[-1].set_xscale('log', subs = []);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    plt.tight_layout();
+    fname = "figs/bard_barrier/bard_barrier_tC.pdf";
+    if(VC[0,0] != 0.4): fname = "figs/bard_barrier/bard_barrier_tC_marg.pdf"
+    plt.savefig(fname); print("Saving data as",fname);
     #plt.show();
-    plt.savefig(fname);
 
 # T vs VLR prime
 if False:
@@ -321,16 +397,84 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    #plt.show();
-    plt.savefig("figs/bard_barrier/bard_barrier_VLprime.pdf");
+    fname = "figs/bard_barrier/bard_barrier_VLprime.pdf";
+    #plt.savefig(fname); print("Saving data as",fname);
+    plt.show();
 
+###############################################################################
+#### left right symmetry breaking
 
+# T vs VR
+if False:
 
+    VRvals = [0.0*tLR, 0.001*tLR, 0.01*tLR];
+    numplots = len(VRvals);
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3*numplots/2);
 
+    # central region
+    tC = 1*tLR;
+    VC = 0.4*tLR;
+    NC = 11;
+    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
+    for j in range(NC):
+        HC[j,j] += VC;
+    for j in range(NC-1):
+        HC[j,j+1] += -tC;
+        HC[j+1,j] += -tC;
+    print("HC =");
+    print_H_j(HC);
 
+    # bardeen results for heights of barrier covering well
+    for VRvali in range(len(VRvals)):
+        NLR = 200; # try increasing
+        VLRprime = Vinfty;
+        
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR, 
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC,HCprime,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
+                                      Vinfty, VLR, VLRprime, VRvals[VRvali], VLRprime,
+                                      Ninfty, NLR, NLR, HC, HC,
+                                      E_cutoff=VC[0,0],interval=1e-2,verbose=1);
+        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
+                                   tLR, tLR, VLR, VRvals[VRvali], NLR, NLR, verbose=1);
 
+        # benchmark
+        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VRvals[VRvali], HC, Evals, verbose=0);
+        print("Output shapes:");
+        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-#############################################
+        # only one loc dof, and transmission is diagonal
+        for alpha in range(n_loc_dof):
+            axright = axes[VRvali].twinx();
+
+            # truncate to bound states and plot
+            xvals = np.real(Evals[alpha])+2*tLR[alpha,alpha];
+            axes[VRvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
+
+            # % error
+            axes[VRvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
+            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
+
+        # format
+        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
+        #axright.set_ylim(*error_lims);
+        axes[VRvali].set_ylabel('$T$',fontsize=myfontsize);
+        axes[VRvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[VRvali].set_title("$V_R = "+str(VRvals[VRvali][0,0])+'$', x=0.4, y = 0.7, fontsize=myfontsize);
+
+    # format and show
+    axes[-1].set_xscale('log', subs = []);
+    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    plt.tight_layout();
+    plt.show();
+    fname = "figs/bard_barrier/bard_barrier_VLprime.pdf";
+    #plt.savefig(fname); print("Saving data as",fname);
+
+###############################################################################
 #### messing with hopping
 
 # perturbation is hopping from central region to right lead ONLY

@@ -81,6 +81,36 @@ def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
 
     return e,v;
 
+def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
+    '''
+    Convert physics contained in an FCIDUMP object or file to a Matrix
+    Product Expectation (MPE) for doing DMRG
+
+    Args:
+    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
+    bdim_i, int, initial bond dimension of the MPE
+
+    Returns:
+    MPE object
+    '''
+
+    from pyblock3 import fcidump, hamiltonian, algebra
+    from pyblock3.algebra.mpe import MPE
+
+    # convert fcidump to hamiltonian obj
+    if( isinstance(fd, str) ): # fd is file, must be read
+        hobj = hamiltonian.Hamiltonian(FCIDUMP().read(fd), flat=True);
+    else: # fcidump obj already
+        h_obj = hamiltonian.Hamiltonian(fd, flat=True);
+
+    # Matrix Product Operator
+    h_mpo = h_obj.build_qc_mpo();
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    psi_mps = h_obj.build_mps(bdim_i);
+
+    # MPE
+    return MPE(psi_mps, h_mpo, psi_mps);
+
 def arr_to_mpo(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
     '''
     Convert physics contained in an FCIDUMP object or file
@@ -143,6 +173,7 @@ def scf_to_arr(mol, scf_obj):
 
     return h1e, g2e;
 
+################################################################################
 #### array dimensionality
 
 def scal_to_vec(scal, n_dof):
@@ -262,6 +293,7 @@ def mat_4d_to_2d(mat):
 
     return new_mat;
 
+################################################################################
 #### second quant
 
 def terms_to_g2e(g2e, terms1, coefs1, terms2, coefs2):
@@ -417,6 +449,7 @@ def single_to_det(h1e, g2e, Nps, states, dets_interest = [], verbose = 0):
         
     return H;
 
+################################################################################
 #### under construction
 
 def cj_to_ck(h1e, nleads):
