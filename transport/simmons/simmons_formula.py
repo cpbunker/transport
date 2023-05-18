@@ -300,7 +300,7 @@ def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
 ###############################################################
 #### fitting functions
 
-def load_IVb(folder,temp):
+def load_IVb(base,folder,temp):
     '''
     Get I vs V data at a certain temp
 
@@ -308,7 +308,7 @@ def load_IVb(folder,temp):
     V in volts, I in nano amps
     '''
 
-    fname = "{:.0f}".format(temp) + "KExp.txt"
+    fname = "{:.0f}".format(temp) + base;
     print("Loading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
@@ -500,7 +500,28 @@ def fit_I(metal, temp, area, d_not, phibar_not, m_r_not,
     if( not isinstance(metal, str)): raise TypeError;
 
     # read in the experimental data
-    V_exp, I_exp = load_IVb(metal,temp); # in volts nano amps
+    if(metal == "Co/"): 
+        base = "KExp.txt";
+        V_exp, I_exp = load_IVb(base,metal,temp); # in volts, nano amps
+    elif(metal == "Mn/"): 
+        base = "KdIdV.txt";
+        Vdc, dIdV_exp = load_IVb(base,metal,temp);
+        # antideriv of dIdV is I
+        I_anti = np.empty_like(dIdV_exp);
+        for eli in range(len(I_anti)):
+            I_anti[eli] = np.trapz(dIdV_exp[:eli],Vdc[:eli]);
+
+        if False:
+            # compare I and \int dI dV
+            V_exp, I_exp = load_IVb("KExp.txt",metal,temp); # in volts, nano amps
+            compfig, compax = plt.subplots();
+            compax.plot(V_exp, I_exp);
+            compax.plot(Vdc,I_anti-114 )
+            plt.show();
+            #assert False
+        else:
+            V_exp, I_exp = Vdc, I_anti;
+    else: raise NotImplementedError;
 
     #### fit expermental data
 
@@ -592,7 +613,7 @@ def fit_I(metal, temp, area, d_not, phibar_not, m_r_not,
         print(print_str.format(d, phi1, phi2, m_r, rmse_final));
     if(verbose > 4): plot_fit(V_exp, I_exp, I_fit, mytitle = print_str[:print_str.find("(")].format(d)+" nm");
 
-    return (d, phi1, phi2, m_r, rmse_final);
+    return ((d, phi1, phi2, m_r, rmse_final), bounds);
 
 ###############################################################
 #### wrappers
@@ -607,7 +628,7 @@ def SLL_plot():
     SLL_J0 = SLL_I0/convert_J2I;
     plot_guess(SLL_temp, SLL_area,0.0, SLL_J0, 5.01, 1.90, 0.319);
 
-def fit_Co_data():
+def fit_Co_data(lowbias_fit, refined):
     metal="Co/"; # points to data folder
 
     # experimental params
@@ -615,107 +636,106 @@ def fit_Co_data():
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
 
-    # fitting param guesses
-    phi_guess = np.array([1.85, 1.65, 1.60, 1.35, 1.35]);
-    m_guess = np.array([0.32, 0.36, 0.36, 0.42, 0.41]);
-    d_guess = np.array([5.01, 5.02, 5.03, 5.04, 5.05]);
+    # fitting param guesses and bounds
+    if refined: # manually constrict search space
+        phi_guess = np.array([1.85, 1.65, 1.60, 1.35, 1.35]);
+        m_guess = np.array([0.32, 0.36, 0.36, 0.42, 0.41]);
+        d_guess = np.array([5.01, 5.02, 5.03, 5.04, 5.05]);
+        d_guess_percent = 0.05;
+        phi_guess_percent = 0.05;
+        m_guess_percent = 0.05;
+    else: # open search space
+        d_guess = 5.0*np.ones_like(Ts);
+        phi_guess = 1.7*np.ones_like(Ts);
+        m_guess = 0.35*np.ones_like(Ts);
+        d_guess_percent = 0.5;
+        phi_guess_percent = 0.5;
+        m_guess_percent = 0.5;
 
-    d_guess = 5.0*np.ones_like(d_guess)
-    phi_guess = 1.7*np.ones_like(phi_guess)
-    m_guess = 0.35*np.ones_like(m_guess)
-
-    # fitting param bounds
-    d_guess_percent = 0.5;
-    phi_guess_percent = 0.5;
-    m_guess_percent = 0.5;
-    bounds = np.array([[d_guess[0]*(1-d_guess_percent),phi_guess[0]*(1-phi_guess_percent),phi_guess[0]*(1-phi_guess_percent),m_guess[0]*(1-m_guess_percent),0.0],
-              [d_guess[0]*(1+d_guess_percent),phi_guess[0]*(1+phi_guess_percent),phi_guess[0]*(1+phi_guess_percent),m_guess[0]*(1+m_guess_percent),0.2]]);
-    
     # fitting results
-    combined = False;
-    lowbias_fit = True;
     Ts = Ts[:];
     results = [];
+    boundsT = [];
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
-        if not combined: # normal way
-            rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
-            results.append(fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
-                    d_guess_percent, phi_guess_percent, m_guess_percent,
-                                 lowbias_fit=lowbias_fit, verbose=4));
-            
-        else: # d and sqrt(m_r) combined as in arxiv paper
-            rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "RMSE"];
-            results.append(fit_I_combined(metal,Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
-                    d_guess_percent, phi_guess_percent, verbose=4));
+        rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
+        temp_results, temp_bounds = fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+                d_guess_percent, phi_guess_percent, m_guess_percent,
+                                lowbias_fit=lowbias_fit, verbose=4);
+        results.append(temp_results); 
+        temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
+        boundsT.append(temp_bounds);
 
     # plot fitting results vs T
-    results = np.array(results);
+    results, boundsT = np.array(results), np.array(boundsT);
     nresults = len(results[0]);
     fig, axes = plt.subplots(nresults, sharex=True);
     if(nresults==1): axes = [axes];
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        if not lowbias_fit: axes[resulti].axhline(bounds[0][resulti], color=accentcolors[0],linestyle='dashed');
-        if not lowbias_fit: axes[resulti].axhline(bounds[1][resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
     plt.show();
 
-def fit_Mn_data():
+def fit_Mn_data(lowbias_fit, refined):
     metal="Mn/"; # points to data folder
 
     # experimental params
-    Ts = [5];
+    Ts = [5,10,15,20,25,30];
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
 
     # fitting param guesses
-    d_guess = np.array([2.0]);
-    phi_guess = np.array([1.7]);
-    m_guess = np.array([0.75]);
+    if refined:
+        phi_guess = np.array([1.7,1.7,1.7,1.7,1.7,1.7]);
+        m_guess = np.array([0.8,0.8,0.8,0.8,0.8,0.8]);
+        d_guess = np.array([2.0,2.0,2.0,2.0,2.0,2.0]);
+        d_guess_percent = 0.05;
+        phi_guess_percent = 0.05;
+        m_guess_percent = 0.05;
+    else:
+        phi_guess = 1.7*np.ones_like(Ts);
+        m_guess = 0.8*np.ones_like(Ts);
+        d_guess = 2.0*np.ones_like(Ts);
+        d_guess_percent = 0.5;
+        phi_guess_percent = 0.5;
+        m_guess_percent = 0.5;
 
-    # fitting param bounds
-    d_guess_percent = 0.5;
-    phi_guess_percent = 0.5;
-    m_guess_percent = 0.5;
-    bounds = np.array([[d_guess[0]*(1-d_guess_percent),phi_guess[0]*(1-phi_guess_percent),phi_guess[0]*(1-phi_guess_percent),m_guess[0]*(1-m_guess_percent),0.0],
-              [d_guess[0]*(1+d_guess_percent),phi_guess[0]*(1+phi_guess_percent),phi_guess[0]*(1+phi_guess_percent),m_guess[0]*(1+m_guess_percent),0.2]]);
-    
     # fitting results
-    combined = False;
-    lowbias_fit = False;
     Ts = Ts[:];
     results = [];
+    boundsT = [];
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
-        if not combined: # normal way
-            rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
-            results.append(fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
-                    d_guess_percent, phi_guess_percent, m_guess_percent,
-                                 lowbias_fit=lowbias_fit, verbose=10));
-            
-        else: # d and sqrt(m_r) combined as in arxiv paper
-            rlabels = ["$d\sqrt{m_r}$ (nm)", "$\phi_2-\phi_1$ (eV)", "RMSE"];
-            results.append(fit_I_combined(metal,Ts[datai], area, d_guess[datai]*np.sqrt(m_guess[datai]), 1.0,
-                    d_guess_percent, phi_guess_percent, verbose=4));
+        # normal way
+        rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
+        temp_results, temp_bounds = fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+                d_guess_percent, phi_guess_percent, m_guess_percent,
+                                lowbias_fit=lowbias_fit, verbose=4);
+        results.append(temp_results); 
+        temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
+        boundsT.append(temp_bounds);
 
     # plot fitting results vs T
-    results = np.array(results);
+    results, boundsT = np.array(results), np.array(boundsT);
     nresults = len(results[0]);
     fig, axes = plt.subplots(nresults, sharex=True);
     if(nresults==1): axes = [axes];
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        if not lowbias_fit: axes[resulti].axhline(bounds[0][resulti], color=accentcolors[0],linestyle='dashed');
-        if not lowbias_fit: axes[resulti].axhline(bounds[1][resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
+    plt.suptitle(metal[:-1]);
     plt.show();
 
 ###############################################################
 #### exec
 if __name__ == "__main__":
 
-    fit_Mn_data();
+    # args are lowbias_fit, refined
+    fit_Mn_data(False, True);
 
