@@ -647,10 +647,10 @@ def fit_Co_data(lowbias_fit, refined):
     else: # open search space
         d_guess = 5.0*np.ones_like(Ts);
         phi_guess = 1.7*np.ones_like(Ts);
-        m_guess = 0.35*np.ones_like(Ts);
+        m_guess = 0.30*np.ones_like(Ts);
         d_guess_percent = 0.5;
         phi_guess_percent = 0.5;
-        m_guess_percent = 0.5;
+        m_guess_percent = 0.005;
 
     # fitting results
     Ts = Ts[:];
@@ -689,12 +689,12 @@ def fit_Mn_data(lowbias_fit, refined):
 
     # fitting param guesses
     if refined:
-        phi_guess = np.array([1.7,1.7,1.7,1.7,1.7,1.7]);
-        m_guess = np.array([0.8,0.8,0.8,0.8,0.8,0.8]);
+        phi_guess = np.array([5.8,5.8,5.8,5.8,5.8,5.8]);
+        m_guess = np.array([0.3,0.3,0.3,0.3,0.3,0.3]);
         d_guess = np.array([2.0,2.0,2.0,2.0,2.0,2.0]);
         d_guess_percent = 0.05;
         phi_guess_percent = 0.05;
-        m_guess_percent = 0.05;
+        m_guess_percent = 0.0001;
     else:
         phi_guess = 1.7*np.ones_like(Ts);
         m_guess = 0.8*np.ones_like(Ts);
