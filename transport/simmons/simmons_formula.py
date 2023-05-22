@@ -2,9 +2,23 @@
 Simmons formula description of tunneling through a tunnel junction,
 under different physical scenarios
 '''
+
+from utils import load_IVb, load_dIdV_tocurrent, plot_fit
+
 import numpy as np
 from scipy.optimize import curve_fit as scipy_curve_fit
 import matplotlib.pyplot as plt
+
+# fig standardizing
+myxvals = 199;
+myfontsize = 14;
+mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+accentcolors = ["black","red"];
+mymarkers = ["o","+","^","s","d","*","X"];
+mymarkevery = (40, 40);
+mylinewidth = 1.0;
+mypanels = ["(a)","(b)","(c)","(d)"];
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 ###############################################################
 #### current density functions
@@ -103,35 +117,8 @@ def J_of_Vb_asym(Vb, d, phi1, phi2, m_r):
         print("c_0 = ", c0[start:start+thru], ", unitless");
         print("c_minus = ", (1+3*d_d_minus/d + 3*(d_d_minus/d)**2)[start:start+thru], ", unitless");
         print("c_plus = ", (1+3*d_d_plus/d + 3*(d_d_plus/d)**2)[start:start+thru], ", unitless");
-        #assert False
+        assert False
         
-    return J_right - J_left;
-
-def J_of_Vb_combined(Vb, d_rt_m, d_pre, phi1, phi2):
-    '''
-    J of Vb as in https://arxiv.org/abs/2204.13152
-    '''
-
-    # current density 
-    J_prefactor = 6.166*1e-6 # =e^2/(4*\pi^2*\hbar), units amp/volt
-    J_0 = J_prefactor/(d_pre)**2 ; # units amp/(volt*nm^2)
-    # NB d does not enter in
-
-    # asymmetry
-    phibar = (phi1+phi2)/2; # average barrier height in eV
-    c0 = 1+(phi2-Vb-phi1)**2 /(48*phibar*phibar); # asymmetry parameter, unitless
-
-    # asymmetric decay lengths, units nm
-    d_d_prefactor = 0.09766 # =\hbar/sqrt(8*me), units nm*eV^1/2
-    d_d_minus = d_d_prefactor*np.sqrt(c0)/np.sqrt((phibar-Vb/2)); # decay length for lowered side
-    d_d_plus = d_d_prefactor*np.sqrt(c0)/np.sqrt((phibar+Vb/2)); # decay length for lowered side
-    
-    # current density
-    J_right = J_0*(c0)*(phibar-Vb/2)*(1+3*d_d_minus/d_rt_m + 3*(d_d_minus/d_rt_m)**2);
-    J_right *= np.exp(-d_rt_m/d_d_minus);
-    J_left =  J_0*(c0)*(phibar+Vb/2)*(1+3*d_d_plus/d_rt_m + 3*(d_d_plus/d_rt_m)**2);
-    J_left *= np.exp(-d_rt_m/d_d_plus);
-
     return J_right - J_left;
     
 
@@ -219,15 +206,7 @@ def I_of_Vb_asym(Vb, d, phi1, phi2, m_r):
     Is = Js*convert_J2I_kwarg*1e9; # in nano amps
     return Is + I0_kwarg;
 
-def I_of_Vb_combined(Vb, d_rt_m, deltaphi, phi1=1.8, d_pre=5.0):
-    '''
-    '''
-
-    Js = J_of_Vb_combined(Vb-V0_kwarg, d_rt_m, d_pre, phi1, phi1+deltaphi);
-    Is = Js*convert_J2I_kwarg*1e9; # in nano amps
-    return Is + I0_kwarg;
-
-def J2I(temp, area, thermal_exp = 0.5*1e-4):
+def J2I(temp, area, thermal_exp = 0.0):
     '''
     Gets the conversion factor from current density J(Vb) in amps/nm^2
     to current in amps at a given temperature
@@ -235,246 +214,12 @@ def J2I(temp, area, thermal_exp = 0.5*1e-4):
 
     return area*( 1+thermal_exp*temp)**2;
 
-###############################################################
-#### plotting functions
-
-# fig standardizing
-myxvals = 199;
-myfontsize = 14;
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
-accentcolors = ["black","red"];
-mymarkers = ["o","+","^","s","d","*","X"];
-mymarkevery = (40, 40);
-mylinewidth = 1.0;
-mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-
-def plot_fit(V_exp, I_exp, I_fit, mytitle = ''):
-    '''
-    '''
-    if( np.shape(I_exp) != np.shape(I_fit) ): raise TypeError;
-    fig, ax = plt.subplots();
-   
-    # plot
-    slope = (I_fit[-1]-I_fit[0])/(V_exp[-1]-V_exp[0]);
-    ax.scatter(V_exp, I_exp, color=mycolors[0], label = "Exp.", linewidth = mylinewidth);
-    ax.plot(V_exp, I_fit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
-
-    # error
-    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ));
-    norm_error = error/abs(np.mean(I_exp));
-    ax.plot( [0.0], [error], color='white', label = "Error = {:1.2f} ".format(norm_error));
- 
-    # format
-    ax.set_xlabel("V (V)");
-    ax.set_ylabel("I (nA)");
-    plt.legend();
-    plt.title(mytitle, fontsize = myfontsize);
-    plt.show();
-
-def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
-
-    # experimental params
-    Vmax = 1.0;
-    Vbs = np.linspace(-Vmax,Vmax,myxvals);
-
-    # current density at this guess
-    Js = J_of_Vb_asym(Vbs-V0_not, d_not, phibar_not, phibar_not, m_r_not)+J0_not;
-    #print(Js); assert False; # should be of order 1e-22
-
-    # current
-    Is = Js*J2I(temp, area);
-    I0_not = J0_not*J2I(temp, area);
-
-    # plot
-    nano = 1e9;
-    fig, ax = plt.subplots();
-    ax.plot(Vbs, nano*Is, color=accentcolors[0], linewidth = mylinewidth);
-
-    # format
-    ax.set_xlabel("V (V)");
-    ax.set_ylabel("I (nA)");
-    plt.title("T = {:.0f} K, V0 = {:1.2f} V, I0 = {:1.2f} nA".format(temp, V0_not, nano*I0_not), fontsize = myfontsize);
-    plt.show();
-
-###############################################################
-#### fitting functions
-
-def load_IVb(base,folder,temp):
-    '''
-    Get I vs V data at a certain temp
-
-    returns:
-    V in volts, I in nano amps
-    '''
-
-    fname = "{:.0f}".format(temp) + base;
-    print("Loading data from "+folder+fname);
-    IV = np.loadtxt(folder+fname);
-    Vs = IV[:, 0];
-    Is = IV[:, 1];
-    if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(Is) ): raise TypeError;
-
-    # truncate
-    if(folder=="Mn/" and False):
-        Vcut = 0.01
-        print("\n\n\nWARNING: truncating "+folder+" data to |V| < "+str(Vcut));
-        Is = Is[abs(Vs)<Vcut];
-        Vs = Vs[abs(Vs)<Vcut];
-
-    return Vs, 1e9*Is;
-
-def fit_I_combined(temp, area, dtilde_not, deltaphi_not,
-            dtilde_percent, deltaphi_percent, verbose=0):
-    '''
-    Given data for a specific temp, taken for a sample of certain area,
-    1) fit a linear model of J(Vb) to get an x-intercept V0,
-        a y-intercept J0, and a slope
-    2) fit the Simmons model of J(Vb) to get a sample thickness d (in nm), 
-        a sample avg barrier height phibar (in eV), and an electron effective
-        mass ratio m_r (unitless)
-
-    Args:
-    temp, temperature in Kelvin
-    area, area in nm^2
-    the _not args are the initial guesses for the above fitting parameters
-    '''
-
-    # read in the experimental data
-    V_exp, I_exp = load_IVb(temp); # in volts nano amps
-
-    #### fit expermental data
-
-    # interpolate V0, I0, and slope guesses from exp data
-    V0_not = V_exp[len(V_exp)//2];
-    I0_not = I_exp[len(I_exp)//2];
-    slope_not = (I_exp[-1] - I_exp[0])/(V_exp[-1] - V_exp[0]);
-
-    # set up linear fit
-    init_params_linear = [I0_not, slope_not];
-    bounds_linear = [[I0_not*0.01, slope_not*0.01],
-                     [I0_not*100, slope_not*100]];
-
-    # linear fit gives I0
-    params_linear, pcov_linear = scipy_curve_fit(I_of_Vb_linear, V_exp, I_exp,
-                                p0=init_params_linear, bounds=bounds_linear);
-    I0, slopeI = tuple(params_linear);
-    I_fit_linear = I_of_Vb_linear(V_exp, I0, slopeI);
-    if(verbose):
-        print("I_of_Vb_linear fitting results:");
-        print_str = "           I0 = {:6.4f} "+str((bounds_linear[0][0],bounds_linear[1][0]))+"nA\n\
-        slope = {:6.4f} "+str((bounds_linear[0][1],bounds_linear[1][1]))+" nA/V"
-        print(print_str.format(I0, slopeI));
-    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_linear, mytitle = print_str[:print_str.find("(")].format(I0));
-    del init_params_linear, bounds_linear, params_linear, pcov_linear;
-
-    # set up cubic fit
-    init_params_cubic = [V0_not, slope_not];
-    bounds_cubic = [[V_exp[0], slope_not*0.01],
-                 [V_exp[-1], slope_not*100]];
-    
-    # cubic fit gives V0
-    params_cubic, pcov_cubic = scipy_curve_fit(I_of_Vb_cubic, V_exp, I_exp-I0,
-                                p0=init_params_cubic, bounds=bounds_cubic);
-    V0, slopeI = tuple(params_cubic);
-    I_fit_cubic = I_of_Vb_cubic(V_exp, V0, slopeI);
-    if(verbose):
-        print("I_of_Vb_cubic fitting results:");
-        print_str = "           V0 = {:6.4f} "+str((bounds_cubic[0][0],bounds_cubic[1][0]))+" V\n\
-        slope = {:6.4f} "+str((bounds_cubic[0][1],bounds_cubic[1][1]))+" nA/V"
-        print(print_str.format(V0, slopeI));
-    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_cubic+I0, mytitle = print_str[:print_str.find("(")].format(V0));
-    del init_params_cubic, bounds_cubic, params_cubic, pcov_cubic;
-
-    # results of linear and cubic fits
-    #global V0_kwarg; V0_kwarg = V0; # very bad practice
-    #global I0_kwarg; I0_kwarg = I0;
-    #global convert_J2I_kwarg; convert_J2I_kwarg = J2I(temp, area);
-
-    # set up simmons fit
-    init_params = [dtilde_not, deltaphi_not];
-    bounds = np.array([[dtilde_not*(1-dtilde_percent),deltaphi_not*(1-deltaphi_percent)],
-              [dtilde_not*(1+dtilde_percent),deltaphi_not*(1+deltaphi_percent)]]);
-
-    # full simmons fit in narrowed bounds
-    params, pcov = scipy_curve_fit(I_of_Vb_combined, V_exp, I_exp,
-                            p0 = init_params, bounds = bounds, max_nfev = 1e6);
-    dtilde, deltaphi = tuple(params);
-    I_fit = I_of_Vb_combined(V_exp, dtilde, deltaphi);
-    rmse_final =  np.sqrt( np.mean( (I_exp-I_fit)*(I_exp-I_fit) ))/abs(np.mean(I_exp));
-    if(verbose):
-        print("I_of_Vb_asym_wrapped fitting results:");
-        print_str = "            dtilde = {:6.4f} "+str((bounds[0][0],bounds[1][0]))+" nm\n\
-          delta phi = {:6.4f} "+str((bounds[0][1],bounds[1][1]))+" eV\n\
-          error = {:6.4f}";
-        print(print_str.format(dtilde, deltaphi, rmse_final));
-    if(verbose > 4): plot_fit(V_exp, I_exp, I_fit, mytitle = print_str[:print_str.find("(")].format(dtilde)+" nm");
-
-    return (dtilde, deltaphi, rmse_final);
-
-def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=10, verbose=0):
-    '''
-    On top of scipy_curve_fit, build extra resolution to the
-    dependence of the error on params[focus_i]
-    '''
-    if(not isinstance(bounds, np.ndarray)): raise TypeError;
-    if(focus_i >= len(init_params)): raise ValueError;
-
-    # mesh search over focus param vals
-    focus_lims = np.linspace(bounds[0][focus_i],bounds[1][focus_i],focus_meshpts);
-    focus_opts = np.empty((len(focus_lims)-1,));
-    focus_errors = np.empty((len(focus_lims)-1,));    
-    for fvali in range(len(focus_lims)-1):
-
-        # update guess
-        init_fparams = np.copy(init_params);
-        init_fparams[focus_i] = (focus_lims[fvali] + focus_lims[fvali+1])/2;
-
-        # truncate focus bounds
-        fbounds = np.copy(bounds);
-        fbounds[0][focus_i], fbounds[1][focus_i] = focus_lims[fvali], focus_lims[fvali+1];
-
-        # fit within this narrow range
-        nano, convert_J2I = 1e9, 1;
-        #plot_guess(myT, myA, 0.0, 1e-10/convert_J2I, init_params[0], ):
-        fparams, pcov = scipy_curve_fit(fx, xvals, fxvals,
-                                 p0 = init_fparams, bounds = fbounds, max_nfev = 1e6);
-        fxvals_fit = fx(xvals, *fparams);
-        ferror = np.sqrt( np.mean( (fxvals-fxvals_fit)*(fxvals-fxvals_fit) ))/np.mean(fxvals);
-
-        # update error and optimum
-        focus_opts[fvali] = fparams[focus_i];
-        focus_errors[fvali] = ferror;
-
-        # visualize
-        if(verbose > 2):
-            print("my_curve_fit fitting results, focus_i = ",focus_i);
-            print_str = "            d = {:6.4f} "+str((fbounds[0][0],fbounds[1][0]))+" nm\n\
-            phi = {:6.4f} "+str((fbounds[0][1],fbounds[1][1]))+" eV\n\
-            m_r = {:6.4f} "+str((fbounds[0][2],fbounds[1][2]))+"\n\
-            err = {:6.4f}";
-            print(print_str.format(*fparams, ferror));
-        if(verbose > 4): plot_fit(xvals, fxvals*convert_J2I*nano, fxvals_fit*convert_J2I*nano,
-                                  mytitle = "d = {:1.2f} nm, phi = {:1.2f} eV, m_r = {:1.2f} ".format(*fparams));
-
-    # show the results of the mesh search
-    if verbose:
-        fig, ax = plt.subplots();
-        ax.plot(focus_opts, focus_errors, color=accentcolors[0]);
-
-        # format
-        ax.set_xlabel("Params["+str(focus_i)+"]");
-        ax.set_ylabel("Norm. RMS Error");
-        #ax.set_yscale('log');
-        plt.show();
-    return focus_opts, focus_errors;
-
 ###########################################################################
-#### main
+#### main fitting function
 
 def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
             d_percent, phibar_percent, m_r_percent,
-            lowbias_fit=True, verbose=0):
+            lowbias_fit=False, Vcut=None, verbose=0):
     '''
     Given data for a specific temp, taken for a sample of certain area,
     1) fit a linear model of J(Vb) to get an x-intercept V0,
@@ -505,22 +250,7 @@ def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
         V_exp, I_exp = load_IVb(base,metal,temp); # in volts, nano amps
     elif(metal == "Mn/"): 
         base = "KdIdV.txt";
-        Vdc, dIdV_exp = load_IVb(base,metal,temp);
-        # antideriv of dIdV is I
-        I_anti = np.empty_like(dIdV_exp);
-        for eli in range(len(I_anti)):
-            I_anti[eli] = np.trapz(dIdV_exp[:eli],Vdc[:eli]);
-
-        if False:
-            # compare I and \int dI dV
-            V_exp, I_exp = load_IVb("KExp.txt",metal,temp); # in volts, nano amps
-            compfig, compax = plt.subplots();
-            compax.plot(V_exp, I_exp);
-            compax.plot(Vdc,I_anti-114 )
-            plt.show();
-            #assert False
-        else:
-            V_exp, I_exp = Vdc, I_anti;
+        V_exp, I_exp = load_dIdV_tocurrent(base,metal,temp,Vcut);
     else: raise NotImplementedError;
 
     #### fit expermental data
@@ -573,9 +303,9 @@ def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
 
     # low bias simmons fit at fixed d to narrow down phibar and m_r
     if lowbias_fit:
-        init_params_lowbias = [d_not, phibar_not, m_r_not];
-        bounds_lowbias = np.array([[d_not*0.999,phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
-                  [d_not*1.001,phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
+        init_params_lowbias = [d_not, (phi1_not+phi2_not)/2, m_r_not];
+        bounds_lowbias = np.array([[d_not*0.999,(phi1_not+phi2_not)/2*(1-phibar_percent),m_r_not*(1-m_r_percent)],
+                  [d_not*1.001,(phi1_not+phi2_not)/2*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
         params_lowbias, pcov_lowbias = scipy_curve_fit(I_of_Vb_lowbias, V_exp, I_exp,
                                 p0 = init_params_lowbias, bounds = bounds_lowbias, max_nfev = 1e6);
         I_fit_lowbias = I_of_Vb_lowbias(V_exp, *params_lowbias);
@@ -590,7 +320,8 @@ def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
         if(verbose > 4): plot_fit(V_exp, I_exp, I_fit_lowbias, mytitle = print_str[:print_str.find("(")].format(params_lowbias[0])+" nm");
 
         # update guesses and narrow bounds
-        phibar_not, m_r_not = tuple(params_lowbias[1:]); 
+        phi1_not, m_r_not = tuple(params_lowbias[1:]);
+        phi2_not = phi1_not;
         phibar_percent, m_r_percent = phibar_percent/10, m_r_percent/10;
         del init_params_lowbias, bounds_lowbias, params_lowbias, pcov_lowbias;
     
@@ -638,21 +369,31 @@ def fit_Co_data(lowbias_fit, refined):
 
     # fitting param guesses and bounds
     if refined: # manually constrict search space
+       
+        d_guess = np.array([5.2,5.5,5.5,5.8,5.8]);
+        d_guess_percent = 0.05;
+        
+        m_guess = 0.30*np.ones_like(Ts);
+        m_guess_percent = 1e-6;
+        
         phi1_guess = np.array([1.8,1.8,1.8,1.8,1.8]);
         phi2_guess = np.array([1.8,1.8,1.8,1.8,1.8]);
-        m_guess = np.array([0.3,0.3,0.3,0.3,0.3]);
-        d_guess = np.array([5.0,5.0,5.0,5.0,5.0]);
-        d_guess_percent = 0.05;
-        phi_guess_percent = 0.05;
-        m_guess_percent = 0.0001;
-    else: # open search space
-        d_guess = 5.0*np.ones_like(Ts);
-        phi1_guess = 1.7*np.ones_like(Ts);
-        phi2_guess = 1.7*np.ones_like(Ts);
-        m_guess = 0.30*np.ones_like(Ts);
-        d_guess_percent = 0.5;
         phi_guess_percent = 0.5;
-        m_guess_percent = 0.005;
+        
+    else: # open search space
+        d_guess = 5.2*np.ones_like(Ts);
+        d_guess_percent = 0.5;
+                
+        m_guess = 0.30*np.ones_like(Ts);
+        m_guess_percent = 1e-6;
+
+        phibar_guess = 1.8;
+        phi_split = 0.4;
+        phi1_guess = phibar_guess*np.ones_like(Ts);
+        phi2_guess = phibar_guess*np.ones_like(Ts);
+        phi1_guess += phi_split;
+        phi2_guess -= phi_split;
+        phi_guess_percent = 0.5;
 
     # fitting results
     Ts = Ts[:];
@@ -677,10 +418,10 @@ def fit_Co_data(lowbias_fit, refined):
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
+        #axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+        #axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
-    axes[-1].set_ylim(0.0,0.1);
+    #axes[-1].set_ylim(0.0,0.1);
     plt.show();
 
 def fit_Mn_data(lowbias_fit, refined):
@@ -693,25 +434,36 @@ def fit_Mn_data(lowbias_fit, refined):
 
     # fitting param guesses
     if refined:
-        m_guess = np.array([0.3,0.3,0.3,0.3,0.3,0.3]);
-        d_guess = np.array([2.1,2.1,2.1,2.1,2.1,2.1]);
+        
+        d_guess = 2.1*np.ones_like(Ts);
+        d_guess_percent = 0.5;
+                
+        m_guess = 0.30*np.ones_like(Ts);
+        m_guess_percent = 1e-6;
+
         phibar_guess = 5.8;
         phi_split = 1.6;
         phi1_guess = phibar_guess*np.ones_like(m_guess);
         phi2_guess = phibar_guess*np.ones_like(m_guess);
         phi1_guess += phi_split;
         phi2_guess -= phi_split;
-        d_guess_percent = 0.05;
         phi_guess_percent = 0.05;
-        m_guess_percent = 0.0001;
+        
     else:
-        phi1_guess = 1.7*np.ones_like(Ts);
-        phi2_guess = 1.7*np.ones_like(Ts);
-        m_guess = 0.8*np.ones_like(Ts);
-        d_guess = 2.0*np.ones_like(Ts);
+        
+        d_guess = 2.1*np.ones_like(Ts);
         d_guess_percent = 0.5;
+                
+        m_guess = 0.30*np.ones_like(Ts);
+        m_guess_percent = 1e-6;
+
+        phibar_guess = 5.8;
+        phi_split = 0.0;
+        phi1_guess = phibar_guess*np.ones_like(Ts);
+        phi2_guess = phibar_guess*np.ones_like(Ts);
+        phi1_guess += phi_split;
+        phi2_guess -= phi_split;
         phi_guess_percent = 0.5;
-        m_guess_percent = 0.5;
 
     # fitting results
     Ts = Ts[:];
@@ -724,7 +476,7 @@ def fit_Mn_data(lowbias_fit, refined):
         temp_results, temp_bounds = fit_I(metal,Ts[datai], area,
             d_guess[datai], phi1_guess[datai], phi2_guess[datai], m_guess[datai],
                 d_guess_percent, phi_guess_percent, m_guess_percent,
-                                lowbias_fit=lowbias_fit, verbose=4);
+                                lowbias_fit=lowbias_fit, Vcut=0.1, verbose=1);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -737,10 +489,10 @@ def fit_Mn_data(lowbias_fit, refined):
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
+        #axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+        #axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
-    axes[-1].set_ylim(0.035,0.045);
+    #axes[-1].set_ylim(0.0,0.1);
     plt.suptitle(metal[:-1]);
     plt.show();
 
@@ -749,5 +501,5 @@ def fit_Mn_data(lowbias_fit, refined):
 if __name__ == "__main__":
 
     # args are lowbias_fit, refined
-    fit_Mn_data(False, True);
+    fit_Mn_data(False, False);
 
