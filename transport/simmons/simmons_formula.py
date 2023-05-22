@@ -472,7 +472,7 @@ def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=
 ###########################################################################
 #### main
 
-def fit_I(metal, temp, area, d_not, phibar_not, m_r_not,
+def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
             d_percent, phibar_percent, m_r_percent,
             lowbias_fit=True, verbose=0):
     '''
@@ -595,9 +595,9 @@ def fit_I(metal, temp, area, d_not, phibar_not, m_r_not,
         del init_params_lowbias, bounds_lowbias, params_lowbias, pcov_lowbias;
     
     # full simmons fit in narrowed bounds
-    init_params = [d_not, phibar_not, phibar_not, m_r_not]; # phi1, phi2 now independent!
-    bounds = np.array([[d_not*(1-d_percent),phibar_not*(1-phibar_percent),phibar_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
-              [d_not*(1+d_percent),phibar_not*(1+phibar_percent),phibar_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
+    init_params = [d_not, phi1_not, phi2_not, m_r_not]; # phi1, phi2 now independent!
+    bounds = np.array([[d_not*(1-d_percent),phi1_not*(1-phibar_percent),phi2_not*(1-phibar_percent),m_r_not*(1-m_r_percent)],
+              [d_not*(1+d_percent),phi1_not*(1+phibar_percent),phi2_not*(1+phibar_percent),m_r_not*(1+m_r_percent)]]);
     params, pcov = scipy_curve_fit(I_of_Vb_asym, V_exp, I_exp,
                             p0 = init_params, bounds = bounds, max_nfev = 1e6);
     d, phi1, phi2, m_r = tuple(params);
@@ -638,15 +638,17 @@ def fit_Co_data(lowbias_fit, refined):
 
     # fitting param guesses and bounds
     if refined: # manually constrict search space
-        phi_guess = np.array([1.85, 1.65, 1.60, 1.35, 1.35]);
-        m_guess = np.array([0.32, 0.36, 0.36, 0.42, 0.41]);
-        d_guess = np.array([5.01, 5.02, 5.03, 5.04, 5.05]);
+        phi1_guess = np.array([1.8,1.8,1.8,1.8,1.8]);
+        phi2_guess = np.array([1.8,1.8,1.8,1.8,1.8]);
+        m_guess = np.array([0.3,0.3,0.3,0.3,0.3]);
+        d_guess = np.array([5.0,5.0,5.0,5.0,5.0]);
         d_guess_percent = 0.05;
         phi_guess_percent = 0.05;
-        m_guess_percent = 0.05;
+        m_guess_percent = 0.0001;
     else: # open search space
         d_guess = 5.0*np.ones_like(Ts);
-        phi_guess = 1.7*np.ones_like(Ts);
+        phi1_guess = 1.7*np.ones_like(Ts);
+        phi2_guess = 1.7*np.ones_like(Ts);
         m_guess = 0.30*np.ones_like(Ts);
         d_guess_percent = 0.5;
         phi_guess_percent = 0.5;
@@ -659,7 +661,8 @@ def fit_Co_data(lowbias_fit, refined):
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
         rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
-        temp_results, temp_bounds = fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+        temp_results, temp_bounds = fit_I(metal,Ts[datai], area,
+            d_guess[datai], phi1_guess[datai], phi2_guess[datai], m_guess[datai],
                 d_guess_percent, phi_guess_percent, m_guess_percent,
                                 lowbias_fit=lowbias_fit, verbose=4);
         results.append(temp_results); 
@@ -677,6 +680,7 @@ def fit_Co_data(lowbias_fit, refined):
         axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
+    axes[-1].set_ylim(0.0,0.1);
     plt.show();
 
 def fit_Mn_data(lowbias_fit, refined):
@@ -689,14 +693,20 @@ def fit_Mn_data(lowbias_fit, refined):
 
     # fitting param guesses
     if refined:
-        phi_guess = np.array([5.8,5.8,5.8,5.8,5.8,5.8]);
         m_guess = np.array([0.3,0.3,0.3,0.3,0.3,0.3]);
-        d_guess = np.array([2.0,2.0,2.0,2.0,2.0,2.0]);
+        d_guess = np.array([2.1,2.1,2.1,2.1,2.1,2.1]);
+        phibar_guess = 5.8;
+        phi_split = 1.6;
+        phi1_guess = phibar_guess*np.ones_like(m_guess);
+        phi2_guess = phibar_guess*np.ones_like(m_guess);
+        phi1_guess += phi_split;
+        phi2_guess -= phi_split;
         d_guess_percent = 0.05;
         phi_guess_percent = 0.05;
         m_guess_percent = 0.0001;
     else:
-        phi_guess = 1.7*np.ones_like(Ts);
+        phi1_guess = 1.7*np.ones_like(Ts);
+        phi2_guess = 1.7*np.ones_like(Ts);
         m_guess = 0.8*np.ones_like(Ts);
         d_guess = 2.0*np.ones_like(Ts);
         d_guess_percent = 0.5;
@@ -711,7 +721,8 @@ def fit_Mn_data(lowbias_fit, refined):
         print("\nT = {:.0f} K".format(Ts[datai]));
         # normal way
         rlabels = ["$d$ (nm)", "$\phi_1$ (eV)", "$\phi_2$ (eV)",  "$m_r$", "RMSE"];
-        temp_results, temp_bounds = fit_I(metal,Ts[datai], area, d_guess[datai], phi_guess[datai], m_guess[datai],
+        temp_results, temp_bounds = fit_I(metal,Ts[datai], area,
+            d_guess[datai], phi1_guess[datai], phi2_guess[datai], m_guess[datai],
                 d_guess_percent, phi_guess_percent, m_guess_percent,
                                 lowbias_fit=lowbias_fit, verbose=4);
         results.append(temp_results); 
@@ -729,6 +740,7 @@ def fit_Mn_data(lowbias_fit, refined):
         axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
     axes[-1].set_xlabel("$T$ (K)");
+    axes[-1].set_ylim(0.035,0.045);
     plt.suptitle(metal[:-1]);
     plt.show();
 
