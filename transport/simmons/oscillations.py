@@ -108,6 +108,7 @@ def fit_Mn_data():
 
     # experimental params
     Ts = [5,10,15,20,25,30];
+    #Ts = Ts[:1];
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
 
@@ -124,7 +125,7 @@ def fit_Mn_data():
     boundsT = [];
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
-        rlabels = ["$\phi$ (rad)","$A$ (nA/V)", "$\Delta V$ (V)", "RMSE"];
+        rlabels = ["$\\alpha$ (rad)","$A$ (nA/V)", "$\Delta V$ (V)", "RMSE"];
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             phi_guess[datai], amp_guess[datai], period_guess[datai],
                     phi_percent, amp_percent, period_percent,
@@ -149,7 +150,7 @@ def fit_Mn_data():
     C0energy = results[0,-2]; # e * Delta Vb = energy scale = e^2/C0
     print(Tenergies)
     print(C0energy);
-    axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
+    #axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
