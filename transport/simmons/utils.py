@@ -116,7 +116,7 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def plot_fit(V_exp, I_exp, I_fit, mytitle = ''):
+def plot_fit(V_exp, I_exp, I_fit, mytitle = ""):
     '''
     '''
     if( np.shape(I_exp) != np.shape(I_fit) ): raise TypeError;
@@ -124,14 +124,13 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = ''):
    
     # plot
     slope = (I_fit[-1]-I_fit[0])/(V_exp[-1]-V_exp[0]);
-    ax.scatter(V_exp, I_exp, color=mycolors[0], label = "Exp.", linewidth = mylinewidth);
+    ax.scatter(V_exp, I_exp, color=mycolors[0], label = "Exp", linewidth = mylinewidth);
     ax.plot(V_exp, I_fit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
 
     # error
-    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ));
-    norm_error = error/abs(np.mean(I_exp));
-    ax.plot( [0.0], [error], color='white', label = "Error = {:1.2f} ".format(norm_error));
- 
+    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ))/abs(np.mean(I_exp));
+    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.4f}".format(error));
+    
     # format
     ax.set_xlabel("V (V)");
     ax.set_ylabel("I (nA)");

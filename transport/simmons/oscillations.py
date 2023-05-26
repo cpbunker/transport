@@ -74,9 +74,9 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
         print_str += "        V0 = "+str(params_back[0])+" (V)\n";
         print_str += "     alphas = "+str(params_back[1:].round(1));
         print(print_str);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit_back, mytitle = print_str[:print_str.find("(")]);
+    #if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit_back, mytitle = print_str[:print_str.find("(")]);
     # save results of background fit
-    global alphas_kwarg; alphas_kwarg = tuple(params_back);
+    global alphas_kwarg; alphas_kwarg = tuple(params_back); # bad code
     del params_back, pcov_back;
 
     #### fit oscillations
@@ -84,7 +84,7 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
     bounds = [[phi_not*(1-phi_percent), amp_not*(1-amp_percent), period_not*(1-period_percent)],
                   [phi_not*(1+phi_percent),amp_not*(1+amp_percent), period_not*(1+period_percent)]];
     params, pcov = scipy_curve_fit(dIdV, V_exp, dI_exp,
-                                           p0 = params_guess, bounds = bounds);
+                                           p0 = params_guess, bounds = bounds, max_nfev=1e6);
     dI_fit = dIdV(V_exp, *params);
     rmse_final =  np.sqrt( np.mean( (dI_exp-dI_fit)*(dI_exp-dI_fit) ))/abs(np.mean(dI_exp));
     if(verbose):
@@ -94,7 +94,7 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
         per = {:6.4f} "+str((bounds[0][2],bounds[1][2]))+" nA/V\n\
         err = {:6.4f}";
         print(print_str.format(*params, rmse_final));
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit, mytitle = "T = "+str(temp)+" K");
 
     results = list(params);
     results.append(rmse_final);
@@ -107,13 +107,12 @@ def fit_Mn_data():
     metal="Mn/"; # points to data folder
 
     # experimental params
-    Ts = [5,10,15,20,25,30];
-    #Ts = Ts[:1];
+    Ts = np.array([5,10,15,20,25,30]);
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
 
     # guesses
-    phi_guess = np.pi*np.ones_like(Ts);
+    phi_guess = (1*np.pi/1)*np.ones_like(Ts);
     amp_guess = 100*np.ones_like(Ts);
     period_guess = 0.02*np.ones_like(Ts);
 
@@ -129,7 +128,7 @@ def fit_Mn_data():
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             phi_guess[datai], amp_guess[datai], period_guess[datai],
                     phi_percent, amp_percent, period_percent,
-                                verbose=1);
+                                verbose=10);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.2]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -146,11 +145,11 @@ def fit_Mn_data():
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
 
     # plot temp dependence of period
-    Tenergies = 8.617e-5*np.array(Ts); # in eV
+    Tenergies = 8.617e-5*np.array(Ts-5); # in eV
     C0energy = results[0,-2]; # e * Delta Vb = energy scale = e^2/C0
     print(Tenergies)
     print(C0energy);
-    #axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
+    axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
