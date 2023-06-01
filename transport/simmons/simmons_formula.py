@@ -6,7 +6,6 @@ under different physical scenarios
 from utils import load_IVb, load_dIdV_tocurrent, plot_fit
 
 import numpy as np
-from scipy.optimize import curve_fit as scipy_curve_fit
 import matplotlib.pyplot as plt
 
 # fig standardizing
@@ -217,54 +216,7 @@ def J2I(temp, area, thermal_exp = 0.0):
 ###########################################################################
 #### main fitting function
 
-def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0):
-    '''
-    Wrapper for
-    calling scipy.optimize.curve_fit and getting fitting params
-    calculating the rmse
-    Printing the fitting params and rmse results
-    Plotting the fitting
-    
-    '''
-    if( np.shape(xvals) != np.shape(yvals)): raise ValueError;
-    if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
-
-    # use scipy to get fitting params
-    if(p0 is None and bounds is None): # fit without guesses, bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals);
-    elif(p0 is not None and bounds is None): # fit with guesse but without bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,p0=p0);
-    elif(p0 is not None and bounds is not None): # fit with guesses, bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, max_nfev = 1000);
-    else: raise NotImplementedError;
-
-    # fit and error
-    yfit = fit_func(xvals, *fit_params);
-    rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.mean(yvals))
-
-    # visualize fitting
-    if(verbose):
-        namelength = 6;
-        numdigits = 4
-        print_str = str(fit_func)+" fitting results:\n";
-        for pi in range(len(fit_params)):
-            print_str += "\t"+p_names[pi]+(" "*(namelength-len(p_names[pi])));
-            print_str += "= {:6."+str(numdigits)+"f},";
-            if(bounds is not None): print_str += "bounds = "+str(bounds[:,pi]);
-            print_str += "\n";
-        if("phi1" in p_names and "phi2" in p_names and "m_r" in p_names):
-            phibar = fit_params[1]/2+fit_params[2]/2;
-            m_r = fit_params[3];
-            print_str += "\tphi*mr= "+str((phibar*m_r).round(numdigits))+"\n";
-        elif("phibar" in p_names and "m_r" in p_names):
-            phibar = fit_params[1];
-            m_r = fit_params[2];
-            print_str += "\tphi*mr= "+str((phibar*m_r).round(numdigits))+"\n";
-        print_str += "\tRMSE  = "+str(rmse.round(numdigits));
-        print(print_str.format(*fit_params));
-    if(verbose > 4): plot_fit(xvals, yvals, yfit, mytitle = str(fit_func));
-    return fit_params, rmse;
+from utils import fit_wrapper
 
 def fit_I(metal, temp, area, d_not, phi1_not, phi2_not, m_r_not,
             d_percent, phibar_percent, m_r_percent,

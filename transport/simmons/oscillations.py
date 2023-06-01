@@ -6,7 +6,6 @@ under different physical scenarios
 from utils import plot_fit, load_dIdV
 
 import numpy as np
-from scipy.optimize import curve_fit as scipy_curve_fit
 import matplotlib.pyplot as plt
 
 # fig standardizing
@@ -23,17 +22,31 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 ###############################################################
 #### fitting dI/dV with background and oscillations
 
-def dIdV_background(Vb, V0, alpha0, alpha2):
+def dIdV_quad(Vb, V0, dI0, alpha2):
     '''
+    quadratic background to sense V0 and dI0
     '''
 
-    # iter over even powers
+    # even powers
     rets = np.zeros_like(Vb);
-    rets += alpha0;
+    rets += dI0;
     rets += alpha2*np.power(Vb-V0,2);
-    #rets += alpha4*np.power(Vb-V0,4);
 
     return rets;
+
+def dIdV_back(Vb, E0, G3, G2):
+    '''
+    '''
+
+    # the F function from XGZ's magnon paper, Eq (17)
+    def Ffunc(E, kBT):
+
+        numerator = np.log(1+ E0/(E+kBT));
+        denominator = 1 - kBT/(E0+0.4*E) + 12*kBT*kBT/np.power(E0+2.4*E,2);
+        return numerator/denominator;
+
+    kelvin2eV =  8.617e-5;
+    return G2 - G3*Ffunc(abs(Vb-V0_kwarg), kelvin2eV*temp_kwarg);
 
 def dIdV_osc(Vb, phi, amplitude, period):
     '''
@@ -54,6 +67,14 @@ def dIdV(Vb, phi, amplitude, period):
 ####################################################################
 #### main
 
+from utils import fit_wrapper
+
+def dI_of_Vb(Vb, EC, mutilde):
+    from blockade import I_of_Vb
+    kelvin2eV =  8.617e-5;
+    nmax = 10;
+    return np.gradient( I_of_Vb(Vb, EC, mutilde, kelvin2eV*temp_kwarg, nmax) );
+
 def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
              phi_percent, amp_percent, period_percent, verbose=0):
     '''
@@ -61,25 +82,35 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
 
     V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp);
 
-    #### fit to background
-    from simmons_formula import I_of_Vb_linear, I_of_Vb_cubic
+    #### fit V0
+    params_quad_guess = [0.0,np.mean(dI_exp),np.max(dI_exp)-np.mean(dI_exp)];
+    (V0, _, _), _ = fit_wrapper(dIdV_quad, V_exp, dI_exp,
+                                  params_quad_guess, None, ["V0", "dI0","alpha2"], verbose=verbose);
 
-    #### fit experimental data to non-ohmic part
-    params_back_guess = [0.0,np.mean(dI_exp),np.max(dI_exp)-np.mean(dI_exp)];
-    params_back, pcov_back = scipy_curve_fit(dIdV_background, V_exp, dI_exp, p0 = params_back_guess);
-    dI_fit_back = dIdV_background(V_exp, *params_back);
-    # visualize background fit
-    if(verbose):
-        print_str = "dIdV_background fitting results:\n";
-        print_str += "        V0 = "+str(params_back[0])+" (V)\n";
-        print_str += "     alphas = "+str(params_back[1:].round(1));
-        print(print_str);
-    #if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit_back, mytitle = print_str[:print_str.find("(")]);
-    # save results of background fit
-    global alphas_kwarg; alphas_kwarg = tuple(params_back); # bad code
-    del params_back, pcov_back;
+    global V0_kwarg; V0_kwarg = V0; # very bad practice
+    global temp_kwarg; temp_kwarg = temp;
+
+    #### fit to background
+    params_back_guess = [0.1, 1e2,np.mean(dI_exp)];
+    (E0, G3, G2), _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                            params_back_guess, None, ["E0", "G3","G2"], verbose=verbose);
 
     #### fit oscillations
+    background = dIdV_back(V_exp, E0, G3, G2);
+    dI_exp = dI_exp - background;
+    fig, ax = plt.subplots();
+    ax.scatter(V_exp-V0, dI_exp);
+    plt.show();
+
+    (EC, _), _ = fit_wrapper(dI_of_Vb, V_exp, dI_exp,
+                             [0.005,0.001], None, ["EC","mutilde"], verbose=verbose);
+
+    
+    assert False;
+
+
+
+    
     params_guess = [phi_not,amp_not, period_not];
     bounds = [[phi_not*(1-phi_percent), amp_not*(1-amp_percent), period_not*(1-period_percent)],
                   [phi_not*(1+phi_percent),amp_not*(1+amp_percent), period_not*(1+period_percent)]];
@@ -149,7 +180,7 @@ def fit_Mn_data():
     C0energy = results[0,-2]; # e * Delta Vb = energy scale = e^2/C0
     print(Tenergies)
     print(C0energy);
-    axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
+    #axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
