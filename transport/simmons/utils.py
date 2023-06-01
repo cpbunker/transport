@@ -40,12 +40,6 @@ def load_dIdV(base,folder,temp):
     dIs = IV[:, 1];
     if( len(np.shape(Vs)) != 1 or np.shape(Vs) != np.shape(dIs) ): raise TypeError;
 
-    # trim outliers
-    sigma = np.std(dIs);
-    mu = np.mean(dIs);
-    Vs = Vs[ abs(dIs-mu) < 6*sigma];
-    dIs = dIs[ abs(dIs-mu) < 6*sigma];
-
     # sort by ascending Vs
     inds = np.argsort(Vs);
     Vs = np.take_along_axis(Vs, inds, 0);
@@ -116,7 +110,7 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def plot_fit(V_exp, I_exp, I_fit, mytitle = ""):
+def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
     '''
     '''
     if( np.shape(I_exp) != np.shape(I_fit) ): raise TypeError;
@@ -128,12 +122,12 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = ""):
     ax.plot(V_exp, I_fit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
 
     # error
-    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ))/abs(np.mean(I_exp));
+    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ))/abs(np.max(I_exp)-np.min(I_exp));
     ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.4f}".format(error));
     
     # format
-    ax.set_xlabel("V (V)");
-    ax.set_ylabel("I (nA)");
+    ax.set_xlabel("$V_b$ (V)");
+    ax.set_ylabel(myylabel);
     plt.legend();
     plt.title(mytitle, fontsize = myfontsize);
     plt.show();
@@ -166,7 +160,7 @@ def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
 ###############################################################
 #### misc
 
-def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0):
+def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel="$I$ (nA)"):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params
@@ -191,7 +185,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0):
 
     # fit and error
     yfit = fit_func(xvals, *fit_params);
-    rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.mean(yvals))
+    rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
 
     # visualize fitting
     if(verbose):
@@ -213,7 +207,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0):
             print_str += "\tphi*mr= "+str((phibar*m_r).round(numdigits))+"\n";
         print_str += "\tRMSE  = "+str(rmse.round(numdigits));
         print(print_str.format(*fit_params));
-    if(verbose > 4): plot_fit(xvals, yvals, yfit, mytitle = str(fit_func));
+    if(verbose > 4): plot_fit(xvals, yvals, yfit, mytitle = str(fit_func), myylabel=myylabel);
     return fit_params, rmse;
 
 def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=10, verbose=0):
