@@ -30,44 +30,26 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 
 
 # constructing the hamiltonian
-def reduced_ham(params, S) -> np.ndarray:
+def diag_ham(params, S) -> np.ndarray:
+    '''
+    '''
+    for el in params:
+        if( not isinstance(el, float)): raise TypeError;
+        
     D1, D2, J12, JK1, JK2 = params;
-    assert(D1 == D2);
-    h = np.array([[S*S*D1+(S-1)*(S-1)*D2+S*(S-1)*J12+(JK1/2)*S+(JK2/2)*(S-1), S*J12, np.sqrt(2*S)*(JK2/2) ], # up, s, s-1
-                    [S*J12, (S-1)*(S-1)*D1+S*S*D2+S*(S-1)*J12+(JK1/2)*(S-1) + (JK2/2)*S, np.sqrt(2*S)*(JK1/2) ], # up, s-1, s
-                    [np.sqrt(2*S)*(JK2/2), np.sqrt(2*S)*(JK1/2),S*S*D1+S*S*D2+S*S*J12+(-JK1/2)*S +(-JK2/2)*S]], # down, s, s
-                   dtype = complex);
-
+    D = (D1+D2)/2;
+    DeltaD = D1-D2;
+    h = np.eye(3)*(2*S*S*D + (S*S-S)*J12);
+    h += np.array([[ (1-2*S)*D + S*J12, (S-1/2)*DeltaD, 0],
+                   [ (S-1/2)*DeltaD, (1-2*S)*D - S*J12, 0],
+                   [ 0, 0, S*J12]]);
+    h += (JK1/2)*np.array([[S-1/2,1/2, np.sqrt(S)],
+                           [1/2,S-1/2,-np.sqrt(S)],
+                           [np.sqrt(S),-np.sqrt(S),-S]]);
+    h += (JK2/2)*np.array([[S-1/2,-1/2,np.sqrt(S)],
+                           [-1/2,S-1/2,np.sqrt(S)],
+                           [np.sqrt(S),np.sqrt(S),-S]]);
     return h;
-
-#### TODO:
-#### hardcode the |\pm> basis from my paper, so we can skip the call to entangle
-
-def entangle(H,bi,bj) -> np.ndarray:
-    '''
-    Perform a change of basis on a matrix such that basis vectors bi, bj become entangled (unentangled)
-    in new ham, index bi -> + entangled state, bj -> - entangled state
-    '''
-    assert(bi < bj);
-    assert(bj < max(np.shape(H)));
-
-    # rotation matrix
-    R = np.zeros_like(H);
-    for i in range(np.shape(H)[0]):
-        for j in range(np.shape(H)[1]):
-            if( i != bi and i != bj):
-                if(i == j):
-                    R[i,j] = 1; # identity
-            elif( i == bi and j == bi):
-                R[i,j] = 1/np.sqrt(2);
-            elif( i == bj and j == bj):
-                R[i,j] = -1/np.sqrt(2);
-            elif( i == bi and j == bj):
-                R[i,j] = 1/np.sqrt(2);
-            elif( i == bj and j== bi):
-                R[i,j] = 1/np.sqrt(2);
-
-    return np.matmul(np.matmul(R.T,H),R);
             
 #########################################################
 #### effects of Ki and Delta E
@@ -103,19 +85,16 @@ if True: # T+ at different Delta E by changing D
         impis = [1,2];
         for j in range(4): # LL, imp 1, imp 2, RL
             # define all physical params
-            JK1, JK2 = 0, 0;
+            JK1, JK2 = 0.0, 0.0;
             if(j == impis[0]): JK1 = JK;
             elif(j == impis[1]): JK2 = JK;
             params = Dval, Dval, J12, JK1, JK2;
-            # construct h_SR (determinant basis)
-            hSR = reduced_ham(params,myspinS);           
-            # transform to eigenbasis
-            hSR_diag = entangle(hSR, 0,1);
+            # construct h_SR in |+>, |->, |i> basis
+            hSR_diag = diag_ham(params,myspinS);           
             hblocks.append(np.copy(hSR_diag));
             if(verbose > 3 ):
                 print("\nJK1, JK2 = ",JK1, JK2);
-                print(" - ham:\n", hSR);
-                print(" - transformed ham:\n", np.real(hSR_diag));
+                print(" - ham:\n", hSR_diag);
                 print(" - DeltaE = ",Esplitvals[Dvali]);
 
         # finish hblocks
@@ -124,7 +103,7 @@ if True: # T+ at different Delta E by changing D
         for hb in hblocks:
             hb += -E_shift*np.eye(n_loc_dof);
         if(verbose > 3 ): print("Delta E / t = ", (hblocks[0][0,0] - hblocks[0][2,2])/tl);
-        assert False # debugging
+
         # hopping
         tnn = np.array([-tl*np.eye(n_loc_dof),-tp*np.eye(n_loc_dof),-tl*np.eye(n_loc_dof)]);
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
