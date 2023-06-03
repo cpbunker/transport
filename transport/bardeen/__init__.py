@@ -174,7 +174,6 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
 
     return Emas, Mbmas;
 
-
 def kernel_well(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC,HCprime,
@@ -259,9 +258,9 @@ def kernel_well(tinfty, tL, tR,
 
     # operator
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-
-    # filter left and right
     jvals = np.array(range(len(Hsys_4d))) + offset;
+    
+    # filter left and right
     mid = len(jvals) // 2;
     if(HT_perturb):
         raise(Exception("Don't do this!"));
@@ -311,15 +310,9 @@ def kernel_well(tinfty, tL, tR,
     if(verbose > 9):
 
         # plot hams
-        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
-        if n_loc_dof == 1: myaxes = [myaxes];
         for alpha in range(n_loc_dof):
-            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d];
-            Hstrs = ["$H_L$","$H_R$","$H_{sys}$","$H_{sys}-H_L$","$H_{sys}-H_{R}$"];
-            for Hi in range(len(Hs)):
-                myaxes[alpha].plot(jvals, Hi*0.001+np.diag(Hs[Hi][:,:,alpha,alpha]),label = Hstrs[Hi]);
-            myaxes[alpha].set_xlabel("$j$"); myaxes[alpha].set_ylabel("$V_j$");
-        plt.legend();plt.show();
+            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
+        assert False;
 
         # plot left wfs
         energy_off = 0;
@@ -339,6 +332,53 @@ def kernel_well(tinfty, tL, tR,
         assert False;
 
     return Emas, Mbmas;
+
+def plot_ham(j, hams, alpha, label=True):
+    '''
+    '''
+    if( not isinstance(hams, tuple)): raise TypeError;
+    n_loc_dof = np.shape(hams[0])[-1];
+    ham_strs = ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"];
+    if( len(hams) != len(ham_strs)): raise ValueError;
+
+    # construct axes
+    nax = len(hams);
+    myfig,myaxes = plt.subplots(nax, sharex=True);
+    if(nax == 1): myaxes = [myaxes];
+
+    # iter over hams
+    for hami in range(len(hams)):
+        ham_4d = hams[hami];
+        myaxes[hami].plot(j, np.diag(ham_4d[:,:,alpha,alpha]), color="cornflowerblue");
+        myaxes[-1].set_xlabel("$j$");
+        myaxes[hami].set_ylabel("$V_j$");
+        myaxes[hami].set_title(ham_strs[hami]+"["+str(alpha)+""+str(alpha)+"]");
+
+        # label
+        if(label):
+            textbase = -0.1;
+            VL = ham_4d[len(j)//4,len(j)//4,alpha,alpha];
+            VC = ham_4d[len(j)//2,len(j)//2,alpha,alpha];
+            VR = ham_4d[len(j)*3//4,len(j)*3//4,alpha,alpha];
+            Vinfty = ham_4d[-1,-1,alpha,alpha];            
+            if(hami == 0):
+                Vcoords = [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vs = [VL, VC, VR, Vinfty];
+                Vlabels = ["VL","VC","VR","Vinfty"];
+            elif(hami == 1):
+                Vcoords =  [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vs = [VL, VC, VR, Vinfty];
+                Vlabels = ["VL","VC","VRprime","Vinfty"];
+            elif(hami == 2):
+                Vcoords = [j[len(j)*3//4]];
+                Vlabels = ["VR - VRprime"];
+                Vs = [VR];
+            for Vi in range(len(Vs)):
+                myaxes[hami].annotate(Vlabels[Vi], xy=(Vcoords[Vi], Vs[Vi]), xytext=(Vcoords[Vi], textbase),arrowprops=dict(arrowstyle="->", relpos=(0,1)),xycoords="data", textcoords="data")
+
+    # format
+    plt.tight_layout();
+    plt.show();
 
 def kernel_well_super(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
@@ -368,7 +408,7 @@ def kernel_well_super(tinfty, tL, tR,
     n_loc_dof = np.shape(HC)[-1];
 
     # convert from matrices to spin-diagonal, spin-independent elements
-    to_convert = [tL, VL, tR, VR];
+    to_convert = [tL, tR];
     converted = [];
     for convert in to_convert:
         # check spin-diagonal
@@ -377,7 +417,7 @@ def kernel_well_super(tinfty, tL, tR,
         diag = np.diagonal(convert);
         if(np.any(diag-diag[0])): raise ValueError("not spin independent");
         converted.append(convert[0,0]);
-    tLa, VLa, tRa, VRa = tuple(converted);
+    tLa, tRa = tuple(converted);
 
     # left well 
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
@@ -446,7 +486,8 @@ def kernel_well_super(tinfty, tL, tR,
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
-
+    jvals = np.array(range(len(Hsys_4d))) + offset;
+    
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
     # average over energy but keep spin separate
@@ -486,6 +527,11 @@ def kernel_well_super(tinfty, tL, tR,
     # visualize
     if(verbose > 9):
 
+        # plot hams
+        for alpha in range(n_loc_dof):
+            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
+        assert False;
+
         # compare energies
         if False:
             ps = np.array(range(len(Emas[0])),dtype=int);
@@ -508,18 +554,6 @@ def kernel_well_super(tinfty, tL, tR,
             Max.legend();
             plt.show();
             assert False
-        
-        # plot hams
-        jvals = np.array(range(len(Hsys_4d))) + offset;
-        myfig,myaxes = plt.subplots(n_loc_dof,sharex=True);
-        if n_loc_dof == 1: myaxes = [myaxes];
-        for alpha in range(n_loc_dof):
-            Hs = [HL_4d,HR_4d,Hsys_4d,Hsys_4d-HL_4d,Hsys_4d-HR_4d]; Hstrs = ["HL","HR","Hsys","Hsys-HL","Hsys-HR"];
-            for Hi in range(len(Hs)):
-                print(Hstrs[Hi]);
-                print(Hs[Hi][0-offset,0-offset]);
-                myaxes[alpha].plot(np.real(jvals), np.real(Hi*1e-4+np.diag(Hs[Hi][:,:,alpha,alpha])),label = Hstrs[Hi]);
-        plt.legend();plt.show();
 
         # plot left wfs
         for m in range(min(n_bound_left,6)):

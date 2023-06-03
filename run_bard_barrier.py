@@ -188,9 +188,9 @@ if False:
     plt.show();
 
 # T vs VC
-if True:
+if False:
 
-    VCvals = np.array([0.1*tLR, 0.4*tLR,0.8*tLR]);
+    VCvals = np.array([0.4*tLR,0.8*tLR]);
     numplots = len(VCvals);
     fig, axes = plt.subplots(numplots, sharex = True);
     if numplots == 1: axes = [axes];
@@ -221,7 +221,7 @@ if True:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=0.4,verbose=1);
+                                      E_cutoff=0.4,verbose=10);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 
@@ -259,7 +259,7 @@ if True:
     plt.show();
 
 # T vs tC (reduced-tC insulating region of width NC=3)
-if False:
+if True:
 
     tCvals = [1.0*tLR,0.8*tLR,0.2*tLR];
     numplots = len(tCvals);
@@ -280,7 +280,7 @@ if False:
             if(j == NC//2): # middle to keep LR symmetry !!!
                 HC[j,j] += VC; 
             else:
-                HC[j,j] += VLR;
+                HC[j,j] += VLR; raise Exception("Change so that there is no gap between VC and VRprime");
         for j in range(NC-1):
             HC[j,j+1] += -tCvals[tCvali];
             HC[j+1,j] += -tCvals[tCvali];
@@ -294,7 +294,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=VC[0,0],verbose=1);
+                                      E_cutoff=VC[0,0],verbose=10);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 

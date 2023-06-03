@@ -34,11 +34,14 @@ def reduced_ham(params, S) -> np.ndarray:
     D1, D2, J12, JK1, JK2 = params;
     assert(D1 == D2);
     h = np.array([[S*S*D1+(S-1)*(S-1)*D2+S*(S-1)*J12+(JK1/2)*S+(JK2/2)*(S-1), S*J12, np.sqrt(2*S)*(JK2/2) ], # up, s, s-1
-                    [S*J12, (S-1)*(S-1)*D1+S*S*D2+S*(S-1)*J12+(JK1/2)*S + (JK2/2)*(S-1), np.sqrt(2*S)*(JK1/2) ], # up, s-1, s
+                    [S*J12, (S-1)*(S-1)*D1+S*S*D2+S*(S-1)*J12+(JK1/2)*(S-1) + (JK2/2)*S, np.sqrt(2*S)*(JK1/2) ], # up, s-1, s
                     [np.sqrt(2*S)*(JK2/2), np.sqrt(2*S)*(JK1/2),S*S*D1+S*S*D2+S*S*J12+(-JK1/2)*S +(-JK2/2)*S]], # down, s, s
                    dtype = complex);
 
     return h;
+
+#### TODO:
+#### hardcode the |\pm> basis from my paper, so we can skip the call to entangle
 
 def entangle(H,bi,bj) -> np.ndarray:
     '''
@@ -121,7 +124,7 @@ if True: # T+ at different Delta E by changing D
         for hb in hblocks:
             hb += -E_shift*np.eye(n_loc_dof);
         if(verbose > 3 ): print("Delta E / t = ", (hblocks[0][0,0] - hblocks[0][2,2])/tl);
-
+        assert False # debugging
         # hopping
         tnn = np.array([-tl*np.eye(n_loc_dof),-tp*np.eye(n_loc_dof),-tl*np.eye(n_loc_dof)]);
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
