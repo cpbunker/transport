@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # top level
-np.set_printoptions(precision = 4, suppress = True);
+#np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
 
 # fig standardizing
@@ -88,7 +88,7 @@ if True:
     # plotting
     plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([1.0*tLR]);
+        indvals = np.array([0.8*tLR]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
@@ -113,6 +113,7 @@ if True:
         tvac = indvals[indvali]; # hopping between leads and central
         tC = 1.0*tLR; # hopping in central
         VC = 0.4*tLR;
+        NC = 3;
 
         # modify all potential terms with the noninteracting spin-spin background
         background_diag = diag_ham((Dval, Dval, J12, 0.0, 0.0), myspinS);
@@ -121,82 +122,40 @@ if True:
         VC += background_diag;
 
         # fill in the central region
-        if False: # not sure hpw to do it separated yet
-            NC = 5;
-            barrieris = [1,2,3]; # 3 site barrier
-            impis = [1,3]; # preserve LR symmetry
-            HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=float);
-            for NCi in range(NC):
-                for NCj in range(NC):
-                    if(NCi == NCj): # diagonal in space
+        barrieris = np.array(range(1,NC-1)); # NC-2 site barrier
+        impis = [1,NC-2]; # preserve LR symmetry
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=float);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # diagonal in space
 
-                        # add spatial barrier
-                        if(NCi in barrieris):
-                            HC[NCi,NCj] += VC;
-                        else:
-                            HC[NCi,NCj] += VLR;
+                    # add spatial barrier
+                    if(NCi in barrieris):
+                        HC[NCi,NCj] += VC;
+                    else:
+                        HC[NCi,NCj] += VLR;
 
-                        # add spin terms
-                        if(NCi in impis):
-                            JK1, JK2 = 0.0, 0.0; 
-                            if(NCi == impis[0]): JK1 = JK;
-                            elif(NCi == impis[1]): JK2 = JK;
-                            # NB D and J12 already accounted for by background term
-                            imp_ham_diag = diag_ham((0.0,0.0,0.0,JK1,JK2), myspinS);
-                            HC[NCi,NCj] += imp_ham_diag;
-                            
-                    elif(abs(NCi -NCj) == 1): # nn hopping
-                        if(NCi in barrieris and NCj in barrieris):
-                            HC[NCi,NCj] += -tC;
-                        else:
-                            HC[NCi,NCj] += -tvac;
-        else:
-            NC = 3;
-            barrieris = [1];
-            impis = [1];
-            HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=float);
-            for NCi in range(NC):
-                for NCj in range(NC):
-                    if(NCi == NCj): # diagonal in space
-
-                        # add spatial barrier
-                        if(NCi in barrieris):
-                            HC[NCi,NCj] += VC;
-                        else:
-                            HC[NCi,NCj] += VLR;
-
-                        # add spin terms
-                        if(NCi in impis):
-                            # NB D and J12 already accounted for by background term
-                            imp_ham_diag = diag_ham((0.0,0.0,0.0,JK,JK), myspinS);
-                            HC[NCi,NCj] += imp_ham_diag;
-                            
-                    elif(abs(NCi -NCj) == 1): # nn hopping
-                        if(NCi in barrieris and NCj in barrieris):
-                            HC[NCi,NCj] += -tC;
-                        else:
-                            HC[NCi,NCj] += -tvac;
+                    # add spin terms
+                    if(NCi in impis):
+                        JK1, JK2 = 0.0, 0.0; 
+                        if(NCi == impis[0]): JK1 = JK;
+                        if(NCi == impis[1]): JK2 = JK;
+                        # NB D and J12 already accounted for by background term
+                        imp_ham_diag = diag_ham((0.0,0.0,0.0,JK1,JK2), myspinS);
+                        HC[NCi,NCj] += imp_ham_diag;
+                        
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    if(NCi in barrieris and NCj in barrieris):
+                        HC[NCi,NCj] += -tC;
+                    else:
+                        HC[NCi,NCj] += -tvac;
+        # define alpha basis
+        alpha_mat = np.zeros_like(HC[0,0]);
+        for impi in impis:
+            alpha_mat += np.copy(HC[impi,impi]);
         print("HC =");
         print_H_alpha(HC);
-
-        # change of basis
-        # alpha basis is eigenstates of HC[j=0,j=0]
-        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
-        alphastates = alphastates.T;
-        tildestates = np.eye(n_loc_dof);
-        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
-        coefs = np.empty_like(alphastates);
-        for astatei in range(len(alphastates)):
-            for tstatei in range(len(tildestates)):
-                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-
-        if False:
-            print(alphastates);
-            print(tildestates);
-            print(coefs);
-            print(np.matmul(coefs,alphastates[0]));
-            print(np.matmul(coefs,alphastates[1]));
-            assert False
+        print("alpha_mat =\n",alpha_mat);
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
@@ -205,8 +164,8 @@ if True:
         # where change_basis are coefs that take us from alpha to \tilde{\alpha}
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
-                                  E_cutoff=Ecut,verbose=1);
+                                  Ninfty, NLR, NLR, HC, HC, alpha_mat,                                                
+                                  E_cutoff=Ecut,eigval_tol=1e-4,verbose=1);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,

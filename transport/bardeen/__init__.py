@@ -382,8 +382,8 @@ def plot_ham(j, hams, alpha, label=True):
 
 def kernel_well_super(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, change_basis,
-           interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
+           Ninfty, NL, NR, HC,HCprime, alpha_mat,
+           E_cutoff=1.0,interval=1e-9,eigval_tol=1e-9,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
     nearby interval
@@ -396,8 +396,9 @@ def kernel_well_super(tinfty, tL, tR,
     For this kernel, the initial and final states are superpositions of
     the eigenstates of HL and HR. If the latter are in the basis |\alpha>,
     then the former are in the basis |\tilde{\alpha} >
-    the arg coefs gives the change of basis:
-    |\tilde{\alpha} > = \sum_\alpha coefs[\alpha, |tilde{\alpha} ] |\alpha>
+    the alpha basis is chosen by the spin matrix alpha_mat
+    the variable change_basis gives the basis transformation according to
+    |\tilde{\alpha} > = \sum_\alpha change_basis[\alpha, |tilde{\alpha} ] |\alpha>
     
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -419,6 +420,20 @@ def kernel_well_super(tinfty, tL, tR,
         converted.append(convert[0,0]);
     tLa, tRa = tuple(converted);
 
+    # change of basis
+    # alpha basis is eigenstates of alpha_mat
+    _, alphastates = np.linalg.eigh(alpha_mat);
+    alphastates = alphastates.T;
+    tildestates = np.eye(n_loc_dof);
+    # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
+    change_basis = np.empty_like(alphastates);
+    for astatei in range(len(alphastates)):
+        for tstatei in range(len(tildestates)):
+            change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
+    if False:
+        print(alphastates,"\n",tildestates,"\n",change_basis);
+        assert False
+
     # left well 
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
@@ -430,24 +445,35 @@ def kernel_well_super(tinfty, tL, tR,
     if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
     n_bound_left = len(Ems);
 
-    # recall \alpha basis is eigenstates of HC[j=0,j=0]
-    alpha_eigvals, _ = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
-    eigval_tol = 1e-9;
-
-    # measure HC[j=0,j=0] for each k_m
-    HC00_op_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
+    # measure alpha val for each k_m
+    alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
     for sitej in range(n_spatial_dof):
-        HC00_op_4d[sitej,sitej] = HC[len(HC)//2,len(HC)//2];
-    HC00_op = fci_mod.mat_4d_to_2d(HC00_op_4d);
+        alpha_mat_4d[sitej,sitej] = np.copy(alpha_mat);
+    alpha_mat_2d = fci_mod.mat_4d_to_2d(alpha_mat_4d);
     alphams = np.empty((n_bound_left,),dtype=complex);
     for m in range(n_bound_left):
-        alphams[m] = np.dot( np.conj(psims[m]), np.matmul(HC00_op, psims[m]));
+        alphams[m] = np.dot( np.conj(psims[m]), np.matmul(alpha_mat_2d, psims[m]));
         if(verbose>5): print(m, Ems[m], alphams[m]);
     n_bound_left = n_bound_left // n_loc_dof;
 
     # classify left well eigenstates in the \alpha basis
     Emas = np.empty((n_loc_dof,n_bound_left),dtype=complex);
     psimas = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
+
+    # get all unique alpha vals, should be n_loc_dof of them
+    alpha_eigvals = dict();
+    for alpha in alphams:
+        addin = True;
+        for k in alpha_eigvals.keys():
+            if(abs(alpha-k) < eigval_tol):
+                alpha_eigvals[k] += 1;
+                addin = False;
+        if(addin):
+            alpha_eigvals[alpha] = 1;
+    alpha_eigvals = list(alpha_eigvals.keys());
+    assert(len(alpha_eigvals) == n_loc_dof);
+
+    # organize by alpha vals
     for eigvali in range(len(alpha_eigvals)):
         Es_this_a, psis_this_a = [], [];
         for m in range(n_bound_left*n_loc_dof):
@@ -467,10 +493,10 @@ def kernel_well_super(tinfty, tL, tR,
     if(len(Ens) % n_loc_dof != 0): Ens, psins = Ens[:-1], psins[:-1]; # must be even
     n_bound_right = len(Ens);
 
-    # measure HC[j=0,j=0] for each k_n
+    # measure alpha_val for each k_n
     alphans = np.empty((n_bound_right,),dtype=complex);
     for n in range(n_bound_right):
-        alphans[n] = np.dot( np.conj(psins[n]), np.matmul(HC00_op, psins[n]));
+        alphans[n] = np.dot( np.conj(psins[n]), np.matmul(alpha_mat_2d, psins[n]));
     n_bound_right= n_bound_right // n_loc_dof;
     
     # classify right well eigenstates in the \alpha basis
