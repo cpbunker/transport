@@ -26,6 +26,7 @@ def dIdV_quad(Vb, V0, dI0, alpha2):
     '''
     quadratic background to sense V0 and dI0
     '''
+    assert False
 
     # even powers
     rets = np.zeros_like(Vb);
@@ -34,9 +35,21 @@ def dIdV_quad(Vb, V0, dI0, alpha2):
 
     return rets;
 
-def dIdV_back(Vb, E0, G3, G2):
+def dIdV_mag(Vb, V0, E0, G3, G2):
     '''
     '''
+    kelvin2eV =  8.617e-5;
+    kBT = kelvin2eV*temp_kwarg
+
+    Gmag = -2*kBT*np.log(1-np.exp(-E0/kBT));
+    Gmag += (abs(Vb-V0)+E0)/(np.exp( (abs(Vb-V0)+E0)/kBT)-1);
+    Gmag += (abs(Vb-V0)-E0)/(1-np.exp( -(abs(Vb-V0)-E0)/kBT ) );
+    return G2-G3*Gmag;
+
+def dIdV_back(Vb, V0, E0, G3, G2):
+    '''
+    '''
+    kelvin2eV =  8.617e-5;
 
     # the F function from XGZ's magnon paper, Eq (17)
     def Ffunc(E, kBT):
@@ -45,8 +58,7 @@ def dIdV_back(Vb, E0, G3, G2):
         denominator = 1 - kBT/(E0+0.4*E) + 12*kBT*kBT/np.power(E0+2.4*E,2);
         return numerator/denominator;
 
-    kelvin2eV =  8.617e-5;
-    return G2 - G3*Ffunc(abs(Vb-V0_kwarg), kelvin2eV*temp_kwarg);
+    return G2 - G3*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
 
 def dIdV_sin(Vb, alpha, amplitude, period):
     '''
@@ -54,13 +66,16 @@ def dIdV_sin(Vb, alpha, amplitude, period):
     '''
 
     ang_freq = 2*np.pi/period
-    return amplitude*np.sin(ang_freq*(Vb-V0_kwarg)-alpha);
+    return amplitude*np.sin(ang_freq*Vb-alpha);
 
-def dIdV_lorentz(Vb, EC, mutilde):
+def dIdV_lorentz(Vb, V0, EC, mutilde, amp): # add a constant offset ?
+    '''
+    '''
     from blockade import I_of_Vb
+    
     kelvin2eV =  8.617e-5;
     nmax = 10;
-    return np.gradient( I_of_Vb(Vb, EC, mutilde, kelvin2eV*temp_kwarg, nmax) );
+    return amp*np.gradient( I_of_Vb(Vb-V0, EC, mutilde, kelvin2eV*temp_kwarg, nmax) );
 
 
 ####################################################################
@@ -86,6 +101,10 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
     V_exp = V_exp[abs(V_exp)<=Vlim];
 
     # trim outliers
+
+    
+    # don't do this
+    
     dI_sigma= np.std(dI_exp);
     dI_mu = np.mean(dI_exp);
     V_exp = V_exp[ abs(dI_exp-dI_mu) < nsigma*dI_sigma];
@@ -93,41 +112,41 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
     
     if(verbose>4): # show after processing
         outax.scatter(V_exp, dI_exp, color="black",marker="+");
-        outax.set_title("Processing data");
+        outax.set_title("Cleaning data");
         outax.set_xlabel("$V_b$ (V)");
         outax.set_ylabel("$dI/dV_b$ (nA/V)");
         plt.tight_layout();
         plt.show();
 
-    #### fit V0
-    params_quad_guess = [0.0,dI_mu, dI_sigma];
-    (V0, _, _), _ = fit_wrapper(dIdV_quad, V_exp, dI_exp,
-                                  params_quad_guess, None, ["V0", "dI0","alpha2"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-
-    global V0_kwarg; V0_kwarg = V0; # very bad practice
-    global temp_kwarg; temp_kwarg = temp;
-
     #### fit to background
-    params_back_guess = np.array([2*Vlim, 2*dI_sigma, dI_mu]);
-    bounds_back = np.array([[params_back_guess[0]*(1-1),params_back_guess[1]*(1-1), params_back_guess[2]*(1-1)],
-                            [params_back_guess[0]*(1+1),params_back_guess[1]*(1+1), params_back_guess[2]*(1+1)]]);
-    (E0, G3, G2), _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
-                            params_back_guess, bounds_back, ["E0", "G3","G2"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    global temp_kwarg; temp_kwarg = temp; # very bad practice
+    params_back_guess = np.array([-0.01,2*Vlim, 2*dI_sigma, dI_mu]);
+    bounds_back = [ [-Vlim/5],[Vlim/5] ];
+    for pguess in params_back_guess[1:]:
+        bounds_back[0].append(pguess*(1-1));
+        bounds_back[1].append(pguess*(1+1));
+    bounds_back = np.array(bounds_back);
+    params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                            params_back_guess, bounds_back, ["V0", "E0", "G3","G2"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
     #### fit oscillations
 
     # subtract background
-    background = dIdV_back(V_exp, E0, G3, G2);
+    background = dIdV_back(V_exp, *params_back);
     dI_exp = dI_exp - background;
 
     # fit to either sines or lorentzians
     if lorentzian: # lorentzians
-        params_guess = [0.005,0.001];
-        bounds = np.array([[params_guess[0]*(1-1),params_guess[1]*(1-1)],
-                            [params_guess[0]*(1+1),params_guess[1]*(1+1)]]);
-        (EC, mutilde), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
-                             params_guess, None, ["EC","mutilde"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-        results = (EC, mutilde, rmse);
+        dI_exp = dI_exp - np.min(dI_exp);
+        params_guess = [Vlim/10,0.005,1e-6,1e4];
+        bounds = [ [-Vlim/5],[Vlim/5] ];
+        for pguess in params_guess[1:]:
+            bounds[0].append(pguess*(1-1));
+            bounds[1].append(pguess*(1+1));
+        bounds = np.array(bounds);
+        (V0, EC, mutilde, amp), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
+                             params_guess, bounds, ["V0","EC","mutilde","Amp"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+        results = (EC, mutilde, amp, rmse);
         
     else: # sines
         params_guess = np.array([phi_not,amp_not, period_not]);
@@ -138,6 +157,7 @@ def fit_dIdV(metal, temp, area, phi_not, amp_not, period_not,
                             params_guess, bounds, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
         results = (alpha_ang, amp, period, rmse);
 
+    if(verbose==10): assert False
     return (results, bounds)
 
 ####################################################################
@@ -148,6 +168,7 @@ def fit_Mn_data():
 
     # experimental params
     Ts = np.array([5,10,15,20,25,30]);
+    Ts = Ts[:5];
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
 
@@ -160,7 +181,7 @@ def fit_Mn_data():
     phi_percent, amp_percent, period_percent = 1.0,0.99, 0.1;
 
     # how to do oscillation fit
-    lorentzian = False;
+    lorentzian = True;
 
     # fitting results
     results = [];
@@ -168,7 +189,7 @@ def fit_Mn_data():
     for datai in range(len(Ts)):
         print("\nT = {:.0f} K".format(Ts[datai]));
         if(lorentzian):
-            rlabels = ["$E_C$ (eV)", "$\\tilde{\mu}$ (eV)", "RMSE"];
+            rlabels = ["$E_C$ (eV)", "$eV_g + \mu_0$ (eV)", "Amp", "RMSE"];
         else:
             rlabels = ["$\\alpha$ (rad)","$A$ (nA/V)", "$\Delta V$ (V)", "RMSE"];
 
@@ -176,7 +197,7 @@ def fit_Mn_data():
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             phi_guess[datai], amp_guess[datai], period_guess[datai],
                     phi_percent, amp_percent, period_percent,
-                                verbose=1, lorentzian=lorentzian);
+                                verbose=10, lorentzian=lorentzian);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -191,13 +212,6 @@ def fit_Mn_data():
         axes[resulti].set_ylabel(rlabels[resulti]);
         axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
-
-    # plot temp dependence of period
-    Tenergies = 8.617e-5*np.array(Ts-5); # in eV
-    C0energy = results[0,-2]; # e * Delta Vb = energy scale = e^2/C0
-    print(Tenergies)
-    print(C0energy);
-    #axes[-2].plot(Ts, C0energy-Tenergies,color=accentcolors[1]);
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
