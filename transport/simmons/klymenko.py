@@ -90,16 +90,16 @@ if(__name__ == "__main__"):
     kelvin2eV =  8.617e-5;
     conductance_quantum = 7.748e-5; # units amp/volt
 
-    if False: # plot at various n max
+    if True: # plot at various n max
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
 
         # physical params, in eV
         my_temp = 5.0*kelvin2eV;
-        my_EC = 0.02;
-        my_Vg =-0.0;
-        my_mu0 = 0.0;
-        my_eta = 1.0/3;
+        my_EC = 0.01;
+        my_Vg =-1.00;
+        my_mu0 = 1.10; # scaling of separation with mu0+Vg makes fits ambiguous
+        my_eta = 1.0; # Neo only changes upper electrode voltage
         conductance=False;
 
         nvals = np.array([0,2,4,8]);
@@ -111,7 +111,7 @@ if(__name__ == "__main__"):
             ax.axvline(integer*2*my_EC,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $E_C = $ {:.3f} eV, $eV_g+\mu_0 = $ {:.3f} eV".format(my_temp/kelvin2eV, my_EC, my_Vg+my_mu0));
+        ax.set_title( "$T = $ {:.1f} K, $E_C = $ {:.3f} eV, $\mu_0-E_0= $ {:.3f} eV".format(my_temp/kelvin2eV, my_EC, my_mu0+my_Vg));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (au)");
         else: ax.set_ylabel("$I(V_b)$ (au)");
@@ -125,10 +125,10 @@ if(__name__ == "__main__"):
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
 
         # physical params, in eV
-        my_EC = 0.02;
-        my_Vg =-0.0;
-        my_mu0 = 0.0;
-        my_eta = 1.0/2;
+        my_EC = 0.01;
+        my_Vg =-1.0;
+        my_mu0 = 1.10;
+        my_eta = 1.0; # Neo only changes upper electrode voltage
         nmax = 8;
         conductance=True;
 
@@ -141,7 +141,7 @@ if(__name__ == "__main__"):
             ax.axvline(integer*2*my_EC,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$E_C = $ {:.3f} eV, $eV_g+\mu_0 = $ {:.3f} eV".format(my_EC, my_Vg+my_mu0));
+        ax.set_title( "$E_C = $ {:.3f} eV, $\mu_0-E_0 = $ {:.3f} eV".format(my_EC, my_mu0+my_Vg));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (au)");
         else: ax.set_ylabel("$I(V_b)$ (au)");
