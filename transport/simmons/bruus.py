@@ -45,7 +45,7 @@ def Pn_recursive(n, Vb, EC, Vg, mu0, kBT):
         # sum each over alpha
         numerator, denominator = 0.0, 0.0;
         mualphas = [mu0+Vb/2, mu0-Vb/2];
-        #mualphas = [mu0, mu0-Vb];
+        mualphas = [mu0+Vb, mu0];
         for mualpha in mualphas:
             numerator   += Gamma_n_pm(0, n-1,EC, Vg, mualpha, kBT);  
             denominator += Gamma_n_pm(1, n,  EC, Vg, mualpha, kBT);
@@ -73,7 +73,7 @@ def I_of_Vb(Vb, EC, Vg, mu0, kBT, nmax, return_Pn = False):
 
     # chemical potential
     muL, muR = mu0+Vb/2, mu0-Vb/2;
-    #muL, muR = mu0, mu0-Vb;
+    muL, muR = mu0+Vb, mu0;
 
     # get current
     current = np.zeros_like(Vb);
@@ -116,7 +116,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if True: # plot differential conductance at various temp
+    if False: # plot differential conductance at various temp
                 # TODO:  get rid of linear T peak shift
         fig, ax = plt.subplots();
         Tvals = np.array([5,10,20])*kelvin2eV;
@@ -140,7 +140,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if False: # plot differential conductance at various Vg
+    if True: # plot differential conductance at various Vg
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
 
@@ -150,7 +150,7 @@ if(__name__ == "__main__"):
         my_temp = 5.0*kelvin2eV;
         my_EC = 0.01; # should be of order of observed conductance osc period (10s of meV)
         my_mu0 = 0.00;
-        Vgvals = np.array([0,0.5,1,2,3])*my_EC;
+        Vgvals = np.array([0,0.5,0.8])*my_EC;
         
         for Vgval in Vgvals:
             Is = I_of_Vb(Vbs, my_EC, Vgval, my_mu0, my_temp, nmax);

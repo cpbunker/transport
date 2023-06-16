@@ -11,7 +11,7 @@ Peak height falls off to slowly with T (5 K -> 50 K only a 1/3 dropoff)
 import numpy as np
 import matplotlib.pyplot as plt
 
-def En(n, EC, Vg):
+def En(n, EC, Vb):
     '''
     This gives the energy of a single-fermion level rather than a
     many-body charge state. 
@@ -20,7 +20,7 @@ def En(n, EC, Vg):
         assert(EC == 0.0);
         return EC*n*n-Vg*n;
     else:
-        return EC*(2*n+1)-Vg;
+        return EC*(2*n+1)+Vb/2 # chem potential of island is zero of energy scale
 
 def nFD(epsilon, kBT):
     '''
@@ -28,7 +28,7 @@ def nFD(epsilon, kBT):
     
     return 1/(np.exp(epsilon/kBT)+1);
 
-def I_of_Vb_zero(Vb, mu0, Gamma, EC, Vg, kBT, ns):
+def I_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     '''
     Compute the zero temperature current according to
     the analytical integration result
@@ -45,12 +45,12 @@ def I_of_Vb_zero(Vb, mu0, Gamma, EC, Vg, kBT, ns):
     # current
     current = np.zeros_like(Vb);
     for n in ns:
-        Enval = En(n,EC,Vg);
+        Enval = En(n,EC,Vb);
         current += np.arctan((muL-Enval)/(2*Gamma));
         current +=-np.arctan((muR-Enval)/(2*Gamma));
     return Gamma*Gamma/(Gamma+Gamma) *current;
 
-def dI_of_Vb_zero(Vb, mu0, Gamma, EC, Vg, kBT, ns):
+def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     '''
     Compute the zero temperature conductance according to
     the analytical integration result
@@ -64,17 +64,15 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, Vg, kBT, ns):
     # chem potentials
     muL, muR = mu0+Vb, mu0;
 
-    def deriv_arctan(mualpha, E_n, Gam):
-        return 1/(1+np.power( (mualpha-E_n)/(2*Gam),2) );
-
     # conductance
     conductance = np.zeros_like(Vb);
     for n in ns:
-        Enval = En(n,EC,Vg);
-        conductance += deriv_arctan(muL, Enval, Gamma);
-    return 1/4*conductance;
+        Enval = En(n,EC,Vb);
+        conductance += 1/(1+np.power((muL-Enval)/(2*Gamma),2));
+        conductance += 1/(1+np.power((muR-Enval)/(2*Gamma),2));
+    return (1/8)*conductance;
 
-def I_of_Vb(Vb, mu0, Gamma, EC, Vg, kBT, ns, xvals=1e5):
+def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     '''
     Compute the finite temperature current by numerical integration
     '''
@@ -92,20 +90,19 @@ def I_of_Vb(Vb, mu0, Gamma, EC, Vg, kBT, ns, xvals=1e5):
     # current
     current = np.zeros_like(Vb);
     for n in ns:
-        Enval = En(n,EC,Vg);
-        tau_vals = Gamma*Gamma/( np.power(Evals-Enval,2)+np.power(Gamma+Gamma,2));
         # integrate to get current contribution
         integration_result = np.empty_like(Vb);
-        for Vbi in range(len(Vb)):
-            # chem potentials
-            muL, muR = mu0+Vb[Vbi], mu0;
+        for Vbi, Vbval in enumerate(Vb):
+            muL, muR = mu0+Vbval, mu0;
+            Enval = En(n,EC,Vbval);
+            tau_vals = Gamma*Gamma/( np.power(Evals-Enval,2)+np.power(Gamma+Gamma,2));
             integration_result[Vbi] = np.trapz(tau_vals*(nFD(Evals-muL,kBT)-nFD(Evals-muR,kBT)), Evals);
         #print(integration_result);
         current += integration_result;
 
     return current;
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, Vg, kBT, ns, xvals=1e5):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -113,9 +110,6 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, Vg, kBT, ns, xvals=1e5):
     if(not isinstance(mu0, float)): raise TypeError;
     if(not isinstance(ns, np.ndarray)): raise TypeError;
     if(ns.dtype != int): raise TypeError;
-
-    # chem potentials
-    muL, muR = mu0+Vb, mu0;
 
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
@@ -126,16 +120,19 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, Vg, kBT, ns, xvals=1e5):
     # conductance
     conductance = np.zeros_like(Vb);
     for n in ns:
-        Enval = En(n,EC,Vg);
-        tau_part = 1/(1+ np.power((Evals-Enval)/(2*Gamma),2))
         # integrate to get current contribution
+        Cnval = (2*n+1)*EC;
         integration_result = np.empty_like(Vb);
-        for Vbi in range(len(Vb)):
-            nFD_part = np.exp((Evals-mu0-Vb[Vbi])/kBT)*np.power(np.exp((Evals-mu0-Vb[Vbi])/kBT)+1,-2);
-            integration_result[Vbi] = np.trapz(tau_part*nFD_part, Evals);
+        for Vbi, Vbval in enumerate(Vb):
+            integrand = np.zeros_like(Evals);
+            integrand_prefactor = 1/(1+np.power( (Evals-Cnval-Vbval/2)/(2*Gamma),2));
+            integrand += (1/kBT)*np.exp((Evals-mu0-Vbval)/kBT)*np.power(np.exp((Evals-mu0-Vbval)/kBT)+1,-2);
+            integrand += (Evals-Cnval-Vbval/2)/(4*Gamma*Gamma) *integrand_prefactor*(1/(np.exp((Evals-mu0-Vbval)/kBT)+1) - 1/(np.exp((Evals-mu0)/kBT)+1));
+            integrand *= integrand_prefactor;
+            integration_result[Vbi] = np.trapz(integrand, Evals);
         conductance += integration_result;
 
-    return conductance/(4*kBT);
+    return Gamma*Gamma/np.power(2*Gamma,2)*conductance;
 
 
 if(__name__ == "__main__"):
@@ -147,46 +144,52 @@ if(__name__ == "__main__"):
     conductance = True;
 
     if True: # plot with various methods
+        import time
 
         # physical params, in eV
-        my_mu0 = 0.0;
-        my_EC = 0.025;
-        my_Vg = my_EC;
-        my_temp = 10.0*kelvin2eV;
+        my_mu0 = 0.0; # *relative* to the island chem potential
+        my_EC = 0.025/2;
+        my_temp = 30.0*kelvin2eV;
         nmax = 3;
-        narr = np.arange(-nmax,nmax+1);
+        narr = np.arange(0,nmax+1); # check asymmetric
 
-        for my_Gamma in [0.00015, 0.015]:
+        for my_Gamma in [2*my_EC/np.sqrt(48), 2*my_EC/np.sqrt(48)/100]:
 
             # plotting
             fig, axes = plt.subplots(2, sharex=True);
             Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
+
         
             # zero temp analytic
-            Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, my_Vg, 0.0, narr);
-            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "T=0 analytical");
-
-            # zero temp numerical
-            Is = np.gradient(I_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, my_Vg, 0.0, narr));
-            axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "T=0 numerical");
+            Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, 0.0, narr);
+            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb_zero");
 
             # finite temp analytical
-            Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_Vg, my_temp, narr);
-            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "T!=0 analytical");
+            start = time.time()
+            Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr);
+            stop = time.time()
+            print("dI_of_Vb time = ",stop-start)
+            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb");
 
-            # finite temp numerical
-            Is = np.gradient(I_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_Vg, my_temp, narr));
-            axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "T!=0 numerical");
+            # zero temp gradient
+            Is = np.gradient(I_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, 0.0, narr));
+            axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "gradient of I_of_Vb_zero");
+
+            # finite temp gradient
+            start = time.time()
+            Is = np.gradient(I_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr));
+            stop = time.time()
+            print("I_of_Vb time = ",stop-start)
+            axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "gradient of I_of_Vb");
 
             # peaks
-            for integer in narr:
-                print("En - mu0 = {:.3f}".format(En(integer, my_EC, my_Vg)-my_mu0));
+            for integer in [0]:
+                print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
                 for ax in axes:
-                    ax.axvline(En(integer, my_EC, my_Vg)-my_mu0,color="black",linestyle="dashed");
+                    ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
             # format
-            axes[0].set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV,\n\
-                $E_C = $ {:.3f} eV, $eV_g = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma, my_EC, my_Vg));
+            axes[0].set_title( "$T = $ {:.3f} eV, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp, my_mu0, my_Gamma, my_EC));
             axes[-1].set_xlabel("$V_b$ (V)");
             for ax in axes:
                 ax.set_ylabel("$dI/dV_b$ (nA/V)");
@@ -200,7 +203,7 @@ if(__name__ == "__main__"):
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 
         # physical params, in eV
-        my_mu0 = 0.0;
+        my_mu0 = 0.0; # *relative* to the island chem potential
         my_Gamma = 1e-4;
         my_EC = 0.025;
         my_Vg = my_EC;
@@ -216,7 +219,7 @@ if(__name__ == "__main__"):
             to_save[to_savei]=Is; to_savei += 1;
             ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$T = $ {:.1f} K".format(Tval/kelvin2eV));
         for integer in narr:
-            print("En - mu0 = {:.3f}".format(En(integer, my_EC, my_Vg)-my_mu0));
+            print("2EC(2n+1) - 2mu0 = {:.3f}".format(En(integer, my_EC, my_Vg)-my_mu0));
             ax.axvline(En(integer, my_EC, my_Vg)-my_mu0,color="black",linestyle="dashed");
 
         # format
@@ -243,28 +246,26 @@ if(__name__ == "__main__"):
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 
         # physical params, in eV
-        my_mu0 = -0.0;
-        my_Gamma = 1e-4; 
-        my_Vg = 0.0;
+        my_mu0 = 0.0; # *relative* to the island chem potential
+        my_Gamma = 1e-3; 
         my_temp = 0.0*kelvin2eV;
         nmax = 5;
-        narr = np.arange(-nmax,nmax+1);
+        narr = np.arange(0,nmax+1); # <--- ??????
 
         # iter over EC
-        ECvals = np.array([0.01,0.05]);
+        ECvals = np.array([0.01,0.04]);
         to_save = np.empty((len(ECvals),len(Vbs)),dtype=float); to_savei=0;
         for ECval in ECvals:
-            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_Vg, my_temp, narr);
-            else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_Vg, my_temp, narr);
+            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
+            else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
             ax.plot(Vbs, conductance_quantum*1e9*Is, label = "{:.3f}".format(ECval));
             for integer in [0]:
-                print("En - mu0 = {:.3f}".format(En(integer, ECval, my_Vg)-my_mu0));
-                ax.axvline(En(integer, ECval, my_Vg)-my_mu0,color="black",linestyle="dashed");
+                print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, ECval, 0.0)-my_mu0));
+                ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV,\n\
-            $eV_g = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma, my_Vg));
+        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
         else: ax.set_ylabel("$I(V_b)$ (nA)");
@@ -275,7 +276,7 @@ if(__name__ == "__main__"):
 
         # save
         fname = "land_data/vsEC"
-        save_params = np.array([my_mu0, my_Gamma, np.nan, my_Vg, my_temp, nmax]);
+        save_params = np.array([my_mu0, my_Gamma, np.nan, my_temp, nmax]);
         print("Saving to "+fname);
         np.savetxt(fname+".txt",save_params);
         np.save(fname, to_save);
@@ -285,28 +286,26 @@ if(__name__ == "__main__"):
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e6));
 
         # physical params, in eV
-        my_mu0 = 0.0
+        my_mu0 = 0.0; # *relative* to the island chem potential
         my_EC = 0.01;
-        my_Vg = 0.0;
         my_temp = 0.0*kelvin2eV;
         nmax = 5;
-        narr = np.arange(-nmax,nmax+1);
+        narr = np.arange(0,nmax+1);
 
-        # iter over EC
-        Gammavals = np.array([1e-2,1e-3,1e-4,1e-5]);
+        # iter over Gamma
+        Gammavals = np.array([2*my_EC/np.sqrt(48),1e-3,1e-4]);
         to_save = np.empty((len(Gammavals),len(Vbs)),dtype=float); to_savei=0;
         for Gammaval in Gammavals:
-            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_Vg, my_temp, narr);
-            else: Is = I_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_Vg, my_temp, narr);
+            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
+            else: Is = I_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
             ax.plot(Vbs, conductance_quantum*1e9*Is, label = str(Gammaval));
         for integer in [0]:
-            print("En - mu0 = {:.3f}".format(En(integer, my_EC, my_Vg)-my_mu0));
-            ax.axvline(En(integer, my_EC, my_Vg)-my_mu0,color="black",linestyle="dashed");
+            print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
+            ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, \n\
-            $E_C = $ {:.3f} eV, $eV_g = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_EC, my_Vg));
+        ax.set_title("$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_EC));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
         else: ax.set_ylabel("$I(V_b)$ (nA)");
@@ -317,7 +316,7 @@ if(__name__ == "__main__"):
 
         # save
         fname = "land_data/vsGamma"
-        save_params = np.array([my_mu0, np.nan, my_EC, my_Vg, my_temp, nmax]);
+        save_params = np.array([my_mu0, np.nan, my_EC, my_temp, nmax]);
         print("Saving to "+fname);
         np.savetxt(fname+".txt",save_params);
         np.save(fname, to_save);

@@ -120,21 +120,21 @@ def fit_dIdV(metal, temp, area, dI0_not, Gamma_not, EC_not,
         bounds_sin[0].append(pguess*(1-1));
         bounds_sin[1].append(pguess*(1+1));
     bounds_sin = np.array(bounds_sin);
-    _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
+    if False:
+        _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
                         params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
     # fit to lorentzians
     params_guess = [0.0, dI0_not, Gamma_not, EC_not];
-    bounds = [ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
-               [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]];
-    bounds = np.array(bounds);
+    bounds = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+               [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
     
     (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
                          params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-    results = (V0, dI0, Gamma, EC, rmse);
+    results = (dI0, Gamma, EC, rmse);
 
-    #if(verbose==10): assert False
-    return (results, bounds)
+    if(verbose==10): assert False
+    return (results, bounds[:,1:])
 
 ####################################################################
 #### wrappers
@@ -152,21 +152,21 @@ def fit_Mn_data():
     dI0_guess = 7e4*np.ones_like(Ts);
     Gamma_guess = 0.01*np.ones_like(Ts); # gamma dominates T in the smearing
     EC_guess = (0.0196/2)*np.ones_like(Ts);
-    dI0_percent = 0.1;
+    dI0_percent = 0.2;
     Gamma_percent = 1.0;
-    EC_percent = 1e-6;
+    EC_percent = 0.1;
 
     # fitting results
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
         print("\nT = {:.1f} K, {:.4f} eV".format(Ts[datai], Ts[datai]*kelvin2eV));
-        rlabels = ["dI0", "$\Gamma", "$E_C$ (eV)", "RMSE"];
+        rlabels = ["$dI0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)", "RMSE"];
 
         # get fit results
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, verbose=10);
+            dI0_percent, Gamma_percent, EC_percent, verbose=1);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);

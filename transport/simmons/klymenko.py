@@ -86,32 +86,33 @@ def I_of_Vb(Vb, EC, Vg, mu0, eta, kBT, nmax, return_Pn = False):
 if(__name__ == "__main__"):
 
     # experimental params (Mn/5KExp.txt)
-    Vb_max = 0.4;
+    Vb_max = 0.1;
     kelvin2eV =  8.617e-5;
     conductance_quantum = 7.748e-5; # units amp/volt
 
-    if True: # plot at various n max
+    if False: # plot at various n max
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
 
         # physical params, in eV
         my_temp = 5.0*kelvin2eV;
         my_EC = 0.01;
-        my_Vg =-1.00;
+        my_Vg = -1.00;
         my_mu0 = 1.10; # scaling of separation with mu0+Vg makes fits ambiguous
+        my_Vg, my_mu0 = 0.0, 0.0;
         my_eta = 1.0; # Neo only changes upper electrode voltage
-        conductance=False;
+        conductance=True;
 
-        nvals = np.array([0,2,4,8]);
+        nvals = np.array([16,8,4]);
         for nval in nvals:
             Is = I_of_Vb(Vbs, my_EC, my_Vg, my_mu0, my_eta, my_temp, nval);
             if(conductance): Is = np.gradient(Is);
             ax.plot(Vbs, Is, label = str(nval));
-        for integer in [-3,-1,1,3]:
-            ax.axvline(integer*2*my_EC,color="black",linestyle="dashed");
+        for integer in [0,1,2]:
+            ax.axvline((2*integer+1)*my_EC,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $E_C = $ {:.3f} eV, $\mu_0-E_0= $ {:.3f} eV".format(my_temp/kelvin2eV, my_EC, my_mu0+my_Vg));
+        ax.set_title( "$T = $ {:.1f} K, $E_C = $ {:.3f} eV, $\mu_0-E_0= $ {:.3f} eV, $\eta = $ {:.1f}".format(my_temp/kelvin2eV, my_EC, my_mu0+my_Vg, my_eta));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (au)");
         else: ax.set_ylabel("$I(V_b)$ (au)");
@@ -120,16 +121,17 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if True: # plot at various T
+    if False: # plot at various T
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
 
         # physical params, in eV
         my_EC = 0.01;
-        my_Vg =-1.0;
+        my_Vg = -1.0;
         my_mu0 = 1.10;
+        #my_Vg, my_mu0 = 0.0, 0.0;
         my_eta = 1.0; # Neo only changes upper electrode voltage
-        nmax = 8;
+        nmax = 16;
         conductance=True;
 
         Tvals = np.array([5,10,20])*kelvin2eV;
@@ -137,11 +139,11 @@ if(__name__ == "__main__"):
             Is = I_of_Vb(Vbs, my_EC, my_Vg, my_mu0, my_eta, Tval, nmax);
             if(conductance): Is = np.gradient(Is);
             ax.plot(Vbs, Is, label = "{:.1f}".format(Tval/kelvin2eV));
-        for integer in [-3,-1,1,3]:
-            ax.axvline(integer*2*my_EC,color="black",linestyle="dashed");
+        for integer in [0,1,2]:
+            ax.axvline((2*integer+1)*my_EC,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$E_C = $ {:.3f} eV, $\mu_0-E_0 = $ {:.3f} eV".format(my_EC, my_mu0+my_Vg));
+        ax.set_title( "$E_C = $ {:.3f} eV, $\mu_0-E_0 = $ {:.3f} eV, $\eta = $ {:.1f}".format(my_EC, my_mu0+my_Vg, my_eta));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (au)");
         else: ax.set_ylabel("$I(V_b)$ (au)");
@@ -150,6 +152,36 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
+    if True: # plot at various Vg -> linear (1 for eta=1)
+                # leftward shift for positive Vg, mu0
+        fig, ax = plt.subplots();
+        Vbs = np.linspace(-Vb_max,Vb_max,int(1e5));
+
+        # physical params, in eV
+        my_temp = 5.0*kelvin2eV;
+        my_EC = 0.01;
+        my_mu0 = 0.02;
+        my_eta = 1.0; # Neo only changes upper electrode voltage
+        nmax = 16;
+        conductance=True;
+
+        Vgvals = np.array([0.001, 0.005,0.05]);
+        for Vgval in Vgvals:
+            Is = I_of_Vb(Vbs, my_EC, Vgval, my_mu0, my_eta, my_temp, nmax);
+            if(conductance): Is = np.gradient(Is);
+            ax.plot(Vbs, Is, label = "{:.3f}".format(Vgval));
+        for integer in [0,1,2,3,4]:
+            ax.axvline((2*integer+1)*my_EC,color="black",linestyle="dashed");
+
+        # format
+        ax.set_title( "$T = $ {:.1f} K, $E_C = $ {:.3f} eV, $\mu_0= $ {:.3f} eV, $\eta = $ {:.1f}".format(my_temp, my_EC, my_mu0, my_eta));
+        ax.set_xlabel("$V_b$ (V)");
+        if(conductance): ax.set_ylabel("$dI/dV_b$ (au)");
+        else: ax.set_ylabel("$I(V_b)$ (au)");
+        ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        plt.legend();
+        plt.tight_layout();
+        plt.show();
 
 
 

@@ -180,7 +180,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel
         fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,p0=p0);
     elif(p0 is not None and bounds is not None): # fit with guesses, bounds
         fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, max_nfev = 1000);
+                                p0=p0,bounds=bounds, max_nfev = 2000);
     else: raise NotImplementedError;
 
     # fit and error
