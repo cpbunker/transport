@@ -470,8 +470,8 @@ def kernel_well_super(tinfty, tL, tR,
                 addin = False;
         if(addin):
             alpha_eigvals[alpha] = 1;
+    if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); assert False;
     alpha_eigvals = list(alpha_eigvals.keys());
-    assert(len(alpha_eigvals) == n_loc_dof);
 
     # organize by alpha vals
     for eigvali in range(len(alpha_eigvals)):

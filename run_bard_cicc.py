@@ -106,8 +106,8 @@ if True:
         # impurity physics
         JK  =-1.0 *tLR[0,0]/100; # first number is value in meV
         J12 = 0.0 *tLR[0,0]/100;
-        Dval= 0.0 *tLR[0,0]/100; # TODO: get to work when nonzero
-        myspinS = 1/2;
+        Dval= 2.0 *tLR[0,0]/100; # TODO: get to work when nonzero
+        myspinS = 1;
 
         # central region
         tvac = indvals[indvali]; # hopping between leads and central
