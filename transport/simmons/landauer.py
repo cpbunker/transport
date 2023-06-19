@@ -10,6 +10,7 @@ Peak height falls off to slowly with T (5 K -> 50 K only a 1/3 dropoff)
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.integrate import quad
 
 import time
 
@@ -100,7 +101,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
 
     return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5, method='trapz'):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -112,8 +113,7 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5, method='trapz'):
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
     Elimits = (-5*kBT+np.min(mulimits),+5*kBT+np.max(mulimits));
-    Evals = np.linspace(*Elimits,int(xvals));
-    print("Integration limits = ",Elimits);
+    #print("Integration limits = ",Elimits);
 
     # function to integrate
     def integrand(Eint, Cint, Vbint):
@@ -124,17 +124,13 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5, method='trapz'):
         return prefactor*retval;
     
     # conductance
-    from scipy.integrate import quad
     conductance = np.zeros_like(Vb);
     for n in ns:
         # integrate to get current contribution
         Cnval = (2*n+1)*EC;
         integration_result = np.empty_like(Vb);
         for Vbi, Vbval in enumerate(Vb):
-            if(method =='trapz'):
-                integration_result[Vbi] = np.trapz(integrand(Evals, Cnval, Vbval), Evals);
-            elif(method == 'scipy'):
-                integration_result[Vbi] = quad(integrand, Evals[0], Evals[-1], args = (Cnval, Vbval))[0];
+            integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
         conductance += integration_result;
 
     return Gamma*Gamma/np.power(2*Gamma,2)*conductance;
@@ -174,13 +170,6 @@ if(__name__ == "__main__"):
             stop = time.time();
             print("dI_of_Vb time = ",stop-start);
             axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb");
-
-            # finite temp analytical
-            start = time.time();
-            Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr, method = 'scipy');
-            stop = time.time();
-            print("dI_of_Vb scipy time = ",stop-start);
-            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb scipy", linestyle='dashed');
 
             if False:
                 # zero temp gradient

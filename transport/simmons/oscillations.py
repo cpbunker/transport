@@ -70,18 +70,25 @@ def dIdV_sin(Vb, alpha, amplitude, period):
     ang_freq = 2*np.pi/period
     return amplitude*np.sin(ang_freq*Vb-alpha);
 
-def dIdV_lorentz(Vb, V0, dI0, Gamma, EC, zero=True): 
+def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC): 
     '''
     '''
-    from landauer import dI_of_Vb_zero, dI_of_Vb
+    from landauer import dI_of_Vb_zero
 
     nmax = 40;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    if(zero):
-        return -dI0+1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
-    else:
-        return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
+    return -dI0+1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
+
+def dIdV_lorentz(Vb, V0, dI0, Gamma, EC): 
+    '''
+    '''
+    from landauer import dI_of_Vb
+
+    nmax = 40;
+    ns = np.arange(-nmax, nmax+1);
+    mymu0 = 0.0; # otherwise breaks equal spacing
+    return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
 
 ####################################################################
 #### main
@@ -98,12 +105,11 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
     dI_sigma= np.std(dI_exp);
     dI_mu = np.mean(dI_exp);
-    print(len(V_exp)); assert False
 
     #### fit to background
     global temp_kwarg; temp_kwarg = temp; # very bad practice
     params_back_guess = np.array([0.0,Vlim/10, 5*dI_sigma, dI_mu]);
-    bounds_back = [ [-1e-6],[1e-6] ];
+    bounds_back = [ [-1e-2],[1e-2] ];
     for pguess in params_back_guess[1:]:
         bounds_back[0].append(pguess*(1-1));
         bounds_back[1].append(pguess*(1+1));
@@ -123,30 +129,43 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
     dI_mu = np.mean(dI_exp);
 
     # fit to sines
-    params_sin_guess = np.array([np.pi/2, dI_sigma, Vlim/5]);
-    bounds_sin = [[],[]];
-    for pguess in params_sin_guess:
-        bounds_sin[0].append(pguess*(1-1));
-        bounds_sin[1].append(pguess*(1+1));
-    bounds_sin = np.array(bounds_sin);
     if False:
+        params_sin_guess = np.array([np.pi/2, dI_sigma, Vlim/5]);
+        bounds_sin = [[],[]];
+        for pguess in params_sin_guess:
+            bounds_sin[0].append(pguess*(1-1));
+            bounds_sin[1].append(pguess*(1+1));
+        bounds_sin = np.array(bounds_sin);
         _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
                         params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
     # fit to lorentzians
-    params_guess = [V0_not, dI0_not, Gamma_not, EC_not];
-    bounds = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+    params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
+    bounds_zero = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
                [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
 
-    if True:
-        (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
-                             params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-        results = (dI0, Gamma, EC, rmse);
-    else:
-        dI_fit = dIdV_lorentz(V_exp, *params_guess, zero=False);
-        if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit);
+    # first fit at T=0
+    (V0_zero, dI0_zero, Gamma_zero, EC_zero), rmse = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
+                             params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    
+    # now adjust fit at T != 0
+    # only fit dI0 and Gamma in the adjusted fit!!
+    params_guess = np.array([V0_zero, dI0_zero, Gamma_zero, EC_zero]);
+    bounds = np.array([[V0_zero, dI0_zero*(1-dI0_percent), Gamma_zero*(1-Gamma_percent), EC_zero],
+                       [V0_zero, dI0_zero*(1+dI0_percent), Gamma_zero*(1+Gamma_percent), EC_zero]]);
+    import time
+    start = time.time()
+    #(_, dI0, Gamma, EC), rmse = 
+    fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
+                             params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    stop = time.time()
+    print("T != 0 fit time = ", stop-start)
 
-    #if(verbose==10): assert False;
+
+    #dI_fit = dIdV_lorentz(V_exp, *params_zero_guess, zero=False);
+    #if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit);
+
+    if(verbose==10): assert False;
     return (results, bounds[:,1:]);
 
 ####################################################################
@@ -188,7 +207,7 @@ def fit_Mn_data():
         # get fit results
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=1);
+            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);

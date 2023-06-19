@@ -160,27 +160,28 @@ def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
 ###############################################################
 #### misc
 
-def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel="$I$ (nA)"):
+def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev = 2000, myylabel="$I$ (nA)"):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params
     calculating the rmse
     Printing the fitting params and rmse results
     Plotting the fitting
-    
     '''
     from scipy.optimize import curve_fit as scipy_curve_fit
     if( np.shape(xvals) != np.shape(yvals)): raise ValueError;
     if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
 
     # use scipy to get fitting params
+    ls_verbose = 0;
+    if(verbose>5): ls_verbose = 2;
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', max_nfev = 2000, verbose=1);
+        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
+                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=ls_verbose);
     elif(False and p0 is not None and bounds is None): # fit with guesses but without bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,p0=p0);
+        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, verbose=ls_verbose);
     elif(False and p0 is None and bounds is None): # fit without guesses, bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals);
+        fit_params, _ = scipy_curve_fit(fit_func, xvals, yval, verbose=ls_verboses);
     else: raise NotImplementedError;
 
     # fit and error
