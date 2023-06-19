@@ -100,7 +100,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
 
     return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5, method='trapz'):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -115,19 +115,26 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     Evals = np.linspace(*Elimits,int(xvals));
     print("Integration limits = ",Elimits);
 
+    # function to integrate
+    def integrand(Eint, Cint, Vbint):
+        retval = np.zeros_like(Eint);
+        prefactor = 1/(1+np.power( (Eint-Cint-Vbint/2)/(2*Gamma),2));
+        retval += (1/kBT)*np.exp((Eint-mu0-Vbint)/kBT)*np.power(np.exp((Eint-mu0-Vbint)/kBT)+1,-2);
+        retval += (Eint-Cint-Vbint/2)/(4*Gamma*Gamma) *prefactor*(1/(np.exp((Eint-mu0-Vbint)/kBT)+1) - 1/(np.exp((Eint-mu0)/kBT)+1));
+        return prefactor*retval;
+    
     # conductance
+    from scipy.integrate import quad
     conductance = np.zeros_like(Vb);
     for n in ns:
         # integrate to get current contribution
         Cnval = (2*n+1)*EC;
         integration_result = np.empty_like(Vb);
         for Vbi, Vbval in enumerate(Vb):
-            integrand = np.zeros_like(Evals);
-            integrand_prefactor = 1/(1+np.power( (Evals-Cnval-Vbval/2)/(2*Gamma),2));
-            integrand += (1/kBT)*np.exp((Evals-mu0-Vbval)/kBT)*np.power(np.exp((Evals-mu0-Vbval)/kBT)+1,-2);
-            integrand += (Evals-Cnval-Vbval/2)/(4*Gamma*Gamma) *integrand_prefactor*(1/(np.exp((Evals-mu0-Vbval)/kBT)+1) - 1/(np.exp((Evals-mu0)/kBT)+1));
-            integrand *= integrand_prefactor;
-            integration_result[Vbi] = np.trapz(integrand, Evals);
+            if(method =='trapz'):
+                integration_result[Vbi] = np.trapz(integrand(Evals, Cnval, Vbval), Evals);
+            elif(method == 'scipy'):
+                integration_result[Vbi] = quad(integrand, Evals[0], Evals[-1], args = (Cnval, Vbval))[0];
         conductance += integration_result;
 
     return Gamma*Gamma/np.power(2*Gamma,2)*conductance;
@@ -141,20 +148,20 @@ if(__name__ == "__main__"):
     conductance_quantum = 7.748e-5; # units amp/volt
     conductance = True;
 
-    if False: # plot with various methods
+    if True: # plot with various methods
 
         # physical params, in eV
-        my_mu0 = 0.001; # *relative* to the island chem potential
-        my_EC = 0.025/2;
+        my_mu0 = 0.00; # *relative* to the island chem potential
+        my_EC = 0.0049;
         my_temp = 30.0*kelvin2eV;
-        nmax = 3;
+        nmax = 4;
         narr = np.arange(-nmax,nmax+1); 
 
         for my_Gamma in [2*my_EC/np.sqrt(48), 2*my_EC/np.sqrt(48)/100]:
 
             # plotting
             fig, axes = plt.subplots(2, sharex=True);
-            Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
+            Vbs = np.linspace(-Vb_max,Vb_max,int(200));
 
         
             # zero temp analytic
@@ -163,10 +170,17 @@ if(__name__ == "__main__"):
 
             # finite temp analytical
             start = time.time();
-            #Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr);
+            Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr);
             stop = time.time();
             print("dI_of_Vb time = ",stop-start);
-            #axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb");
+            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb");
+
+            # finite temp analytical
+            start = time.time();
+            Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr, method = 'scipy');
+            stop = time.time();
+            print("dI_of_Vb scipy time = ",stop-start);
+            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb scipy", linestyle='dashed');
 
             if False:
                 # zero temp gradient
@@ -320,7 +334,7 @@ if(__name__ == "__main__"):
         np.savetxt(fname+".txt",save_params);
         np.save(fname, to_save);
 
-    if True: # plot at various mu0
+    if False: # plot at various mu0
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 

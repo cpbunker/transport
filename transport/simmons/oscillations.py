@@ -75,7 +75,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC, zero=True):
     '''
     from landauer import dI_of_Vb_zero, dI_of_Vb
 
-    nmax = 20;
+    nmax = 40;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
     if(zero):
@@ -98,6 +98,7 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
     dI_sigma= np.std(dI_exp);
     dI_mu = np.mean(dI_exp);
+    print(len(V_exp)); assert False
 
     #### fit to background
     global temp_kwarg; temp_kwarg = temp; # very bad practice
@@ -128,7 +129,7 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
         bounds_sin[0].append(pguess*(1-1));
         bounds_sin[1].append(pguess*(1+1));
     bounds_sin = np.array(bounds_sin);
-    if True:
+    if False:
         _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
                         params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
@@ -145,7 +146,7 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
         dI_fit = dIdV_lorentz(V_exp, *params_guess, zero=False);
         if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit);
 
-    if(verbose==10): assert False;
+    #if(verbose==10): assert False;
     return (results, bounds[:,1:]);
 
 ####################################################################
@@ -165,12 +166,12 @@ def fit_Mn_data():
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
-    dI0_guess = 57800*np.ones_like(Ts);
+    dI0_guess = np.array([63063, 65729, 69658, 79283, 77086, 77086]);
     Gamma_guess = 0.0048*np.ones_like(Ts); # gamma dominates T in the smearing
     EC_guess = (0.0196/4)*np.ones_like(Ts);
     dI0_percent = 0.2;
-    Gamma_percent = 1.0;
-    EC_percent = 0.1;
+    Gamma_percent = 0.2;
+    EC_percent = 0.05;
 
     # modify if rescaling
     if(rescale > 1):
@@ -181,13 +182,13 @@ def fit_Mn_data():
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        print("\nT = {:.1f} K, {:.4f} eV".format(Ts[datai], Ts[datai]*kelvin2eV));
-        rlabels = ["$dI0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)", "RMSE"];
+        print("\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
+        rlabels = ["$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
 
         # get fit results
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10);
+            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=1);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -202,6 +203,7 @@ def fit_Mn_data():
         axes[resulti].set_ylabel(rlabels[resulti]);
         axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # format
     axes[-1].set_xlabel("$T$ (K)");

@@ -174,13 +174,13 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel
     if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
 
     # use scipy to get fitting params
-    if(p0 is None and bounds is None): # fit without guesses, bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals);
-    elif(p0 is not None and bounds is None): # fit with guesse but without bounds
-        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,p0=p0);
-    elif(p0 is not None and bounds is not None): # fit with guesses, bounds
+    if(p0 is not None and bounds is not None): # fit with guesses, bounds
         fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, max_nfev = 2000);
+                                p0=p0,bounds=bounds, loss='linear', max_nfev = 2000, verbose=1);
+    elif(False and p0 is not None and bounds is None): # fit with guesses but without bounds
+        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals,p0=p0);
+    elif(False and p0 is None and bounds is None): # fit without guesses, bounds
+        fit_params, fit_pcov = scipy_curve_fit(fit_func, xvals, yvals);
     else: raise NotImplementedError;
 
     # fit and error
@@ -191,7 +191,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel
     if(verbose):
         namelength = 6;
         numdigits = 4
-        print_str = str(fit_func)+" fitting results:\n";
+        print_str = "\n"+str(fit_func)+" fitting results:\n";
         for pi in range(len(fit_params)):
             print_str += "\t"+p_names[pi]+(" "*(namelength-len(p_names[pi])));
             print_str += "= {:6."+str(numdigits)+"f},";
@@ -206,7 +206,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, myylabel
             m_r = fit_params[2];
             print_str += "\tphi*mr= "+str((phibar*m_r).round(numdigits))+"\n";
         print_str += "\tRMSE  = "+str(rmse.round(numdigits));
-        print(print_str.format(*fit_params));
+        print(print_str.format(*fit_params),"\n");
     if(verbose > 4): plot_fit(xvals, yvals, yfit, mytitle = str(fit_func), myylabel=myylabel);
     return fit_params, rmse;
 
