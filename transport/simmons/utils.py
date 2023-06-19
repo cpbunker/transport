@@ -169,12 +169,12 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev
     Plotting the fitting
     '''
     from scipy.optimize import curve_fit as scipy_curve_fit
+    from scipy.optimize import Bounds as scipy_Bounds
     if( np.shape(xvals) != np.shape(yvals)): raise ValueError;
     if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
 
     # use scipy to get fitting params
-    ls_verbose = 0;
-    if(verbose>5): ls_verbose = 2;
+    ls_verbose = min(2, verbose+1);
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=ls_verbose);

@@ -101,7 +101,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
 
     return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, method = 'quad'):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -130,7 +130,10 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns):
         Cnval = (2*n+1)*EC;
         integration_result = np.empty_like(Vb);
         for Vbi, Vbval in enumerate(Vb):
-            integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
+            if(method == 'quad'):
+                integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
+            elif(method == 'simpson'):
+                integration_result[Vbi] = -99;
         conductance += integration_result;
 
     return Gamma*Gamma/np.power(2*Gamma,2)*conductance;
@@ -148,10 +151,10 @@ if(__name__ == "__main__"):
 
         # physical params, in eV
         my_mu0 = 0.00; # *relative* to the island chem potential
-        my_EC = 0.0049;
+        my_EC = 0.005;
         my_temp = 30.0*kelvin2eV;
         nmax = 4;
-        narr = np.arange(-nmax,nmax+1); 
+        narr = np.arange(-nmax,nmax+1);
 
         for my_Gamma in [2*my_EC/np.sqrt(48), 2*my_EC/np.sqrt(48)/100]:
 

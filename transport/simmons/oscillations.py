@@ -152,20 +152,18 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
     # only fit dI0 and Gamma in the adjusted fit!!
     params_guess = np.array([V0_zero, dI0_zero, Gamma_zero, EC_zero]);
     bounds = np.array([[V0_zero, dI0_zero*(1-dI0_percent), Gamma_zero*(1-Gamma_percent), EC_zero],
-                       [V0_zero, dI0_zero*(1+dI0_percent), Gamma_zero*(1+Gamma_percent), EC_zero]]);
+                       [V0_zero+1e-6, dI0_zero*(1+dI0_percent), Gamma_zero*(1+Gamma_percent), EC_zero+1e-6]]);
+
     import time
     start = time.time()
     #(_, dI0, Gamma, EC), rmse = 
-    fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
-                             params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    (_, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
+                             params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    results = (dI0, Gamma, EC, rmse);
     stop = time.time()
     print("T != 0 fit time = ", stop-start)
 
-
-    #dI_fit = dIdV_lorentz(V_exp, *params_zero_guess, zero=False);
-    #if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit);
-
-    if(verbose==10): assert False;
+    #if(verbose==10): assert False;
     return (results, bounds[:,1:]);
 
 ####################################################################
@@ -207,7 +205,7 @@ def fit_Mn_data():
         # get fit results
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10);
+            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=1);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
