@@ -101,7 +101,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
 
     return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, method = 'quad'):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -112,8 +112,7 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, method = 'quad'):
 
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
-    Elimits = (-5*kBT+np.min(mulimits),+5*kBT+np.max(mulimits));
-    #print("Integration limits = ",Elimits);
+    Elimits = (-Mn*kBT+np.min(mulimits),+Mn*kBT+np.max(mulimits));
 
     # function to integrate
     def integrand(Eint, Cint, Vbint):
@@ -122,6 +121,17 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, method = 'quad'):
         retval += (1/kBT)*np.exp((Eint-mu0-Vbint)/kBT)*np.power(np.exp((Eint-mu0-Vbint)/kBT)+1,-2);
         retval += (Eint-Cint-Vbint/2)/(4*Gamma*Gamma) *prefactor*(1/(np.exp((Eint-mu0-Vbint)/kBT)+1) - 1/(np.exp((Eint-mu0)/kBT)+1));
         return prefactor*retval;
+
+    # plot integrand
+    if False:
+        print("Integration limits = ",Elimits);
+        fig, ax = plt.subplots();
+        for Vval in [Vb[0], Vb[len(Vb)//3], Vb[2*len(Vb)//3], Vb[-1]]:
+            xvals = np.linspace(*Elimits, 1000);
+            yvals = integrand(xvals, (2*ns[-1]+11)*EC, Vval);
+            ax.plot(xvals, yvals, label = Vval);
+        plt.show();
+        assert False;
     
     # conductance
     conductance = np.zeros_like(Vb);
@@ -130,10 +140,7 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, method = 'quad'):
         Cnval = (2*n+1)*EC;
         integration_result = np.empty_like(Vb);
         for Vbi, Vbval in enumerate(Vb):
-            if(method == 'quad'):
-                integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
-            elif(method == 'simpson'):
-                integration_result[Vbi] = -99;
+            integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
         conductance += integration_result;
 
     return Gamma*Gamma/np.power(2*Gamma,2)*conductance;

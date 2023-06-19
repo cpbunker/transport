@@ -222,6 +222,12 @@ def fit_Mn_data():
         axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
+    # save
+    fname = "land_fit/"
+    np.savetxt(fname+"Ts.txt", Ts);
+    np.save(fname+"results.npy", results);
+    np.save(fname+"bounds.npy", bounds);
+
     # format
     axes[-1].set_xlabel("$T$ (K)");
     plt.show();
