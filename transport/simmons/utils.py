@@ -117,44 +117,18 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
     fig, ax = plt.subplots();
    
     # plot
-    slope = (I_fit[-1]-I_fit[0])/(V_exp[-1]-V_exp[0]);
     ax.scatter(V_exp, I_exp, color=mycolors[0], label = "Exp", linewidth = mylinewidth);
     ax.plot(V_exp, I_fit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
 
     # error
-    error = np.sqrt( np.mean( (I_fit - I_exp)*(I_fit - I_exp) ))/abs(np.max(I_exp)-np.min(I_exp));
-    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.4f}".format(error));
+    error = np.sqrt( np.mean( np.power(I_fit - I_exp,2) ))/abs(np.max(I_exp)-np.min(I_exp));
+    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.5f}".format(error));
     
     # format
     ax.set_xlabel("$V_b$ (V)");
     ax.set_ylabel(myylabel);
     plt.legend();
     plt.title(mytitle, fontsize = myfontsize);
-    plt.show();
-
-def plot_guess(temp, area, V0_not, J0_not, d_not, phibar_not, m_r_not):
-
-    # experimental params
-    Vmax = 1.0;
-    Vbs = np.linspace(-Vmax,Vmax,myxvals);
-
-    # current density at this guess
-    Js = J_of_Vb_asym(Vbs-V0_not, d_not, phibar_not, phibar_not, m_r_not)+J0_not;
-    #print(Js); assert False; # should be of order 1e-22
-
-    # current
-    Is = Js*J2I(temp, area);
-    I0_not = J0_not*J2I(temp, area);
-
-    # plot
-    nano = 1e9;
-    fig, ax = plt.subplots();
-    ax.plot(Vbs, nano*Is, color=accentcolors[0], linewidth = mylinewidth);
-
-    # format
-    ax.set_xlabel("V (V)");
-    ax.set_ylabel("I (nA)");
-    plt.title("T = {:.0f} K, V0 = {:1.2f} V, I0 = {:1.2f} nA".format(temp, V0_not, nano*I0_not), fontsize = myfontsize);
     plt.show();
 
 ###############################################################
