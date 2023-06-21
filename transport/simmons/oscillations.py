@@ -97,7 +97,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
 from utils import fit_wrapper
 
 def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
-             dI0_percent, Gamma_percent, EC_percent, rescale = 1, verbose=0):
+             dI0_percent, Gamma_percent, EC_percent, rescale = 1, sine=False, verbose=0):
     '''
     '''
 
@@ -130,38 +130,46 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
     dI_mu = np.mean(dI_exp);
 
     # fit to sines
-    if False:
+    if(sine):
+        # trim outliers here only
+        V_exp = V_exp[ abs(dI_exp-dI_mu) < 5*dI_sigma];
+        dI_exp = dI_exp[ abs(dI_exp-dI_mu) < 5*dI_sigma];
+        dI_sigma= np.std(dI_exp);
+        dI_mu = np.mean(dI_exp);
         params_sin_guess = np.array([np.pi/2, dI_sigma, Vlim/5]);
         bounds_sin = [[],[]];
         for pguess in params_sin_guess:
             bounds_sin[0].append(pguess*(1-1));
             bounds_sin[1].append(pguess*(1+1));
         bounds_sin = np.array(bounds_sin);
-        _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
+        (_, amp, per), rmse = fit_wrapper(dIdV_sin, V_exp, dI_exp,
                         params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+        results = (amp, per, rmse);
+        bounds_zero = bounds_sin[:,1:];
 
     # fit to lorentzians
-    params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
-    bounds_zero = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
-               [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
+    else:
+        params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
+        bounds_zero = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+                   [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
 
-    # first fit at T=0
-    (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
-                             params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-    
-    # now adjust fit at T != 0
-    # only fit dI0 and Gamma in the adjusted fit!!
-    params_guess = np.array([V0, dI0, Gamma, EC]);
-    bounds = np.array([[V0, dI0*(1-dI0_percent), Gamma*(1-Gamma_percent), EC],
-                       [V0+1e-6, dI0*(1+dI0_percent), Gamma*(1+Gamma_percent), EC+1e-6]]);
+        # first fit at T=0
+        (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
+                                 params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+        
+        # now adjust fit at T != 0
+        # only fit dI0 and Gamma in the adjusted fit!!
+        params_guess = np.array([V0, dI0, Gamma, EC]);
+        bounds = np.array([[V0, dI0*(1-dI0_percent), Gamma*(1-Gamma_percent), EC],
+                           [V0+1e-6, dI0*(1+dI0_percent), Gamma*(1+Gamma_percent), EC+1e-6]]);
 
-    import time
-    start = time.time()
-    (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
-                             params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-    results = (V0, dI0, Gamma, EC, rmse);
-    stop = time.time()
-    print("T != 0 fit time = ", stop-start)
+        import time
+        start = time.time()
+        (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
+                                 params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+        results = (V0, dI0, Gamma, EC, rmse);
+        stop = time.time()
+        print("T != 0 fit time = ", stop-start)
 
     if(verbose==10): assert False;
     return (results, bounds_zero);
@@ -171,15 +179,15 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
+    fit_sine = False;
+    rescale = 1;
 
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
+    #Ts = Ts[-2:];
     radius = 200*1e3; # 200 micro meter
     area = np.pi*radius*radius;
-
-    # <--- RESCALE <---
-    rescale = 1;
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -190,8 +198,10 @@ def fit_Mn_data():
     Gamma_percent = 0.2;
     EC_percent = 0.05;
 
+    # <--- RESCALE <---
     # modify if rescaling
     if(rescale > 1):
+        assert False;
         dI0_guess = 31000*np.ones_like(Ts);
         Gamma_guess = 0.003*np.ones_like(Ts);
 
@@ -200,12 +210,15 @@ def fit_Mn_data():
     boundsT = [];
     for datai in range(len(Ts)):
         print("\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
-        rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
+        if(fit_sine):
+            rlabels = ["Amplitude", "$\Delta V_b$", "RMSE"];
+        else:
+            rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
 
         # get fit results
         temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10);
+            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10, sine=fit_sine);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -218,16 +231,22 @@ def fit_Mn_data():
     for resulti in range(nresults):
         axes[resulti].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
         axes[resulti].set_ylabel(rlabels[resulti]);
-        axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
+        if(not fit_sine):
+            axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+            axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
         axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
+    # Amp vs T
+    if(fit_sine):
+        axes[0].plot(Ts, results[0,0]*5/Ts, color = 'red');
+
     # save
-    fname = "land_fit/"
-    print("Saving data to "+fname);
-    np.savetxt(fname+"Ts.txt", Ts);
-    np.save(fname+"results.npy", results);
-    np.save(fname+"bounds.npy", boundsT);
+    if False:
+        fname = "land_fit/"
+        print("Saving data to "+fname);
+        np.savetxt(fname+"Ts.txt", Ts);
+        np.save(fname+"results.npy", results);
+        np.save(fname+"bounds.npy", boundsT);
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
@@ -253,7 +272,7 @@ def plot_saved_fit():
     # plot each fit
     from utils import plot_fit
     for Tvali, Tval in enumerate(Ts):
-        if True: # fit already stored
+        if False: # fit already stored
             fname = "land_plots/{:.0f}".format(Tval);
             x = np.load(fname+"_x.npy");
             y = np.load(fname+"_y.npy");
@@ -286,6 +305,8 @@ def plot_saved_fit():
             dI_exp = dI_exp - background;
 
             # fit and plot
+            print(*results[Tvali,:-1]);
+            assert False
             dI_fit = dIdV_lorentz(V_exp, *results[Tvali,:-1]);
             mytitle="$T = $ {:.1f} K, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(Tval, *results[Tvali,2:4])
             if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit, mytitle=mytitle, myylabel="$dI/dV_b$"); 

@@ -150,8 +150,13 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev
     # use scipy to get fitting params
     ls_verbose = min(2, verbose+1);
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
-        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
+        try:
+            fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=ls_verbose);
+        except:
+            fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
+                                p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
+
     elif(False and p0 is not None and bounds is None): # fit with guesses but without bounds
         fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, verbose=ls_verbose);
     elif(False and p0 is None and bounds is None): # fit without guesses, bounds

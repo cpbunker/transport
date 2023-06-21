@@ -200,7 +200,7 @@ if(__name__ == "__main__"):
                     ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
             # format
-            axes[0].set_title( "$T = $ {:.3f} eV, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp, my_mu0, my_Gamma, my_EC));
+            axes[0].set_title( "$T = $ {:.3f} eV, $\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp, my_mu0, my_Gamma, my_EC));
             axes[-1].set_xlabel("$V_b$ (V)");
             for ax in axes:
                 ax.set_ylabel("$dI/dV_b$ (nA/V)");
@@ -276,7 +276,7 @@ if(__name__ == "__main__"):
             ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.4f} eV, $E_C = $ {:.3f} eV".format(my_mu0, my_Gamma, my_EC));
+        ax.set_title( "$\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.4f} eV, $E_C = $ {:.3f} eV".format(my_mu0, my_Gamma, my_EC));
         ax.set_xlabel("$V_b$ (V)");
         ax.set_xlim(np.min(Vbs), np.max(Vbs));
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
@@ -317,7 +317,7 @@ if(__name__ == "__main__"):
                 ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
+        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
         else: ax.set_ylabel("$I(V_b)$ (nA)");
@@ -357,7 +357,7 @@ if(__name__ == "__main__"):
                 ax.axvline(2*En(integer, my_EC, 0.0)-2*muval,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $\Gamma = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp/kelvin2eV, my_Gamma, my_EC));
+        ax.set_title( "$T = $ {:.1f} K, $\Gamma_0 = $ {:.3f} eV, $E_C = $ {:.3f} eV".format(my_temp/kelvin2eV, my_Gamma, my_EC));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
         else: ax.set_ylabel("$I(V_b)$ (nA)");
