@@ -110,19 +110,24 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
+def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False):
     '''
     '''
-    if( np.shape(I_exp) != np.shape(I_fit) ): raise TypeError;
+    if( np.shape(yvals) != np.shape(yfit) ): raise TypeError;
     fig, ax = plt.subplots();
    
     # plot
-    ax.scatter(V_exp, I_exp, color=mycolors[0], label = "Exp", linewidth = mylinewidth);
-    ax.plot(V_exp, I_fit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
+    ax.scatter(xvals, yvals, color=mycolors[0], label = "Exp", linewidth = mylinewidth);
+    ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
+
+    # derivative
+    if(derivative):
+        offset = 2*np.mean(yfit);
+        ax.plot(xvals, offset + np.gradient(yvals), label="$d^2I/dV_b ^2$", color='lightgray', linewidth=5*mylinewidth)
 
     # error
-    error = np.sqrt( np.mean( np.power(I_fit - I_exp,2) ))/abs(np.max(I_exp)-np.min(I_exp));
-    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.5f}".format(error));
+    rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
+    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.5f}".format(rmse));
     
     # format
     ax.set_xlabel("$V_b$ (V)");
@@ -135,7 +140,7 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
 #### misc
 
 def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
-                stop_bounds = True, max_nfev = 2000, myylabel="$I$ (nA)", verbose=0):
+                stop_bounds = True, max_nfev = 2000, verbose=0):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params
@@ -197,7 +202,6 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
             print_str += "\tphi*mr= "+str((phibar*m_r).round(numdigits))+"\n";
         print_str += "\tRMSE  = "+str(rmse.round(numdigits));
         print(print_str.format(*fit_params),"\n");
-    if(verbose > 4): plot_fit(xvals, yvals, yfit, mytitle = str(fit_func), myylabel=myylabel);
     return fit_params, rmse;
 
 def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=10, verbose=0):

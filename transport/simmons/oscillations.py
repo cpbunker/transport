@@ -3,7 +3,7 @@ Simmons formula description of tunneling through a tunnel junction,
 under different physical scenarios
 '''
 
-from utils import plot_fit, load_dIdV
+from utils import plot_fit, load_dIdV, fit_wrapper
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,6 +19,7 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
+# units
 kelvin2eV =  8.617e-5;
 conductance_quantum = 7.748e-5; # units amp/volt
 
@@ -88,10 +89,8 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-from utils import fit_wrapper
-
 def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
-             dI0_percent, Gamma_percent, EC_percent, sine=False, num_dev = 5, verbose=0):
+             dI0_percent, Gamma_percent, EC_percent, sine=False, num_dev = 4, verbose=0):
     '''
     '''
 
@@ -103,13 +102,15 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     print(">>>", dI_mu, dI_dev)
     
     #### fit impurity background
-    E0_guess = 0.02;
-    params_imp_guess = np.array([0.0, E0_guess, dI_mu, 5*dI_dev]);
-    bounds_imp = np.array([[-1e-2, E0_guess*0.5, dI_mu*0.5, 5*dI_dev*0.5], # forced to be temp independent
-                           [ 1e-2, E0_guess*1.5, dI_mu*1.5, 5*dI_dev*1.5]]);
+    E0_guess = 0.006;
+    params_imp_guess = np.array([0.0, E0_guess, dI_mu, dI_mu]);
+    bounds_imp = np.array([[-1e-2, E0_guess*0.5, dI_mu*0.5, dI_mu*0.5], # forced to be temp independent
+                           [ 1e-2, E0_guess*1.5, dI_mu*1.5, dI_mu*1.5]]);
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
-                            stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                            stop_bounds = False, verbose=verbose);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_imp(V_exp, *params_imp), derivative=False,
+                              mytitle="Magnetic impurity scattering", myylabel="$dI/dV_b$ (nA/V)");
 
     # remove outliers based on impurity background
     background_imp = dIdV_imp(V_exp, *params_imp);
@@ -121,7 +122,9 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     # re-fit impurity background without outliers
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                     params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
-                    stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                    stop_bounds = False, verbose=verbose);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_imp(V_exp, *params_imp), derivative=True,
+                              mytitle="Magnetic impurity scattering", myylabel="$dI/dV_b$ (nA/V)");
 
     # subtract impurity background
     background_imp = dIdV_imp(V_exp, *params_imp);
@@ -132,15 +135,17 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     dI_mu = np.mean(dI_exp);
     dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
 
-    if False:
+    if False: 
         # magnon background
+        # not sure this is necessary not that outliers are handled better
+        # ask xiaoguang
         Ec_guess = 0.02;
         params_mag_guess = np.array([0.0, Ec_guess, 0.5*dI_dev]);
         bounds_mag = np.array([[-1e-2, Ec_guess*0.5, 0],
                                [ 1e-2, Ec_guess*2.0, 1*dI_dev]]);
         params_mag, _ = fit_wrapper(dIdV_mag, V_exp, dI_exp,
                                 params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
-                                stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                                stop_bounds = False, verbose=verbose);
 
         # update and subtract background
         background_mag = dIdV_mag(V_exp, *params_mag);
@@ -155,10 +160,21 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
             bounds_sin[0].append(pguess*(1-1));
             bounds_sin[1].append(pguess*(1+1));
         bounds_sin = np.array(bounds_sin);
-        (_, amp, per), rmse = fit_wrapper(dIdV_sin, V_exp, dI_exp,
-                        params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
-        results = (amp, per, rmse);
-        bounds_zero = bounds_sin[:,1:];
+        (alpha, amp, per), rmse_final = fit_wrapper(dIdV_sin, V_exp, dI_exp,
+                        params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose);
+        results = (amp, per, rmse_final);
+        bounds_final = bounds_sin[:,1:];
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_sin(V_exp, alpha, amp, per), derivative=False,
+                          mytitle="Sinusoidal fit", myylabel="$dI/dV_b$ (nA/V)");
+
+        # derivative
+        if False:
+            dI_exp = dI_exp - dIdV_sin(V_exp, _, amp, per);
+            dfig, dax = plt.subplots();
+            dax.plot(V_exp, np.gradient(dI_exp))
+            dax.axvline(params_imp[1], color='black', linestyle='dashed');
+            dax.axvline(-params_imp[1], color='black', linestyle='dashed');
+            plt.show();
 
     else: # fit to lorentzians
         params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
@@ -167,31 +183,29 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 
         # first fit at T=0
         (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
-                                 params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                                 params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"], verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_lorentz_zero(V_exp, V0, dI0, Gamma, EC), derivative=False,
+                  mytitle="$T=0$ Landauer fit", myylabel="$dI/dV_b$ (nA/V)");
         
         # now adjust fit at T != 0
         # only fit dI0 and Gamma in the adjusted fit!!
         params_guess = np.array([V0, dI0, Gamma, EC]);
         bounds = np.array([[V0, dI0*(1-dI0_percent), Gamma*(1-Gamma_percent), EC],
                            [V0+1e-6, dI0*(1+dI0_percent), Gamma*(1+Gamma_percent), EC+1e-6]]);
-
-        import time
-        start = time.time()
         (V0, dI0, Gamma, EC), rmse = fit_wrapper(dIdV_lorentz, V_exp, dI_exp,
-                                 params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                                 params_guess, bounds, ["V0","dI0","Gamma", "EC"], verbose=verbose);
         results = (V0, dI0, Gamma, EC, rmse);
-        stop = time.time()
-        print("T != 0 fit time = ", stop-start)
+        bounds_final = np.copy(bounds_zero); # without fixing V0 and EC
 
-    #if(verbose==10): assert False;
-    return (results, bounds_zero);
+    if(verbose==10): assert False;
+    return (results, bounds_final);
 
 ####################################################################
 #### wrappers
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
-    fit_sine = True;
+    fit_sine = False;
 
     # experimental params
     kelvin2eV =  8.617e-5;
@@ -212,7 +226,7 @@ def fit_Mn_data():
     for datai in range(len(Ts)):
         print("#"*60+"\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
         if(fit_sine):
-            rlabels = ["Amplitude", "$\Delta V_b$", "RMSE"];
+            rlabels = ["$A$ (nA/V)", "$\Delta V_b$ (V)", "RMSE"];
         else:
             rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
 
@@ -220,7 +234,7 @@ def fit_Mn_data():
         global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
         temp_results, temp_bounds = fit_dIdV(metal,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, verbose=10, sine=fit_sine);
+            dI0_percent, Gamma_percent, EC_percent, verbose=1, sine=fit_sine);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -236,14 +250,15 @@ def fit_Mn_data():
         if(not fit_sine):
             axes[resulti].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
             axes[resulti].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        #axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # Amp vs T
     if(fit_sine):
-        axes[0].plot(Ts, results[0,0]*5/Ts, color = 'red');
+        axes[0].plot(Ts, results[0,0]*5/Ts, color = 'red', label = "$A(T=5) \\times 5/T$");
+        axes[0].legend();
 
     # save
-    if False:
+    if True:
         fname = "land_fit/"
         print("Saving data to "+fname);
         np.savetxt(fname+"Ts.txt", Ts);
@@ -252,6 +267,7 @@ def fit_Mn_data():
 
     # format
     axes[-1].set_xlabel("$T$ (K)");
+    axes[0].set_title("Amplitude and period fitting");
     plt.show();
 
 def plot_saved_fit():

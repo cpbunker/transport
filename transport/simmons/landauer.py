@@ -154,7 +154,7 @@ if(__name__ == "__main__"):
     conductance_quantum = 7.748e-5; # units amp/volt
     conductance = True;
 
-    if True: # plot with various methods
+    if False: # plot with various methods
 
         # physical params, in eV
         my_mu0 = 0.00; # *relative* to the island chem potential
@@ -300,7 +300,7 @@ if(__name__ == "__main__"):
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
         my_Gamma = 0.001; 
-        my_temp = 10.0*kelvin2eV;
+        my_temp = 0.0*kelvin2eV;
         nmax = 5;
         narr = np.arange(-nmax,nmax+1);
 
@@ -308,8 +308,8 @@ if(__name__ == "__main__"):
         ECvals = np.array([0.01,0.04]);
         to_save = np.empty((len(ECvals),len(Vbs)),dtype=float); to_savei=0;
         for ECval in ECvals:
-            if(conductance): Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
-            else: Is = I_of_Vb(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
+            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
+            else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
             ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.3f}".format(ECval));
             for integer in [0]:
