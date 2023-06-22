@@ -135,7 +135,7 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
 #### misc
 
 def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
-                stop_bounds = False, max_nfev = 2000, myylabel="$I$ (nA)", verbose=0):
+                stop_bounds = True, max_nfev = 2000, myylabel="$I$ (nA)", verbose=0):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params

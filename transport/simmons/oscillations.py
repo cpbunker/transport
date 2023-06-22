@@ -25,7 +25,7 @@ conductance_quantum = 7.748e-5; # units amp/volt
 ###############################################################
 #### fitting dI/dV with background and oscillations
 
-def dIdV_mag(Vb, V0, E0, G1, G0):
+def dIdV_mag(Vb, V0, Ec, G1):
     '''
     Surface magnon scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -34,14 +34,14 @@ def dIdV_mag(Vb, V0, E0, G1, G0):
     def Gmag(E, kBT):
         # Eq 12 in XGZ's magnon paper
         ret = np.zeros_like(E);
-        ret += -2*kBT*np.log(1-np.exp(-E0/kBT));
-        ret += (E+E0)/( np.exp( (E+E0)/kBT) - 1);
-        ret += (E-E0)/(-np.exp(-(E-E0)/kBT) + 1);
+        ret += -2*kBT*np.log(1-np.exp(-Ec/kBT));
+        ret += (E+Ec)/( np.exp( (E+Ec)/kBT) - 1);
+        ret += (E-Ec)/(-np.exp(-(E-Ec)/kBT) + 1);
         return ret
         
-    return G0+G1*Gmag(abs(Vb-V0), kelvin2eV*temp_kwarg);
+    return G1*Gmag(abs(Vb-V0), kelvin2eV*temp_kwarg);
 
-def dIdV_imp(Vb, V0, E0, G3, G2):
+def dIdV_imp(Vb, V0, E0, G2, G3):
     '''
     Magnetic impurity scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -54,26 +54,6 @@ def dIdV_imp(Vb, V0, E0, G3, G2):
         return numerator/denominator;
 
     return G2 - G3*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg)
-
-
-def dIdV_back(Vb, V0, Ec, E0, G1, G2, G3, which='both'):
-    '''
-    Background, combining surface magnon and impurity effects
-    Designed to be passed to scipy.optimize.curve_fit
-    Does not combine, instead returns only one if which==imp or mag
-    '''
-
-    # get magnon and impurity contributions
-    # NB since both contain a background term, I combine these into G2
-    # and pass G2/2 to both
-    mag_part = dIdV_mag(Vb, V0, Ec, G1, G2/2);
-    imp_part = dIdV_imp(Vb, V0, E0, G3, G2/2);
-
-    # what to return
-    if(which=='mag'): return mag_part;
-    elif(which=='imp'): return imp_part;
-    elif(which=='both'): return mag_part+imp_part;
-    else: raise NotImplementedError;
 
 def dIdV_sin(Vb, alpha, amplitude, period):
     '''
@@ -111,54 +91,65 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
 from utils import fit_wrapper
 
 def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
-             dI0_percent, Gamma_percent, EC_percent, sine=False, num_sigma = 2, verbose=0):
+             dI0_percent, Gamma_percent, EC_percent, sine=False, num_dev = 5, verbose=0):
     '''
     '''
 
     # load data
     V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp_kwarg);
-    Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
-    dI_sigma= np.std(dI_exp);
+    Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);
     dI_mu = np.mean(dI_exp);
+    dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
+    print(">>>", dI_mu, dI_dev)
     
-    #### fit to background
-
-    # first fit, with outliers present
-    Ec_guess, E0_guess = 0.040, 0.040; # tens of meV
-    params_back_guess = np.array([0.0, Ec_guess, E0_guess, 3*dI_sigma, dI_mu, 3*dI_sigma]);
-    bounds_back = np.array([[-1e-2, Ec_guess*0.5, E0_guess*0.0, 0, 0, 0],
-                            [ 1e-2, Ec_guess*2.0, E0_guess*2.0, 5*dI_sigma, 2*dI_mu, 5*dI_sigma]]);
-    params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
-                            params_back_guess, bounds_back, ["V0", "Ec", "E0", "G1", "G2", "G3"],
+    #### fit impurity background
+    E0_guess = 0.02;
+    params_imp_guess = np.array([0.0, E0_guess, dI_mu, 5*dI_dev]);
+    bounds_imp = np.array([[-1e-2, E0_guess*0.5, dI_mu*0.5, 5*dI_dev*0.5], # forced to be temp independent
+                           [ 1e-2, E0_guess*1.5, dI_mu*1.5, 5*dI_dev*1.5]]);
+    params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
+                            params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
-    if True:
-        # remove outliers based on background fit
-        pre_dropout = len(V_exp);
-        background = dIdV_back(V_exp, *params_back);
-        V_exp = V_exp[abs(dI_exp-background) < num_sigma*dI_sigma];
-        dI_exp = dI_exp[abs(dI_exp-background) < num_sigma*dI_sigma];
-        assert(pre_dropout - len(V_exp) <= 5); # only remove a few
-        
-        # update descriptors
-        Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
-        dI_sigma= np.std(dI_exp);
-        dI_mu = np.mean(dI_exp);
+    # remove outliers based on impurity background
+    background_imp = dIdV_imp(V_exp, *params_imp);
+    pre_dropout = len(V_exp);
+    V_exp = V_exp[abs(dI_exp-background_imp) < num_dev*dI_dev];
+    dI_exp = dI_exp[abs(dI_exp-background_imp) < num_dev*dI_dev];
+    assert(pre_dropout - len(V_exp) <= pre_dropout*0.05); # only remove 5%
 
-        # second fit, without outliers
-        params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
-                                params_back_guess, bounds_back, ["V0", "Ec", "E0", "G1", "G2", "G3"],
-                                stop_bounds = True, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+    # re-fit impurity background without outliers
+    params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
+                    params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
+                    stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+
+    # subtract impurity background
+    background_imp = dIdV_imp(V_exp, *params_imp);
+    dI_exp = dI_exp - background_imp;
+
+    # update descriptors
+    Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
+    dI_mu = np.mean(dI_exp);
+    dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
+
+    if False:
+        # magnon background
+        Ec_guess = 0.02;
+        params_mag_guess = np.array([0.0, Ec_guess, 0.5*dI_dev]);
+        bounds_mag = np.array([[-1e-2, Ec_guess*0.5, 0],
+                               [ 1e-2, Ec_guess*2.0, 1*dI_dev]]);
+        params_mag, _ = fit_wrapper(dIdV_mag, V_exp, dI_exp,
+                                params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
+                                stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
         # update and subtract background
-        background = dIdV_back(V_exp, *params_back);
-        dI_exp = dI_exp - background;
+        background_mag = dIdV_mag(V_exp, *params_mag);
+        dI_exp = dI_exp - background_mag;
     
     #### fit oscillations
-
-    # fit to sines
-    if(sine):
-        params_sin_guess = np.array([np.pi/2, dI_sigma, Vlim/5]);
+        
+    if(sine): # fit to sines
+        params_sin_guess = np.array([np.pi/2, dI_dev, Vlim/5]);
         bounds_sin = [[],[]];
         for pguess in params_sin_guess:
             bounds_sin[0].append(pguess*(1-1));
@@ -169,8 +160,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
         results = (amp, per, rmse);
         bounds_zero = bounds_sin[:,1:];
 
-    # fit to lorentzians
-    else:
+    else: # fit to lorentzians
         params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
         bounds_zero = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
                    [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
