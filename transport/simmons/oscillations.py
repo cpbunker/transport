@@ -25,45 +25,59 @@ conductance_quantum = 7.748e-5; # units amp/volt
 ###############################################################
 #### fitting dI/dV with background and oscillations
 
-def dIdV_quad(Vb, V0, dI0, alpha2):
+def dIdV_mag(Vb, V0, E0, G1, G0):
     '''
-    quadratic background to sense V0 and dI0
-    '''
-    assert False
-
-    # even powers
-    rets = np.zeros_like(Vb);
-    rets += dI0;
-    rets += alpha2*np.power(Vb-V0,2);
-
-    return rets;
-
-def dIdV_mag(Vb, V0, E0, G3, G2):
-    '''
-    '''
-    kBT = kelvin2eV*temp_kwarg
-
-    Gmag = np.zeros_like(Vb);
-    Gmag += -2*kBT*np.log(1-np.exp(-E0/kBT));
-    Gmag += (abs(Vb-V0)+E0)/(np.exp( (abs(Vb-V0)+E0)/kBT)-1);
-    Gmag += (abs(Vb-V0)-E0)/(1-np.exp( -(abs(Vb-V0)-E0)/kBT ) );
-    return G2+G3*Gmag;
-
-def dIdV_back(Vb, V0, E0, G3, G2):
-    '''
+    Surface magnon scattering
+    Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    # the F function from XGZ's magnon paper, Eq (17)
+    def Gmag(E, kBT):
+        # Eq 12 in XGZ's magnon paper
+        ret = np.zeros_like(E);
+        ret += -2*kBT*np.log(1-np.exp(-E0/kBT));
+        ret += (E+E0)/( np.exp( (E+E0)/kBT) - 1);
+        ret += (E-E0)/(-np.exp(-(E-E0)/kBT) + 1);
+        return ret
+        
+    return G0+G1*Gmag(abs(Vb-V0), kelvin2eV*temp_kwarg);
+
+def dIdV_imp(Vb, V0, E0, G3, G2):
+    '''
+    Magnetic impurity scattering
+    Designed to be passed to scipy.optimize.curve_fit
+    '''
+
     def Ffunc(E, kBT):
-
+        # Eq 17 in XGZ's magnon paper
         numerator = np.log(1+ E0/(E+kBT));
-        denominator = 1 - kBT/(E0+0.4*E) + 12*kBT*kBT/np.power(E0+2.4*E,2);
+        denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
         return numerator/denominator;
 
-    return G2 - G3*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
+    return G2 - G3*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg)
+
+
+def dIdV_back(Vb, V0, Ec, E0, G1, G2, G3, which='both'):
+    '''
+    Background, combining surface magnon and impurity effects
+    Designed to be passed to scipy.optimize.curve_fit
+    Does not combine, instead returns only one if which==imp or mag
+    '''
+
+    # get magnon and impurity contributions
+    # NB since both contain a background term, I combine these into G2
+    # and pass G2/2 to both
+    mag_part = dIdV_mag(Vb, V0, Ec, G1, G2/2);
+    imp_part = dIdV_imp(Vb, V0, E0, G3, G2/2);
+
+    # what to return
+    if(which=='mag'): return mag_part;
+    elif(which=='imp'): return imp_part;
+    elif(which=='both'): return mag_part+imp_part;
+    else: raise NotImplementedError;
 
 def dIdV_sin(Vb, alpha, amplitude, period):
     '''
+    Sinusoidal fit function - purely mathematical, not physical
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
@@ -96,46 +110,54 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
 
 from utils import fit_wrapper
 
-def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
-             dI0_percent, Gamma_percent, EC_percent, rescale = 1, sine=False, verbose=0):
+def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
+             dI0_percent, Gamma_percent, EC_percent, sine=False, num_sigma = 2, verbose=0):
     '''
     '''
 
     # load data
-    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp);
+    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp_kwarg);
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
     dI_sigma= np.std(dI_exp);
     dI_mu = np.mean(dI_exp);
-
+    
     #### fit to background
-    global temp_kwarg; temp_kwarg = temp; # very bad practice
-    params_back_guess = np.array([0.0,Vlim/10, 5*dI_sigma, dI_mu]);
-    bounds_back = [ [-1e-2],[1e-2] ];
-    for pguess in params_back_guess[1:]:
-        bounds_back[0].append(pguess*(1-1));
-        bounds_back[1].append(pguess*(1+1));
-    bounds_back = np.array(bounds_back);
+
+    # first fit, with outliers present
+    Ec_guess, E0_guess = 0.040, 0.040; # tens of meV
+    params_back_guess = np.array([0.0, Ec_guess, E0_guess, 3*dI_sigma, dI_mu, 3*dI_sigma]);
+    bounds_back = np.array([[-1e-2, Ec_guess*0.5, E0_guess*0.0, 0, 0, 0],
+                            [ 1e-2, Ec_guess*2.0, E0_guess*2.0, 5*dI_sigma, 2*dI_mu, 5*dI_sigma]]);
     params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
-                            params_back_guess, bounds_back, ["V0", "E0", "G3","G2"], verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+                            params_back_guess, bounds_back, ["V0", "Ec", "E0", "G1", "G2", "G3"],
+                            stop_bounds = False, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
 
+    if True:
+        # remove outliers based on background fit
+        pre_dropout = len(V_exp);
+        background = dIdV_back(V_exp, *params_back);
+        V_exp = V_exp[abs(dI_exp-background) < num_sigma*dI_sigma];
+        dI_exp = dI_exp[abs(dI_exp-background) < num_sigma*dI_sigma];
+        assert(pre_dropout - len(V_exp) <= 5); # only remove a few
+        
+        # update descriptors
+        Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
+        dI_sigma= np.std(dI_exp);
+        dI_mu = np.mean(dI_exp);
+
+        # second fit, without outliers
+        params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                                params_back_guess, bounds_back, ["V0", "Ec", "E0", "G1", "G2", "G3"],
+                                stop_bounds = True, verbose=verbose, myylabel="$dI/dV_b$ (nA/V)");
+
+        # update and subtract background
+        background = dIdV_back(V_exp, *params_back);
+        dI_exp = dI_exp - background;
+    
     #### fit oscillations
-
-    # subtract background
-    background = dIdV_back(V_exp, *params_back);
-    dI_exp = dI_exp - background;
-
-    # <--- RESCALE <---
-    dI_exp = rescale*dI_exp;
-    dI_sigma= np.std(dI_exp);
-    dI_mu = np.mean(dI_exp);
 
     # fit to sines
     if(sine):
-        # trim outliers here only
-        V_exp = V_exp[ abs(dI_exp-dI_mu) < 5*dI_sigma];
-        dI_exp = dI_exp[ abs(dI_exp-dI_mu) < 5*dI_sigma];
-        dI_sigma= np.std(dI_exp);
-        dI_mu = np.mean(dI_exp);
         params_sin_guess = np.array([np.pi/2, dI_sigma, Vlim/5]);
         bounds_sin = [[],[]];
         for pguess in params_sin_guess:
@@ -171,7 +193,7 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
         stop = time.time()
         print("T != 0 fit time = ", stop-start)
 
-    if(verbose==10): assert False;
+    #if(verbose==10): assert False;
     return (results, bounds_zero);
 
 ####################################################################
@@ -179,15 +201,11 @@ def fit_dIdV(metal, temp, area, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
-    fit_sine = False;
-    rescale = 1;
+    fit_sine = True;
 
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
-    #Ts = Ts[-2:];
-    radius = 200*1e3; # 200 micro meter
-    area = np.pi*radius*radius;
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -198,27 +216,21 @@ def fit_Mn_data():
     Gamma_percent = 0.2;
     EC_percent = 0.05;
 
-    # <--- RESCALE <---
-    # modify if rescaling
-    if(rescale > 1):
-        assert False;
-        dI0_guess = 31000*np.ones_like(Ts);
-        Gamma_guess = 0.003*np.ones_like(Ts);
-
     #fitting results
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        print("\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
+        print("#"*60+"\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
         if(fit_sine):
             rlabels = ["Amplitude", "$\Delta V_b$", "RMSE"];
         else:
             rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
 
         # get fit results
-        temp_results, temp_bounds = fit_dIdV(metal,Ts[datai], area,
+        global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
+        temp_results, temp_bounds = fit_dIdV(metal,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, rescale=rescale, verbose=10, sine=fit_sine);
+            dI0_percent, Gamma_percent, EC_percent, verbose=10, sine=fit_sine);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
@@ -265,6 +277,7 @@ def plot_saved_fit():
     fname = "land_fit/"
     print("Loading data from "+fname);
     Ts = np.loadtxt(fname+"Ts.txt");
+    Ts = [5,30]
     results = np.load(fname+"results.npy");
     boundsT = np.load(fname+"bounds.npy"); 
     rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)", "RMSE"];
@@ -338,5 +351,5 @@ def plot_saved_fit():
 #### run
 
 if(__name__ == "__main__"):
-    plot_saved_fit();
-    #fit_Mn_data();
+    #plot_saved_fit();
+    fit_Mn_data();

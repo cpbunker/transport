@@ -34,7 +34,7 @@ def load_dIdV(base,folder,temp):
     '''
 
     fname = "{:.0f}".format(temp) + base;
-    print("Loading data from "+folder+fname);
+    print("\nLoading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
     dIs = IV[:, 1];
@@ -56,7 +56,7 @@ def load_dIdV_tocurrent(base,folder,temp,Vcutoff):
     '''
 
     fname = "{:.0f}".format(temp) + base;
-    print("Loading data from "+folder+fname);
+    print("\nLoading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
     dIs = IV[:, 1];
@@ -134,7 +134,8 @@ def plot_fit(V_exp, I_exp, I_fit, mytitle = "", myylabel=""):
 ###############################################################
 #### misc
 
-def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev = 2000, myylabel="$I$ (nA)"):
+def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
+                stop_bounds = False, max_nfev = 2000, myylabel="$I$ (nA)", verbose=0):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params
@@ -146,13 +147,13 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev
     from scipy.optimize import Bounds as scipy_Bounds
     if( np.shape(xvals) != np.shape(yvals)): raise ValueError;
     if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
+    print("\nFitting data");
 
     # use scipy to get fitting params
-    ls_verbose = min(2, verbose+1);
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         try:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=ls_verbose);
+                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=min(1,verbose));
         except:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
@@ -163,6 +164,15 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev
         fit_params, _ = scipy_curve_fit(fit_func, xvals, yval, verbose=ls_verboses);
     else: raise NotImplementedError;
 
+    # check if any fit results are at upper bounds
+    for parami, param in enumerate(fit_params):
+        for pbound in bounds[:,parami]:
+            if(abs((param-pbound)/param)<1e-3):
+                if(stop_bounds):
+                    raise Exception("fit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
+                else:
+                    print("\n------->WARNING:\nfit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
+
     # fit and error
     yfit = fit_func(xvals, *fit_params);
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
@@ -171,7 +181,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names, verbose=0, max_nfev
     if(verbose):
         namelength = 6;
         numdigits = 4
-        print_str = "\n"+str(fit_func)+" fitting results:\n";
+        print_str = str(fit_func)+" fitting results:\n";
         for pi in range(len(fit_params)):
             print_str += "\t"+p_names[pi]+(" "*(namelength-len(p_names[pi])));
             print_str += "= {:6."+str(numdigits)+"f},";
