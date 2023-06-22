@@ -110,20 +110,27 @@ mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False):
+def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False, smooth = False):
     '''
     '''
     if( np.shape(yvals) != np.shape(yfit) ): raise TypeError;
     fig, ax = plt.subplots();
+    explabel = "Exp.";
+
+    if(smooth):
+        kernel = np.ones((len(xvals)//10,))/(len(xvals)//10);
+        yvals = np.convolve(yvals, kernel, mode='same');
+        explabel +=" (smoothed)";
    
     # plot
-    ax.scatter(xvals, yvals, color=mycolors[0], label = "Exp", linewidth = mylinewidth);
+    ax.scatter(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
     ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
 
     # derivative
     if(derivative):
-        offset = 2*np.mean(yfit);
-        ax.plot(xvals, offset + np.gradient(yvals), label="$d^2I/dV_b ^2$", color='lightgray', linewidth=5*mylinewidth)
+        offset = -200
+        stretch = 0.5*(np.max(yvals)-np.min(yvals))
+        ax.plot(xvals, offset + stretch*np.gradient(yvals)/max(np.gradient(yvals)), label="$d^2I/dV_b ^2$", color='lightgray', linewidth=5*mylinewidth);  
 
     # error
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));

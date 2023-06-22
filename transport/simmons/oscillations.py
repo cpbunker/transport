@@ -102,10 +102,10 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     print(">>>", dI_mu, dI_dev)
     
     #### fit impurity background
-    E0_guess = 0.006;
+    E0_guess = 0.012;
     params_imp_guess = np.array([0.0, E0_guess, dI_mu, dI_mu]);
-    bounds_imp = np.array([[-1e-2, E0_guess*0.5, dI_mu*0.5, dI_mu*0.5], # forced to be temp independent
-                           [ 1e-2, E0_guess*1.5, dI_mu*1.5, dI_mu*1.5]]);
+    bounds_imp = np.array([[-1e-2, E0_guess*0.9, dI_mu*0.5, dI_mu*0.5], # forced to be temp independent
+                           [ 1e-2, E0_guess*1.1, dI_mu*1.5, dI_mu*1.5]]);
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
@@ -130,22 +130,20 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     background_imp = dIdV_imp(V_exp, *params_imp);
     dI_exp = dI_exp - background_imp;
 
-    # update descriptors
-    Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);   
-    dI_mu = np.mean(dI_exp);
-    dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
-
-    if False: 
+    if True: 
         # magnon background
         # not sure this is necessary not that outliers are handled better
         # ask xiaoguang
-        Ec_guess = 0.02;
-        params_mag_guess = np.array([0.0, Ec_guess, 0.5*dI_dev]);
-        bounds_mag = np.array([[-1e-2, Ec_guess*0.5, 0],
-                               [ 1e-2, Ec_guess*2.0, 1*dI_dev]]);
+        Ec_guess = 0.15;
+        G1_guess = 10*(np.max(dI_exp)-np.min(dI_exp));
+        params_mag_guess = np.array([params_imp[0], Ec_guess, G1_guess]);
+        bounds_mag = np.array([[params_imp[0], Ec_guess*0.9, 0.5*G1_guess],
+                               [ params_imp[0]+1e-6, Ec_guess*1.1, 1.5*G1_guess]]);
         params_mag, _ = fit_wrapper(dIdV_mag, V_exp, dI_exp,
                                 params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
                                 stop_bounds = False, verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_mag(V_exp, *params_mag), smooth = True, derivative=True,
+                          mytitle="Surface magnon scattering", myylabel="$dI/dV_b$ (nA/V)");
 
         # update and subtract background
         background_mag = dIdV_mag(V_exp, *params_mag);
@@ -154,14 +152,16 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     #### fit oscillations
         
     if(sine): # fit to sines
+        Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);
+        dI_mu = np.mean(dI_exp);
+        dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
         params_sin_guess = np.array([np.pi/2, dI_dev, Vlim/5]);
-        bounds_sin = [[],[]];
-        for pguess in params_sin_guess:
-            bounds_sin[0].append(pguess*(1-1));
-            bounds_sin[1].append(pguess*(1+1));
+        bounds_sin = [[0,0.5*dI_dev, 0.5*Vlim/5],
+                      [2*np.pi, 2.0*dI_dev, 1.5*Vlim/5]];
         bounds_sin = np.array(bounds_sin);
         (alpha, amp, per), rmse_final = fit_wrapper(dIdV_sin, V_exp, dI_exp,
-                        params_sin_guess, bounds_sin, ["alpha","amp","per"], verbose=verbose);
+                        params_sin_guess, bounds_sin, ["alpha","amp","per"],
+                        stop_bounds = False, verbose=verbose);
         results = (amp, per, rmse_final);
         bounds_final = bounds_sin[:,1:];
         if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_sin(V_exp, alpha, amp, per), derivative=False,
@@ -197,7 +197,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
         results = (V0, dI0, Gamma, EC, rmse);
         bounds_final = np.copy(bounds_zero); # without fixing V0 and EC
 
-    if(verbose==10): assert False;
+    #if(verbose==10): assert False;
     return (results, bounds_final);
 
 ####################################################################
@@ -205,11 +205,12 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
-    fit_sine = False;
+    fit_sine = True;
 
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
+    Ts = Ts[-1:];
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -234,7 +235,7 @@ def fit_Mn_data():
         global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
         temp_results, temp_bounds = fit_dIdV(metal,
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, verbose=1, sine=fit_sine);
+            dI0_percent, Gamma_percent, EC_percent, verbose=10, sine=fit_sine);
         results.append(temp_results); 
         temp_bounds = np.append(temp_bounds, [[0],[0.1]], axis=1); # fake rmse bounds
         boundsT.append(temp_bounds);
