@@ -102,10 +102,10 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     print(">>>", dI_mu, dI_dev)
     
     #### fit impurity background
-    E0_guess = 0.012;
-    params_imp_guess = np.array([0.0, E0_guess, dI_mu, dI_mu]);
-    bounds_imp = np.array([[-1e-2, E0_guess*0.9, dI_mu*0.5, dI_mu*0.5], # forced to be temp independent
-                           [ 1e-2, E0_guess*1.1, dI_mu*1.5, dI_mu*1.5]]);
+    E0_guess = 0.20;
+    params_imp_guess = np.array([0.0, E0_guess, dI_mu, dI_dev]);
+    bounds_imp = np.array([[-1e-2, E0_guess*0.9, dI_mu*0.5, dI_dev*0.5], # forced to be temp independent
+                           [ 1e-2, E0_guess*1.1, dI_mu*1.5, dI_dev*2.0]]);
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
@@ -210,7 +210,7 @@ def fit_Mn_data():
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
-    Ts = Ts[-1:];
+    #Ts = Ts[-1:];
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
