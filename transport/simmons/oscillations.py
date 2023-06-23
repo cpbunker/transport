@@ -130,7 +130,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     background_imp = dIdV_imp(V_exp, *params_imp);
     dI_exp = dI_exp - background_imp;
 
-    if True: 
+    if False: 
         # magnon background
         # not sure this is necessary not that outliers are handled better
         # ask xiaoguang
