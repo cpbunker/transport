@@ -212,8 +212,8 @@ def fit_Mn_data():
     dI0_guess = np.array([63063, 65729, 69658, 79283, 77086, 77086]);
     Gamma_guess = np.array([0.0053, 0.0055, 0.0059, 0.0062, 0.0064, 0.0068]);
     EC_guess = (0.0196/4)*np.ones_like(Ts);
-    dI0_percent = 0.1;
-    Gamma_percent = 0.1;
+    dI0_percent = 0.2;
+    Gamma_percent = 0.2;
     EC_percent = 0.1;
 
     #fitting results
