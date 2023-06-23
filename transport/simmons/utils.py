@@ -134,7 +134,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
 
     # error
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
-    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.5f}".format(rmse));
+    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.3f}".format(rmse));
     
     # format
     ax.set_xlabel("$V_b$ (V)");
@@ -183,7 +183,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
                 if(stop_bounds):
                     raise Exception("fit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
                 else:
-                    print("\n------->WARNING:\nfit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
+                    print("------->WARNING:\nfit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
 
     # fit and error
     yfit = fit_func(xvals, *fit_params);
