@@ -83,7 +83,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
     nmax = 40;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    print(">>>", temp_kwarg);
+    #print(">>>", temp_kwarg);
     return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
 
 ####################################################################
@@ -200,12 +200,12 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
-    fit_sine = False;
+    fit_sine = True;
 
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
-    #Ts = Ts[-1:];
+    Ts=Ts[-2:]
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -254,7 +254,7 @@ def fit_Mn_data():
         axes[0].legend();
 
     # save
-    if True:
+    if False:
         fname = "land_fit/"
         print("Saving data to "+fname);
         np.savetxt(fname+"Ts.txt", Ts);
