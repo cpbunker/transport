@@ -103,9 +103,10 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 
     # first fit
     E0_guess, G2_guess, G3_guess = 0.0075, 1250, 750;
+    V0_bound = 1e-2;
     params_imp_guess = np.array([0.0, E0_guess, G2_guess, G3_guess]);
-    bounds_imp = np.array([[-1e-2, E0_guess*0.99, G2_guess*0.99, G3_guess*0.99], # forced to be temp independent
-                           [ 1e-2, E0_guess*1.01, G2_guess*1.01, G3_guess*1.01]]);
+    bounds_imp = np.array([[-V0_bound, E0_guess*0.99, G2_guess*0.99, G3_guess*0.99], # forced to be temp independent
+                           [ V0_bound, E0_guess*1.01, G2_guess*1.01, G3_guess*1.01]]);
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
@@ -169,8 +170,8 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 
     # all params get fit here
     params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
-    bounds_zero = np.array([ [-Vlim/5, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
-                [ Vlim/5, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
+    bounds_zero = np.array([ [-V0_bound, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+                [ V0_bound, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
     params_zero, _ = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
                                 params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
@@ -194,7 +195,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
+    stop_at = stop_ats[3];
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
@@ -208,6 +209,7 @@ def fit_Mn_data():
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
+    Ts = [25.0];
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -262,6 +264,52 @@ def fit_Mn_data():
     axes[0].set_title("Amplitude and period fitting");
     plt.show();
 
+def comp_backgrounds():
+    '''
+    '''
+    verbose=10;
+    metal="Mn/"; # points to data folder
+
+    # load
+    fname = "fits/"
+    print("Loading data from "+fname+"imp/");
+    Ts = np.loadtxt(fname+"imp/"+"Ts.txt");
+    results_imp = np.load(fname+"imp/"+"results.npy");
+    results_mag = np.load(fname+"mag/"+"results.npy");
+
+    # fit is from only one temp !
+    refi = 4;
+    ref_imp = results_imp[refi];
+    ref_mag = results_mag[refi];
+    
+    # plot each fit
+    fig3, ax3 = plt.subplots();
+    for Tvali, Tval in enumerate([5,15,25]):
+        global temp_kwarg; temp_kwarg = Tval; # very bad practice
+
+        # raw data
+        V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, Tval);
+
+        # fit
+        V_fine = np.linspace(np.min(V_exp), np.max(V_exp), len(V_exp)*5);
+        dI_fit_imp = dIdV_imp(V_fine, *ref_imp);
+        dI_fit_mag = dIdV_mag(V_fine, *ref_mag);
+        dI_fit = dI_fit_imp + dI_fit_mag;
+
+        # plot
+        offset = 1500;
+        ax3.scatter(V_exp, Tvali*offset+dI_exp, label="$T=$ {:.0f} K".format(Tval), color=mycolors[Tvali], marker=mymarkers[Tvali]);
+        ax3.plot(V_fine, Tvali*offset+dI_fit, color="black");
+
+    # format
+    ax3.set_title("Background fit, $\\varepsilon_c = $ {:.2f} meV, $\\varepsilon_0 = $ {:.2f} meV".format(1000*ref_mag[1], 1000*ref_imp[1]));
+    ax3.set_xlabel("$V_b$ (V)");
+    ax3.set_xlim(-0.1,0.1);
+    ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+    ax3.set_ylim(-1000,5000);
+    plt.legend(loc='upper right');
+    plt.show()
+
 def plot_saved_fit():
     '''
     '''
@@ -270,37 +318,47 @@ def plot_saved_fit():
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'sin/':dIdV_sin, 'lorentz_zero/':dIdV_lorentz_zero, 'lorentz/':dIdV_lorentz};
     stop_at = stop_ats[-1];
-    stored_plots = False;
+    stored_plots = True;
 
     # load
     fname = "fits/"
     print("Loading data from "+fname+stop_at);
     Ts = np.loadtxt(fname+stop_at+"Ts.txt");
-    results = np.load(fname+stop_at+"results.npy")[:,:-1]; # <--- change
+    results = np.load(fname+stop_at+"results.npy");
     boundsT = np.load(fname+stop_at+"bounds.npy"); 
 
     # save results in latex table format
     # recall results are [Ti, resulti]
     results_tab = np.append(np.array([[Tval] for Tval in Ts]), results, axis = 1);
-    np.savetxt(fname+stop_at+"results_table.txt", results_tab, delimiter='&', newline = '\\\ \n');
+    np.savetxt(fname+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter='&', newline = '\\\ \n');
     print("Saving table to "+fname+stop_at+"results_table.txt");
     
     # plot each fit
     from utils import plot_fit
+    fig3, ax3 = plt.subplots();
     for Tvali, Tval in enumerate(Ts):
         global temp_kwarg; temp_kwarg = Tval; # very bad practice
         plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Tval); # <- where to get/save the plot
 
         if(stored_plots): # fit already stored
-            x = np.load(fname+"_x.npy");
-            y = np.load(fname+"_y.npy");
-            yfit = np.load(fname+"_yfit.npy");
+            x = np.load(plot_fname+"_x.npy");
+            y = np.load(plot_fname+"_y.npy");
+            yfit = np.load(plot_fname+"_yfit.npy");
             try:
-                mytxt = open(fname+"_title.txt", "r");
+                mytxt = open(plot_fname+"_title.txt", "r");
                 mytitle = mytxt.readline()[1:];
             finally:
                 mytxt.close();
-            plot_fit(x, y, yfit, mytitle=mytitle, myylabel="$dI/dV_b$");
+            #plot_fit(x, y, yfit, mytitle=mytitle, myylabel="$dI/dV_b$");
+
+            # plot 3 at once
+            if(Tval in [5,10,15,25]):
+                offset=800;
+                print(30*"#", Tval, ":");
+                for parami, _ in enumerate(results[Tvali]):
+                    print(results[Tvali,parami], boundsT[Tvali, :, parami])
+                ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], label="$T=$ {:.0f} K".format(Tval));
+                ax3.plot(x,offset*Tvali+yfit, color="black");
         
         else: # need to generate fit
 
@@ -326,9 +384,18 @@ def plot_saved_fit():
             np.save(plot_fname+"_yfit.npy", dI_fit);
             np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
 
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc|NCO");
+    ax3.set_xlabel("$V_b$ (V)");
+    ax3.set_xlim(-0.1,0.1);
+    ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+    ax3.set_ylim(-400,2000);
+    plt.legend(loc='upper right');
+    plt.show()
+
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
-    plot_saved_fit();
-    #fit_Mn_data();
+    fit_Mn_data();
+    #plot_saved_fit();
+    #comp_backgrounds();
