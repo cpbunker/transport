@@ -11,13 +11,13 @@ import matplotlib.pyplot as plt
 # fig standardizing
 myxvals = 199;
 myfontsize = 14;
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkorange", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
 mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # units
 kelvin2eV =  8.617e-5;
@@ -195,7 +195,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[3];
+    stop_at = stop_ats[-1];
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
@@ -252,7 +252,7 @@ def fit_Mn_data():
         axes[1].legend();
 
     # save
-    if True:
+    if False:
         fname = "fits/"
         print("Saving data to "+fname+stop_at);
         np.savetxt(fname+stop_at+"Ts.txt", Ts);
@@ -284,7 +284,7 @@ def comp_backgrounds():
     
     # plot each fit
     fig3, ax3 = plt.subplots();
-    for Tvali, Tval in enumerate([5,15,25]):
+    for Tvali, Tval in enumerate(Ts):
         global temp_kwarg; temp_kwarg = Tval; # very bad practice
 
         # raw data
@@ -297,22 +297,52 @@ def comp_backgrounds():
         dI_fit = dI_fit_imp + dI_fit_mag;
 
         # plot
-        offset = 1500;
-        ax3.scatter(V_exp, Tvali*offset+dI_exp, label="$T=$ {:.0f} K".format(Tval), color=mycolors[Tvali], marker=mymarkers[Tvali]);
-        ax3.plot(V_fine, Tvali*offset+dI_fit, color="black");
+        if Tval in [5, 15, 25]:
+            offset = 750;
+            ax3.scatter(V_exp, Tvali*offset+dI_exp, label="$T=$ {:.0f} K".format(Tval), color=mycolors[Tvali], marker=mymarkers[Tvali]);
+            ax3.plot(V_fine, Tvali*offset+dI_fit, color="black");
 
     # format
-    ax3.set_title("Background fit, $\\varepsilon_c = $ {:.2f} meV, $\\varepsilon_0 = $ {:.2f} meV".format(1000*ref_mag[1], 1000*ref_imp[1]));
+    ax3.set_title("Background ($\\varepsilon_0 = $ {:.2f} meV, $G_3 = $ {:.2f} nA/mV, $\\varepsilon_c = $ {:.2f} meV, $G_1 = $ {:.2f} nA/mV)".format(1000*ref_imp[1], ref_imp[3]/1000, 1000*ref_mag[1], ref_mag[2]/1000));
     ax3.set_xlabel("$V_b$ (V)");
     ax3.set_xlim(-0.1,0.1);
     ax3.set_ylabel("$dI/dV_b$ (nA/V)");
     ax3.set_ylim(-1000,5000);
-    plt.legend(loc='upper right');
+    plt.legend(loc='lower right');
     plt.show()
 
 def plot_saved_fit():
     '''
     '''
+    if False:
+        # load all data
+        fname = "Back/All/"
+        print("Loading data from "+fname);
+        results_all = np.load(fname+"results.npy");
+        boundsT_all = np.load(fname+"bounds.npy");
+        print("results_all: ", results_all.shape);
+        print("bounds_all: ", boundsT_all.shape); 
+
+        # load 25K data
+        fname = "Back/25K/"
+        print("Loading data from "+fname);
+        results_25 = np.load(fname+"results.npy");
+        boundsT_25 = np.load(fname+"bounds.npy"); 
+        print("results_25: ", results_25.shape);
+        print("bounds_25: ", boundsT_25.shape); 
+
+        # overwrite old T=25K data
+        results_all[4] = results_25[0];
+        boundsT_all[4] = boundsT_25[0];
+
+        # save
+        savename = "Back/New/"
+        print("Saving data to ", savename);
+        np.save(savename+"results.npy", results_all);
+        np.save(savename+"bounds.npy", boundsT_all);
+        assert False;
+
+
     verbose=10;
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
@@ -349,16 +379,17 @@ def plot_saved_fit():
                 mytitle = mytxt.readline()[1:];
             finally:
                 mytxt.close();
-            #plot_fit(x, y, yfit, mytitle=mytitle, myylabel="$dI/dV_b$");
-
-            # plot 3 at once
-            if(Tval in [5,10,15,25]):
-                offset=800;
-                print(30*"#", Tval, ":");
-                for parami, _ in enumerate(results[Tvali]):
-                    print(results[Tvali,parami], boundsT[Tvali, :, parami])
-                ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], label="$T=$ {:.0f} K".format(Tval));
-                ax3.plot(x,offset*Tvali+yfit, color="black");
+            
+            if True:
+                plot_fit(x, y, yfit, mytitle=mytitle, myylabel="$dI/dV_b$");
+            else: # plot 3 at once
+                if(Tval in [5,15,25]):
+                    offset=400;
+                    print(30*"#", Tval, ":");
+                    for parami, _ in enumerate(results[Tvali]):
+                        print(results[Tvali,parami], boundsT[Tvali, :, parami])
+                    ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], label="$T=$ {:.0f} K".format(Tval));
+                    ax3.plot(x,offset*Tvali+yfit, color="black");
         
         else: # need to generate fit
 
@@ -374,7 +405,7 @@ def plot_saved_fit():
 
             # evaluate at fit results and plot
             dI_fit = stopats_2_func[stop_at](V_exp, *results[Tvali]);
-            mytitle="$T = $ {:.1f} K, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(Tval, *results[Tvali,2:])
+            mytitle="$T = $ {:.1f} K, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(Ts[Tvali], *results[Tvali,2:])
             if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit, mytitle=mytitle, myylabel="$dI/dV_b$"); 
         
             # save V_exp, dI_exp, dI_fit for easy access
@@ -384,11 +415,11 @@ def plot_saved_fit():
             np.save(plot_fname+"_yfit.npy", dI_fit);
             np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
 
-    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc|NCO");
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     ax3.set_xlabel("$V_b$ (V)");
     ax3.set_xlim(-0.1,0.1);
     ax3.set_ylabel("$dI/dV_b$ (nA/V)");
-    ax3.set_ylim(-400,2000);
+    ax3.set_ylim(-500,2500);
     plt.legend(loc='upper right');
     plt.show()
 
@@ -396,6 +427,29 @@ def plot_saved_fit():
 #### run
 
 if(__name__ == "__main__"):
-    fit_Mn_data();
-    #plot_saved_fit();
+    #fit_Mn_data();
+    plot_saved_fit();
     #comp_backgrounds();
+    assert False;
+
+    # temp dependence of <n>
+    nfig, nax = plt.subplots();
+    Tlims = (0, 30);
+    Tmesh = np.linspace(*Tlims, int(1e3));
+    kBTmesh = Tmesh*kelvin2eV*1000;
+
+    # <n> at different Vb
+    Vbvals = np.array([0.5,1,5,10]);
+    for Vbi, Vbval in enumerate(Vbvals):
+        nFD = np.power(np.exp(Vbval/kBTmesh)+1,-1);
+        nax.plot(Tmesh, nFD, color=mycolors[Vbi], label="$eV_b = $ {:.2f} meV".format(Vbval));
+
+    # format
+    nax.set_xlabel("$k_B T$ (meV)");
+    nax.set_xlim(np.min(Tmesh), np.max(Tmesh));
+    nax.set_ylabel("$\langle n_{FD}(eV_b) \\rangle $");
+    #nax.set_title("Temperature dependence around the Fermi level");
+    plt.legend();
+    plt.show();
+
+
