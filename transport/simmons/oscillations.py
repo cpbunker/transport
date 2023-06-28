@@ -17,7 +17,7 @@ mymarkers = ["o","+","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # units
 kelvin2eV =  8.617e-5;
@@ -70,7 +70,7 @@ def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC):
     '''
     from landauer import dI_of_Vb_zero
 
-    nmax = 40;
+    nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
     return -dI0+1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
@@ -80,7 +80,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
     '''
     from landauer import dI_of_Vb
 
-    nmax = 40;
+    nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
     return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
@@ -88,13 +88,13 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
+def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
              dI0_percent, Gamma_percent, EC_percent, stop_at='sin', num_dev = 4, verbose=0):
     '''
     '''
 
     # load data
-    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp_kwarg);
+    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp);
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);
     dI_mu = np.mean(dI_exp);
     dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
@@ -102,11 +102,11 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     #### fit background to impurity scattering
 
     # first fit
-    E0_guess, G2_guess, G3_guess = 0.0075, 1250, 750;
+    E0_guess, G2_guess, G3_guess = 0.0095, 1250, 750;
     V0_bound = 1e-2;
     params_imp_guess = np.array([0.0, E0_guess, G2_guess, G3_guess]);
-    bounds_imp = np.array([[-V0_bound, E0_guess*0.99, G2_guess*0.99, G3_guess*0.99], # forced to be temp independent
-                           [ V0_bound, E0_guess*1.01, G2_guess*1.01, G3_guess*1.01]]);
+    bounds_imp = np.array([[-V0_bound, E0_guess*0.9, G2_guess*0.9, G3_guess*0.9], # forced to be temp independent
+                           [ V0_bound, E0_guess*1.1, G2_guess*1.1, G3_guess*1.1]]);
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
@@ -125,7 +125,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
                     params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                     stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_imp(V_exp, *params_imp), derivative=True,
-                              mytitle="Magnetic impurity scattering ($T=$ {:.0f})".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                              mytitle="Magnetic impurity scattering ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'imp/'): return params_imp, bounds_imp;
 
     #### fit background to magnon scattering
@@ -143,7 +143,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
                             params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
                             stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_mag(V_exp, *params_mag), smooth = True, derivative=True,
-                        mytitle="Surface magnon scattering ($T=$ {:.0f})".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                        mytitle="Surface magnon scattering ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'mag/'): return params_mag, bounds_mag;
     
     #### fit oscillations to sin
@@ -162,8 +162,8 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
     params_sin, _ = fit_wrapper(dIdV_sin, V_exp, dI_exp,
                     params_sin_guess, bounds_sin, ["alpha","amp","per"],
                     stop_bounds = False, verbose=verbose);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_sin(V_exp, *params_sin), derivative=True,
-                        mytitle="Sinusoidal fit ($T=$ {:.0f})".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_sin(V_exp, *params_sin), derivative=False,
+                        mytitle="Sinusoidal fit ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'sin/'): return params_sin, bounds_sin;
 
     #### fit oscillations to T=0 landauer
@@ -176,7 +176,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
                                 params_zero_guess, bounds_zero, ["V0","dI0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_lorentz_zero(V_exp, *params_zero), derivative=False,
-                mytitle="$T=0$ Landauer fit ($T=$ {:.0f})".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                mytitle="$T=0$ Landauer fit ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'lorentz_zero/'): return params_zero, bounds_zero;
 
     #### fit oscillations to T!=0 landauer
@@ -195,7 +195,7 @@ def fit_dIdV(metal, V0_not, dI0_not, Gamma_not, EC_not,
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
+    stop_at = stop_ats[2];
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
@@ -209,7 +209,8 @@ def fit_Mn_data():
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
-    Ts = [25.0];
+    Ts = [5,15,25]
+    ohmic_T = 5; # sample temp shifted due to ohmic heating
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -227,8 +228,8 @@ def fit_Mn_data():
         print("#"*60+"\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
 
         # get fit results
-        global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
-        temp_results, temp_bounds = fit_dIdV(metal,
+        global temp_kwarg; temp_kwarg = Ts[datai]+ohmic_T; # very bad practice
+        temp_results, temp_bounds = fit_dIdV(metal, Ts[datai],
             V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
             dI0_percent, Gamma_percent, EC_percent, stop_at = stop_at, verbose=10);
         results.append(temp_results); 
@@ -314,35 +315,6 @@ def comp_backgrounds():
 def plot_saved_fit():
     '''
     '''
-    if False:
-        # load all data
-        fname = "Back/All/"
-        print("Loading data from "+fname);
-        results_all = np.load(fname+"results.npy");
-        boundsT_all = np.load(fname+"bounds.npy");
-        print("results_all: ", results_all.shape);
-        print("bounds_all: ", boundsT_all.shape); 
-
-        # load 25K data
-        fname = "Back/25K/"
-        print("Loading data from "+fname);
-        results_25 = np.load(fname+"results.npy");
-        boundsT_25 = np.load(fname+"bounds.npy"); 
-        print("results_25: ", results_25.shape);
-        print("bounds_25: ", boundsT_25.shape); 
-
-        # overwrite old T=25K data
-        results_all[4] = results_25[0];
-        boundsT_all[4] = boundsT_25[0];
-
-        # save
-        savename = "Back/New/"
-        print("Saving data to ", savename);
-        np.save(savename+"results.npy", results_all);
-        np.save(savename+"bounds.npy", boundsT_all);
-        assert False;
-
-
     verbose=10;
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
@@ -355,7 +327,7 @@ def plot_saved_fit():
     print("Loading data from "+fname+stop_at);
     Ts = np.loadtxt(fname+stop_at+"Ts.txt");
     results = np.load(fname+stop_at+"results.npy");
-    boundsT = np.load(fname+stop_at+"bounds.npy"); 
+    boundsT = np.load(fname+stop_at+"bounds.npy");
 
     # save results in latex table format
     # recall results are [Ti, resulti]
@@ -427,29 +399,8 @@ def plot_saved_fit():
 #### run
 
 if(__name__ == "__main__"):
-    #fit_Mn_data();
-    plot_saved_fit();
+    #plot_saved_fit();
+    fit_Mn_data();
     #comp_backgrounds();
     assert False;
-
-    # temp dependence of <n>
-    nfig, nax = plt.subplots();
-    Tlims = (0, 30);
-    Tmesh = np.linspace(*Tlims, int(1e3));
-    kBTmesh = Tmesh*kelvin2eV*1000;
-
-    # <n> at different Vb
-    Vbvals = np.array([0.5,1,5,10]);
-    for Vbi, Vbval in enumerate(Vbvals):
-        nFD = np.power(np.exp(Vbval/kBTmesh)+1,-1);
-        nax.plot(Tmesh, nFD, color=mycolors[Vbi], label="$eV_b = $ {:.2f} meV".format(Vbval));
-
-    # format
-    nax.set_xlabel("$k_B T$ (meV)");
-    nax.set_xlim(np.min(Tmesh), np.max(Tmesh));
-    nax.set_ylabel("$\langle n_{FD}(eV_b) \\rangle $");
-    #nax.set_title("Temperature dependence around the Fermi level");
-    plt.legend();
-    plt.show();
-
 
