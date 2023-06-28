@@ -38,7 +38,12 @@ def dIdV_imp(Vb, V0, E0, G2, G3):
         denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
         return numerator/denominator;
 
-    return G2 - G3*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
+    Delta = 0.007;
+    retval = G2;
+    retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
+    retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*temp_kwarg);
+    retval -= (G3/4)*Ffunc(abs(Vb-V0-Delta), kelvin2eV*temp_kwarg);
+    return retval
 
 def dIdV_mag(Vb, V0, Ec, G1):
     '''
@@ -55,6 +60,14 @@ def dIdV_mag(Vb, V0, Ec, G1):
         return ret
         
     return G1*Gmag(abs(Vb-V0), kelvin2eV*temp_kwarg);
+
+def dIdV_back(Vb, V0, E0, Ec, G1, G2, G3):
+    '''
+    Magnetic impurity and surface magnon scattering, combined
+    Designed to be passed to scipy.optimize.curve_fit
+    '''
+
+    return dIdV_imp(Vb, V0, E0, G2, G3)+dIdV_mag(Vb, V0, Ec, G1);
 
 def dIdV_sin(Vb, alpha, amplitude, period):
     '''
@@ -110,7 +123,7 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
     params_imp, _ = fit_wrapper(dIdV_imp, V_exp, dI_exp,
                             params_imp_guess, bounds_imp, ["V0", "E0", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_imp(V_exp, *params_imp), derivative=False,
+    if(verbose > 4 and False): plot_fit(V_exp, dI_exp, dIdV_imp(V_exp, *params_imp), derivative=False,
                               mytitle="Magnetic impurity scattering ($T=$ {:.0f})".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
 
     # remove outliers based on impurity background
@@ -129,28 +142,39 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
     if(stop_at == 'imp/'): return params_imp, bounds_imp;
 
     #### fit background to magnon scattering
+    Ec_guess, G1_guess = 0.015, 1000;
 
-    # subtract impurity background
-    background_imp = dIdV_imp(V_exp, *params_imp);
-    dI_exp = dI_exp - background_imp;
+    if(stop_at == "mag/" or True): # fit magnon alone
+        # subtract impurity background
+        background_imp = dIdV_imp(V_exp, *params_imp);
+        dI_exp_mag = dI_exp - background_imp;
+        params_mag_guess = np.array([params_imp[0], Ec_guess, G1_guess]);
+        bounds_mag = np.array([[params_imp[0], Ec_guess*0.9, G1_guess*0.9],
+                                [ params_imp[0]+1e-6, Ec_guess*1.1, G1_guess*1.1]]);
+        params_mag, _ = fit_wrapper(dIdV_mag, V_exp, dI_exp_mag,
+                                params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
+                                stop_bounds = False, verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp_mag, dIdV_mag(V_exp, *params_mag), smooth = True, derivative=True,
+                            mytitle="Surface magnon scattering ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+        del background_imp, dI_exp_mag, params_mag_guess, bounds_mag, params_mag;
+        #return params_mag, bounds_mag;
 
-    # fit magnon
-    Ec_guess, G1_guess = 0.015, 1200;
-    params_mag_guess = np.array([params_imp[0], Ec_guess, G1_guess]);
-    bounds_mag = np.array([[params_imp[0], Ec_guess*0.8, G1_guess*0.8],
-                            [ params_imp[0]+1e-6, Ec_guess*1.2, G1_guess*1.2]]);
-    params_mag, _ = fit_wrapper(dIdV_mag, V_exp, dI_exp,
-                            params_mag_guess, bounds_mag, ["V0", "Ec", "G1"],
-                            stop_bounds = False, verbose=verbose);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_mag(V_exp, *params_mag), smooth = True, derivative=True,
-                        mytitle="Surface magnon scattering ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
-    if(stop_at == 'mag/'): return params_mag, bounds_mag;
+    if True: # fit to magnon and imp together
+        params_back_guess = np.array([params_imp[0], E0_guess, Ec_guess, G1_guess, G2_guess, G3_guess]);
+        bounds_back = np.array([[params_imp[0], E0_guess*0.9, Ec_guess*0.9, G1_guess*0.9, G2_guess*0.9, G3_guess*0.9],
+                                [ params_imp[0]+1e-6, E0_guess*1.1, Ec_guess*1.1, G1_guess*1.1, G2_guess*1.1, G3_guess*1.1]]);
+        params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                                params_back_guess, bounds_back, ["V0", "E0", "Ec", "G1", "G2", "G3"],
+                                stop_bounds = False, verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_back(V_exp, *params_back), derivative=True,
+                            mytitle="Combined background ($T=$ {:.0f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+        if(stop_at == 'imp_mag/'): return params_back, bounds_back;
     
     #### fit oscillations to sin
 
-    # subtract magnon background
-    background_mag = dIdV_mag(V_exp, *params_mag);
-    dI_exp = dI_exp - background_mag;
+    # subtract combined background
+    background = dIdV_back(V_exp, *params_back);
+    dI_exp = dI_exp - background; #TODO
     dI_mu = np.mean(dI_exp);
     dI_dev = np.sqrt( np.median(np.power(dI_exp-dI_mu,2)));
 
@@ -194,12 +218,14 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
-    stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[2];
+    stop_ats = ['imp/','mag/','imp_mag/', 'sin/', 'lorentz_zero/', 'lorentz/'];
+    stop_at = stop_ats[3];
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
         rlabels = ["$V_0$", "$\\varepsilon_c$", "$G_1$"];
+    elif(stop_at=='imp_mag/'):
+        rlabels = ["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"];
     elif(stop_at=='sin/'):
         rlabels = ["$\\alpha$", "$A$ (nA/V)", "$\Delta V_b$ (V)"];
     elif(stop_at == 'lorentz_zero/' or stop_at =='lorentz/'):
@@ -210,7 +236,8 @@ def fit_Mn_data():
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
     Ts = [5,15,25]
-    ohmic_T = 5; # sample temp shifted due to ohmic heating
+    Ts = [25]
+    ohmic_T = 4; # sample temp shifted due to ohmic heating
 
     # guesses
     V0_guess = -0.0044*np.ones_like(Ts);
@@ -317,7 +344,7 @@ def plot_saved_fit():
     '''
     verbose=10;
     metal="Mn/"; # points to data folder
-    stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
+    stop_ats = ['imp/','mag/','imp_mag/', 'sin/', 'lorentz_zero/', 'lorentz/'];
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'sin/':dIdV_sin, 'lorentz_zero/':dIdV_lorentz_zero, 'lorentz/':dIdV_lorentz};
     stop_at = stop_ats[-1];
     stored_plots = True;
