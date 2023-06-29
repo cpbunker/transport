@@ -38,7 +38,7 @@ def dIdV_imp(Vb, V0, E0, G2, G3):
         denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
         return numerator/denominator;
 
-    Delta = 0.007;
+    Delta = E0;
     retval = G2;
     retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
     retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*temp_kwarg);
@@ -236,7 +236,7 @@ def fit_Mn_data():
     kelvin2eV =  8.617e-5;
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
     Ts = [5,15,25]
-    Ts = [25]
+    Ts = [5,25]
     ohmic_T = 4; # sample temp shifted due to ohmic heating
 
     # guesses
