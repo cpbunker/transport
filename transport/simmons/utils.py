@@ -16,7 +16,7 @@ def load_IVb(base,folder,temp):
     V in volts, I in nano amps
     '''
 
-    fname = "{:.0f}".format(temp) + base;
+    fname = "{:.1f}".format(temp) + base;
     print("Loading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
@@ -33,7 +33,7 @@ def load_dIdV(base,folder,temp):
     V in volts, I in nano amps
     '''
 
-    fname = "{:.0f}".format(temp) + base;
+    fname = "{:.1f}".format(temp) + base;
     print("\nLoading data from "+folder+fname);
     IV = np.loadtxt(folder+fname);
     Vs = IV[:, 0];
