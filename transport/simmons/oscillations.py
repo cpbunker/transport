@@ -218,8 +218,13 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
 
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
+<<<<<<< HEAD
     stop_ats = ['imp/','mag/','imp_mag/', 'sin/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[3];
+=======
+    stop_ats = ['imp/','mag/','sin/', 'lorentz_zero/', 'lorentz/'];
+    stop_at = stop_ats[2];
+>>>>>>> 6b186d699c7c81706e012456f0e9ea0a60ae47da
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
@@ -426,8 +431,8 @@ def plot_saved_fit():
 #### run
 
 if(__name__ == "__main__"):
-    #plot_saved_fit();
     fit_Mn_data();
+    #plot_saved_fit();
     #comp_backgrounds();
     assert False;
 
