@@ -113,14 +113,22 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10):
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
     Elimits = (-Mn*kBT+np.min(mulimits),+Mn*kBT+np.max(mulimits));
+    Beta = 1/kBT;
+    #del kBT;
+
+    # store exp(E-) as array outside loop
+    # evaluate all constants outside the loop
 
     # function to integrate
     def integrand(Eint, Cint, Vbint):
         retval = np.zeros_like(Eint);
-        prefactor = 1/(1+np.power( (Eint-Cint-Vbint/2)/(2*Gamma),2));
-        retval += (1/kBT)*np.exp((Eint-mu0-Vbint)/kBT)*np.power(np.exp((Eint-mu0-Vbint)/kBT)+1,-2);
-        retval += (Eint-Cint-Vbint/2)/(4*Gamma*Gamma) *prefactor*(1/(np.exp((Eint-mu0-Vbint)/kBT)+1) - 1/(np.exp((Eint-mu0)/kBT)+1));
-        return prefactor*retval;
+        ratio = (Eint-Cint-Vbint/2)/(2*Gamma);
+        lorentzian = 1/(1+ (ratio)*(ratio));
+        exp_muR = np.exp((Eint-mu0)*Beta);
+        exp_muL = exp_muR*np.exp(-Vbint*Beta);
+        retval += Beta*exp_muL/((exp_muL+1)*(exp_muL+1));
+        retval += ratio/(2*Gamma) *lorentzian*(1/(exp_muL+1) - 1/(exp_muR+1));
+        return lorentzian*retval;
 
     # plot integrand
     if False:
@@ -143,7 +151,7 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10):
             integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
         conductance += integration_result;
 
-    return Gamma*Gamma/np.power(2*Gamma,2)*conductance;
+    return Gamma*Gamma/(4*Gamma*Gamma)*conductance;
 
 
 if(__name__ == "__main__"):
@@ -209,7 +217,7 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if False: # plot at various Gamma
+    if True: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e6));
 
@@ -217,7 +225,7 @@ if(__name__ == "__main__"):
         my_mu0 = 0.0; # *relative* to the island chem potential
         my_EC = 0.005;
         my_temp = 0.0*kelvin2eV;
-        nmax = 5;
+        nmax = 10;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over Gamma
@@ -249,7 +257,47 @@ if(__name__ == "__main__"):
         np.savetxt(fname+".txt",save_params);
         np.save(fname, to_save);
 
-    if False: # plot at various temperatures
+    if True: # plot at various EC
+        fig, ax = plt.subplots();
+        Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
+
+        # physical params, in eV
+        my_mu0 = 0.0; # *relative* to the island chem potential
+        my_Gamma = 0.001; 
+        my_temp = 0.0*kelvin2eV;
+        nmax = 10;
+        narr = np.arange(-nmax,nmax+1);
+
+        # iter over EC
+        ECvals = np.array([0.01,0.04]);
+        to_save = np.empty((len(ECvals),len(Vbs)),dtype=float); to_savei=0;
+        for ECval in ECvals:
+            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
+            else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
+            to_save[to_savei]=Is; to_savei += 1;
+            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.3f}".format(ECval));
+            for integer in [0]:
+                print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, ECval, 0.0)-2*my_mu0));
+                ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
+
+        # format
+        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
+        ax.set_xlabel("$V_b$ (V)");
+        if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
+        else: ax.set_ylabel("$I(V_b)$ (nA)");
+        ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        plt.legend();
+        plt.tight_layout();
+        plt.show();
+
+        # save
+        fname = "land_data/vsEC"
+        save_params = np.array([my_mu0, my_Gamma, np.nan, my_temp, nmax]);
+        print("Saving to "+fname);
+        np.savetxt(fname+".txt",save_params);
+        np.save(fname, to_save);
+
+    if True: # plot at various temperatures
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 
@@ -257,7 +305,7 @@ if(__name__ == "__main__"):
         my_mu0 = 0.0; # *relative* to the island chem potential
         my_Gamma = 0.0001;
         my_EC = 0.005;
-        nmax = 10;
+        nmax = 1;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over T
@@ -289,46 +337,6 @@ if(__name__ == "__main__"):
         # save
         fname = "land_data/vsT"
         save_params = np.array([my_mu0, my_Gamma, my_EC, np.nan, nmax]);
-        print("Saving to "+fname);
-        np.savetxt(fname+".txt",save_params);
-        np.save(fname, to_save);
-
-    if False: # plot at various EC
-        fig, ax = plt.subplots();
-        Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
-
-        # physical params, in eV
-        my_mu0 = 0.0; # *relative* to the island chem potential
-        my_Gamma = 0.001; 
-        my_temp = 0.0*kelvin2eV;
-        nmax = 5;
-        narr = np.arange(-nmax,nmax+1);
-
-        # iter over EC
-        ECvals = np.array([0.01,0.04]);
-        to_save = np.empty((len(ECvals),len(Vbs)),dtype=float); to_savei=0;
-        for ECval in ECvals:
-            if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
-            else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
-            to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.3f}".format(ECval));
-            for integer in [0]:
-                print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, ECval, 0.0)-2*my_mu0));
-                ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
-
-        # format
-        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
-        ax.set_xlabel("$V_b$ (V)");
-        if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
-        else: ax.set_ylabel("$I(V_b)$ (nA)");
-        ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0));
-        plt.legend();
-        plt.tight_layout();
-        plt.show();
-
-        # save
-        fname = "land_data/vsEC"
-        save_params = np.array([my_mu0, my_Gamma, np.nan, my_temp, nmax]);
         print("Saving to "+fname);
         np.savetxt(fname+".txt",save_params);
         np.save(fname, to_save);

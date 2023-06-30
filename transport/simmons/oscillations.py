@@ -4,6 +4,7 @@ under different physical scenarios
 '''
 
 from utils import plot_fit, load_dIdV, fit_wrapper
+from landauer import dI_of_Vb, dI_of_Vb_zero
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -80,7 +81,6 @@ def dIdV_sin(Vb, V0, amplitude, period, dI0):
 def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC): 
     '''
     '''
-    from landauer import dI_of_Vb_zero
 
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
@@ -90,17 +90,24 @@ def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC):
 def dIdV_lorentz(Vb, V0, dI0, Gamma, EC): 
     '''
     '''
-    from landauer import dI_of_Vb
 
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
     return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
 
+def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, dI0, Gamma, EC):
+    '''
+    Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
+    Designed to be passed to scipy.optimize.curve_fit
+    '''
+
+    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3) + dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC);
+
 ####################################################################
 #### main
 
-def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
+def fit_dIdV(metal, temp, dI0_not, Gamma_not, EC_not,
              dI0_percent, Gamma_percent, EC_percent, stop_at='sin', num_dev = 4, verbose=0):
     '''
     '''
@@ -113,18 +120,15 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
     del temp
     
     #### fit background
-    
-
-    # first fit
-    E0_guess, G2_guess, G3_guess = 0.009, 1250, 700 # 0.0095 1250, 750;
-    Ec_guess, G1_guess = 0.015, 1300;
-    Edown, Eup, Gdown, Gup = 0.9, 1.1, 0.5, 1.5;
+    E0_guess, G2_guess, G3_guess = 0.0105, 1340,815 # 2.5 K: 0.0105, 850,450
+    Ec_guess, G1_guess = 0.013, 2000;
+    Edown, Eup, Gdown, Gup = 0.9, 1.1, 0.1, 1.9;
     V0_bound = 1e-2;
 
     # fit to magnon and imp together
     params_back_guess = np.array([0.0, E0_guess, Ec_guess, G1_guess, G2_guess, G3_guess]);
-    bounds_back = np.array([[-V0_bound, E0_guess*Edown, Ec_guess*Edown, G1_guess*Gdown, G2_guess*Gdown, G3_guess*Gdown],
-                            [ V0_bound, E0_guess*Eup, Ec_guess*Eup, G1_guess*Gup, G2_guess*Gup, G3_guess*Gup]]);
+    bounds_back = np.array([[-V0_bound, E0_guess*Edown, Ec_guess*Edown, G1_guess*Gdown, 0.1*G2_guess, G3_guess*Gdown],
+                            [ V0_bound, E0_guess*Eup, Ec_guess*Eup, G1_guess*Gup, 1.9*G2_guess, G3_guess*Gup]]);
     params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
                             params_back_guess, bounds_back, ["V0", "E0", "Ec", "G1", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
@@ -136,14 +140,60 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
     dI_exp = dI_exp[abs(dI_exp-background) < num_dev*dI_dev];
     assert(pre_dropout - len(V_exp) <= pre_dropout*0.05); # only remove 5%
 
+    # imp or mag individually
+    if(stop_at == "imp/" or stop_at == "mag/" or True):
+        # force G1=0
+        params_imp_guess = np.copy(params_back_guess);
+        params_imp_guess[3] = 0;
+        bounds_imp = np.array([[-V0_bound, E0_guess, Ec_guess, 0.0, G2_guess, G3_guess],
+                                [ V0_bound, E0_guess+1e-6, Ec_guess+1e-6, 1e-6, G2_guess+1e-6, G3_guess+1e-6]]);
+        params_imp, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                        params_imp_guess, bounds_imp, ["V0", "E0", "Ec", "G1", "G2", "G3"],
+                        stop_bounds = False, verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_back(V_exp, *params_imp), derivative=True,
+                            mytitle="Impurity scattering ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+        mask_imp = np.array([1,1,0,0,1,1]);
+        if(stop_at == 'imp/'): return params_imp[mask_imp>0], bounds_imp[:,mask_imp>0];
+
+        # force G2, G3=0
+        params_mag_guess = np.copy(params_back_guess);
+        params_mag_guess[4] = 0;
+        params_mag_guess[5] = 0;
+        bounds_mag = np.array([[-V0_bound, E0_guess, Ec_guess, G1_guess, 0,0],
+                                [ V0_bound, E0_guess+1e-6, Ec_guess+1e-6, G1_guess+1e-6, 1e-6,1e-6]]);
+        params_mag, _ = fit_wrapper(dIdV_back, V_exp, dI_exp-dIdV_back(V_exp, *params_imp),
+                        params_mag_guess, bounds_mag, ["V0", "E0", "Ec", "G1", "G2", "G3"],
+                        stop_bounds = False, verbose=verbose);
+        if(verbose > 4): plot_fit(V_exp, dI_exp-dIdV_back(V_exp, *params_imp), dIdV_back(V_exp, *params_mag), derivative=True,
+                            smooth=False, mytitle="Magnon scattering ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+        mask_mag = np.array([1,0,1,1,0,0]);
+        if(stop_at == 'mag/'): return params_mag[mask_mag>0], bounds_mag[:,mask_mag>0];
+
     # fit to magnon and imp again
     params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
-                            params_back_guess, bounds_back, ["V0", "E0", "Ec", "G1", "G2", "G3"],
+                            params_back, bounds_back, ["V0", "E0", "Ec", "G1", "G2", "G3"],
                             stop_bounds = False, verbose=verbose);
     background = dIdV_back(V_exp, *params_back);
     if(verbose > 4): plot_fit(V_exp, dI_exp, background, derivative=False,
-                        mytitle="Combined background ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                        mytitle="Impurity + magnon scattering ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'imp_mag/'): return params_back, bounds_back;
+
+    #### fit magnon + imp + oscillation
+    params_all_guess = np.zeros((len(params_back)+3,));
+    params_all_guess[:len(params_back)] = params_back;
+    bounds_all = np.zeros((2,len(params_all_guess)));
+    bounds_all[:,:len(params_back)] = bounds_back;
+
+    # for oscillation
+    params_all_guess[len(params_back_guess):] = np.array([dI0_not, Gamma_not, EC_not]);
+    bounds_all[:,len(params_back_guess):] = np.array([ [dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+                                                [ dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
+    params_all, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
+                                params_all_guess, bounds_all, ["V0", "E0", "Ec", "G1", "G2", "G3","dI0","Gamma", "EC"],
+                                stop_bounds = False, verbose=verbose);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_all), derivative=False,
+                mytitle="$T=0$ Landauer fit ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    if(stop_at == 'lorentz_zero/'): return params_all, bounds_all;   
 
     # subtract combined background
     dI_exp = dI_exp - background; 
@@ -173,7 +223,15 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
     #### fit oscillations to T=0 landauer
 
     # all params get fit here
-    params_zero_guess = np.array([V0_not, dI0_not, Gamma_not, EC_not]);
+    params_zero_guess = np.array([params_all[0], dI0_not, Gamma_not, EC_not]);
+
+    import time
+    start = time.time();
+    dIdV_lorentz(V_exp, *params_zero_guess);
+    stop = time.time();
+    print("Integration time = ", stop-start);
+    assert False
+    
     bounds_zero = np.array([ [-V0_bound, dI0_not*(1-dI0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
                 [ V0_bound, dI0_not*(1+dI0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
     params_zero, _ = fit_wrapper(dIdV_lorentz_zero, V_exp, dI_exp,
@@ -199,7 +257,7 @@ def fit_dIdV(metal, temp, V0_not, dI0_not, Gamma_not, EC_not,
 def fit_Mn_data():
     metal="Mn/"; # points to data folder
     stop_ats = ['imp/','mag/','imp_mag/', 'sin/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[3];
+    stop_at = stop_ats[5];
     if(stop_at=='imp/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
     elif(stop_at=='mag/'):
@@ -215,13 +273,15 @@ def fit_Mn_data():
     # experimental params
     kelvin2eV =  8.617e-5;
     Ts = np.array([2.5, 5.0,10.0,15.0,20.0,25.0,30.0]);
-    ohmic_T = 4; # sample temp shifted due to ohmic heating
+    Ts = np.array([25.0]);
+    # sample temp shifted due to ohmic heating
+    ohmic_Ts = np.array([4]);
+    assert(Ts.shape == ohmic_Ts.shape);
 
     # guesses
-    V0_guess = -0.0044*np.ones_like(Ts);
-    dI0_guess =      np.array([np.nan,65452, 66574, 68000, 68000, 70000, 70000]);
-    Gamma_guess = np.array([np.nan,0.0054, 0.0054, 0.0059, 0.0062, 0.0065, 0.0067]);
-    EC_guess = (0.0196/4)*np.ones_like(Ts);
+    dI0_guess = np.array([63000,65452, 66574, 68000, 68000, 70000, 70000]);
+    Gamma_guess = np.array([0.0045,0.0054, 0.0054, 0.0059, 0.0062, 0.0065, 0.0067]);
+    EC_guess = (0.023/4)*np.ones_like(Ts);
     dI0_percent = 0.4;
     Gamma_percent = 0.4;
     EC_percent = 0.1;
@@ -233,10 +293,11 @@ def fit_Mn_data():
         print("#"*60+"\nT = {:.1f} K ({:.4f} eV)".format(Ts[datai], Ts[datai]*kelvin2eV));
 
         # get fit results
-        global temp_kwarg; temp_kwarg = Ts[datai]+ohmic_T; # very bad practice
+        global temp_kwarg; temp_kwarg = Ts[datai]+ohmic_Ts[datai]; # very bad practice
         temp_results, temp_bounds = fit_dIdV(metal, Ts[datai],
-            V0_guess[datai], dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
-            dI0_percent, Gamma_percent, EC_percent, stop_at = stop_at, verbose=10);
+            dI0_guess[datai], Gamma_guess[datai], EC_guess[datai],
+            dI0_percent, Gamma_percent, EC_percent,
+            stop_at = stop_at, verbose=10);
         results.append(temp_results); 
         boundsT.append(temp_bounds);
 
@@ -269,53 +330,6 @@ def fit_Mn_data():
     axes[-1].set_xlabel("$T$ (K)");
     axes[0].set_title("Amplitude and period fitting");
     plt.show();
-
-def comp_backgrounds():
-    '''
-    '''
-    verbose=10;
-    metal="Mn/"; # points to data folder
-
-    # load
-    fname = "fits/"
-    print("Loading data from "+fname+"imp/");
-    Ts = np.loadtxt(fname+"imp/"+"Ts.txt");
-    results_imp = np.load(fname+"imp/"+"results.npy");
-    results_mag = np.load(fname+"mag/"+"results.npy");
-
-    # fit is from only one temp !
-    refi = 4;
-    ref_imp = results_imp[refi];
-    ref_mag = results_mag[refi];
-    
-    # plot each fit
-    fig3, ax3 = plt.subplots();
-    for Tvali, Tval in enumerate(Ts):
-        global temp_kwarg; temp_kwarg = Tval; # very bad practice
-
-        # raw data
-        V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, Tval);
-
-        # fit
-        V_fine = np.linspace(np.min(V_exp), np.max(V_exp), len(V_exp)*5);
-        dI_fit_imp = dIdV_imp(V_fine, *ref_imp);
-        dI_fit_mag = dIdV_mag(V_fine, *ref_mag);
-        dI_fit = dI_fit_imp + dI_fit_mag;
-
-        # plot
-        if Tval in [5, 15, 25]:
-            offset = 750;
-            ax3.scatter(V_exp, Tvali*offset+dI_exp, label="$T=$ {:.0f} K".format(Tval), color=mycolors[Tvali], marker=mymarkers[Tvali]);
-            ax3.plot(V_fine, Tvali*offset+dI_fit, color="black");
-
-    # format
-    ax3.set_title("Background ($\\varepsilon_0 = $ {:.2f} meV, $G_3 = $ {:.2f} nA/mV, $\\varepsilon_c = $ {:.2f} meV, $G_1 = $ {:.2f} nA/mV)".format(1000*ref_imp[1], ref_imp[3]/1000, 1000*ref_mag[1], ref_mag[2]/1000));
-    ax3.set_xlabel("$V_b$ (V)");
-    ax3.set_xlim(-0.1,0.1);
-    ax3.set_ylabel("$dI/dV_b$ (nA/V)");
-    ax3.set_ylim(-1000,5000);
-    plt.legend(loc='lower right');
-    plt.show()
 
 def plot_saved_fit():
     '''
@@ -406,6 +420,4 @@ def plot_saved_fit():
 if(__name__ == "__main__"):
     fit_Mn_data();
     #plot_saved_fit();
-    #comp_backgrounds();
-    assert False;
 
