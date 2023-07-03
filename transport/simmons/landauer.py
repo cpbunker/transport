@@ -10,7 +10,7 @@ Peak height falls off to slowly with T (5 K -> 50 K only a 1/3 dropoff)
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.integrate import quad
+from scipy.integrate import simpson as scipy_integ
 
 import time
 
@@ -101,7 +101,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
 
     return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
 
-def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10):
+def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
     '''
     Compute the finite temperature conductance by numerical integration
     '''
@@ -113,45 +113,42 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10):
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
     Elimits = (-Mn*kBT+np.min(mulimits),+Mn*kBT+np.max(mulimits));
+    Emesh = np.linspace(*Elimits, int(xvals));
     Beta = 1/kBT;
-    #del kBT;
 
     # store exp(E-) as array outside loop
     # evaluate all constants outside the loop
 
     # function to integrate
-    def integrand(Eint, Cint, Vbint):
+    def integrand(Eint, nints, Vbint):
         retval = np.zeros_like(Eint);
-        ratio = (Eint-Cint-Vbint/2)/(2*Gamma);
-        lorentzian = 1/(1+ (ratio)*(ratio));
         exp_muR = np.exp((Eint-mu0)*Beta);
         exp_muL = exp_muR*np.exp(-Vbint*Beta);
-        retval += Beta*exp_muL/((exp_muL+1)*(exp_muL+1));
-        retval += ratio/(2*Gamma) *lorentzian*(1/(exp_muL+1) - 1/(exp_muR+1));
-        return lorentzian*retval;
+        for n in nints:
+            ratio_n = (Eint-(2*n+1)*EC-Vbint/2)/(2*Gamma);
+            lorentzian_n = 1/(1+ (ratio_n)*(ratio_n));
+            ret_n = Beta*exp_muL/((exp_muL+1)*(exp_muL+1));
+            ret_n += ratio_n/(2*Gamma) *lorentzian_n*(1/(exp_muL+1) - 1/(exp_muR+1));
+            retval += ret_n*lorentzian_n
+        return retval;
 
     # plot integrand
     if False:
         print("Integration limits = ",Elimits);
         fig, ax = plt.subplots();
         for Vval in [Vb[0], Vb[len(Vb)//3], Vb[2*len(Vb)//3], Vb[-1]]:
-            xvals = np.linspace(*Elimits, 1000);
-            yvals = integrand(xvals, (2*ns[-1]+11)*EC, Vval);
-            ax.plot(xvals, yvals, label = Vval);
+            yvals = integrand(Emesh, ns, Vval);
+            ax.plot(Emesh, yvals, label = Vval);
         plt.show();
         assert False;
     
-    # conductance
-    conductance = np.zeros_like(Vb);
-    for n in ns:
-        # integrate to get current contribution
-        Cnval = (2*n+1)*EC;
-        integration_result = np.empty_like(Vb);
-        for Vbi, Vbval in enumerate(Vb):
-            integration_result[Vbi] = quad(integrand, *Elimits, args = (Cnval, Vbval))[0];
-        conductance += integration_result;
+    # integrate to get current contribution
+    integration_result = np.empty_like(Vb);
+    for Vbi, Vbval in enumerate(Vb):
+        Vb_integrand = integrand(Emesh, ns, Vbval);
+        integration_result[Vbi] = scipy_integ(Vb_integrand, Emesh);
 
-    return Gamma*Gamma/(4*Gamma*Gamma)*conductance;
+    return Gamma*Gamma/(4*Gamma*Gamma)*integration_result;
 
 
 if(__name__ == "__main__"):
@@ -217,7 +214,7 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if True: # plot at various Gamma
+    if False: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e6));
 
@@ -303,13 +300,13 @@ if(__name__ == "__main__"):
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_Gamma = 0.0001;
+        my_Gamma = 0.004;
         my_EC = 0.005;
-        nmax = 1;
+        nmax = 10;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over T
-        Tvals = np.array([5,10,20])*kelvin2eV;
+        Tvals = np.array([6.5,29])*kelvin2eV;
         to_save = np.empty((len(Tvals),len(Vbs)),dtype=float); to_savei=0;
         for Tval in Tvals:
             start = time.time();

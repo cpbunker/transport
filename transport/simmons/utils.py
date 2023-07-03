@@ -116,16 +116,16 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
     if( np.shape(yvals) != np.shape(yfit) ): raise TypeError;
     fig, ax = plt.subplots();
     explabel = "Exp.";
-
-    if(smooth):
-        kernel = np.ones((len(xvals)//10,))/(len(xvals)//10);
-        yvals = np.convolve(yvals, kernel, mode='same');
-        explabel +=" (smoothed)";
    
     # plot
     ax.scatter(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
     ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
 
+    if(smooth):
+        kernel = np.ones((len(xvals)//10,))/(len(xvals)//10);
+        yvals = np.convolve(yvals, kernel, mode='same');
+        explabel +=" (smoothed)";
+        
     # derivative
     if(derivative):
         offset = -200
@@ -165,26 +165,25 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         try:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=min(1,verbose));
+                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=min(2,verbose));
         except:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
 
-    elif(False and p0 is not None and bounds is None): # fit with guesses but without bounds
-        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, verbose=ls_verbose);
-    elif(False and p0 is None and bounds is None): # fit without guesses, bounds
-        fit_params, _ = scipy_curve_fit(fit_func, xvals, yval, verbose=ls_verboses);
+    elif(p0 is not None and bounds is None): # fit with guesses but without bounds
+        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, method='trf',verbose=min(1,verbose));
+    elif(p0 is None and bounds is None): # fit without guesses, bounds
+        fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals, method='trf',verbose=min(1,verbose));
     else: raise NotImplementedError;
 
     # check if any fit results are at upper bounds
-    for parami, param in enumerate(fit_params):
-        for pbound in bounds[:,parami]:
-            if(abs((param-pbound)/param)<1e-3):
-                if(stop_bounds):
-                    raise Exception("fit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
-                else:
-                    print("------->WARNING:\nfit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
-
+    if(bounds is not None):
+        for parami, param in enumerate(fit_params):
+            for pbound in bounds[:,parami]:
+                if(abs((param-pbound)/param)<1e-3):
+                    if(stop_bounds):
+                        raise Exception("fit_params["+str(parami)+"] is "+str(param)+", bound is "+str(pbound));
+                    
     # fit and error
     yfit = fit_func(xvals, *fit_params);
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
@@ -192,7 +191,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     # visualize fitting
     if(verbose):
         namelength = 6;
-        numdigits = 4
+        numdigits = 6;
         print_str = str(fit_func)+" fitting results:\n";
         for pi in range(len(fit_params)):
             print_str += "\t"+p_names[pi]+(" "*(namelength-len(p_names[pi])));
