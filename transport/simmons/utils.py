@@ -134,7 +134,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
 
     # error
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));
-    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.3f}".format(rmse));
+    ax.plot( [0.0], [0.0], color='white', label = "RMSE = {:1.5f}".format(rmse));
     
     # format
     ax.set_xlabel("$V_b$ (V)");
@@ -165,7 +165,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         try:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, verbose=min(2,verbose));
+                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, xtol=None, verbose=min(1,verbose));
         except:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
