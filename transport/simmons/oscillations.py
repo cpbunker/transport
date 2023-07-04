@@ -1,6 +1,6 @@
 '''
-Simmons formula description of tunneling through a tunnel junction,
-under different physical scenarios
+Capacitor model + landauer formula for describing evenly spaced dI/dVb oscillations
+due to single electron charging effects
 '''
 
 from utils import plot_fit, load_dIdV, fit_wrapper
@@ -43,7 +43,7 @@ def dIdV_imp(Vb, V0, E0, G2, G3):
     retval -= (G3)*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
     #retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*temp_kwarg);
     #retval -= (G3/4)*Ffunc(abs(Vb-V0-Delta), kelvin2eV*temp_kwarg);
-    return retval
+    return retval;
 
 def dIdV_mag(Vb, V0, Ec, G1):
     '''
@@ -115,7 +115,7 @@ def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, temp, nots, percents, stop_at='sin', num_dev = 4, verbose=0):
+def fit_dIdV(metal, temp, nots, percents, stop_at, num_dev = 4, verbose=0):
     '''
     '''
 
@@ -155,7 +155,7 @@ def fit_dIdV(metal, temp, nots, percents, stop_at='sin', num_dev = 4, verbose=0)
     background = dIdV_back(V_exp, *params_back);
     if(verbose > 4): plot_fit(V_exp, dI_exp, background, derivative=False,
                         mytitle="Impurity + magnon scattering ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
-    if(stop_at == 'imp_mag/'): return params_back, bounds_back;
+    if(stop_at == 'imp_mag/'): return V_exp, dI_exp, params_back, bounds_back;
     
     # imp, mag, lorentz_zero individually
     if(stop_at in ["imp/", "mag/", "sin/", "lorentz_zero/"]):
@@ -258,6 +258,8 @@ def fit_Mn_data():
         rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"];
     elif(stop_at == 'lorentz/'):
         rlabels = ["$V_0$", "$E_0$ (eV)", "$E_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"];
+        rlabel_mask = np.ones(np.shape(rlabels), dtype=int);
+        rlabel_mask[:-3] = np.zeros((len(rlabel_mask)-3,), dtype=int)
     else: raise NotImplementedError;
 
     # experimental params
