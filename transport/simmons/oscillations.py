@@ -262,8 +262,8 @@ def fit_Mn_data():
 
     # experimental params
     kelvin2eV =  8.617e-5;
-    Ts = np.array([2.5,5.0,10.0,15.0,20.0,25.0,30.0]);
-    Ts = np.array([2.5,5.0,10.0,15.0]);
+    Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
+    Ts = np.array([5.0,10.0,15.0]);
     # sample temp shifted due to ohmic heating
     Teffs = np.array([8.5,10.0,14.0,19.0]); # <------
 
@@ -274,9 +274,9 @@ def fit_Mn_data():
     Ec_percent, G1_percent = 0.1, 0.1;   
 
     # oscillation guesses
-    dI0_guess =   np.array([58.9,57.9,51.4,50.6])*1e3
-    Gamma_guess = np.array([5.70,4.70,4.20,4.10])*1e-3
-    EC_guess =    np.array([5.82,4.89,4.88,4.81])*1e-3
+    dI0_guess =   np.array([57.9,51.4,50.6])*1e3
+    Gamma_guess = np.array([4.70,4.20,4.10])*1e-3
+    EC_guess =    np.array([4.89,4.88,4.81])*1e-3
     dI0_percent = 0.4;
     Gamma_percent = 0.4;
     EC_percent = 0.2;
@@ -344,7 +344,7 @@ def plot_saved_fit():
     stop_ats = ['imp_mag/', 'lorentz_zero/', 'lorentz/'];
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
     stop_at = stop_ats[-1];
-    stored_plots = True;
+    stored_plots = False;
 
     # load
     fname = "fits/"
