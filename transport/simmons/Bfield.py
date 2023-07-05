@@ -39,8 +39,8 @@ def dIdV_imp(Vb, V0, E0, G2, G3):
         numerator = np.log(1+ E0/(E+kBT));
         denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
         return numerator/denominator;
-    Delta = muBohr*gfactor*bfield_kwarg;
-    print(">>>> Delta = ", Delta)
+    Delta = 0.0; # muBohr*gfactor*bfield_kwarg;
+    print(">>> Delta = ", Delta)
     retval = G2;
     retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
     retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*temp_kwarg);
@@ -200,14 +200,6 @@ def fit_Bfield_data():
     fname = "fits/Bfield/"
     stop_ats = ['imp_mag/', 'lorentz/'];
     stop_at = stop_ats[1];
-    if(stop_at=='imp_mag/'):
-        rlabels = ["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"];
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-    elif(stop_at == 'lorentz/'):
-        rlabels = ["$V_0$", "$E_0$ (eV)", "$E_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"];
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-3] = np.zeros((len(rlabels_mask)-3,), dtype=int)
-    else: raise NotImplementedError;
 
     # experimental params
     Ts = np.array([2.5, 2.5, 2.5]);
@@ -228,6 +220,17 @@ def fit_Bfield_data():
     Gamma_percent = 0.4;
     EC_percent = 0.2;
 
+    # OVER RIDE <----
+    Ts = np.array([2.5, 2.5]);
+    Teffs = np.array([8.5, 8.5]);
+    Bs = np.array([2.0, 7.0]);
+    dI0_guess =   np.array([58.9,60.3])*1e3
+    Gamma_guess = np.array([5.70,5.70])*1e-3
+    EC_guess =    np.array([5.81,5.70])*1e-3
+    dI0_percent = 0.4;
+    Gamma_percent = 0.4;
+    EC_percent = 0.2;
+
     #fitting results
     results = [];
     boundsT = [];
@@ -241,26 +244,14 @@ def fit_Bfield_data():
             global temp_kwarg; temp_kwarg = Teffs[datai]; # very bad practice
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, Ts[datai], Bs[datai],
-                guesses, percents, stop_at, verbose=1);
+                guesses, percents, stop_at, verbose=10);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
             #save processed x and y data
-            exp_fname = fname+stop_at+"stored_exp/{:.0f}".format(Ts[datai]); # <- where to get/save the plot
+            exp_fname = fname+stop_at+"stored_exp/{:.0f}".format(Bs[datai]); # <- where to get/save the plot
             np.save(exp_fname+"_x.npy", x_forfit);
             np.save(exp_fname+"_y.npy", y_forfit);
-
-    # plot fitting results vs T
-    results, boundsT = np.array(results)[:,rlabels_mask>0], np.array(boundsT)[:,:,rlabels_mask>0];
-    nresults = len(results[0]);
-    fig, axes = plt.subplots(nresults, sharex=True);
-    if(nresults==1): axes = [axes];
-    for resulti in range(nresults):
-        axes[resulti].plot(Bs, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
-        axes[resulti].set_ylabel(rlabels[resulti]);
-        axes[resulti].plot(Bs,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].plot(Bs,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
-        axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # save
     if True:
@@ -271,10 +262,111 @@ def fit_Bfield_data():
         np.save(fname+stop_at+"results.npy", results);
         np.save(fname+stop_at+"bounds.npy", boundsT);
 
+def plot_saved_fit():
+    '''
+    '''
+    verbose=10;
+    stop_ats = ['imp_mag/', 'lorentz/'];
+    stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
+    stop_at = stop_ats[1];
+    stored_plots = False;
+
+    # which fitting param is which
+    if(stop_at=='imp_mag/'):
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"]);
+        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
+    elif(stop_at == 'lorentz/'):
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
+        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
+        rlabels_mask[:-3] = np.zeros((len(rlabels_mask)-3,), dtype=int)
+
+    # load
+    fname = "fits/Bfield/"
+    print("Loading data from "+fname+stop_at);
+    Ts = np.loadtxt(fname+stop_at+"Ts.txt");
+    Teffs = np.loadtxt(fname+stop_at+"Teffs.txt");
+    Bs = np.loadtxt(fname+stop_at+"Bs.txt");
+    results = np.load(fname+stop_at+"results.npy");
+    boundsT = np.load(fname+stop_at+"bounds.npy");
+
+    # save results in latex table format
+    # recall results are [Ti, resulti]
+    results_tab = np.append(np.array([[B] for B in Bs]), results, axis = 1);
+    np.savetxt(fname+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter='&', newline = '\\\ \n');
+    print("Saving table to "+fname+stop_at+"results_table.txt");
+
+    # plot fitting results vs T
+    rlabels = rlabels[rlabels_mask>0];
+    results, boundsT = np.array(results)[:,rlabels_mask>0], np.array(boundsT)[:,:,rlabels_mask>0];
+    nresults = len(results[0]);
+    fig, axes = plt.subplots(nresults, sharex=True);
+    if(nresults==1): axes = [axes];
+    for resulti in range(nresults):
+        # plot_results, boundsT = np.array(results)[:,rlabels_mask>0], np.array(boundsT)[:,:,rlabels_mask>0];
+        axes[resulti].plot(Bs, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
+        axes[resulti].set_ylabel(rlabels[resulti]);
+        axes[resulti].plot(Bs,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].plot(Bs,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
+        axes[resulti].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+
     # format
     axes[-1].set_xlabel("$B$ (Tesla)");
     axes[0].set_title("Amplitude and period fitting");
     plt.tight_layout();
+    plt.show();
+
+    # plot each fit
+    from utils import plot_fit
+    fig3, ax3 = plt.subplots();
+    for Bvali, Bval in enumerate(Bs):
+        global temp_kwarg; temp_kwarg = Teffs[Bvali]; # very bad practice
+        print(">>> Effective temperature = ", temp_kwarg);
+        global bfield_kwarg; bfield_kwarg = Bs[Bvali];
+        print(">>> External B field = ", bfield_kwarg);
+        plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Bval); # <- where to get/save the fit plot
+        exp_fname = fname+stop_at+"stored_exp/{:.0f}".format(Bval); # <- where to get raw data
+
+        if(stored_plots): # fit already stored
+            x = np.load(plot_fname+"_x.npy");
+            y = np.load(plot_fname+"_y.npy");
+            yfit = np.load(plot_fname+"_yfit.npy");
+            
+            if False:
+                plot_fit(x, y, yfit, myylabel="$dI/dV_b$");
+            else: # plot all at once
+                if(True):
+                    offset=400;
+                    print(30*"#", Bval, ":");
+                    for parami, _ in enumerate(results[Bvali]):
+                        print(results[Bvali,parami], boundsT[Bvali, :, parami])
+                    ax3.scatter(x,offset*Bvali+y, color=mycolors[Bvali], marker=mymarkers[Bvali], 
+                                label="$B=$ {:.0f} T".format(Bval)+" ($T_{eff}=$" +"{:.0f} K)".format(Teffs[Bvali]));
+                    ax3.plot(x,offset*Bvali+yfit, color="black");
+                    ax3.set_xlabel("$V_b$ (V)");
+                    ax3.set_xlim(-0.1,0.1);
+                    ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+                    ax3.set_ylim(300,2800);
+        
+        else: # need to generate fit
+
+            # raw data w/out outliers
+            V_exp = np.load(exp_fname+"_x.npy");
+            dI_exp = np.load(exp_fname+"_y.npy");
+
+            # evaluate at fit results and plot
+            dI_fit = stopats_2_func[stop_at](V_exp, *results[Bvali]);
+            mytitle = "$B = $ {:.1f} T, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(Bval, *results[Bvali,-2:])
+            if(verbose > 4): plot_fit(V_exp, dI_exp, dI_fit, mytitle=mytitle, myylabel="$dI/dV_b$"); 
+        
+            # save V_exp, dI_exp, dI_fit for easy access
+            print("Saving plot to "+plot_fname);
+            np.save(plot_fname+"_x.npy", V_exp);
+            np.save(plot_fname+"_y.npy", dI_exp);
+            np.save(plot_fname+"_yfit.npy", dI_fit);
+            np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
+
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
+    plt.legend(loc='lower right');
     plt.show();
 
 ####################################################################
@@ -282,3 +374,4 @@ def fit_Bfield_data():
 
 if(__name__ == "__main__"):
     fit_Bfield_data();
+    plot_saved_fit();

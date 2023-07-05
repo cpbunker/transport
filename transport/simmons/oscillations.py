@@ -247,17 +247,17 @@ def fit_Mn_data():
     stop_ats = ['imp/','mag/','imp_mag/', 'sin/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[5];
     if(stop_at=='imp/'):
-        rlabels = ["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"];
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$"]);
     elif(stop_at=='mag/'):
-        rlabels = ["$V_0$", "$\\varepsilon_c$", "$G_1$"];
+        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$"]);
     elif(stop_at=='imp_mag/'):
-        rlabels = ["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"];
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"]);
     elif(stop_at=='sin/'):
-        rlabels = ["$V_0$ (V)", "$A$ (nA/V)", "$\Delta V_b$ (V)", "$dI_0$ (nA/V)"];
+        rlabels = np.array(["$V_0$ (V)", "$A$ (nA/V)", "$\Delta V_b$ (V)", "$dI_0$ (nA/V)"]);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = ["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"];
+        rlabels = np.array(["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
     elif(stop_at == 'lorentz/'):
-        rlabels = ["$V_0$", "$E_0$ (eV)", "$E_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"];
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
         rlabel_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabel_mask[:-3] = np.zeros((len(rlabel_mask)-3,), dtype=int)
     else: raise NotImplementedError;
@@ -342,7 +342,6 @@ def plot_saved_fit():
     '''
     '''
     verbose=10;
-    metal="Mn/"; # points to data folder
     stop_ats = ['imp_mag/', 'lorentz_zero/', 'lorentz/'];
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
     stop_at = stop_ats[-1];
@@ -375,14 +374,9 @@ def plot_saved_fit():
             x = np.load(plot_fname+"_x.npy");
             y = np.load(plot_fname+"_y.npy");
             yfit = np.load(plot_fname+"_yfit.npy");
-            try:
-                mytxt = open(plot_fname+"_title.txt", "r");
-                mytitle = mytxt.readline()[1:];
-            finally:
-                mytxt.close();
             
             if False:
-                plot_fit(x, y, yfit, mytitle=mytitle, myylabel="$dI/dV_b$");
+                plot_fit(x, y, yfit, myylabel="$dI/dV_b$");
             else: # plot 3 at once
                 if(Tval in [5,15]):
                     offset=400;
@@ -418,7 +412,7 @@ def plot_saved_fit():
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
-    plt.show()
+    plt.show();
 
 ####################################################################
 #### run
