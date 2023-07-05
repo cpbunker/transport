@@ -199,7 +199,7 @@ def fit_Bfield_data():
     metal="Mn/"; # points to data folder
     fname = "fits/Bfield/"
     stop_ats = ['imp_mag/', 'lorentz/'];
-    stop_at = stop_ats[0];
+    stop_at = stop_ats[1];
     if(stop_at=='imp_mag/'):
         rlabels = ["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$"];
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
@@ -221,9 +221,9 @@ def fit_Bfield_data():
     Ec_percent, G1_percent = 0.1, 0.1;   
 
     # oscillation guesses
-    dI0_guess =   np.array([58.9,58.9,58.9])*1e3
+    dI0_guess =   np.array([58.9,58.9,60.3])*1e3
     Gamma_guess = np.array([5.70,5.70,5.70])*1e-3
-    EC_guess =    np.array([5.82,5.82,5.82])*1e-3
+    EC_guess =    np.array([5.82,5.81,5.70])*1e-3
     dI0_percent = 0.4;
     Gamma_percent = 0.4;
     EC_percent = 0.2;
@@ -241,7 +241,7 @@ def fit_Bfield_data():
             global temp_kwarg; temp_kwarg = Teffs[datai]; # very bad practice
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, Ts[datai], Bs[datai],
-                guesses, percents, stop_at, verbose=10);
+                guesses, percents, stop_at, verbose=1);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
