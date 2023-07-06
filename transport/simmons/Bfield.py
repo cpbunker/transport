@@ -39,7 +39,7 @@ def dIdV_imp(Vb, V0, E0, G2, G3):
         numerator = np.log(1+ E0/(E+kBT));
         denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
         return numerator/denominator;
-    Delta = 0.0; # muBohr*gfactor*bfield_kwarg;
+    Delta = muBohr*gfactor*bfield_kwarg;
     print(">>> Delta = ", Delta)
     retval = G2;
     retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*temp_kwarg);
@@ -168,7 +168,7 @@ def fit_dIdV(metal, temp, field, nots, percents, stop_at, num_dev = 4, verbose=0
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero), derivative=False,
                 mytitle="$T=0$ Landauer fit ($T=$ {:.1f} K)".format(temp_kwarg), myylabel="$dI/dV_b$ (nA/V)");
-    
+    if(stop_at == 'lorentz/'): return V_exp, dI_exp, params_zero, bounds_zero;
     # some plotting to help with constraints
     if False:
         params_plot = np.copy(params_zero);
@@ -216,17 +216,6 @@ def fit_Bfield_data():
     dI0_guess =   np.array([58.9,58.9,60.3])*1e3
     Gamma_guess = np.array([5.70,5.70,5.70])*1e-3
     EC_guess =    np.array([5.82,5.81,5.70])*1e-3
-    dI0_percent = 0.4;
-    Gamma_percent = 0.4;
-    EC_percent = 0.2;
-
-    # OVER RIDE <----
-    Ts = np.array([2.5, 2.5]);
-    Teffs = np.array([8.5, 8.5]);
-    Bs = np.array([2.0, 7.0]);
-    dI0_guess =   np.array([58.9,60.3])*1e3
-    Gamma_guess = np.array([5.70,5.70])*1e-3
-    EC_guess =    np.array([5.81,5.70])*1e-3
     dI0_percent = 0.4;
     Gamma_percent = 0.4;
     EC_percent = 0.2;
@@ -369,9 +358,23 @@ def plot_saved_fit():
     plt.legend(loc='lower right');
     plt.show();
 
+def show_raw_data():
+    base = "KdIdV";
+    metal = "Mn/";
+    temp = 2.5;
+    fields = [0,2,7];
+    fig, ax = plt.subplots();
+    for field in fields:
+        V_exp, dI_exp = load_dIdV(base+"_"+"{:.0f}T".format(field)+".txt",metal,temp);
+        ax.plot(V_exp, dI_exp, label = "$B = $ {:.2f} meV".format(field*gfactor*muBohr*1000));
+    plt.legend();
+    plt.tight_layout();
+    plt.show();
+
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
+    show_raw_data();
     fit_Bfield_data();
     plot_saved_fit();
