@@ -279,7 +279,7 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai==4):
+        if(True):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             guesses = (E0_guess, G2_guess, G3_guess, Ec_guess, G1_guess, dI0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
             percents = (E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, dI0_percent, Gamma_percent, EC_percent);
@@ -301,7 +301,7 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
                 np.save(plot_fname+"_y.npy", y_forfit);
                 np.save(plot_fname+"_yfit.npy", y_fit);
                 np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
-                np.savetxt(plot_fname+"_results.txt", temp_results, header = ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm", "dI0","Gamma", "EC"], fmt = "%.5f", delimiter=' & ');
+                np.savetxt(plot_fname+"_results.txt", temp_results, header = str(["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm", "dI0","Gamma", "EC"]), fmt = "%.5f", delimiter=' & ');
 
     # save
     results, boundsT = np.array(results), np.array(boundsT);
