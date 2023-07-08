@@ -342,7 +342,7 @@ def plot_saved_fit(stop_at, stored_plots=True, verbose = 1):
 
     # save results in latex table format
     # recall results are [Ti, resulti]
-    results_tab = np.append(np.array([[T] for T in Ts]), results, axis = 1);
+    results_tab = np.append(np.array([[kelvin2eV*T] for T in Ts]), results, axis = 1);
     np.savetxt(fname+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
     print("Saving table to "+fname+stop_at+"results_table.txt");
     
