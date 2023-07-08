@@ -102,9 +102,9 @@ def load_dIdV_tocurrent(base,folder,temp,Vcutoff):
 # fig standardizing
 myxvals = 199;
 myfontsize = 14;
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+mycolors = ["cornflowerblue", "darkred", "darkgreen", "darkorange", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","+","^","s","d","*","X"];
+mymarkers = ["o","s","^","d","*","+","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
@@ -120,17 +120,26 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
     # plot
     ax.scatter(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
     ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
-
-    if(smooth):
-        kernel = np.ones((len(xvals)//10,))/(len(xvals)//10);
-        yvals = np.convolve(yvals, kernel, mode='same');
-        explabel +=" (smoothed)";
         
     # derivative
     if(derivative):
-        offset = -200
-        stretch = 0.5*(np.max(yvals)-np.min(yvals))
-        ax.plot(xvals, offset + stretch*np.gradient(yvals)/max(np.gradient(yvals)), label="$d^2I/dV_b ^2$", color='lightgray', linewidth=5*mylinewidth);  
+        deriv_colors = ['lightgray', 'tan']
+        for derivi in range(len([yvals])):
+            yv = [yvals, yfit][derivi];
+            offset = -200
+            stretch = 1.0*(np.max(yv)-np.min(yv))
+            derivvals = offset + stretch*np.gradient(yv)/max(np.gradient(yv))
+            ax.plot(xvals, derivvals, label="$d^2I/dV_b ^2$", color=deriv_colors[derivi], linewidth=5*mylinewidth);  
+
+            if True: # annotate signatures
+                # impurity
+                for extremum in [np.min, np.max]:
+                    peak = extremum(derivvals[abs(xvals)<0.05]);
+                    ax.axhline(peak, xmin = 0.4, xmax = 0.6, color = "red", linestyle = "dashed", alpha = 0.5);
+                # magnon
+                epsilonc = 10*1e-3; # magnon activation about 10 meV
+                ax.axhline(np.mean(derivvals[xvals <-epsilonc]), xmin = 0.0, xmax = 0.5, color = "red", linestyle="dotted", alpha=0.5);
+                ax.axhline(np.mean(derivvals[xvals > epsilonc]), xmin = 0.5, xmax = 1.0, color = "red", linestyle="dotted", alpha=0.5);
 
     # error
     rmse = np.sqrt( np.mean( np.power(yvals-yfit,2) ))/abs(np.max(yvals)-np.min(yvals));

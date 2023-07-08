@@ -11,13 +11,13 @@ import matplotlib.pyplot as plt
 # fig standardizing
 myxvals = 199;
 myfontsize = 14;
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkorange", "darkmagenta","darkgray"];
+mycolors = ["cornflowerblue", "darkred", "darkgreen", "darkorange", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
-mymarkers = ["o","+","^","s","d","*","X"];
+mymarkers = ["o","s","^","d","*","+","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # units
 kelvin2eV =  8.617e-5; # eV/K
@@ -171,12 +171,18 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, rescale=1, verbose=0):
                 mytitle="Landauer_zero fit (B= {:.1f} T)".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'lorentz_zero/'): return V_exp, dI_exp, params_zero, bounds_zero; 
 
+    # have to truncate to avoid overflow when temp is this low!!!!
+    Vtrunc = 0.02;
+    dI_exp = dI_exp[abs(V_exp)<Vtrunc];
+    V_exp = V_exp[abs(V_exp)<Vtrunc];
+    # <----- look into fixing later !
+
     # some plotting to help with constraints
     if False:
         params_plot = np.copy(params_zero);
         # <- notice that dI0, Gamma, EC also inherit from params_zero since thermal effects are so small
         print(params_plot)
-        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_plot))
+        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_plot));
         assert False
 
     # constrain and do finite temp fit
@@ -190,7 +196,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, rescale=1, verbose=0):
                                 params_all_guess, bounds_all, ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm","dI0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all), derivative=False,
-                mytitle="Landauer fit  (B= {:.1f} T)".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                mytitle="Landauer fit (B= {:.1f} T)".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'lorentz/'): return V_exp, dI_exp, params_all, bounds_all;
     raise NotImplementedError;
 
@@ -256,10 +262,9 @@ def fit_Bfield_data(stop_at,metal="Mn/",verbose=1):
         np.save(fname+stop_at+"results.npy", results);
         np.save(fname+stop_at+"bounds.npy", boundsT);
 
-def plot_saved_fit(stop_at, verbose = 1, combined=False):
+def plot_saved_fit(stop_at, combined=[], verbose = 1):
     '''
     '''
-    stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
     # which fitting param is which
     if(stop_at=='imp_mag/'):
@@ -270,11 +275,42 @@ def plot_saved_fit(stop_at, verbose = 1, combined=False):
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[1:-3] = np.zeros_like(rlabels_mask)[1:-3];
 
-    # load
+    # plot each fit
     fname = "fits/Bfield/"
-    print("Loading data from "+fname+stop_at);
     Ts = np.loadtxt(fname+stop_at+"Ts.txt");
     Bs = np.loadtxt(fname+stop_at+"Bs.txt");
+    from utils import plot_fit
+    fig3, ax3 = plt.subplots();
+    for Bvali, Bval in enumerate(Bs):
+        global temp_kwarg; temp_kwarg = Ts[Bvali]; # very bad practice
+        global bfield_kwarg; bfield_kwarg = Bs[Bvali];
+        print(">>> Temperature = ", temp_kwarg);
+        print(">>> External B field = ", bfield_kwarg);
+        plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Bval); # <- where to get/save the fit plot
+        x = np.load(plot_fname+"_x.npy");
+        y = np.load(plot_fname+"_y.npy");
+        yfit = np.load(plot_fname+"_yfit.npy");
+        print("Loading fit from "+plot_fname+"_yfit.npy");
+
+        # plot
+        if(combined): # plot all at once
+            if(Bval in combined):
+                offset=8000;
+                ax3.scatter(x,offset*Bvali+y, color=mycolors[Bvali], marker=mymarkers[Bvali], label="$B=$ {:.0f} T".format(Bval));
+                ax3.plot(x,offset*Bvali+yfit, color="black");
+                ax3.set_xlabel("$V_b$ (V)");
+                ax3.set_xlim(-0.1,0.1);
+                ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+                #ax3.set_ylim(300,2800);
+        else:
+            plot_fit(x, y, yfit, myylabel="$dI/dV_b$");
+        
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
+    plt.legend(loc='lower right');
+    plt.show();
+
+    # load
+    print("Loading data from "+fname+stop_at);
     results = np.load(fname+stop_at+"results.npy");
     boundsT = np.load(fname+stop_at+"bounds.npy");
 
@@ -304,35 +340,6 @@ def plot_saved_fit(stop_at, verbose = 1, combined=False):
     plt.tight_layout();
     plt.show();
 
-    # plot each fit
-    from utils import plot_fit
-    fig3, ax3 = plt.subplots();
-    for Bvali, Bval in enumerate(Bs):
-        global temp_kwarg; temp_kwarg = Ts[Bvali]; # very bad practice
-        global bfield_kwarg; bfield_kwarg = Bs[Bvali];
-        print(">>> Temperature = ", temp_kwarg);
-        print(">>> External B field = ", bfield_kwarg);
-        plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Bval); # <- where to get/save the fit plot
-        x = np.load(plot_fname+"_x.npy");
-        y = np.load(plot_fname+"_y.npy");
-        yfit = np.load(plot_fname+"_yfit.npy");
-        print("Loading fit from "+plot_fname+"_yfit.npy");
-        if(not combined):
-            plot_fit(x, y, yfit, myylabel="$dI/dV_b$");
-        else: # plot all at once
-            if(True):
-                offset=8000;
-                ax3.scatter(x,offset*Bvali+y, color=mycolors[Bvali], marker=mymarkers[Bvali], label="$B=$ {:.0f} T".format(Bval));
-                ax3.plot(x,offset*Bvali+yfit, color="black");
-                ax3.set_xlabel("$V_b$ (V)");
-                ax3.set_xlim(-0.1,0.1);
-                ax3.set_ylabel("$dI/dV_b$ (nA/V)");
-                #ax3.set_ylim(300,2800);
-        
-    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
-    plt.legend(loc='lower right');
-    plt.show();
-
 def show_raw_data():
     base = "KdIdV";
     metal = "Mn/";
@@ -352,8 +359,8 @@ def show_raw_data():
 if(__name__ == "__main__"):
     stop_ats = ['imp_mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-2];
-    verbose=1;
+    verbose=10;
     
     #show_raw_data();
     #fit_Bfield_data(stop_at,verbose=verbose);
-    plot_saved_fit(stop_at,verbose=verbose, combined=True);
+    plot_saved_fit(stop_at,verbose=verbose, combined=[0,2,7]);
