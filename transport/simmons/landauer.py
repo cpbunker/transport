@@ -214,19 +214,20 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if False: # plot at various Gamma
+    if True: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e6));
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_EC = 0.005;
+        my_EC = 0.00582;
         my_temp = 0.0*kelvin2eV;
-        nmax = 10;
+        nmax = 200;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over Gamma
         Gammavals = np.array([1e-4,2*my_EC/np.sqrt(48),0.003]);
+        Gammavals = 1e-3*np.array([2,3,4,5])
         to_save = np.empty((len(Gammavals),len(Vbs)),dtype=float); to_savei=0;
         for Gammaval in Gammavals:
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
@@ -247,14 +248,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-        # save
-        fname = "land_data/vsGamma"
-        save_params = np.array([my_mu0, np.nan, my_EC, my_temp, nmax]);
-        print("Saving to "+fname);
-        np.savetxt(fname+".txt",save_params);
-        np.save(fname, to_save);
-
-    if True: # plot at various EC
+    if False: # plot at various EC
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 
@@ -287,14 +281,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-        # save
-        fname = "land_data/vsEC"
-        save_params = np.array([my_mu0, my_Gamma, np.nan, my_temp, nmax]);
-        print("Saving to "+fname);
-        np.savetxt(fname+".txt",save_params);
-        np.save(fname, to_save);
-
-    if True: # plot at various temperatures
+    if False: # plot at various temperatures
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
 
@@ -331,13 +318,6 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-        # save
-        fname = "land_data/vsT"
-        save_params = np.array([my_mu0, my_Gamma, my_EC, np.nan, nmax]);
-        print("Saving to "+fname);
-        np.savetxt(fname+".txt",save_params);
-        np.save(fname, to_save);
-
     if False: # plot at various mu0
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
@@ -370,11 +350,4 @@ if(__name__ == "__main__"):
         plt.legend();
         plt.tight_layout();
         plt.show();
-
-        # save
-        fname = "land_data/vsEC"
-        save_params = np.array([np.nan, my_Gamma, my_EC, my_temp, nmax]);
-        print("Saving to "+fname);
-        np.savetxt(fname+".txt",save_params);
-        np.save(fname, to_save);
     
