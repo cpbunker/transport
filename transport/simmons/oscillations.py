@@ -301,7 +301,7 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
                 np.save(plot_fname+"_y.npy", y_forfit);
                 np.save(plot_fname+"_yfit.npy", y_fit);
                 np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
-                np.savetxt(plot_fname+"_results.txt", temp_results, header = ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm", "dI0","Gamma", "EC"], fmt = "%.5f", delimiter=' & ');
+                np.savetxt(plot_fname+"_results.txt", temp_results, header = str(["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm", "dI0","Gamma", "EC"]), fmt = "%.5f", delimiter=' & ');
 
     # save
     results, boundsT = np.array(results), np.array(boundsT);
