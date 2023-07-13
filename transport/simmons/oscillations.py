@@ -83,7 +83,7 @@ def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC):
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    return -dI0+1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
+    return dI0*1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
 
 def dIdV_lorentz(Vb, V0, dI0, Gamma, EC): 
     '''
@@ -92,7 +92,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    return -dI0+1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
+    return dI0*1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
 
 def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
     '''
@@ -207,7 +207,6 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     params_zero_guess[:len(params_back)] = params_back; # background only results -> all guess
     bounds_zero = np.zeros((2,len(params_back)+3));
     bounds_zero[:,:len(params_back)] = bounds_back; # background only bounds -> all guess
-    if(temp_kwarg >= 25): bounds_zero[:,0] = [params_back[0],params_back[0]+1e-6]; # fix V0
 
     # for oscillation
     params_zero_guess[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
@@ -261,20 +260,19 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     # experimental params
     Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
 
-    # lorentzian guesses
-    E0_guess, G2_guess, G3_guess = 0.008, 1250, 750 # 2.5 K: 0.0105, 850,450
-    Ec_guess, G1_guess = 0.013, 1000;
-    E0_percent, G2_percent, G3_percent = 0.1, 0.9, 0.1;
-    Ec_percent, G1_percent = 0.1, 0.4;
-    ohm_guess, ohm_percent = 2.5, 1.0;
+    # background guesses
+    E0_guess, Ec_guess = 0.006, 0.006; # in eV
+    E0_percent, Ec_percent = 1.0, 1.0;
+    G1_guess, G2_guess, G3_guess = 1000, 1000, 1000; # in nA/V
+    G1_percent, G2_percent, G3_percent = 1.5, 1.0, 1.0;
+    ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
 
     # oscillation guesses
-    dI0_guess =   np.array([60.5,57.5,50.5,56.5,57.1,60.4])*1e3
-    Gamma_guess = np.array([4.90,4.67,4.10,4.40,5.10,5.40])*1e-3
-    EC_guess =    np.array([4.89,4.88,4.81,4.63,5.33,5.35])*1e-3
-    dI0_percent = 0.4;
-    Gamma_percent = 0.4;
-    EC_percent = 0.2;
+    dI0_guess =   np.array([0.02, 0.02, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
+    Gamma_guess = np.array([1.0, 1.2, 1.2, 1.2, 1.0, 1.0])*1e-3; # in eV
+    EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
+    dI0_percent, Gamma_percent, EC_percent = 0.2, 0.4, 0.2;
+
 
     #fitting results
     results = [];
@@ -411,13 +409,13 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
 if(__name__ == "__main__"):
 
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
+    stop_at = stop_ats[-2];
     verbose=10
 
     # this one executes the fitting and stores results
-    #fit_Mn_data(stop_at, verbose=verbose);
+    fit_Mn_data(stop_at, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, verbose=verbose, combined=[]);
 
