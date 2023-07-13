@@ -156,7 +156,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
 #### misc
 
 def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
-                stop_bounds = True, max_nfev = 2000, verbose=0):
+                stop_bounds = True, max_nfev = 500, verbose=0):
     '''
     Wrapper for
     calling scipy.optimize.curve_fit and getting fitting params
@@ -174,7 +174,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         try:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', max_nfev = max_nfev, xtol=None, verbose=2) #min(1,verbose));
+                                p0=p0,bounds=bounds, loss='linear', xtol = None, max_nfev = max_nfev, verbose=2) #min(1,verbose));
         except:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
