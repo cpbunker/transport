@@ -73,7 +73,7 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
         Enval = En(n,EC,Vb);
         conductance += 1/(1+np.power((muL-Enval)/(2*Gamma),2));
         conductance += 1/(1+np.power((muR-Enval)/(2*Gamma),2));
-    return Gamma*Gamma/(2*np.power(2*Gamma,2))*conductance;
+    return Gamma*Gamma/(2*2*Gamma*2*Gamma)*conductance;
 
 def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     '''

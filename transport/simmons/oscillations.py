@@ -18,7 +18,7 @@ mymarkers = ["o","s","^","d","*","+","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # units
 kelvin2eV =  8.617e-5;
@@ -113,8 +113,22 @@ def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose=0):
     '''
+    The main function for fitting the metal Pc dI/dV data
+    The data is stored as metal/__dIdV.txt where __ is the temperature
+    Args:
+    - metal, str, the name of the metal, also gives path to data folder
+    nots, a tuple of initial guesses for all params:
+            - ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm"] for impurity & magnon background
+            - those, plus dI0, Gamma0, EC for oscillations
+    - percents: tuple of one percent for each entry in not. These are used to
+        construct the upper bound =not*(1+percent) and lower bound=not*(1-percent)
+    - stop_at, str telling which fit function to stop at, and return fitting
+            params for. For final fit, should always = "lorentz/"
+    - by_hand, bool, instead of running scipy.optimize.curve_fit, you can fit by hand
+        by setting this to true, because it will just plot with dI0, Gamma0, EC
+        fixed to your guesses.
     '''
 
     # load data
@@ -124,16 +138,15 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, verbose=0):
 
     # unpack
     V0_bound = 1e-2;
-    E0_not, G2_not, G3_not, Ec_not, G1_not, dI0_not, Gamma_not, EC_not = nots;
-    E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, dI0_percent, Gamma_percent, EC_percent = percents
-    ohm_not, ohm_max = 0.0, 5.0; # ohmic heating lims in kelvin
+    E0_not, G2_not, G3_not, Ec_not, G1_not, ohm_not, dI0_not, Gamma_not, EC_not = nots;
+    E0_percent, G2_percent, G3_percent, Ec_percent, ohm_percent, G1_percent, dI0_percent, Gamma_percent, EC_percent = percents
     
     #### fit background
 
     # initial fit to magnon + imp
     params_init_guess = np.array([0.0, E0_not, Ec_not, G1_not, G2_not, G3_not, ohm_not]);
-    bounds_init = np.array([[-V0_bound, E0_not*(1-E0_percent), Ec_not*(1-Ec_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), ohm_not],
-                            [ V0_bound, E0_not*(1+E0_percent), Ec_not*(1+Ec_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), ohm_max]]);
+    bounds_init = np.array([[-V0_bound, E0_not*(1-E0_percent), Ec_not*(1-Ec_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), ohm_not*(1-ohm_percent)],
+                            [ V0_bound, E0_not*(1+E0_percent), Ec_not*(1+Ec_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), ohm_not*(1+ohm_percent)]]);
     params_init, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
                             params_init_guess, bounds_init, ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm"],
                             stop_bounds = False, verbose=verbose);
@@ -209,7 +222,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, verbose=0):
     if(stop_at == 'lorentz_zero/'): return V_exp, dI_exp, params_zero, bounds_zero; 
 
     # some plotting to help with constraints
-    if False:
+    if(by_hand):
         params_plot = np.copy(params_zero);
         params_plot[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
         print(params_plot)
@@ -235,6 +248,13 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev = 4, verbose=0):
 #### wrappers
 
 def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
+    '''
+    Wrapper function for calling fit_dIdV on different temperature data sets
+    and saving the results of those fits
+    Args:
+        - stop_at, str telling which fit function to stop at, and return fitting
+            params for. For final fit, should always = "lorentz/" 
+    '''
     fname = "fits/";
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
@@ -245,7 +265,8 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     E0_guess, G2_guess, G3_guess = 0.008, 1250, 750 # 2.5 K: 0.0105, 850,450
     Ec_guess, G1_guess = 0.013, 1000;
     E0_percent, G2_percent, G3_percent = 0.1, 0.9, 0.1;
-    Ec_percent, G1_percent = 0.1, 0.4;   
+    Ec_percent, G1_percent = 0.1, 0.4;
+    ohm_guess, ohm_percent = 2.5, 1.0;
 
     # oscillation guesses
     dI0_guess =   np.array([60.5,57.5,50.5,56.5,57.1,60.4])*1e3
@@ -261,8 +282,8 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     for datai in range(len(Ts)):
         if(True):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
-            guesses = (E0_guess, G2_guess, G3_guess, Ec_guess, G1_guess, dI0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
-            percents = (E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, dI0_percent, Gamma_percent, EC_percent);
+            guesses = (E0_guess, G2_guess, G3_guess, Ec_guess, G1_guess, ohm_guess, dI0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
+            percents = (E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, ohm_percent, dI0_percent, Gamma_percent, EC_percent);
 
             # get fit results
             global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
@@ -331,12 +352,12 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
 
         # temp with ohmic heating
         global temp_kwarg; temp_kwarg = Ts[Tvali] + T_ohm; # very bad practice
-        print(">>> Temperature = ", temp_kwarg);
+        print(">>> Temperature = ", Tval);
 
         # plot
         if(combined): # plot all at once
             if(Tval in combined):
-                offset=800;
+                offset=0;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
                             label="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
@@ -344,8 +365,9 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
                 ax3.set_xlim(-0.1,0.1);
                 ax3.set_ylabel("$dI/dV_b$ (nA/V)");
                 #ax3.set_ylim(300,2800);
+                print(temp_results);
         else:
-            plot_fit(x, y, yfit, myylabel="$dI/dV_b$");
+            plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)");
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
@@ -369,12 +391,13 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
             axes[axi].plot(Ts,boundsT[:,1,resulti], color=accentcolors[0],linestyle='dashed');
             axes[axi].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
             axi += 1;
-    
+
     # format
     axes[-1].set_xlabel("$B$ (Tesla)");
     axes[0].set_title("Amplitude and period fitting");
     plt.tight_layout();
     plt.show();
+    
 
     # save results in latex table format
     # recall results are [Ti, resulti]
@@ -390,7 +413,11 @@ if(__name__ == "__main__"):
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
     verbose=10
-    
+
+    # this one executes the fitting and stores results
     #fit_Mn_data(stop_at, verbose=verbose);
-    plot_saved_fit(stop_at, verbose=verbose, combined=[5,10,15]);
+
+    # this one plots the stored results
+    # combined allows you to plot two temps side by side
+    plot_saved_fit(stop_at, verbose=verbose, combined=[]);
 
