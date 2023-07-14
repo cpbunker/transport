@@ -131,7 +131,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     '''
 
     # load data
-    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal, temp_kwarg);
+    V_exp, dI_exp = load_dIdV("KdIdV.txt",metal+"data/", temp_kwarg);
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);
     dI_dev = np.sqrt( np.median(np.power(dI_exp-np.mean(dI_exp),2)));
 
@@ -245,7 +245,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
 ####################################################################
 #### wrappers
 
-def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
+def fit_Mn_data(stop_at, metal, verbose=1):
     '''
     Wrapper function for calling fit_dIdV on different temperature data sets
     and saving the results of those fits
@@ -253,11 +253,10 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
         - stop_at, str telling which fit function to stop at, and return fitting
             params for. For final fit, should always = "lorentz/" 
     '''
-    fname = "fits/";
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
     # experimental params
-    Ts = np.array([5.0,10.0,15.0,20.0,25.0,30.0]);
+    Ts = np.loadtxt(metal+"Ts.txt");
 
     # background guesses
     E0_guess, Ec_guess = 0.006, 0.006; # in eV
@@ -289,7 +288,7 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     
             #save processed x and y data, and store plot
             if(stop_at in ["imp_mag/", "lorentz_zero/", "lorentz/"]):
-                plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
+                plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);
                 mytitle="$T_{ohm} = $";
                 mytitle += "{:.1f} K, $dI_0 = $ {:.0f} nA/V, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(*temp_results[-4:])
@@ -303,12 +302,11 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     # save
     results, boundsT = np.array(results), np.array(boundsT);
     if(stop_at in ["imp_mag/", "lorentz_zero/", "lorentz/"]):
-        print("Saving data to "+fname+stop_at);
-        np.savetxt(fname+stop_at+"Ts.txt", Ts);
-        np.save(fname+stop_at+"results.npy", results);
-        np.save(fname+stop_at+"bounds.npy", boundsT);
+        print("Saving data to "+metal+stop_at);
+        np.save(metal+stop_at+"results.npy", results);
+        np.save(metal+stop_at+"bounds.npy", boundsT);
 
-def plot_saved_fit(stop_at, combined=[], verbose = 1):
+def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     '''
     '''
 
@@ -333,12 +331,11 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
     else: raise NotImplementedError;
     
     # plot each fit
-    fname = "fits/"
-    Ts = np.loadtxt(fname+stop_at+"Ts.txt");
+    Ts = np.loadtxt(metal+"Ts.txt");
     from utils import plot_fit
     fig3, ax3 = plt.subplots();
     for Tvali, Tval in enumerate(Ts):
-        plot_fname = fname+stop_at+"stored_plots/{:.0f}".format(Tval); # <- where to get/save the fit plot
+        plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Tval); # <- where to get/save the fit plot
         temp_results = np.loadtxt(plot_fname+"_results.txt");
         T_ohm = temp_results[6];
         x = np.load(plot_fname+"_x.npy");
@@ -363,16 +360,16 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
                 #ax3.set_ylim(300,2800);
                 print(temp_results);
         else:
-            plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)");
+            plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
     plt.show();
 
     # load
-    print("Loading data from "+fname+stop_at);
-    results = np.load(fname+stop_at+"results.npy");
-    boundsT = np.load(fname+stop_at+"bounds.npy");
+    print("Loading data from "+metal+stop_at);
+    results = np.load(metal+stop_at+"results.npy");
+    boundsT = np.load(metal+stop_at+"bounds.npy");
 
     # plot fitting results vs T
     nresults = sum([el for el in rlabels_mask]);
@@ -398,22 +395,23 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
     # save results in latex table format
     # recall results are [Ti, resulti]
     results_tab = np.append(np.array([[T] for T in Ts]), results, axis = 1);
-    np.savetxt(fname+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
-    print("Saving table to "+fname+stop_at+"results_table.txt");
+    np.savetxt(metal+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
+    print("Saving table to "+metal+stop_at+"results_table.txt");
 
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
 
+    metal = "Mn/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
+    stop_at = stop_ats[-2];
     verbose=10
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, verbose=verbose);
+    fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 

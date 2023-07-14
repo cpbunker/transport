@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simpson as scipy_integ
 
 import time
+
+# units
 kelvin2eV =  8.617e-5; # units eV/K
 e2overh= 7.748e-5 *1e9/2; # units nA/volt
 
@@ -74,8 +76,8 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     conductance = np.zeros_like(Vb);
     for n in ns:
         Enval = En(n,EC,Vb);
-        conductance += 1/(1+np.power((muL-Enval)/Gamma,2));
-        conductance += 1/(1+np.power((muR-Enval)/Gamma,2));
+        conductance += 1/(1+(muL-Enval)*(muL-Enval)/(Gamma*Gamma) );
+        conductance += 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
     return e2overh*(1/2)*conductance;
 
 def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
