@@ -139,7 +139,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     # unpack
     V0_bound = 1e-2;
     E0_not, G2_not, G3_not, Ec_not, G1_not, ohm_not, dI0_not, Gamma_not, EC_not = nots;
-    E0_percent, G2_percent, G3_percent, Ec_percent, ohm_percent, G1_percent, dI0_percent, Gamma_percent, EC_percent = percents
+    E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, ohm_percent, dI0_percent, Gamma_percent, EC_percent = percents
     
     #### fit background
 
@@ -232,7 +232,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     params_all_guess = np.copy(params_zero);
     params_all_guess[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
     bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
+    constrain_mask = np.array([0,0,0,0,0,0,0,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
@@ -272,7 +272,6 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     Gamma_guess = np.array([1.0, 1.2, 1.2, 1.2, 1.0, 1.0])*1e-3; # in eV
     EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
     dI0_percent, Gamma_percent, EC_percent = 0.2, 0.4, 0.2;
-
 
     #fitting results
     results = [];
@@ -337,6 +336,7 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
     # plot each fit
     fname = "fits/"
     Ts = np.loadtxt(fname+stop_at+"Ts.txt");
+    if(np.shape(Ts) == ()): Ts = np.array([Ts]);
     from utils import plot_fit
     fig3, ax3 = plt.subplots();
     for Tvali, Tval in enumerate(Ts):
