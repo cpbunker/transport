@@ -216,18 +216,17 @@ if(__name__ == "__main__"):
 
     if True: # plot at various Gamma
         fig, ax = plt.subplots();
-        Vbs = np.linspace(-Vb_max,Vb_max,int(1e6));
+        Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_EC = 0.00582;
+        my_EC = 0.010;
         my_temp = 0.0*kelvin2eV;
-        nmax = 200;
+        nmax = 10;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over Gamma
-        Gammavals = np.array([1e-4,2*my_EC/np.sqrt(48),0.003]);
-        Gammavals = 1e-3*np.array([2,3,4,5])
+        Gammavals = np.array([1e-4,my_EC/np.sqrt(4*3)]); # CHANGE !
         to_save = np.empty((len(Gammavals),len(Vbs)),dtype=float); to_savei=0;
         for Gammaval in Gammavals:
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
@@ -248,13 +247,13 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if False: # plot at various EC
+    if True: # plot at various EC
         fig, ax = plt.subplots();
-        Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
+        Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_Gamma = 0.001; 
+        my_Gamma = 0.0001; 
         my_temp = 0.0*kelvin2eV;
         nmax = 10;
         narr = np.arange(-nmax,nmax+1);
@@ -266,13 +265,13 @@ if(__name__ == "__main__"):
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.3f}".format(ECval));
+            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.4f} eV".format(ECval));
             for integer in [0]:
                 print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, ECval, 0.0)-2*my_mu0));
                 ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.3f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
+        ax.set_title( "$T = $ {:.1f} K, $\mu_0 = $ {:.4f} eV, $\Gamma_0 = $ {:.4f} eV".format(my_temp/kelvin2eV, my_mu0, my_Gamma));
         ax.set_xlabel("$V_b$ (V)");
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
         else: ax.set_ylabel("$I(V_b)$ (nA)");
@@ -283,17 +282,17 @@ if(__name__ == "__main__"):
 
     if False: # plot at various temperatures
         fig, ax = plt.subplots();
-        Vbs = np.linspace(-Vb_max,Vb_max,int(1e3));
+        Vbs = np.linspace(0,Vb_max,int(1e4));
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_Gamma = 0.004;
-        my_EC = 0.005;
+        my_Gamma = 0.0001;
+        my_EC = 0.010;
         nmax = 10;
         narr = np.arange(-nmax,nmax+1);
 
         # iter over T
-        Tvals = np.array([6.5,29])*kelvin2eV;
+        Tvals = np.array([2.5,5,10,20])*kelvin2eV;
         to_save = np.empty((len(Tvals),len(Vbs)),dtype=float); to_savei=0;
         for Tval in Tvals:
             start = time.time();
@@ -302,13 +301,13 @@ if(__name__ == "__main__"):
             stop = time.time();
             print("Total integration time = ",stop-start);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$k_B T = $ {:.5f} eV".format(Tval));
+            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$k_B T = $ {:.4f} eV".format(Tval));
         for integer in [0]:
-            print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
+            print("2EC(2n+1) - 2mu0 = {:.4f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
             ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
 
         # format
-        ax.set_title( "$\mu_0 = $ {:.3f} eV, $\Gamma_0 = $ {:.4f} eV, $E_C = $ {:.3f} eV".format(my_mu0, my_Gamma, my_EC));
+        ax.set_title( "$\mu_0 = $ {:.4f} eV, $\Gamma_0 = $ {:.4f} eV, $E_C = $ {:.4f} eV".format(my_mu0, my_Gamma, my_EC));
         ax.set_xlabel("$V_b$ (V)");
         ax.set_xlim(np.min(Vbs), np.max(Vbs));
         if(conductance): ax.set_ylabel("$dI/dV_b$ (nA/V)");
