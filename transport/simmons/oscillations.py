@@ -231,7 +231,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     params_all_guess = np.copy(params_zero);
     params_all_guess[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
     bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
+    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, EC free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
@@ -352,7 +352,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             if(Tval in combined):
                 offset=0;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
-                            label="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
+                            label="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
                 ax3.set_xlabel("$V_b$ (V)");
                 ax3.set_xlim(-0.1,0.1);
@@ -360,7 +360,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
                 #ax3.set_ylim(300,2800);
                 print(temp_results);
         else:
-            plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
+            if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
@@ -406,12 +406,12 @@ if(__name__ == "__main__"):
     metal = "Mn/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-2];
-    verbose=10
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 

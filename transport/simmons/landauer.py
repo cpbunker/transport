@@ -80,7 +80,7 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
         conductance += 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
     return e2overh*(1/2)*conductance;
 
-def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
+def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e4):
     '''
     Compute the finite temperature current by numerical integration
     '''
