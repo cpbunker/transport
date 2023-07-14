@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simpson as scipy_integ
 
 import time
+kelvin2eV =  8.617e-5; # units eV/K
+e2overh= 7.748e-5 *1e9/2; # units nA/volt
+
 
 def En(n, EC, Vb):
     '''
@@ -51,7 +54,7 @@ def I_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
         Enval = En(n,EC,Vb);
         current += np.arctan((muL-Enval)/Gamma);
         current +=-np.arctan((muR-Enval)/Gamma);
-    return Gamma*current;
+    return e2overh*Gamma*current;
 
 def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     '''
@@ -73,7 +76,7 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
         Enval = En(n,EC,Vb);
         conductance += 1/(1+np.power((muL-Enval)/Gamma,2));
         conductance += 1/(1+np.power((muR-Enval)/Gamma,2));
-    return (1/2)*conductance;
+    return e2overh*(1/2)*conductance;
 
 def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     '''
@@ -99,7 +102,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
             tau_vals = 1/(1+ np.power( (Evals-Enval)/Gamma,2));
             integration_result[Vbi] += np.trapz(tau_vals*(nFD(Evals-muL,kBT)-nFD(Evals-muR,kBT)), Evals);
 
-    return integration_result;
+    return e2overh*integration_result;
 
 def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
     '''
@@ -148,15 +151,13 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
         Vb_integrand = integrand(Emesh, ns, Vbval);
         integration_result[Vbi] = scipy_integ(Vb_integrand, Emesh);
 
-    return integration_result;
+    return e2overh*integration_result;
 
 
 if(__name__ == "__main__"):
 
     # experimental params (Mn/5KExp.txt)
     Vb_max = 0.1;
-    kelvin2eV =  8.617e-5; # units eV/K
-    conductance_quantum = 7.748e-5 /2; # units amp/volt
     conductance = True;
 
     if False: # plot with various methods
@@ -177,26 +178,26 @@ if(__name__ == "__main__"):
         
             # zero temp analytic
             Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, 0.0, narr);
-            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb_zero");
+            axes[0].plot(Vbs, Is, label = "dI_of_Vb_zero");
 
             # finite temp analytical
             start = time.time();
             Is = dI_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr);
             stop = time.time();
             print("dI_of_Vb time = ",stop-start);
-            axes[0].plot(Vbs, conductance_quantum*1e9*Is, label = "dI_of_Vb");
+            axes[0].plot(Vbs, Is, label = "dI_of_Vb");
 
             if False:
                 # zero temp gradient
                 Is = np.gradient(I_of_Vb_zero(Vbs, my_mu0, my_Gamma, my_EC, 0.0, narr));
-                axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "gradient of I_of_Vb_zero");
+                axes[1].plot(Vbs, Is, label = "gradient of I_of_Vb_zero");
 
                 # finite temp gradient
                 start = time.time();
                 Is = np.gradient(I_of_Vb(Vbs, my_mu0, my_Gamma, my_EC, my_temp, narr));
                 stop = time.time();
                 print("I_of_Vb time = ",stop-start);
-                axes[1].plot(Vbs, conductance_quantum*1e9*Is, label = "gradient of I_of_Vb");
+                axes[1].plot(Vbs, Is, label = "gradient of I_of_Vb");
 
             # peaks
             for integer in [0]:
@@ -214,7 +215,7 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if False: # plot at various Gamma
+    if True: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
@@ -232,7 +233,7 @@ if(__name__ == "__main__"):
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
             else: Is = I_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$\Gamma_0 = $ {:.5f}".format(Gammaval));
+            ax.plot(Vbs, Is, label = "$\Gamma_0 = $ {:.5f}".format(Gammaval));
         for integer in [0]:
             print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
             ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
@@ -247,7 +248,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if False: # plot at various EC
+    if True: # plot at various EC
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
@@ -265,7 +266,7 @@ if(__name__ == "__main__"):
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             else: Is = I_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$E_C = $ {:.4f} eV".format(ECval));
+            ax.plot(Vbs, Is, label = "$E_C = $ {:.4f} eV".format(ECval));
             for integer in [0]:
                 print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, ECval, 0.0)-2*my_mu0));
                 ax.axvline(2*En(integer, ECval, 0.0)-2*my_mu0,color="black",linestyle="dashed");
@@ -301,7 +302,7 @@ if(__name__ == "__main__"):
             stop = time.time();
             print("Total integration time = ",stop-start);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$k_B T = $ {:.4f} eV".format(Tval));
+            ax.plot(Vbs, Is, label = "$k_B T = $ {:.4f} eV".format(Tval));
         for integer in [0]:
             print("2EC(2n+1) - 2mu0 = {:.4f}".format(2*En(integer, my_EC, 0.0)-2*my_mu0));
             ax.axvline(2*En(integer, my_EC, 0.0)-2*my_mu0,color="black",linestyle="dashed");
@@ -335,7 +336,7 @@ if(__name__ == "__main__"):
             if(conductance): Is = dI_of_Vb_zero(Vbs, muval, my_Gamma, my_EC, my_temp, narr);
             else: Is = I_of_Vb_zero(Vbs, muval, my_Gamma, my_EC, my_temp, narr);
             to_save[to_savei]=Is; to_savei += 1;
-            ax.plot(Vbs, conductance_quantum*1e9*Is, label = "$\mu_0 = $ {:.3f}".format(muval));
+            ax.plot(Vbs, Is, label = "$\mu_0 = $ {:.3f}".format(muval));
             for integer in [0]:
                 print("2EC(2n+1) - 2mu0 = {:.3f}".format(2*En(integer, my_EC, 0.0)-2*muval));
                 ax.axvline(2*En(integer, my_EC, 0.0)-2*muval,color="black",linestyle="dashed");

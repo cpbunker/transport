@@ -22,7 +22,6 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 
 # units
 kelvin2eV =  8.617e-5;
-conductance_quantum = 7.748e-5; # units amp/volt
 
 ###############################################################
 #### fitting dI/dV with background and oscillations
@@ -83,7 +82,7 @@ def dIdV_lorentz_zero(Vb, V0, dI0, Gamma, EC):
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    return dI0*1e9*conductance_quantum*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
+    return dI0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
 
 def dIdV_lorentz(Vb, V0, dI0, Gamma, EC): 
     '''
@@ -92,7 +91,7 @@ def dIdV_lorentz(Vb, V0, dI0, Gamma, EC):
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # otherwise breaks equal spacing
-    return dI0*1e9*conductance_quantum*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
+    return dI0*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
 
 def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
     '''
@@ -232,7 +231,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     params_all_guess = np.copy(params_zero);
     params_all_guess[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
     bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([0,0,0,0,0,0,0,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
+    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
@@ -268,10 +267,10 @@ def fit_Mn_data(stop_at,metal="Mn/",verbose=1):
     ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
 
     # oscillation guesses
-    dI0_guess =   np.array([0.02, 0.02, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
-    Gamma_guess = np.array([1.0, 1.2, 1.2, 1.2, 1.0, 1.0])*1e-3; # in eV
+    dI0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
+    Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.0, 2.0])*1e-3; # in eV
     EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
-    dI0_percent, Gamma_percent, EC_percent = 0.2, 0.4, 0.2;
+    dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
 
     #fitting results
     results = [];
@@ -336,7 +335,6 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
     # plot each fit
     fname = "fits/"
     Ts = np.loadtxt(fname+stop_at+"Ts.txt");
-    if(np.shape(Ts) == ()): Ts = np.array([Ts]);
     from utils import plot_fit
     fig3, ax3 = plt.subplots();
     for Tvali, Tval in enumerate(Ts):
@@ -409,7 +407,7 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
 if(__name__ == "__main__"):
 
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-2];
+    stop_at = stop_ats[-1];
     verbose=10
 
     # this one executes the fitting and stores results
