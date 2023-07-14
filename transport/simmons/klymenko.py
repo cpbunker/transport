@@ -88,7 +88,7 @@ if(__name__ == "__main__"):
     # experimental params (Mn/5KExp.txt)
     Vb_max = 0.1;
     kelvin2eV =  8.617e-5;
-    conductance_quantum = 7.748e-5; # units amp/volt
+    conductance_quantum = 7.748e-5/2; # units amp/volt
 
     if False: # plot at various n max
         fig, ax = plt.subplots();

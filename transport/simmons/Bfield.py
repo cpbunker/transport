@@ -20,10 +20,12 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 # units
-kelvin2eV =  8.617e-5; # eV/K
+kelvin2eV =  8.617e-5/2; # eV/K
 muBohr = 5.788e-5;     # eV/T
 gfactor = 2;
 conductance_quantum = 7.748e-5; # amp/volt
+
+raise NotImplementedError; # deprecated
 
 ###############################################################
 #### fitting dI/dV with background and oscillations

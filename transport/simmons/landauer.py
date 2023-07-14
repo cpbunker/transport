@@ -49,9 +49,9 @@ def I_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     current = np.zeros_like(Vb);
     for n in ns:
         Enval = En(n,EC,Vb);
-        current += np.arctan((muL-Enval)/(2*Gamma));
-        current +=-np.arctan((muR-Enval)/(2*Gamma));
-    return Gamma*Gamma/(Gamma+Gamma) *current;
+        current += np.arctan((muL-Enval)/Gamma);
+        current +=-np.arctan((muR-Enval)/Gamma);
+    return Gamma*current;
 
 def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     '''
@@ -71,9 +71,9 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
     conductance = np.zeros_like(Vb);
     for n in ns:
         Enval = En(n,EC,Vb);
-        conductance += 1/(1+np.power((muL-Enval)/(2*Gamma),2));
-        conductance += 1/(1+np.power((muR-Enval)/(2*Gamma),2));
-    return Gamma*Gamma/(8*Gamma*Gamma)*conductance;
+        conductance += 1/(1+np.power((muL-Enval)/Gamma,2));
+        conductance += 1/(1+np.power((muR-Enval)/Gamma,2));
+    return (1/2)*conductance;
 
 def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
     '''
@@ -96,10 +96,10 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e5):
         for n in ns:
             muL, muR = mu0+Vbval, mu0;
             Enval = En(n,EC,Vbval);
-            tau_vals = 1/(1+ np.power( (Evals-Enval)/(2*Gamma),2));
+            tau_vals = 1/(1+ np.power( (Evals-Enval)/Gamma,2));
             integration_result[Vbi] += np.trapz(tau_vals*(nFD(Evals-muL,kBT)-nFD(Evals-muR,kBT)), Evals);
 
-    return Gamma*Gamma/(4*Gamma*Gamma)*integration_result
+    return integration_result;
 
 def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
     '''
@@ -125,10 +125,10 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
         exp_muR = np.exp((Eint-mu0)*Beta);
         exp_muL = exp_muR*np.exp(-Vbint*Beta);
         for n in nints:
-            ratio_n = (Eint-(2*n+1)*EC-Vbint/2)/(2*Gamma);
+            ratio_n = (Eint-(2*n+1)*EC-Vbint/2)/Gamma;
             lorentzian_n = 1/(1+ (ratio_n)*(ratio_n));
             ret_n = Beta*exp_muL/((exp_muL+1)*(exp_muL+1));
-            ret_n += ratio_n/(2*Gamma) *lorentzian_n*(1/(exp_muL+1) - 1/(exp_muR+1));
+            ret_n += ratio_n/Gamma *lorentzian_n*(1/(exp_muL+1) - 1/(exp_muR+1));
             retval += ret_n*lorentzian_n
         return retval;
 
@@ -148,7 +148,7 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
         Vb_integrand = integrand(Emesh, ns, Vbval);
         integration_result[Vbi] = scipy_integ(Vb_integrand, Emesh);
 
-    return Gamma*Gamma/(4*Gamma*Gamma)*integration_result;
+    return integration_result;
 
 
 if(__name__ == "__main__"):
@@ -156,7 +156,7 @@ if(__name__ == "__main__"):
     # experimental params (Mn/5KExp.txt)
     Vb_max = 0.1;
     kelvin2eV =  8.617e-5; # units eV/K
-    conductance_quantum = 7.748e-5; # units amp/volt
+    conductance_quantum = 7.748e-5 /2; # units amp/volt
     conductance = True;
 
     if False: # plot with various methods
@@ -214,7 +214,7 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if True: # plot at various Gamma
+    if False: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
@@ -226,7 +226,7 @@ if(__name__ == "__main__"):
         narr = np.arange(-nmax,nmax+1);
 
         # iter over Gamma
-        Gammavals = np.array([1e-4,my_EC/np.sqrt(4*3)]); # CHANGE !
+        Gammavals = np.array([1e-4,my_EC/np.sqrt(3)]); # CHANGE !
         to_save = np.empty((len(Gammavals),len(Vbs)),dtype=float); to_savei=0;
         for Gammaval in Gammavals:
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
@@ -247,7 +247,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if True: # plot at various EC
+    if False: # plot at various EC
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
@@ -280,7 +280,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if False: # plot at various temperatures
+    if True: # plot at various temperatures
         fig, ax = plt.subplots();
         Vbs = np.linspace(0,Vb_max,int(1e4));
 
