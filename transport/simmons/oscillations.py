@@ -112,7 +112,7 @@ def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, by_hand=True, num_dev = 4, verbose=0):
     '''
     The main function for fitting the metal Pc dI/dV data
     The data is stored as metal/__dIdV.txt where __ is the temperature
@@ -266,10 +266,22 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
 
     # oscillation guesses
-    dI0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-    Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.0, 2.0])*1e-3; # in eV
-    EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
-    dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+    if(metal=="Mn/"):
+        dI0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
+        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.0, 2.0])*1e-3; # in eV
+        EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
+        dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+
+
+
+
+        
+    elif(metal=="Mnv2/"):
+        dI0_guess =   np.array([0.02, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
+        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
+        dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+    else: raise NotImplementedError;
 
     #fitting results
     results = [];
@@ -352,7 +364,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             if(Tval in combined):
                 offset=0;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
-                            label="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
+                            label="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
                 ax3.set_xlabel("$V_b$ (V)");
                 ax3.set_xlim(-0.1,0.1);
@@ -360,7 +372,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
                 #ax3.set_ylim(300,2800);
                 print(temp_results);
         else:
-            plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.0f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
+            if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
@@ -403,15 +415,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-2];
-    verbose=10
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
