@@ -112,7 +112,7 @@ def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, by_hand=True, num_dev = 4, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose=0):
     '''
     The main function for fitting the metal Pc dI/dV data
     The data is stored as metal/__dIdV.txt where __ is the temperature
@@ -277,7 +277,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
         
     elif(metal=="Mnv2/"):
-        dI0_guess =   np.array([0.02, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
+        dI0_guess =   np.array([0.01, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
         EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
         dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
@@ -294,7 +294,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
             # get fit results
             global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
-            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, verbose=verbose);
+            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, by_hand=True, verbose=verbose);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
@@ -333,13 +333,13 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$", "$T_{ohm}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-4] = np.zeros_like(rlabels_mask)[:-4];
+        rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-4] = np.zeros_like(rlabels_mask)[:-4];
+        rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     else: raise NotImplementedError;
     
     # plot each fit
@@ -398,7 +398,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             axi += 1;
 
     # format
-    axes[-1].set_xlabel("$B$ (Tesla)");
+    axes[-1].set_xlabel("$T$ (K)");
     axes[0].set_title("Amplitude and period fitting");
     plt.tight_layout();
     plt.show();
@@ -417,8 +417,8 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-2];
-    verbose=1;
+    stop_at = stop_ats[-1];
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
