@@ -277,9 +277,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
         
     elif(metal=="Mnv2/"):
-        dI0_guess =   np.array([0.01, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
+        dI0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
+        EC_guess =    np.array([5.8, 5.6, 5.4, 5.1, 5.1])*1e-3; # in eV
         dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
     else: raise NotImplementedError;
 
@@ -294,7 +294,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
             # get fit results
             global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
-            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, by_hand=True, verbose=verbose);
+            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, by_hand=False, verbose=verbose);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
@@ -418,7 +418,7 @@ if(__name__ == "__main__"):
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
-    verbose=10;
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
