@@ -112,7 +112,7 @@ def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, dI0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, by_hand=True, num_dev = 4, verbose=0):
     '''
     The main function for fitting the metal Pc dI/dV data
     The data is stored as metal/__dIdV.txt where __ is the temperature
@@ -231,7 +231,7 @@ def fit_dIdV(metal, nots, percents, stop_at, by_hand=False, num_dev = 4, verbose
     params_all_guess = np.copy(params_zero);
     params_all_guess[len(params_back):] = np.array([dI0_not, Gamma_not, EC_not]);
     bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, EC free
+    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
@@ -277,9 +277,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
         
     elif(metal=="Mnv2/"):
-        dI0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
+        dI0_guess =   np.array([0.02, 0.02, 0.02, 0.02, 0.02]); # unitless scale factor
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.8, 5.6, 5.4, 5.1, 5.1])*1e-3; # in eV
+        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
         dI0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
     else: raise NotImplementedError;
 
@@ -294,7 +294,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
             # get fit results
             global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
-            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, by_hand=False, verbose=verbose);
+            x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal, guesses, percents, stop_at = stop_at, verbose=verbose);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
@@ -337,7 +337,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$dI_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     else: raise NotImplementedError;
@@ -398,11 +398,10 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             axi += 1;
 
     # format
-    axes[-1].set_xlabel("$T$ (K)");
+    axes[-1].set_xlabel("$B$ (Tesla)");
     axes[0].set_title("Amplitude and period fitting");
     plt.tight_layout();
     plt.show();
-    
 
     # save results in latex table format
     # recall results are [Ti, resulti]
@@ -410,20 +409,33 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     np.savetxt(metal+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
     print("Saving table to "+metal+stop_at+"results_table.txt");
 
+    # period vs T
+    pfig, pax = plt.subplots();
+    periods = 4*results[:,-1]*1000;
+    periods, Ts = periods[:4], Ts[:4];
+    pax.scatter(Ts, periods, color=mycolors[0], label="Data");
+    coefs = np.polyfit(Ts, periods, 1);
+    pax.plot(Ts, coefs[0]*Ts+coefs[1], color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
+    pax.set_ylabel("$e \\times dV = 4E_C $ (meV)");
+    pax.set_xlabel("$T$ (K)");
+    plt.legend();
+    plt.tight_layout();
+    plt.show();
+
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv2/"; # tells which experimental data to load
+    metal = "Mn/"; # tells which experimental data to load
     stop_ats = ['imp_mag/','imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[5]);
 
