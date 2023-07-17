@@ -437,5 +437,5 @@ if(__name__ == "__main__"):
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[5]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
