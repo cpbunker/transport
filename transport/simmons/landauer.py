@@ -80,7 +80,7 @@ def dI_of_Vb_zero(Vb, mu0, Gamma, EC, kBT, ns):
         conductance += 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
     return e2overh*(1/2)*conductance;
 
-def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e4):
+def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn=10, xvals=1e4):
     '''
     Compute the finite temperature current by numerical integration
     '''
@@ -91,7 +91,7 @@ def I_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, xvals=1e4):
 
     # variable of integration
     mulimits = np.array([mu0,mu0-np.min(Vb),mu0+np.min(Vb),mu0-np.max(Vb),mu0+np.max(Vb)]);
-    Elimits = (-5*kBT+np.min(mulimits),+5*kBT+np.max(mulimits));
+    Elimits = (-Mn*kBT+np.min(mulimits),+Mn*kBT+np.max(mulimits));
     Evals = np.linspace(*Elimits,int(xvals));
     print("Integration limits = ",Elimits);
 
@@ -132,18 +132,21 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
         for n in nints:
             ratio_n = (Eint-(2*n+1)*EC-Vbint/2)/Gamma;
             lorentzian_n = 1/(1+ (ratio_n)*(ratio_n));
-            ret_n = Beta*exp_muL/((exp_muL+1)*(exp_muL+1));
+            ret_n = Beta/((exp_muL+1)*(1/exp_muL+1)); # <- fixed overflow
             ret_n += ratio_n/Gamma *lorentzian_n*(1/(exp_muL+1) - 1/(exp_muR+1));
-            retval += ret_n*lorentzian_n
+            retval += ret_n*lorentzian_n;
         return retval;
 
     # plot integrand
     if False:
         print("Integration limits = ",Elimits);
         fig, ax = plt.subplots();
-        for Vval in [Vb[0], Vb[len(Vb)//3], Vb[2*len(Vb)//3], Vb[-1]]:
+        print(np.min(Vb), np.max(Vb));
+        print(np.min(mulimits), np.max(mulimits));
+        for Vval in [Vb[0], 8*EC, 10*EC, Vb[-1]]:
             yvals = integrand(Emesh, ns, Vval);
-            ax.plot(Emesh, yvals, label = Vval);
+            ax.plot(Emesh, yvals, label = "Vb={:.3f} eV".format(Vval));
+        plt.legend()
         plt.show();
         assert False;
     
