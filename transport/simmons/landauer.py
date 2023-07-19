@@ -220,7 +220,7 @@ if(__name__ == "__main__"):
             plt.tight_layout();
             plt.show();
 
-    if True: # plot at various Gamma
+    if False: # plot at various Gamma
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
@@ -232,7 +232,7 @@ if(__name__ == "__main__"):
         narr = np.arange(-nmax,nmax+1);
 
         # iter over Gamma
-        Gammavals = np.array([1e-4,my_EC/np.sqrt(3)]); # CHANGE !
+        Gammavals = np.array([1e-4,my_EC/np.sqrt(3)]); 
         to_save = np.empty((len(Gammavals),len(Vbs)),dtype=float); to_savei=0;
         for Gammaval in Gammavals:
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, Gammaval, my_EC, my_temp, narr);
@@ -253,7 +253,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if True: # plot at various EC
+    if False: # plot at various EC
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
