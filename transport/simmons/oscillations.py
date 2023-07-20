@@ -323,7 +323,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai==0):
+        if(True):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             guesses = (E0_guess, G2_guess, G3_guess, Ec_guess, G1_guess, ohm_guess, tau0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
             percents = (E0_percent, G2_percent, G3_percent, Ec_percent, G1_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent);
@@ -340,7 +340,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
                 plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);
                 mytitle="$T_{ohm} = $";
-                mytitle += "{:.1f} K, $\tau_0 = $ {:.0f} nA/V, $\Gamma_0 = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(*temp_results[-4:])
+                mytitle += "{:.1f} K, $\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(*temp_results[-4:])
                 print("Saving plot to "+plot_fname);
                 np.save(plot_fname+"_x.npy", x_forfit);
                 np.save(plot_fname+"_y.npy", y_forfit);
@@ -370,11 +370,11 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$", "$T_{ohm}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\tau_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\tau_0$ (nA/V)", "$\Gamma_0$ (eV)", "$E_C$ (eV)"]);   
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     else: raise NotImplementedError;
@@ -399,7 +399,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         # plot
         if(combined): # plot all at once
             if(Tval in combined):
-                offset=0;
+                offset = 800;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
                             label="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
@@ -447,32 +447,52 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     print("Saving table to "+metal+stop_at+"results_table.txt");
 
     # period vs T
-    pfig, pax = plt.subplots();
-    periods = 4*results[:,-1]*1000;
-    periods, Ts = periods[:4], Ts[:4];
-    pax.scatter(Ts, periods, color=mycolors[0], label="Data");
-    coefs = np.polyfit(Ts, periods, 1);
-    pax.plot(Ts, coefs[0]*Ts+coefs[1], color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
-    pax.set_ylabel("$e \\times dV = 4E_C $ (meV)");
-    pax.set_xlabel("$T$ (K)");
-    plt.legend();
-    plt.tight_layout();
-    plt.show();
+    if(stop_at == "lorentz_zero/"): # <-------- !!!!
+        pfig, pax = plt.subplots();
+        combined_periods, combined_Ts = [], []
+        if(metal == "Mn_combined/"):
+            folders = ["Mn/", "Mnv2/"];
+        else:
+            folders = [metal];
+            
+        for folder in folders:
+            # load
+            print("Loading data from "+folder+stop_at);
+            Ts = np.loadtxt(folder+"Ts.txt");
+            results = np.load(folder+stop_at+"results.npy");           
+            # plot
+            periods = 4*results[:,-1]*1000;
+            periods, Ts = periods, Ts;
+            pax.scatter(Ts, periods, color=mycolors[0], label="Data");
+            combined_periods.append(periods); combined_Ts.append(Ts);
+
+        # fit
+        if(metal == "Mn_combined/"): Ts = np.append(combined_Ts[0], combined_Ts[1]); periods = np.append(combined_periods[0], combined_periods[1]);
+        coefs = np.polyfit(Ts, periods, 1);
+        pax.plot(Ts, coefs[0]*Ts+coefs[1], color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
+
+        # format
+        pax.set_ylabel("$e \\times dV = 4E_C $ (meV)");
+        pax.set_xlabel("$T$ (K)");
+        pax.set_title("Dataset = "+str(metal[:-1]));
+        plt.legend();
+        plt.tight_layout();
+        plt.show();
 
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
 
-    metal = "Mn/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
+    stop_at = stop_ats[-2];
     verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[5]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5]);
 
