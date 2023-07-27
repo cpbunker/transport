@@ -288,6 +288,13 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     # oscillation guesses
     if(metal=="Mn/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.006, 0.006; # in eV # 0.006, 0.006
+        E0_percent, Ec_percent = 1, 1;
+        G1_guess, G2_guess, G3_guess = 1000, 1000, 1000; # in nA/V # 1000,1000,1000
+        G1_percent, G2_percent, G3_percent = 1, 1, 1;
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        # oscillation guesses
         tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.0, 2.0])*1e-3; # in eV
         EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
@@ -314,14 +321,11 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     elif(metal=="Mn2Tesla/"):
         # background guesses
         E0_guess, Ec_guess = 0.001494, 0.019828; # in eV 
-        E0_percent, Ec_percent = 1e-6, 1e-6;
-        G1_guess, G2_guess, G3_guess = 3301, 811, 2000; # in nA/V # 1000,1000,1000
-        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 3301, 811, 2000; # in nA/V 
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
         # oscillation guesses
-        tau0_guess =   np.array([0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.0])*1e-3; EC_guess = np.array([5.8])*1e-3;
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         numdev = 0;
 
@@ -330,14 +334,11 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     elif(metal=="Mn4Tesla/"):
         # background guesses
         E0_guess, Ec_guess = 0.003002, 0.000088; # in eV 
-        E0_percent, Ec_percent = 1e-6, 1e-6;
-        G1_guess, G2_guess, G3_guess = 1827, 701, 1214; # in nA/V # 1000,1000,1000
-        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 1827, 701, 1214; # in nA/V 
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
         # oscillation guesses
-        tau0_guess =   np.array([0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.5])*1e-3;
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         numdev = 0;
         
@@ -346,14 +347,11 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     elif(metal=="Mn7Tesla/"):
         # background guesses
         E0_guess, Ec_guess = 0.003871, 0.000100; # in eV 
-        E0_percent, Ec_percent = 1e-6, 1e-6;
-        G1_guess, G2_guess, G3_guess = 2506, 643, 1049; # in nA/V # 1000,1000,1000
-        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 2506, 643, 1049; # in nA/V
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
         # oscillation guesses
-        tau0_guess =   np.array([0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.7])*1e-3;
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         numdev = 0;
         
@@ -551,7 +549,7 @@ if(__name__ == "__main__"):
 
     metal = "Mn7Tesla/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
+    stop_at = stop_ats[-2];
     verbose=1;
 
     # this one executes the fitting and stores results
@@ -559,5 +557,5 @@ if(__name__ == "__main__"):
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
