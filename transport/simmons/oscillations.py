@@ -161,7 +161,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev, by_hand=True, verbose=0):
     if(verbose > 4): plot_fit(V_exp, dI_exp, background_init);
 
     # remove outliers based on initial fit
-    if False:
+    if(num_dev > 0):
         with_outliers = len(V_exp);
         V_exp = V_exp[abs(dI_exp-background_init) < num_dev*dI_dev];
         dI_exp = dI_exp[abs(dI_exp-background_init) < num_dev*dI_dev];
@@ -258,7 +258,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev, by_hand=True, verbose=0):
     params_all_guess = np.copy(params_zero);
     params_all_guess[len(params_back):] = np.array([tau0_not, Gamma_not, EC_not]);
     bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, dI0, Gamma, Ec free
+    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, tau0, Gamma, EC free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
@@ -283,8 +283,8 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
     # experimental params
-    Ts = np.loadtxt(metal+"Ts.txt");
-    Bs = np.loadtxt(metal+"Bs.txt");
+    Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
+    Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
 
     # oscillation guesses
     if(metal=="Mn/"):
@@ -307,7 +307,55 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
         EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        numdev = 4;
+        numdev = 0;
+
+    ####
+
+    elif(metal=="Mn2Tesla/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.001494, 0.019828; # in eV 
+        E0_percent, Ec_percent = 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 3301, 811, 2000; # in nA/V # 1000,1000,1000
+        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        # oscillation guesses
+        tau0_guess =   np.array([0.01]); # unitless scale factor
+        Gamma_guess = np.array([2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev = 0;
+
+    ####
+
+    elif(metal=="Mn4Tesla/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.003002, 0.000088; # in eV 
+        E0_percent, Ec_percent = 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 1827, 701, 1214; # in nA/V # 1000,1000,1000
+        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        # oscillation guesses
+        tau0_guess =   np.array([0.01]); # unitless scale factor
+        Gamma_guess = np.array([2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev = 0;
+        
+    ####
+
+    elif(metal=="Mn7Tesla/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.003871, 0.000100; # in eV 
+        E0_percent, Ec_percent = 1e-6, 1e-6;
+        G1_guess, G2_guess, G3_guess = 2506, 643, 1049; # in nA/V # 1000,1000,1000
+        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        # oscillation guesses
+        tau0_guess =   np.array([0.01]); # unitless scale factor
+        Gamma_guess = np.array([2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9])*1e-3; # in eV
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev = 0;
         
     ####
         
@@ -378,18 +426,18 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$", "$T_{ohm}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$ (nA/V)", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     else: raise NotImplementedError;
     
     # plot each fit
-    Ts = np.loadtxt(metal+"Ts.txt");
-    Bs = np.loadtxt(metal+"Bs.txt");
+    Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
+    Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
     
     from utils import plot_fit
     fig3, ax3 = plt.subplots();
@@ -452,8 +500,9 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
     # save results in latex table format
     # recall results are [Ti, resulti]
-    results_tab = np.append(np.array([[T] for T in Ts]), results, axis = 1);
-    np.savetxt(metal+stop_at+"results_table.txt", results_tab, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
+    results_tab = np.append(np.array([[Ts[Tvali], Bs[Tvali]] for Tvali in range(len(Ts))]), results, axis = 1);
+    res_header = str(["T (K)", "B (T)", "V0 (V)", "eps_0 (eV)", "eps_c (eV)", "G1 (nA/V)", "G2 (nA/V)", "G3 (nA/V)", "T_ohm (K)", "tau0 ()","Gamma (eV)", "EC (eV)"])
+    np.savetxt(metal+stop_at+"results_table.txt", results_tab, header=res_header, fmt = "%.5f", delimiter=' & ', newline = '\\\ \n');
     print("Saving table to "+metal+stop_at+"results_table.txt");
 
     # period vs T
@@ -500,15 +549,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv2/"; # tells which experimental data to load
+    metal = "Mn7Tesla/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
