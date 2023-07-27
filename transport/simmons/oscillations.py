@@ -552,7 +552,7 @@ if(__name__ == "__main__"):
     metal = "Mn7Tesla/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
-    verbose=10;
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
