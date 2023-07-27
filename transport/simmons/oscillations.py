@@ -320,10 +320,10 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn2Tesla/"):
         # background guesses
-        E0_guess, Ec_guess = 0.001494, 0.019828; # in eV 
-        G1_guess, G2_guess, G3_guess = 3301, 811, 2000; # in nA/V 
+        E0_guess, Ec_guess = 0.001509, 0.019842; # in eV 
+        G1_guess, G2_guess, G3_guess = 3300, 811, 1983; # in nA/V 
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
+        E0_percent, Ec_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
         # oscillation guesses
         tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.0])*1e-3; EC_guess = np.array([5.8])*1e-3;
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
@@ -352,6 +352,32 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
         # oscillation guesses
         tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.7])*1e-3;
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev = 0;
+
+    ####
+
+    elif(metal=="Mn-2Tesla/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.038644, 0.002259; # in eV 
+        G1_guess, G2_guess, G3_guess = 1709, 840, 264; # in nA/V
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
+        # oscillation guesses
+        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.6])*1e-3; EC_guess = np.array([5.7])*1e-3;
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev = 0;
+
+    ####
+
+    elif(metal=="Mn-4Tesla/"):
+        # background guesses
+        E0_guess, Ec_guess = 0.003002, 0.000099; # in eV 
+        G1_guess, G2_guess, G3_guess = 1827, 702, 1213; # in nA/V
+        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
+        # oscillation guesses
+        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.5])*1e-3;
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         numdev = 0;
         
@@ -547,10 +573,10 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn7Tesla/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-2];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
