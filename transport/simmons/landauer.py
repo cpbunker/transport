@@ -129,6 +129,8 @@ def dI_of_Vb(Vb, mu0, Gamma, EC, kBT, ns, Mn = 10, xvals=1e4):
         retval = np.zeros_like(Eint);
         exp_muR = np.exp((Eint-mu0)*Beta);
         exp_muL = exp_muR*np.exp(-Vbint*Beta);
+        #oneover_expmuL_p1 = 1/( np.exp((Eint-mu0)*Beta)*np.exp(-Vbint*Beta) +1);
+        #oneover_expmuLinv_p1 = 1/( (1/
         for n in nints:
             ratio_n = (Eint-(2*n+1)*EC-Vbint/2)/Gamma;
             lorentzian_n = 1/(1+ (ratio_n)*(ratio_n));

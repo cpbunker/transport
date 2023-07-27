@@ -118,7 +118,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
     explabel = "Exp.";
    
     # plot
-    ax.scatter(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
+    ax.plot(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
     ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
         
     # derivative
@@ -150,6 +150,16 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
     ax.set_ylabel(myylabel);
     plt.legend();
     plt.title(mytitle, fontsize = myfontsize);
+    plt.show();
+
+def show_raw_data(metal, Ts):
+    base = "KdIdV.txt";
+    fig, ax = plt.subplots();
+    for T in Ts:
+        V_exp, dI_exp = load_dIdV(base,metal+"data/",T);
+        ax.plot(V_exp, dI_exp, label = "$T = $ {:.2f} K".format(T));
+    plt.legend();
+    plt.tight_layout();
     plt.show();
 
 ###############################################################

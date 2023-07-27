@@ -342,19 +342,6 @@ def plot_saved_fit(stop_at, combined=[], verbose = 1):
     plt.tight_layout();
     plt.show();
 
-def show_raw_data():
-    base = "KdIdV";
-    metal = "Mn/";
-    temp = 2.5;
-    fields = [0,2,7];
-    fig, ax = plt.subplots();
-    for field in fields:
-        V_exp, dI_exp = load_dIdV(base+"_"+"{:.0f}T".format(field)+".txt",metal,temp);
-        ax.plot(V_exp, dI_exp, label = "$B = $ {:.2f} meV".format(field*gfactor*muBohr*1000));
-    plt.legend();
-    plt.tight_layout();
-    plt.show();
-
 ####################################################################
 #### run
 
