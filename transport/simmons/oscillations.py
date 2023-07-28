@@ -313,8 +313,8 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         E0_percent, Ec_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
         # oscillation guesses
         tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.1])*1e-3; # in eV
+        Gamma_guess = np.array([2.1, 2.2, 2.4, 2.8, 2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.0])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         numdev = 0;
 
@@ -575,7 +575,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn-4Tesla/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[-1];
     verbose=1;
