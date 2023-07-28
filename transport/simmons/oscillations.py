@@ -166,6 +166,9 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev, by_hand=True, verbose=0):
         V_exp = V_exp[abs(dI_exp-background_init) < num_dev*dI_dev];
         dI_exp = dI_exp[abs(dI_exp-background_init) < num_dev*dI_dev];
         assert(with_outliers - len(V_exp) <= with_outliers*0.05); # only remove 5%
+    else:
+        dI_exp = dI_exp[abs(V_exp) < 0.1];
+        V_exp = V_exp[abs(V_exp) < 0.1];
 
     # fit to magnon + imp background with outliers removed
     bounds_back = np.copy(bounds_init);
@@ -289,26 +292,25 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     # oscillation guesses
     if(metal=="Mn/"):
         # background guesses
-        E0_guess, Ec_guess = 0.006, 0.006; # in eV # 0.006, 0.006
-        E0_percent, Ec_percent = 1, 1;
-        G1_guess, G2_guess, G3_guess = 1000, 1000, 1000; # in nA/V # 1000,1000,1000
-        G1_percent, G2_percent, G3_percent = 1, 1, 1;
+        E0_guess, Ec_guess = 0.005882, 0.015184; # in eV # 0.006, 0.006
+        G1_guess, G2_guess, G3_guess = 502, 1019, 982; # in nA/V # 1000,1000,1000
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
         # oscillation guesses
         tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.0, 2.0])*1e-3; # in eV
+        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.8, 2.8])*1e-3; # in eV
         EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        numdev=0;
 
     ####
         
     elif(metal=="Mnv2/"):
         # background guesses
         E0_guess, Ec_guess = 0.002835, 0.019568; # in eV # 0.006, 0.006
-        E0_percent, Ec_percent = 1e-6, 1e-6;
         G1_guess, G2_guess, G3_guess = 2287, 827, 1526; # in nA/V # 1000,1000,1000
-        G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
         ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
+        E0_percent, Ec_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
         # oscillation guesses
         tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
         Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
