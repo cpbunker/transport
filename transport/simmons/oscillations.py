@@ -201,32 +201,24 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev, by_hand=True, verbose=0):
             # fit again?
             raise NotImplementedError;
         
-        # fit to magnon + imp with dropout
-        params_drop, _ = fit_wrapper(dIdV_back, V_exp[dI_exp<background], dI_exp[dI_exp<background],
-                                params_back, bounds_back, ["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm"],
-                                stop_bounds = False, verbose=verbose);
-        background_drop = dIdV_back(V_exp[dI_exp<background], *params_drop);
-        if(verbose > 4): plot_fit(V_exp[dI_exp<background], dI_exp[dI_exp<background], background_drop, derivative=False,
-                            mytitle="Background w/ dropout (T= {:.1f} K, T_ohm= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, params_drop[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
-
         # pretty fit to show signatures
         if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_back(V_exp, *params_back), derivative=True,
-                            mytitle="Magnetic impurities and surface magnons ($T = ${:.1f} K,".format(temp_kwarg)+" $T_{ohm} = $"+"{:.1f} K, B = {:.1f} T)".format(params_drop[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
+                            mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K,".format(temp_kwarg)+" $T_{ohm} = $"+"{:.1f} K, B = {:.1f} T".format(params_back[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
 
         # force G1=0
-        params_imp = np.copy(params_drop);
+        params_imp = np.copy(params_back);
         params_imp[3] = 0;
         if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_back(V_exp, *params_imp), derivative=True,
-                            mytitle="Magnetic impurity ($T = ${:.1f} K,".format(temp_kwarg)+" $T_{ohm} = $"+"{:.1f} K, B = {:.1f} T)".format(params_drop[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                            mytitle="Magnetic impurity ($T = ${:.1f} K,".format(temp_kwarg)+" $T_{ohm} = $"+"{:.1f} K, B = {:.1f} T)".format(params_back[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
         mask_imp = np.array([1,1,0,0,1,1,1]);
         if(stop_at == 'imp/'): return V_exp, dI_exp, params_imp[mask_imp>0], bounds_back[:,mask_imp>0];
 
         # force G2, G3=0
-        params_mag = np.copy(params_drop);
+        params_mag = np.copy(params_back);
         params_mag[4] = 0;
         params_mag[5] = 0;
         if(verbose > 4): plot_fit(V_exp, dI_exp-dIdV_back(V_exp, *params_imp), dIdV_back(V_exp, *params_mag), derivative=True,
-                            mytitle="Surface magnon (T= {:.1f} K, T_ohm= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, params_drop[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                            mytitle="Surface magnon (T= {:.1f} K, T_ohm= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, params_back[-1], bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
         mask_mag = np.array([1,0,1,1,0,0,1]);
         if(stop_at == 'mag/'): return V_exp, dI_exp-dIdV_back(V_exp, *params_imp), params_mag[mask_mag>0], bounds_back[:,mask_mag>0];
         raise NotImplementedError;
@@ -455,7 +447,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
-    elif(stop_at == 'lorentz/'):
+    elif(stop_at == 'lorentz/' or 'lorentz_backup/'):
         rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
@@ -485,7 +477,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             if(Tval in combined):
                 offset = 800;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
-                            label="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K)".format(T_ohm));
+                            label="$T=$ {:.1f} K".format(Tval)+", $T_{ohm}=$" +"{:.1f} K, B = {:.1f} T".format(T_ohm, Bs[Tvali]));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
                 ax3.set_xlabel("$V_b$ (V)");
                 ax3.set_xlim(-0.1,0.1);
@@ -493,7 +485,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
                 #ax3.set_ylim(300,2800);
                 print(temp_results);
         else:
-            if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+" ($T_{ohm}=$" +"{:.1f} K, B = {:.1f} T)".format(T_ohm, Bs[Tvali]));
+            if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+", $T_{ohm}=$" +"{:.1f} K, B = {:.1f} T".format(T_ohm, Bs[Tvali]));
 
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
@@ -551,6 +543,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
             gammas = results[:,-2]*1000;
             charges = results[:,-1]*1000;
             myx, myy = gammas, charges;
+            myx, myy = Ts, periods;
             pax.scatter(myx, myy, color=mycolors[0], label="Data");
             combined_y.append(myy); combined_x.append(myx);
 
@@ -560,7 +553,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         myyfit = coefs[0]*myx+coefs[1];
         myrmse = np.sqrt( np.mean( np.power(myy-myyfit,2) ))/abs(np.max(myy)-np.min(myy));
         pax.plot(myx, myyfit, color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
-        pax.plot( [0.0], [coefs[1]], color='white', label = "RMSE = {:1.5f}".format(myrmse));
+        pax.plot( [np.mean(myx)], [np.mean(myy)], color='white', label = "RMSE = {:1.5f}".format(myrmse));
     
         # format
         pax.set_ylabel("");
@@ -575,15 +568,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['imp_mag/', 'sin/', 'imp/','mag/','lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[-1];
-    verbose=1;
+    stop_at = stop_ats[-2];
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5]);
 
