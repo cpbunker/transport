@@ -25,10 +25,9 @@ The entire fitting procedure consists of:
     treated at (c) for ALL data sets in the data folder.
 2) Applying (b) to (ii)-(iii), dropping data that is not within a few standard
     devs of this fit (removing outliers)
-3) Applying (b) to (ii)-(iii), to update initial guesses for (iii)
-4) Applying (b) to (ii)-(iii), to find the best results for (ii). Subsequently
+3) Applying (b) to (ii)-(iii), to find the best results for (ii). Subsequently
     (ii) is treated at (c) within THIS dataset only
-5) Applying (a) to (iii) to get final results
+4) Applying (a) to (iii) to get final results
 '''
 
 

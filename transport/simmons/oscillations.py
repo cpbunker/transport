@@ -170,7 +170,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbo
     dI_exp = dI_exp[abs(dI_exp-fit_init) < num_dev*dI_dev];
     assert(with_outliers - len(V_exp) <= with_outliers*0.05); # remove no more than 5%
 
-    #### Step 4: freeze experimental background parameters with lorentz_zero
+    #### Step 3: freeze experimental background parameters with lorentz_zero
     params_zero, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
                                 params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
@@ -185,7 +185,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbo
                             mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
         return V_exp, dI_exp-background_only, params_zero, bounds_init;
 
-    #### Step 5: Fit oscillation parameters with lorentz
+    #### Step 4: Fit oscillation parameters with lorentz
     params_all_guess = np.copy(params_base);
     params_all_guess[:len(params_zero)] = np.copy(params_zero);
     bounds_all = np.copy(bounds_base); # reset with no freezing yet
@@ -241,7 +241,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai==0):
+        if(True and datai==1):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             guesses = (eps0_guess, epsc_guess, G1_guess, G2_guess, G3_guess, ohm_guess, tau0_guess, Gamma_guess, EC_guess[datai], Ts[datai]);
             percents = (eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent, Tjunc_percent);
@@ -278,17 +278,11 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     '''
 
     # which fit result is which
+    rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{junc}$"]);  
     if(stop_at=='mag/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{surf}$"]);
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-    elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{junc}$"]);
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-44] = np.zeros_like(rlabels_mask)[:-4];
-    elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{junc}$"]);   
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-4] = np.zeros_like(rlabels_mask)[:-4];
+        rlabels_mask = np.array([1,1,0,0,1,1,0,1,1,1,1]);
+    elif(stop_at == 'lorentz_zero/' or stop_at == 'lorentz/'): 
+        rlabels_mask = np.array([1,1,1,1,1,1,1,0,0,0,0]);
     else: raise NotImplementedError;
     
     # plot each fit
@@ -335,7 +329,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     if(nresults==1): axes = [axes];
     axi = 0
     for resulti in range(len(rlabels)):
-        if(rlabels_mask[resulti]):
+        if(rlabels_mask[resulti]==0):
             axes[axi].plot(Ts, results[:,resulti], color=mycolors[0],marker=mymarkers[0]);
             axes[axi].set_ylabel(rlabels[resulti]);
             axes[axi].plot(Ts,boundsT[:,0,resulti], color=accentcolors[0],linestyle='dashed');
