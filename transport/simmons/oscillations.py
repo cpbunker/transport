@@ -226,14 +226,14 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     if(metal=="Mnv2/"):
         # background guesses
         eps0_guess, epsc_guess = 0.0064, 0.0183; # in eV # 0.008, 0.008
-        G1_guess, G2_guess, G3_guess = 2190, 863, 814; # in nA/V # 2000,1000,1000
-        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 1e-6; # in kelvin
+        G1_guess, G2_guess, G3_guess = 2240, 865, 827; # in nA/V # 2000,1000,1000
+        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 0.4; # in kelvin
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
-        #eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
+        eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2, 2.2, 2.4, 2.8, 2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.0])*1e-3; # in eV
+        Gamma_guess = np.array([2.2, 2.1, 2.3, 2.6, 2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.0])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
 
     ####
@@ -242,7 +242,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         # background guesses
         eps0_guess, epsc_guess = 0.0064, 0.0172; # in eV # 0.006, 0.006
         G1_guess, G2_guess, G3_guess = 1070, 1001, 857; # in nA/V # 1000,1000,1000
-        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 1e-6; # in kelvin
+        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 0.4; # in kelvin
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
         # oscillation guesses # <- change these after background is fixed
@@ -333,7 +333,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai==0):
+        if(True):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             guesses = (eps0_guess, G2_guess, G3_guess, epsc_guess, G1_guess, ohm_guess, Ts[datai], tau0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
             percents = (eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent);
@@ -375,7 +375,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{surf}$", "$T_{junc}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$T_{junc}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
@@ -477,15 +477,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[1];
     verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
