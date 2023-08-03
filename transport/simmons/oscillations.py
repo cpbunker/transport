@@ -86,7 +86,7 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
     '''
     '''
 
-    nmax = 200;
+    nmax = 20; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
     return tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
@@ -95,7 +95,7 @@ def dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc):
     '''
     '''
 
-    nmax = 200;
+    nmax = 20; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
     return tau0*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*T_junc, ns);
@@ -182,19 +182,27 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, by_hand=True, verbose=0)
         
         # pretty fit to show signatures
         background_only = dIdV_back(V_exp, *params_zero[:-3]);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero)-background_only,
+                            mytitle="Lorentz_zero, no background ($T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T)".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
         if(verbose > 4): plot_fit(V_exp, dI_exp, background_only, derivative=True,
                             mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
         return V_exp, dI_exp-background_only, params_zero, bounds_init;
 
-
     # constrain and do finite temp fit
     params_all_guess = np.copy(params_base);
-    params_all_guess[lorentz_zero_mask>0] = params_zero;
+    params_all_guess[lorentz_zero_mask>0] = params_zero; # all but Tjunc set by last fit
     bounds_all = np.copy(bounds_base);
     if(by_hand): # some plotting to help with constraints
-        params_all_guess[-3:] = np.array([tau0_not, Gamma_not, EC_not]);
-        print(params_all_guess)
-        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all_guess)); assert False;
+        params_all_guess[-3:] = np.array([tau0_not, Gamma_not, EC_not]); # reset to guesses
+        print(params_all_guess);
+        import time
+        start=time.time()
+        dI_plot = dIdV_all(V_exp, *params_all_guess);
+        plot_back = dIdV_back(V_exp, *params_all_guess[:7])
+        stop=time.time()
+        print(">>> Integration time = ",stop-start);
+        plot_fit(V_exp, dI_exp, dI_plot-plot_back, mytitle="Lorentz, no background ($T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T)".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+        assert False;
     constrain_mask = np.array([1,1,1,0,0,0,1,0,0,0,0]); # only G1, G2, G3, T_junc, tau0, Gamma, EC free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
@@ -333,7 +341,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True):
+        if(True and datai==0):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             guesses = (eps0_guess, G2_guess, G3_guess, epsc_guess, G1_guess, ohm_guess, Ts[datai], tau0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
             percents = (eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent);
@@ -342,7 +350,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal,
-                    guesses, percents, stop_at, by_hand=False, verbose=verbose);
+                    guesses, percents, stop_at, by_hand=True, verbose=verbose);
             results.append(temp_results); 
             boundsT.append(temp_bounds);
     
@@ -477,15 +485,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv2/"; # tells which experimental data to load
+    metal = "Mn/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
+    stop_at = stop_ats[2];
     verbose=10;
 
     # this one executes the fitting and stores results
-    #fit_Mn_data(stop_at, metal, verbose=verbose);
+    fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
