@@ -28,7 +28,7 @@ gfactor = 2;
 ###############################################################
 #### fitting dI/dV with background and oscillations
 
-def dIdV_imp(Vb, V0, E0, G2, G3, T_surf):
+def dIdV_imp(Vb, V0, eps0, G2, G3, T_surf):
     '''
     Magnetic impurity scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -36,8 +36,8 @@ def dIdV_imp(Vb, V0, E0, G2, G3, T_surf):
 
     def Ffunc(E, kBT):
         # Eq 17 in XGZ's magnon paper
-        numerator = np.log(1+ E0/(E+kBT));
-        denominator = 1 - kBT/(E0+0.4*E) + 12*np.power(kBT/(E0+2.4*E),2);
+        numerator = np.log(1+ eps0/(E+kBT));
+        denominator = 1 - kBT/(eps0+0.4*E) + 12*np.power(kBT/(eps0+2.4*E),2);
         return numerator/denominator;
 
     # Eq 20 in XGZ's magnon paper
@@ -48,7 +48,7 @@ def dIdV_imp(Vb, V0, E0, G2, G3, T_surf):
     retval -= (G3/4)*Ffunc(abs(Vb-V0-Delta), kelvin2eV*T_surf);
     return retval;
 
-def dIdV_mag(Vb, V0, Ec, G1, T_surf):
+def dIdV_mag(Vb, V0, epsc, G1, T_surf):
     '''
     Surface magnon scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -57,20 +57,20 @@ def dIdV_mag(Vb, V0, Ec, G1, T_surf):
     def Gmag(E, kBT):
         # Eq 12 in XGZ's magnon paper
         ret = np.zeros_like(E);
-        ret += -2*kBT*np.log(1-np.exp(-Ec/kBT));
-        ret += (E+Ec)/( np.exp( (E+Ec)/kBT) - 1);
-        ret += (E-Ec)/(-np.exp(-(E-Ec)/kBT) + 1);
+        ret += -2*kBT*np.log(1-np.exp(-epsc/kBT));
+        ret += (E+epsc)/( np.exp( (E+epsc)/kBT) - 1);
+        ret += (E-epsc)/(-np.exp(-(E-epsc)/kBT) + 1);
         return ret
         
     return G1*Gmag(abs(Vb-V0), kelvin2eV*T_surf);
 
-def dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf):
+def dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf):
     '''
     Magnetic impurity and surface magnon scattering, combined
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    return dIdV_imp(Vb, V0, E0, G2, G3, T_surf)+dIdV_mag(Vb, V0, Ec, G1, T_surf);
+    return dIdV_imp(Vb, V0, eps0, G2, G3, T_surf)+dIdV_mag(Vb, V0, epsc, G1, T_surf);
 
 def dIdV_sin(Vb, V0, amplitude, dV, deltaV, slope, intercept):
     '''
@@ -100,27 +100,21 @@ def dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc):
     mymu0 = 0.0; # grounded
     return tau0*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*T_junc, ns);
 
-def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, T_surf, T_junc, tau0, Gamma, EC):
-    '''
-    Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
-    Designed to be passed to scipy.optimize.curve_fit
-    '''
-    if False:
-        print("Tsurf, Tjunc = ", T_surf, T_junc);
-        print("tau0, Gamma, EC = ", tau0, Gamma, EC );
-        print("V0, E0, Ec = ", V0, E0, Ec);
-        print("G1, G2, G3 = ", G1, G2, G3)
-        assert False
-
-    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
-
-def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, T_surf, T_junc, tau0, Gamma, EC):
+def dIdV_all_zero(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC):
     '''
     Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf) + dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc);
+    return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
+
+def dIdV_all(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC, T_junc):
+    '''
+    Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
+    Designed to be passed to scipy.optimize.curve_fit
+    '''
+
+    return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf) + dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc);
 
 ####################################################################
 #### main
@@ -151,30 +145,24 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbo
     # unpack
     V0_not = 0.0
     V0_bound = np.max(V_exp)/10;
-    eps0_not, G2_not, G3_not, epsc_not, G1_not, ohm_not, Tjunc_not, tau0_not, Gamma_not, EC_not = nots;
-    eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent = percents
-    params_base = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, Tjunc_not+ohm_not, Tjunc_not, tau0_not, Gamma_not, EC_not]);
-    bounds_base = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), Tjunc_not+ohm_not*(1-ohm_percent), Tjunc_not*(1-Tjunc_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
-                            [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), Tjunc_not+ohm_not*(1+ohm_percent), Tjunc_not*(1+Tjunc_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent)]]);  
+    eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not, Tjunc_not = nots;
+    eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent, Tjunc_percent = percents
+    params_base = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, Tjunc_not+ohm_not, tau0_not, Gamma_not, EC_not, Tjunc_not]);
+    bounds_base = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), Tjunc_not+ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent), Tjunc_not*(1-Tjunc_percent)],
+                            [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), Tjunc_not+ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent), Tjunc_not*(1+Tjunc_percent)]]);  
 
     # initial fit
-    params_init_guess = np.copy(params_base);
-    bounds_init = np.copy(bounds_base);
-    if(freeze_back): freeze_mask_phys = np.array([0,1,1,1,1,1,0,1,0,0,0]); # freeze phys background params (eps0, G2, G3, epsc, G1) and Tjunc
-    else: freeze_mask_phys = np.array([0,0,0,0,0,0,0,1,0,0,0]); # freeze T_junc
+    params_init_guess = np.copy(params_base[:-1]);
+    bounds_init = np.copy(bounds_base[:,:-1]);
+    if(freeze_back): freeze_mask_phys = np.array([0,1,1,1,1,1,0,0,0,0]); # freeze phys background params (eps0, epsc, G1, G2, G3) 
+    else: freeze_mask_phys = np.array([0,0,0,0,0,0,0,0,0,0]); # freeze nothing
     bounds_init[0][freeze_mask_phys>0] = params_init_guess[freeze_mask_phys>0];
     bounds_init[1][freeze_mask_phys>0] = params_init_guess[freeze_mask_phys>0]+1e-12;  
     params_init, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
-                            params_init_guess, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "T_junc", "tau0", "Gamma", "EC"],
+                            params_init_guess, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0", "Gamma", "EC"],
                             stop_bounds = False, verbose=verbose);
     fit_init = dIdV_all_zero(V_exp, *params_init);
     if(verbose > 4): plot_fit(V_exp, dI_exp, fit_init, mytitle="Initial fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg));
-
-    # !!!!!!!!!!!!
-    params_init[7] += 100
-    fit_init = dIdV_all_zero(V_exp, *params_init);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, fit_init, mytitle="Initial fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg));
-    assert False
 
     #### Step 2: remove outliers
     with_outliers = len(V_exp);
@@ -184,26 +172,29 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbo
 
     #### Step 4: freeze experimental background parameters with lorentz_zero
     params_zero, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
-                                params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "T_junc", "tau0","Gamma", "EC"],
+                                params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero), derivative=False,
                 mytitle="Landauer_zero fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'lorentz_zero/'): return V_exp, dI_exp, params_zero, bounds_init; 
-    if(stop_at in ["imp/", "mag/", "sin/"]): # pretty fit to show signatures
+
+    # pretty fit to show signatures
+    if(stop_at in ["imp/", "mag/", "sin/"]): 
         background_only = dIdV_back(V_exp, *params_zero[:-4]);
         if(verbose > 4): plot_fit(V_exp, dI_exp, background_only, derivative=True,
                             mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
         return V_exp, dI_exp-background_only, params_zero, bounds_init;
 
     #### Step 5: Fit oscillation parameters with lorentz
-    params_all_guess = np.copy(params_zero);
+    params_all_guess = np.copy(params_base);
+    params_all_guess[:len(params_zero)] = np.copy(params_zero);
     bounds_all = np.copy(bounds_base); # reset with no freezing yet
     if(freeze_back): freeze_mask_back = np.array([1,1,1,1,1,1,1,0,0,0,0]); # freeze all background params (only T_junc, tau0, Gamma, EC free)
     else: freeze_mask_back = np.array([1,0,0,0,0,0,1,0,0,0,0]); # freeze exp background params (V0 and T_surf) only
     bounds_all[0][freeze_mask_back>0] = params_all_guess[freeze_mask_back>0];
     bounds_all[1][freeze_mask_back>0] = params_all_guess[freeze_mask_back>0]+1e-12;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
-                                params_all_guess, bounds_all, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "T_junc", "tau0","Gamma", "EC"],
+                                params_all_guess, bounds_all, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC", "T_junc"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all), derivative=False,
                 mytitle="Landauer fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
@@ -229,106 +220,18 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
         
     if(metal=="Mnv2/"):
-        # background guesses
+        # physical background params
         eps0_guess, epsc_guess = 0.008, 0.010; # in eV # 0.008, 0.010
         G1_guess, G2_guess, G3_guess = 2000, 1000, 1000; # in nA/V # 2000,1000,1000
-        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 0.5; # in kelvin
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 1; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01 # unitless scale factor
         Gamma_guess = 0.0022 # in eV
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.0])*1e-3; # in eV, sometimes needs to be tuned for convergence
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        freeze_back = True; # whether to freeze the physical background params in the fitting
-
-    ####
-
-    elif(metal=="Mn/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.0064, 0.0172; # in eV # 0.006, 0.006
-        G1_guess, G2_guess, G3_guess = 1070, 1001, 857; # in nA/V # 1000,1000,1000
-        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 0.5; # in kelvin
-        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1; 
-        # oscillation guesses # <- change these after background is fixed
-        tau0_guess =   0.01 # unitless scale factor
-        Gamma_guess = 0.0022 # in eV
-        EC_guess =    np.array([4.9, 4.9, 4.8, 4.6, 5.4, 5.4])*1e-3; # in eV, sometimes needs to be tuned for convergence
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        tau0_percent, Gamma_percent, EC_percent, Tjunc_percent = 0.4, 0.4, 0.4, 0.4;
         freeze_back = False; # whether to freeze the physical background params in the fitting
-
-    ####
-
-    elif(metal=="Mn2Tesla/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.001509, 0.019842; # in eV 
-        G1_guess, G2_guess, G3_guess = 3300, 811, 1983; # in nA/V 
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
-        # oscillation guesses
-        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.0])*1e-3; EC_guess = np.array([5.8])*1e-3;
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-
-    ####
-
-    elif(metal=="Mn4Tesla/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.003002, 0.000088; # in eV 
-        G1_guess, G2_guess, G3_guess = 1827, 701, 1214; # in nA/V 
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
-        # oscillation guesses
-        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.5])*1e-3;
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        
-    ####
-
-    elif(metal=="Mn7Tesla/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.003871, 0.000100; # in eV 
-        G1_guess, G2_guess, G3_guess = 2506, 643, 1049; # in nA/V
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6; 
-        # oscillation guesses
-        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.7])*1e-3;
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-
-    ####
-
-    elif(metal=="Mn-2Tesla/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.038644, 0.002259; # in eV 
-        G1_guess, G2_guess, G3_guess = 1709, 840, 264; # in nA/V
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6, 1e-6, 1e-6;
-        # oscillation guesses
-        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.6])*1e-3; EC_guess = np.array([5.7])*1e-3;
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-
-    ####
-
-    elif(metal=="Mn-4Tesla/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.003002, 0.000099; # in eV 
-        G1_guess, G2_guess, G3_guess = 1827, 702, 1213; # in nA/V
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6, 1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
-        # oscillation guesses
-        tau0_guess = np.array([0.01]); Gamma_guess = np.array([2.2])*1e-3; EC_guess = np.array([5.5])*1e-3;
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        
-    ####
-        
-    elif(metal=="MnTrilayer/"):
-        # background guesses
-        eps0_guess, epsc_guess = 0.002, 0.002; # in eV
-        G1_guess, G2_guess, G3_guess = 11000, 360, 60; # in nA/V
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1, 1; G1_percent, G2_percent, G3_percent = 1,1,1;
-        # oscillation guesses
-        tau0_guess =   np.array([0.02, 0.02, 0.02, 0.02,0.02,0.02,0.02]); # unitless scale factor
-        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2,2.2,2.2,2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4,5.4,5.4,5.4])*1e-3; # in eV
-        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
 
     ####
         
@@ -340,8 +243,8 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     for datai in range(len(Ts)):
         if(True and datai==0):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
-            guesses = (eps0_guess, G2_guess, G3_guess, epsc_guess, G1_guess, ohm_guess, Ts[datai], tau0_guess, Gamma_guess, EC_guess[datai]);
-            percents = (eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent);
+            guesses = (eps0_guess, epsc_guess, G1_guess, G2_guess, G3_guess, ohm_guess, tau0_guess, Gamma_guess, EC_guess[datai], Ts[datai]);
+            percents = (eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent, Tjunc_percent);
 
             # get fit results
             global temp_kwarg; temp_kwarg = Ts[datai];
@@ -355,13 +258,13 @@ def fit_Mn_data(stop_at, metal, verbose=1):
             if(stop_at in ["lorentz_zero/", "lorentz/"]):
                 plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);
-                mytitle="$T_{ohm} = $"+"{:.1f} K, $\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(*temp_results[-4:])
+                mytitle="$\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV, T_junc = "+"{:.1f} K".format(*temp_results[-4:])
                 print("Saving plot to "+plot_fname);
                 np.save(plot_fname+"_x.npy", x_forfit);
                 np.save(plot_fname+"_y.npy", y_forfit);
                 np.save(plot_fname+"_yfit.npy", y_fit);
                 np.savetxt(plot_fname+"_title.txt", [0], header=mytitle);
-                np.savetxt(plot_fname+"_results.txt", temp_results, header = str(["V0", "E0", "Ec", "G1", "G2", "G3", "T_ohm", "tau0","Gamma", "EC"]), fmt = "%.5f", delimiter=' & ');
+                np.savetxt(plot_fname+"_results.txt", temp_results, header = str(["V0", "E0", "Ec", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC", "T_junc"]), fmt = "%.5f", delimiter=' & ');
 
     # save
     results, boundsT = np.array(results), np.array(boundsT);
@@ -376,16 +279,16 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
     # which fit result is which
     if(stop_at=='mag/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{surf}$", "$T_{junc}$"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{surf}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$T_{junc}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{junc}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
+        rlabels_mask[:-44] = np.zeros_like(rlabels_mask)[:-4];
     elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$T_{junc}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{junc}$"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-        rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
+        rlabels_mask[:-4] = np.zeros_like(rlabels_mask)[:-4];
     else: raise NotImplementedError;
     
     # plot each fit
@@ -457,10 +360,10 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     if(stop_at == "lorentz/"): # <-------- !!!!        
         # plot
         pfig, pax = plt.subplots();  
-        periods = 4*results[:,-1]*1000;
+        periods = 4*results[:,-2]*1000;
         periods, Ts = periods, Ts;
-        gammas = results[:,-2]*1000;
-        charges = results[:,-1]*1000;
+        gammas = results[:,-3]*1000;
+        charges = results[:,-2]*1000;
         myx, myy = gammas, charges;
         myx, myy = Ts, periods;
         pax.scatter(myx, myy, color=mycolors[0], label="Data");
