@@ -28,7 +28,7 @@ gfactor = 2;
 ###############################################################
 #### fitting dI/dV with background and oscillations
 
-def dIdV_imp(Vb, V0, E0, G2, G3, ohmic_heat):
+def dIdV_imp(Vb, V0, E0, G2, G3, T_surf):
     '''
     Magnetic impurity scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -43,12 +43,12 @@ def dIdV_imp(Vb, V0, E0, G2, G3, ohmic_heat):
     # Eq 20 in XGZ's magnon paper
     Delta = muBohr*gfactor*bfield_kwarg;
     retval = G2;
-    retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*(temp_kwarg+ohmic_heat));
-    retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*(temp_kwarg+ohmic_heat));
-    retval -= (G3/4)*Ffunc(abs(Vb-V0-Delta), kelvin2eV*(temp_kwarg+ohmic_heat));
+    retval -= (G3/2)*Ffunc(abs(Vb-V0), kelvin2eV*T_surf);
+    retval -= (G3/4)*Ffunc(abs(Vb-V0+Delta), kelvin2eV*T_surf);
+    retval -= (G3/4)*Ffunc(abs(Vb-V0-Delta), kelvin2eV*T_surf);
     return retval;
 
-def dIdV_mag(Vb, V0, Ec, G1, ohmic_heat):
+def dIdV_mag(Vb, V0, Ec, G1, T_surf):
     '''
     Surface magnon scattering
     Designed to be passed to scipy.optimize.curve_fit
@@ -62,15 +62,15 @@ def dIdV_mag(Vb, V0, Ec, G1, ohmic_heat):
         ret += (E-Ec)/(-np.exp(-(E-Ec)/kBT) + 1);
         return ret
         
-    return G1*Gmag(abs(Vb-V0), kelvin2eV*(temp_kwarg+ohmic_heat));
+    return G1*Gmag(abs(Vb-V0), kelvin2eV*T_surf);
 
-def dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat):
+def dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf):
     '''
     Magnetic impurity and surface magnon scattering, combined
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    return dIdV_imp(Vb, V0, E0, G2, G3, ohmic_heat)+dIdV_mag(Vb, V0, Ec, G1, ohmic_heat);
+    return dIdV_imp(Vb, V0, E0, G2, G3, T_surf)+dIdV_mag(Vb, V0, Ec, G1, T_surf);
 
 def dIdV_sin(Vb, V0, amplitude, dV, deltaV, slope, intercept):
     '''
@@ -88,33 +88,33 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
 
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
-    mymu0 = 0.0; # otherwise breaks equal spacing
+    mymu0 = 0.0; # grounded
     return tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
 
-def dIdV_lorentz(Vb, V0, tau0, Gamma, EC): 
+def dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc): 
     '''
     '''
 
     nmax = 200;
     ns = np.arange(-nmax, nmax+1);
-    mymu0 = 0.0; # otherwise breaks equal spacing
-    return tau0*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*temp_kwarg, ns);
+    mymu0 = 0.0; # grounded
+    return tau0*dI_of_Vb(Vb-V0, mymu0, Gamma, EC, kelvin2eV*T_junc, ns);
 
-def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, tau0, Gamma, EC):
+def dIdV_all_zero(Vb, V0, E0, Ec, G1, G2, G3, T_surf, tau0, Gamma, EC):
     '''
     Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
+    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
 
-def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat, tau0, Gamma, EC):
+def dIdV_all(Vb, V0, E0, Ec, G1, G2, G3, T_surf, T_junc, tau0, Gamma, EC):
     '''
     Magnetic impurity surface magnon scattering, and T=0 lorentzian all together
     Designed to be passed to scipy.optimize.curve_fit
     '''
 
-    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, ohmic_heat) + dIdV_lorentz(Vb, V0, tau0, Gamma, EC);
+    return dIdV_back(Vb, V0, E0, Ec, G1, G2, G3, T_surf) + dIdV_lorentz(Vb, V0, tau0, Gamma, EC, T_junc);
 
 ####################################################################
 #### main
@@ -145,15 +145,20 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, by_hand=True, verbose=0)
     # unpack
     V0_not = 0.0
     V0_bound = 0.01
-    eps0_not, G2_not, G3_not, epsc_not, G1_not, ohm_not, tau0_not, Gamma_not, EC_not = nots;
-    eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent = percents
+    eps0_not, G2_not, G3_not, epsc_not, G1_not, ohm_not, Tjunc_not, tau0_not, Gamma_not, EC_not = nots;
+    eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent = percents
+    params_base = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, Tjunc_not+ohm_not, Tjunc_not, tau0_not, Gamma_not, EC_not]);
+    bounds_base = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), Tjunc_not+ohm_not*(1-ohm_percent), Tjunc_not*(1-Tjunc_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
+                            [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), Tjunc_not+ohm_not*(1+ohm_percent), Tjunc_not*(1+Tjunc_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent)]]); 
 
     # initial fit
-    params_init_guess = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not]);
-    bounds_init = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent)],
-                            [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent)]]);   
+    lorentz_zero_mask = np.ones_like(params_base, dtype=int);
+    lorentz_zero_mask[-4] = 0; # turns off Tjunc for lorentz_zero
+    params_init_guess = params_base[lorentz_zero_mask>0];
+    bounds_init = np.array([bounds_base[0][lorentz_zero_mask>0],
+                    bounds_base[1][lorentz_zero_mask>0]]);
     params_init, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
-                            params_init_guess, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_ohm", "tau0", "Gamma", "EC"],
+                            params_init_guess, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0", "Gamma", "EC"],
                             stop_bounds = False, verbose=verbose);
     fit_init = dIdV_all_zero(V_exp, *params_init);
     if(verbose > 4): plot_fit(V_exp, dI_exp, fit_init, mytitle="Initial fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg));
@@ -166,7 +171,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, by_hand=True, verbose=0)
 
     # start with zero temp oscillations to constrain
     params_zero, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
-                                params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_ohm","tau0","Gamma", "EC"],
+                                params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero), derivative=False,
                 mytitle="Landauer_zero fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
@@ -181,23 +186,20 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, by_hand=True, verbose=0)
                             mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
         return V_exp, dI_exp-background_only, params_zero, bounds_init;
 
-    # some plotting to help with constraints
-    if(by_hand):
-        params_plot = np.copy(params_zero);
-        params_plot[-3:] = np.array([tau0_not, Gamma_not, EC_not]);
-        print(params_plot)
-        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_plot))
-        assert False
 
     # constrain and do finite temp fit
-    params_all_guess = np.copy(params_zero);
-    params_all_guess[len(params_back):] = np.array([tau0_not, Gamma_not, EC_not]);
-    bounds_all = np.copy(bounds_zero);
-    constrain_mask = np.array([1,1,1,0,1,0,1,0,0,0]); # only G1, G3, tau0, Gamma, EC free
+    params_all_guess = np.copy(params_base);
+    params_all_guess[lorentz_zero_mask>0] = params_zero;
+    bounds_all = np.copy(bounds_base);
+    if(by_hand): # some plotting to help with constraints
+        params_all_guess[-3:] = np.array([tau0_not, Gamma_not, EC_not]);
+        print(params_all_guess)
+        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all_guess)); assert False;
+    constrain_mask = np.array([1,1,1,0,0,0,1,0,0,0,0]); # only G1, G2, G3, T_junc, tau0, Gamma, EC free
     bounds_all[0][constrain_mask>0] = params_all_guess[constrain_mask>0];
     bounds_all[1][constrain_mask>0] = params_all_guess[constrain_mask>0]+1e-6;
     params_all, _ = fit_wrapper(dIdV_all, V_exp, dI_exp,
-                                params_all_guess, bounds_all, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_ohm", "tau0","Gamma", "EC"],
+                                params_all_guess, bounds_all, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "T_junc", "tau0","Gamma", "EC"],
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all), derivative=False,
                 mytitle="Landauer fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
@@ -220,33 +222,33 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     # experimental params
     Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
-
-    # oscillation guesses
-    if(metal=="Mn/"):
+        
+    if(metal=="Mnv2/"):
         # background guesses
-        eps0_guess, epsc_guess = 0.005882, 0.015184; # in eV # 0.006, 0.006
-        G1_guess, G2_guess, G3_guess = 502, 1019, 982; # in nA/V # 1000,1000,1000
-        ohm_guess, ohm_percent = 10.0, 1.0; # in kelvin
-        eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
-        # oscillation guesses
-        tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.2, 2.2, 2.2, 2.2, 2.8, 2.8])*1e-3; # in eV
-        EC_guess =    np.array([4.9, 4.9, 4.9, 4.9, 5.3, 5.3])*1e-3; # in eV
+        eps0_guess, epsc_guess = 0.0064, 0.0183; # in eV # 0.008, 0.008
+        G1_guess, G2_guess, G3_guess = 2190, 863, 814; # in nA/V # 2000,1000,1000
+        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 1e-6; # in kelvin
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        #eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
+        Gamma_guess = np.array([2.2, 2.2, 2.4, 2.8, 2.2])*1e-3; # in eV
+        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.0])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
 
     ####
-        
-    elif(metal=="Mnv2/"):
+
+    elif(metal=="Mn/"):
         # background guesses
-        eps0_guess, epsc_guess = 0.0064, 0.015; # in eV # 0.006, 0.006
-        G1_guess, G2_guess, G3_guess = 2501, 826, 702; # in nA/V # 2000,1000,1000
-        ohm_guess, ohm_percent = 8, 0.5; # in kelvin
-        eps0_percent, epsc_percent = 0.2,4; G1_percent, G2_percent, G3_percent = 1,1,1;
-        eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6;
-        # oscillation guesses
-        tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
-        Gamma_guess = np.array([2.1, 2.2, 2.4, 2.8, 2.2])*1e-3; # in eV
-        EC_guess =    np.array([5.9, 5.8, 5.6, 5.4, 5.0])*1e-3; # in eV
+        eps0_guess, epsc_guess = 0.0064, 0.0172; # in eV # 0.006, 0.006
+        G1_guess, G2_guess, G3_guess = 1070, 1001, 857; # in nA/V # 1000,1000,1000
+        ohm_guess, ohm_percent, Tjunc_percent = 8.0, 1, 1e-6; # in kelvin
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        eps0_percent, epsc_percent = 1e-6,1e-6; G1_percent, G2_percent, G3_percent = 1e-6,1e-6,1e-6; 
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]); # unitless scale factor
+        Gamma_guess = np.array([1.9, 2.3, 2.2, 2.2, 2.2, 2.2])*1e-3; # in eV
+        EC_guess =    np.array([4.9, 4.9, 4.8, 4.6, 5.4, 5.4])*1e-3; # in eV
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
 
     ####
@@ -331,13 +333,13 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True):
+        if(True and datai==0):
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
-            guesses = (eps0_guess, G2_guess, G3_guess, epsc_guess, G1_guess, ohm_guess, tau0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
-            percents = (eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent);
+            guesses = (eps0_guess, G2_guess, G3_guess, epsc_guess, G1_guess, ohm_guess, Ts[datai], tau0_guess[datai], Gamma_guess[datai], EC_guess[datai]);
+            percents = (eps0_percent, G2_percent, G3_percent, epsc_percent, G1_percent, ohm_percent, Tjunc_percent, tau0_percent, Gamma_percent, EC_percent);
 
             # get fit results
-            global temp_kwarg; temp_kwarg = Ts[datai]; # very bad practice
+            global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal,
                     guesses, percents, stop_at, by_hand=False, verbose=verbose);
@@ -369,21 +371,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
     '''
 
     # which fit result is which
-    if(stop_at=='imp/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$G_2$", "$G_3$", "$T_{ohm}$"]);
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-    elif(stop_at=='mag/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{ohm}$"]);
-        rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
-    elif(stop_at=='imp_mag/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$", "$\\varepsilon_c$", "$G_1$", "$G_2$", "$G_3$", "$T_{ohm}$"]);
+    if(stop_at=='mag/'):
+        rlabels = np.array(["$V_0$", "$\\varepsilon_c$", "$G_1$", "$T_{surf}$", "$T_{junc}$"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
     elif(stop_at == 'lorentz_zero/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$T_{junc}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     elif(stop_at == 'lorentz/'):
-        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{ohm}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
+        rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$T_{junc}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);   
         rlabels_mask = np.ones(np.shape(rlabels), dtype=int);
         rlabels_mask[:-3] = np.zeros_like(rlabels_mask)[:-3];
     else: raise NotImplementedError;
@@ -481,7 +477,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv2/"; # tells which experimental data to load
+    metal = "Mn/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[1];
     verbose=10;
