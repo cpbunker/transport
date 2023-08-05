@@ -228,9 +228,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         
     if(metal=="Mnv2/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.007564, 0.00565; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.592, 0.182, 0.155; # in A/V/eV^2
-        Gamma_guess = 0.002095; # in eV
+        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
+        Gamma_guess = 0.00210; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
@@ -239,7 +239,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.0])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess),(5,20),(5,20),(5,20),(5,20)]); # Tjunc tends to lag Tnominal
-        freeze_back = False; # whether to freeze the physical background params in the fitting
+        freeze_back = True; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -266,7 +266,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [0,len(Ts)-1]):
+        if(True):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
