@@ -245,9 +245,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mnv3/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00587, 0.0168; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.592, 0.182, 0.155; # in A/V/eV^2
-        Gamma_guess = 0.0022 # in eV
+        eps0_guess, epsc_guess = 0.00587, 0.0166; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.340, 0.275, 0.248; # in A/V/eV^2
+        Gamma_guess = 0.00190 # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
@@ -266,7 +266,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True):
+        if(True and datai in [0,len(Ts)-1]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -404,9 +404,9 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv2/"; # tells which experimental data to load
+    metal = "Mnv3/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
+    stop_at = stop_ats[2];
     verbose=1;
 
     # this one executes the fitting and stores results
