@@ -243,7 +243,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     ####
 
-    elif(metal=="Mnv3/"):
+    elif(metal=="Mnv4/"):
         # physical background params
         eps0_guess, epsc_guess = 0.00587, 0.0166; # in eV # 0.008, 0.010
         G1_guess, G2_guess, G3_guess = 0.340, 0.275, 0.248; # in A/V/eV^2
@@ -256,7 +256,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([4.9,4.9,4.8,4.6])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(5,20),(5,20),(5,20),(5,20)]);
-        freeze_back = False; # whether to freeze the physical background params in the fitting
+        freeze_back = True; # whether to freeze the physical background params in the fitting
 
     ####
         
@@ -266,7 +266,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [0,len(Ts)-1]):
+        if(True):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -404,7 +404,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv3/"; # tells which experimental data to load
+    metal = "Mnv4/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
     verbose=1;
