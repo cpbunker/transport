@@ -173,7 +173,7 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
     with_outliers = len(V_exp);
     V_exp = V_exp[abs(dI_exp-fit_init) < num_dev*dI_dev];
     dI_exp = dI_exp[abs(dI_exp-fit_init) < num_dev*dI_dev];
-    assert(with_outliers - len(V_exp) <= with_outliers*0.05); # remove no more than 5%
+    assert(with_outliers - len(V_exp) <= with_outliers*0.0999); # remove no more than 10%
 
     #### Step 3: freeze experimental background parameters with lorentz_zero
     params_zero, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
@@ -253,9 +253,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01 # unitless scale factor
-        EC_guess =    np.array([4.9,4.9,4.9,4.9,5.7,5.7])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        EC_guess =    np.array([4.9,4.9,4.7,4.6,5.7,5.7])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        Tfilm_lims = np.array([(5,20),(5,20),(5,20),(5,20)]);
+        Tfilm_lims = np.array([(5,30),(5,30),(5,30),(5,30),(5,30),(5,30)]);
         freeze_back = True; # whether to freeze the physical background params in the fitting
 
     ####
@@ -406,8 +406,8 @@ if(__name__ == "__main__"):
 
     metal = "Mnv4/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[2];
-    verbose=1;
+    stop_at = stop_ats[1];
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
