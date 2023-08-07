@@ -245,15 +245,15 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mnv4/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00587, 0.0166; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.340, 0.275, 0.248; # in A/V/eV^2
-        Gamma_guess = 0.00190 # in eV
+        eps0_guess, epsc_guess = 0.00665, 0.0165; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.630, 0.530, 0.457; # in A/V/eV^2
+        Gamma_guess = 0.00140 # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01 # unitless scale factor
-        EC_guess =    np.array([4.9,4.9,4.8,4.6])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        EC_guess =    np.array([4.9,4.9,4.9,4.9,5.7,5.7])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(5,20),(5,20),(5,20),(5,20)]);
         freeze_back = True; # whether to freeze the physical background params in the fitting
