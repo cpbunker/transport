@@ -146,7 +146,7 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
 
     # unpack
     print(">>>>",Tfilmvals);
-    V0_not = 0.0
+    V0_not = -0.002069
     V0_bound = np.max(V_exp)/10;
     eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not = nots;
     eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent = percents
@@ -196,6 +196,11 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
     bounds_all = np.copy(bounds_base); # reset without freezing
     if(freeze_back): # only tau0, EC, T_film free
         freeze_mask_back = np.array([1,1,1,1,1,1,1,0,1,0,0]);
+        params_all_guess = np.copy(params_base);
+        for el in params_all_guess: print(el);
+        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all_guess));
+        assert False
+
     else: # freeze V0, T_surf, and T_film
         freeze_mask_back = np.array([1,0,0,0,0,0,1,0,0,0,1]); 
     bounds_all[0][freeze_mask_back>0] = params_all_guess[freeze_mask_back>0];
@@ -232,15 +237,15 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         epsc_guess, G1_guess = 0.00559, 0.585; # magnon, det'd by low temp # 0.010, 0.5
         Gamma_guess = 0.0021; # lead coupling, det'd by low temp # 0.0021
 
-        epsc_guess, G1_guess = 0.000, 0.0702; # BY IMPURITY
+        epsc_guess, G1_guess = 0.005, 0.0702; # BY HIGH TEMP
         Gamma_guess = 0.00268; 
 
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
-        ohm_guess, ohm_percent = 6.07, 0.4; # in kelvin # also V0, but that is set by data
+        ohm_guess, ohm_percent = 5.493, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
-        tau0_guess =   0.01 # unitless scale factor
-        EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.0])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_guess =   0.01; # unitless scale factor
+        EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.1])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess),(5,20),(5,20),(5,20),(5,20)]); # Tjunc tends to lag Tnominal
         Tfilm_lims = np.array([(2.5,2.5+1e-12),(5,5+1e-12),(10,10+1e-12),(15,15+1e-12),(20,20+1e-12)]); # Tjunc tends to lag Tnominal
