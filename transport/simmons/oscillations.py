@@ -262,8 +262,8 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn7Tesla/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.006768, 0.005066; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.370, 0.101, 0.0886; # in A/V/eV^2
+        eps0_guess, epsc_guess = 0.0054144, 0.005227 # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.375, 0.0996, 0.103; # in A/V/eV^2
         Gamma_guess = 0.00266; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
@@ -279,9 +279,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn4Tesla/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
-        Gamma_guess = 0.00210; # in eV
+        eps0_guess, epsc_guess = 0.0054, 0.000083; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.334, 0.175, 0.153; # in A/V/eV^2
+        Gamma_guess = 0.00218; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
@@ -296,9 +296,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn2Tesla/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
-        Gamma_guess = 0.00210; # in eV
+        eps0_guess, epsc_guess = 0.0054, 0.00440; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.499, 0.142, 0.116; # in A/V/eV^2
+        Gamma_guess = 0.00230; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
@@ -313,9 +313,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn-2Tesla/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
-        Gamma_guess = 0.00210; # in eV
+        eps0_guess, epsc_guess = 0.010, 0.0010; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.528, 0.196, 0.114; # in A/V/eV^2
+        Gamma_guess = 0.00206; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
@@ -330,9 +330,9 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mn-4Tesla/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
-        Gamma_guess = 0.00210; # in eV
+        eps0_guess, epsc_guess = 0.0054, 0.000084; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.334, 0.175, 0.153; # in A/V/eV^2
+        Gamma_guess = 0.00218; # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
