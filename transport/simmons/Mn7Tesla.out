@@ -1,5 +1,5 @@
 SLURM: start oscillations.py
-Wed 09 Aug 2023 07:04:16 AM PDT
+Wed 09 Aug 2023 08:19:26 AM PDT
 /global/u2/c/cpbunker/GitHub/transport/transport/simmons/landauer.py:131: RuntimeWarning: overflow encountered in multiply
   exp_muL = exp_muR*np.exp(-Vbint*Beta);
 /global/u2/c/cpbunker/GitHub/transport/transport/simmons/landauer.py:137: RuntimeWarning: overflow encountered in true_divide
@@ -14,107 +14,82 @@ Loading data from Mn7Tesla/data/2.5KdIdV.txt
 
 Fitting data
    Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
-       0              1         1.1039e+06                                    5.24e+06    
-       1              2         6.4974e+05      4.54e+05       9.61e-01       2.35e+06    
-       2              3         5.3297e+05      1.17e+05       2.19e+00       1.36e+06    
-       3              4         5.0894e+05      2.40e+04       4.96e-02       9.66e+05    
-       4              5         5.0346e+05      5.49e+03       1.01e-02       8.97e+05    
-       5              6         4.9611e+05      7.34e+03       6.48e-03       3.87e+05    
-       6              7         4.9464e+05      1.47e+03       2.18e-02       2.51e+05    
-       7              8         4.9425e+05      3.89e+02       3.71e-03       1.03e+05    
-       8             10         4.9411e+05      1.42e+02       5.40e-03       5.51e+04    
-       9             11         4.9404e+05      7.01e+01       1.12e-02       9.14e+04    
-      10             12         4.9397e+05      7.20e+01       3.39e-03       1.99e+04    
-      11             14         4.9394e+05      3.20e+01       5.72e-03       2.29e+04    
-      12             15         4.9391e+05      2.57e+01       6.12e-03       2.76e+04    
-      13             16         4.9390e+05      1.57e+01       3.90e-03       1.35e+04    
-      14             17         4.9389e+05      8.34e+00       4.58e-03       1.94e+04    
-      15             19         4.9388e+05      5.23e+00       1.15e-03       5.27e+03    
-      16             20         4.9388e+05      2.09e+00       3.47e-03       8.81e+03    
-      17             22         4.9388e+05      1.68e+00       2.98e-04       2.78e+03    
-      18             23         4.9388e+05      7.44e-02       8.41e-04       2.17e+03    
-      19             24         4.9388e+05      4.54e-01       1.91e-04       1.01e+03    
-      20             25         4.9388e+05      2.68e-01       4.20e-04       9.19e+02    
-      21             27         4.9388e+05      6.98e-02       1.43e-04       5.37e+02    
-      22             28         4.9388e+05      5.67e-02       3.88e-04       7.28e+02    
-      23             29         4.9388e+05      6.59e-03       2.21e-04       5.41e+02    
-      24             30         4.9388e+05      2.70e-02       3.12e-05       2.37e+02    
-      25             31         4.9388e+05      1.15e-02       8.03e-05       1.75e+02    
-      26             33         4.9388e+05      4.92e-03       3.20e-05       1.07e+02    
+       0              1         1.0922e+06                                    5.00e+06    
+       1              2         7.0979e+05      3.82e+05       1.36e+00       3.91e+06    
+       2              3         5.4860e+05      1.61e+05       1.74e+00       2.61e+06    
+       3              4         5.0598e+05      4.26e+04       9.15e-02       1.38e+06    
+       4              5         4.9648e+05      9.50e+03       3.67e-03       6.26e+05    
+       5              6         4.9463e+05      1.85e+03       3.20e-05       2.63e+05    
+       6              7         4.9432e+05      3.14e+02       1.05e-05       1.13e+05    
+       7              8         4.9426e+05      5.82e+01       4.67e-06       4.55e+04    
+       8              9         4.9425e+05      9.51e+00       1.89e-06       1.83e+04    
+       9             10         4.9425e+05      1.55e+00       7.62e-07       7.35e+03    
+      10             11         4.9425e+05      2.56e-01       3.06e-07       2.95e+03    
+      11             12         4.9425e+05      4.35e-02       1.23e-07       1.18e+03    
+      12             13         4.9425e+05      7.97e-03       4.92e-08       4.74e+02    
+      13             14         4.9425e+05      1.67e-03       1.97e-08       1.90e+02    
 `ftol` termination condition is satisfied.
-Function evaluations 33, initial cost 1.1039e+06, final cost 4.9388e+05, first-order optimality 1.07e+02.
-<function dIdV_all_zero at 0x7fea8011aee0> fitting results:
+Function evaluations 14, initial cost 1.0922e+06, final cost 4.9425e+05, first-order optimality 1.90e+02.
+<function dIdV_all_zero at 0x7fe87f13cee0> fitting results:
 	V0    = -0.002117,bounds = [-0.012696  0.012696]
-	eps_0 = 0.004332,bounds = [0.00433152 0.00649728]
-	eps_c = 0.005397,bounds = [0.       0.010454]
-	G1    = 0.343947,bounds = [0.   0.75]
-	G2    = 0.088704,bounds = [0.     0.1992]
-	G3    = 0.110927,bounds = [0.    0.206]
+	eps_0 = 0.004330,bounds = [0.00433 0.00433]
+	eps_c = 0.005400,bounds = [0.0054 0.0054]
+	G1    = 0.371000,bounds = [0.371 0.371]
+	G2    = 0.097200,bounds = [0.0972 0.0972]
+	G3    = 0.120000,bounds = [0.12 0.12]
 	T_surf= 13.700000,bounds = [ 7.3 13.7]
-	tau0  = 0.009814,bounds = [0.006 0.014]
-	Gamma = 0.002792,bounds = [0.001596 0.003724]
+	tau0  = 0.009749,bounds = [0.006 0.014]
+	Gamma = 0.002690,bounds = [0.00269 0.00269]
 	EC    = 0.005708,bounds = [0.00354 0.00826]
-	RMSE  = 0.057911 
-
-
-Fitting data
-   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
-       0              1         4.9388e+05                                    1.07e+02    
-       1              4         4.9388e+05      2.96e-03       3.75e-05       9.01e+01    
-`ftol` termination condition is satisfied.
-Function evaluations 4, initial cost 4.9388e+05, final cost 4.9388e+05, first-order optimality 9.01e+01.
-<function dIdV_all_zero at 0x7fea8011aee0> fitting results:
-	V0    = -0.002117,bounds = [-0.012696  0.012696]
-	eps_0 = 0.004332,bounds = [0.00433152 0.00649728]
-	eps_c = 0.005402,bounds = [0.       0.010454]
-	G1    = 0.343911,bounds = [0.   0.75]
-	G2    = 0.088695,bounds = [0.     0.1992]
-	G3    = 0.110918,bounds = [0.    0.206]
-	T_surf= 13.700000,bounds = [ 7.3 13.7]
-	tau0  = 0.009814,bounds = [0.006 0.014]
-	Gamma = 0.002792,bounds = [0.001596 0.003724]
-	EC    = 0.005708,bounds = [0.00354 0.00826]
-	RMSE  = 0.057911 
-
-
-Fitting data
-   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
-       0              1         4.9497e+05                                    2.11e+04    
-       1              2         4.9445e+05      5.16e+02       7.92e-03       5.76e+04    
-       2              3         4.9429e+05      1.61e+02       3.97e-03       1.80e+04    
-       3              4         4.9427e+05      1.87e+01       5.95e-03       2.95e+04    
-       4              5         4.9426e+05      9.47e+00       2.89e-03       6.00e+03    
-       5              6         4.9426e+05      2.09e+00       3.53e-03       1.17e+04    
-       6              8         4.9425e+05      4.74e+00       9.98e-04       4.15e+03    
-       7             10         4.9425e+05      1.01e+00       1.04e-03       2.78e+03    
-       8             11         4.9425e+05      9.93e-01       2.03e-03       3.08e+03    
-       9             13         4.9425e+05      4.08e-01       5.48e-04       2.17e+03    
-      10             14         4.9425e+05      5.22e-02       5.12e-04       1.39e+03    
-      11             15         4.9425e+05      1.42e-01       1.12e-04       7.06e+02    
-      12             16         4.9425e+05      7.47e-02       2.91e-04       6.59e+02    
-      13             17         4.9425e+05      1.33e-02       2.47e-04       5.30e+02    
-      14             18         4.9425e+05      3.34e-02       5.62e-05       2.81e+02    
-      15             19         4.9425e+05      1.64e-02       1.46e-04       3.02e+02    
-      16             20         4.9425e+05      3.34e-03       1.15e-04       2.46e+02    
-      17             21         4.9425e+05      8.00e-03       2.80e-05       1.31e+02    
-      18             22         4.9425e+05      3.64e-03       7.28e-05       1.47e+02    
-`ftol` termination condition is satisfied.
-Function evaluations 22, initial cost 4.9497e+05, final cost 4.9425e+05, first-order optimality 1.47e+02.
-<function dIdV_all at 0x7fea8011af70> fitting results:
-	V0    = -0.002117,bounds = [-0.00211667 -0.00211667]
-	eps_0 = 0.004332,bounds = [0.00433152 0.00649728]
-	eps_c = 0.005397,bounds = [0.       0.010454]
-	G1    = 0.371463,bounds = [0.   0.75]
-	G2    = 0.097200,bounds = [0.     0.1992]
-	G3    = 0.119863,bounds = [0.    0.206]
-	T_surf= 13.700000,bounds = [13.7 13.7]
-	tau0  = 0.009853,bounds = [0.006 0.014]
-	Gamma = 0.002686,bounds = [0.001596 0.003724]
-	EC    = 0.005708,bounds = [0.00354 0.00826]
-	T_film= 2.500000,bounds = [2.5 2.5]
 	RMSE  = 0.057933 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         4.9425e+05                                    1.90e+02    
+       1              2         4.9425e+05      4.69e-04       7.98e-09       7.67e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 2, initial cost 4.9425e+05, final cost 4.9425e+05, first-order optimality 7.67e+01.
+<function dIdV_all_zero at 0x7fe87f13cee0> fitting results:
+	V0    = -0.002117,bounds = [-0.012696  0.012696]
+	eps_0 = 0.004330,bounds = [0.00433 0.00433]
+	eps_c = 0.005400,bounds = [0.0054 0.0054]
+	G1    = 0.371000,bounds = [0.371 0.371]
+	G2    = 0.097200,bounds = [0.0972 0.0972]
+	G3    = 0.120000,bounds = [0.12 0.12]
+	T_surf= 13.700000,bounds = [ 7.3 13.7]
+	tau0  = 0.009749,bounds = [0.006 0.014]
+	Gamma = 0.002690,bounds = [0.00269 0.00269]
+	EC    = 0.005708,bounds = [0.00354 0.00826]
+	RMSE  = 0.057933 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         4.9441e+05                                    2.11e+04    
+       1              2         4.9434e+05      7.26e+01       2.71e-05       1.80e+04    
+       2              3         4.9434e+05      1.17e+00       1.20e-06       7.62e+03    
+       3              4         4.9434e+05      1.64e-01       2.37e-07       3.91e+03    
+       4              5         4.9434e+05      4.46e-02       1.29e-07       1.73e+03    
+       5              6         4.9434e+05      8.05e-03       5.86e-08       7.01e+02    
+       6              7         4.9434e+05      8.94e-04       2.47e-08       2.62e+02    
+`ftol` termination condition is satisfied.
+Function evaluations 7, initial cost 4.9441e+05, final cost 4.9434e+05, first-order optimality 2.62e+02.
+<function dIdV_all at 0x7fe87f13cf70> fitting results:
+	V0    = -0.002117,bounds = [-0.00211698 -0.00211698]
+	eps_0 = 0.004330,bounds = [0.00433 0.00433]
+	eps_c = 0.005400,bounds = [0.0054 0.0054]
+	G1    = 0.371000,bounds = [0.371 0.371]
+	G2    = 0.097200,bounds = [0.0972 0.0972]
+	G3    = 0.120000,bounds = [0.12 0.12]
+	T_surf= 13.700000,bounds = [13.7 13.7]
+	tau0  = 0.009778,bounds = [0.006 0.014]
+	Gamma = 0.002690,bounds = [0.00269 0.00269]
+	EC    = 0.005709,bounds = [0.00354 0.00826]
+	T_film= 2.500000,bounds = [ 2.5 10.5]
+	RMSE  = 0.057938 
 
 Saving plot to Mn7Tesla/lorentz/stored_plots/2
 Saving data to Mn7Tesla/lorentz/
 SLURM: finish oscillations.py
-Wed 09 Aug 2023 07:07:11 AM PDT
+Wed 09 Aug 2023 08:20:31 AM PDT
