@@ -259,6 +259,91 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         freeze_back = True; # whether to freeze the physical background params in the fitting
 
     ####
+
+    elif(metal=="Mn7Tesla/"):
+        # physical background params
+        eps0_guess, epsc_guess = 0.006768, 0.005066; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.370, 0.101, 0.0886; # in A/V/eV^2
+        Gamma_guess = 0.00266; # in eV
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   0.01 # unitless scale factor
+        EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        Tfilm_lims = np.array([(2.5,2.5+ohm_guess)]);
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+
+    ####
+
+    elif(metal=="Mn4Tesla/"):
+        # physical background params
+        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
+        Gamma_guess = 0.00210; # in eV
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   0.01 # unitless scale factor
+        EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        Tfilm_lims = np.array([(7.0,7.0+ohm_guess)]);
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+
+    ####
+
+    elif(metal=="Mn2Tesla/"):
+        # physical background params
+        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
+        Gamma_guess = 0.00210; # in eV
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   0.01 # unitless scale factor
+        EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        Tfilm_lims = np.array([(2.5,2.5+ohm_guess)]);
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+
+    ####
+
+    elif(metal=="Mn-2Tesla/"):
+        # physical background params
+        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
+        Gamma_guess = 0.00210; # in eV
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   0.01 # unitless scale factor
+        EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        Tfilm_lims = np.array([(5.0,5.0+ohm_guess)]);
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+
+    ####
+
+    elif(metal=="Mn-4Tesla/"):
+        # physical background params
+        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
+        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
+        Gamma_guess = 0.00210; # in eV
+        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        # experimental background params
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        # oscillation guesses # <- change these after background is fixed
+        tau0_guess =   0.01 # unitless scale factor
+        EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
+        tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
+        Tfilm_lims = np.array([(7.0,7.0+ohm_guess)]);
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+
+    ####
         
     else: raise NotImplementedError;
 
@@ -384,6 +469,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         periods, Ts = periods, Ts;
         gammas = results[:,-3]*1000;
         charges = results[:,-2]*1000;
+        Tfilms = results[:,-1];
         myx, myy = gammas, charges;
         myx, myy = Ts, periods;
         pax.scatter(myx, myy, color=mycolors[0], label="Data");
@@ -404,15 +490,15 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mnv4/"; # tells which experimental data to load
+    metal = "Mn7Tesla/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
-    verbose=10;
+    stop_at = stop_ats[2];
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5,5.0,20.0]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
