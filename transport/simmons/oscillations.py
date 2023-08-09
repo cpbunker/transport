@@ -228,17 +228,22 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         
     if(metal=="Mnv2/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00846, 0.00558; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.586, 0.181, 0.148; # in A/V/eV^2
-        Gamma_guess = 0.00210; # in eV
+        eps0_guess, G2_guess, G3_guess = 0.00845, 0.117, 0.115; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
+        epsc_guess, G1_guess = 0.00559, 0.585; # magnon, det'd by low temp # 0.010, 0.5
+        Gamma_guess = 0.0021; # lead coupling, det'd by low temp # 0.0021
+
+        epsc_guess, G1_guess = 0.000, 0.0702; # BY IMPURITY
+        Gamma_guess = 0.00268; 
+
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
-        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        ohm_guess, ohm_percent = 6.07, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01 # unitless scale factor
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.0])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess),(5,20),(5,20),(5,20),(5,20)]); # Tjunc tends to lag Tnominal
+        Tfilm_lims = np.array([(2.5,2.5+1e-12),(5,5+1e-12),(10,10+1e-12),(15,15+1e-12),(20,20+1e-12)]); # Tjunc tends to lag Tnominal
         freeze_back = True; # whether to freeze the physical background params in the fitting
 
     ####
@@ -256,7 +261,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([4.9,4.9,4.7,4.6,5.7,5.7])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(5,30),(5,30),(5,30),(5,30),(5,30),(5,30)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -273,7 +278,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -290,7 +295,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(7.0,7.0+ohm_guess)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -307,7 +312,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -324,7 +329,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(5.0,5.0+ohm_guess)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -341,7 +346,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         EC_guess =    np.array([5.9])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(7.0,7.0+ohm_guess)]);
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
         
@@ -351,7 +356,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True):
+        if(True and datai in [4]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -490,10 +495,10 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Mn2Tesla/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
