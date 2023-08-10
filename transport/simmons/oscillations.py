@@ -146,7 +146,7 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
 
     # unpack
     print(">>>>",Tfilmvals);
-    V0_not = -0.002069
+    V0_not = 0.0;
     V0_bound = np.max(V_exp)/10;
     eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not = nots;
     eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent = percents
@@ -196,11 +196,6 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
     bounds_all = np.copy(bounds_base); # reset without freezing
     if(freeze_back): # only tau0, EC, T_film free
         freeze_mask_back = np.array([1,1,1,1,1,1,1,0,1,0,0]);
-        params_all_guess = np.copy(params_base);
-        for el in params_all_guess: print(el);
-        plot_fit(V_exp, dI_exp, dIdV_all(V_exp, *params_all_guess));
-        assert False
-
     else: # freeze V0, T_surf, and T_film
         freeze_mask_back = np.array([1,0,0,0,0,0,1,0,0,0,1]); 
     bounds_all[0][freeze_mask_back>0] = params_all_guess[freeze_mask_back>0];
@@ -503,7 +498,7 @@ if(__name__ == "__main__"):
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    verbose=10;
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
