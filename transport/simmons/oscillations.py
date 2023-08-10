@@ -192,7 +192,9 @@ def fit_dIdV(metal, nots, percents, stop_at, Tfilmvals, num_dev=3, freeze_back=F
 
     #### Step 4: Fit oscillation parameters with lorentz
     params_all_guess = np.copy(params_base);
-    params_all_guess[:len(params_zero)] = np.copy(params_zero);
+    params_all_guess[:len(params_zero)] = np.copy(params_zero); ################## CHANGE
+    #params_all_guess[0] = params_zero[0];                        ########### 
+    #params_all_guess[6] = params_zero[6];                        ########### 
     bounds_all = np.copy(bounds_base); # reset without freezing
     if(freeze_back): # only tau0, EC, T_film free
         freeze_mask_back = np.array([1,1,1,1,1,1,1,0,1,0,0]);
@@ -228,23 +230,25 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         
     if(metal=="Mnv2/"):
         # physical background params
-        eps0_guess, G2_guess, G3_guess = 0.00845, 0.117, 0.115; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
-        epsc_guess, G1_guess = 0.00559, 0.585; # magnon, det'd by low temp # 0.010, 0.5
-        Gamma_guess = 0.0021; # lead coupling, det'd by low temp # 0.0021
+        eps0_guess, G2_guess, G3_guess = 0.00832, 0.09985, 0.10336; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
+        epsc_guess, G1_guess = 1e-12, 0.06448; # magnon, det'd by low temp # 0.010, 0.5
+        Gamma_guess = 0.002832; # lead coupling, det'd by low temp # 0.0021
 
-        epsc_guess, G1_guess = 0.005, 0.0702; # BY HIGH TEMP
-        Gamma_guess = 0.00268; 
+        if True:
+            eps0_guess, G2_guess, G3_guess = 0.008, 0.1, 0.1; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
+            epsc_guess, G1_guess = 0.005, 0.1; # magnon, det'd by low temp # 0.005, 0.5
+            Gamma_guess = 0.0022; # lead coupling, det'd by low temp # 0.0021
 
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         # experimental background params
-        ohm_guess, ohm_percent = 5.493, 0.4; # in kelvin # also V0, but that is set by data
+        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01; # unitless scale factor
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.1])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
         Tfilm_lims = np.array([(2.5,2.5+ohm_guess),(5,20),(5,20),(5,20),(5,20)]); # Tjunc tends to lag Tnominal
         Tfilm_lims = np.array([(2.5,2.5+1e-12),(5,5+1e-12),(10,10+1e-12),(15,15+1e-12),(20,20+1e-12)]); # Tjunc tends to lag Tnominal
-        freeze_back = True; # whether to freeze the physical background params in the fitting
+        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -498,7 +502,7 @@ if(__name__ == "__main__"):
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
