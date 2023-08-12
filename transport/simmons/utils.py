@@ -118,7 +118,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
     explabel = "Exp.";
    
     # plot
-    ax.plot(xvals, yvals, color=mycolors[0], label = explabel, linewidth = mylinewidth);
+    ax.plot(xvals, yvals, color=mycolors[0], marker='s', label = explabel, linewidth = mylinewidth);
     ax.plot(xvals, yfit, color=accentcolors[0], label = "Fit", linewidth = mylinewidth);
         
     # derivative

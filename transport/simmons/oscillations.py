@@ -505,9 +505,9 @@ if(__name__ == "__main__"):
     verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[5,7,10]);
 
