@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 # top level
 #np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
+save_figs = False;
 
 # fig standardizing
 myxvals = 199;
@@ -69,14 +70,21 @@ def print_H_alpha(H):
 
 # tight binding params
 n_loc_dof = 3; 
-tLR = 1.0*np.eye(n_loc_dof);
+tLR = 1.0*np.eye(n_loc_dof); # normalized to one, physically ~ 100 meV
 tinfty = 1.0*tLR;
 VLR = 0.0*tLR;
 Vinfty = 0.5*tLR;
 NLR = 200;
 Ninfty = 20;
+
+# cutoffs
 Ecut = 0.1;
 error_lims = (0,20);
+
+###############################################
+# matrix elements are the right barrier being removed only
+# the Kondo term is included in HL and HR
+# therefore physical basis != eigenbasis of Sz
 
 # T vs tvac
 if True:
@@ -106,14 +114,14 @@ if True:
         # impurity physics
         JK  =-1.0 *tLR[0,0]/100; # first number is value in meV
         J12 = 0.0 *tLR[0,0]/100;
-        Dval= 2.0 *tLR[0,0]/100; # TODO: get to work when nonzero
+        Dval= 0.2 *tLR[0,0]/100; # < ---- TODO: get to work when nonzero
         myspinS = 1;
 
         # central region
         tvac = indvals[indvali]; # hopping between leads and central
         tC = 1.0*tLR; # hopping in central
         VC = 0.4*tLR;
-        NC = 3;
+        NC = 3; # < ---- TODO: get to work when > 3
 
         # modify all potential terms with the noninteracting spin-spin background
         background_diag = diag_ham((Dval, Dval, J12, 0.0, 0.0), myspinS);
@@ -165,7 +173,7 @@ if True:
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, alpha_mat,                                                
-                                  E_cutoff=Ecut,eigval_tol=1e-4,verbose=1);
+                                  E_cutoff=Ecut,eigval_tol=1e-9,verbose=1);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -216,10 +224,10 @@ if True:
     # show
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(JK)+"$");
     plt.tight_layout();
-    fname = "figs/bard_menez/bard_menez_tvac";
+    fname = "figs/bard_cicc/bard_cicc";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
-    #plt.savefig(fname); print("Saving data as",fname);
-    plt.show();
+    if(save_figs): plt.savefig(fname); print("Saving data as",fname);
+    else: plt.show();
 

@@ -177,7 +177,7 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
 def kernel_well(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC,HCprime,
-           interval=1e-9,E_cutoff=1.0,HT_perturb=False,verbose=0) -> tuple:
+           interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
     states n in aninterval close to the initial energy state m
@@ -259,27 +259,7 @@ def kernel_well(tinfty, tL, tR,
     # operator
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     jvals = np.array(range(len(Hsys_4d))) + offset;
-    
-    # filter left and right
     mid = len(jvals) // 2;
-    if(HT_perturb):
-        raise(Exception("Don't do this!"));
-        for alpha in range(n_loc_dof):
-            for m in range(n_bound_left):
-                psim = psimas[alpha,m];
-                weight_left = np.dot( np.conj(psim[:mid]), psim[:mid]);
-                weight_right = np.dot( np.conj(psim[mid:]), psim[mid:]);
-                if(weight_left < weight_right):
-                    Emas[alpha,m] = 0.0;
-                    psimas[alpha,m] = np.zeros_like(psim);
-        for beta in range(n_loc_dof):
-            for n in range(n_bound_right):
-                psin = psinbs[beta,n];
-                weight_left = np.dot( np.conj(psin[:mid]), psin[:mid]);
-                weight_right = np.dot( np.conj(psin[mid:]), psin[mid:]);
-                if(weight_left > weight_right):
-                    Enbs[beta,n] = 0.0
-                    psinbs[beta,n] = np.zeros_like(psin);
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -308,32 +288,17 @@ def kernel_well(tinfty, tL, tR,
 
     # visualize
     if(verbose > 9):
+        print(Emas);
+        print(Enbs);
 
         # plot hams
         for alpha in range(n_loc_dof):
             plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
         assert False;
 
-        # plot left wfs
-        energy_off = 0;
-        if HT_perturb: energy_off = 1;
-        for m in range(10,10+min(n_bound_left,2)):
-            fig, wfax = plt.subplots();
-            alpha_colors=["tab:blue","tab:orange"];
-            for alpha in range(n_loc_dof):
-                print(Emas[alpha,m]);
-                print(Enbs[alpha,m+energy_off]);
-                wfax.set_title("Left: "+str(Emas[alpha,m].round(4)));
-                wfax.plot(jvals,np.diag(HL_4d[:,:,alpha,alpha])/max(abs(np.diag(HL_4d[:,:,alpha,alpha]))),color="black");
-                wfax.plot(jvals, np.real(psimas[alpha,m])/max(abs(np.real(psimas[alpha,m]))),color=alpha_colors[alpha],linestyle="solid");
-                wfax.plot(jvals, np.real(psinbs[alpha,m+energy_off])/max(abs(np.real(psinbs[alpha,m+energy_off])))*(-1),color=alpha_colors[alpha],linestyle="dotted");
-                wfax.plot(jvals[mid-len(HC)-10:mid+len(HC)+10], abs((np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])/max(abs(np.matmul((Hsys_4d-HL_4d)[:,:,alpha,alpha], psimas[alpha,m])))) )[mid-len(HC)-10:mid+len(HC)+10], color=alpha_colors[alpha],linestyle="solid",marker='s')               
-            plt.show();
-        assert False;
-
     return Emas, Mbmas;
 
-def plot_ham(j, hams, alpha, label=True):
+def plot_ham(j, hams, alpha, label=True) -> None:
     '''
     '''
     if( not isinstance(hams, tuple)): raise TypeError;
@@ -399,6 +364,8 @@ def kernel_well_super(tinfty, tL, tR,
     the alpha basis is chosen by the spin matrix alpha_mat
     the variable change_basis gives the basis transformation according to
     |\tilde{\alpha} > = \sum_\alpha change_basis[\alpha, |tilde{\alpha} ] |\alpha>
+
+    # TODO: consolidate with kernel_well
     
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -430,8 +397,8 @@ def kernel_well_super(tinfty, tL, tR,
     for astatei in range(len(alphastates)):
         for tstatei in range(len(tildestates)):
             change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-    if False:
-        print(alphastates,"\n",tildestates,"\n",change_basis);
+    if False: # for checking change of basis
+        print("\nalphastates = ",alphastates,"\ntildestates = ", tildestates,"\nchange_basis = ", change_basis);  
         assert False
 
     # left well 

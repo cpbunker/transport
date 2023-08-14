@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
+save_figs = False;
 
 # fig standardizing
 myxvals = 199;
@@ -49,15 +50,20 @@ def print_H_alpha(H):
 n_loc_dof = 2; 
 tLR = 1.0*np.eye(n_loc_dof);
 tinfty = 1.0*tLR;
-VLR = 0.0*tLR;
+VLR = 0.0*tLR; # NB explicit LR symmetry
 Vinfty = 0.5*tLR;
 NLR = 200;
 Ninfty = 20;
 NC = 11;
+
+# cutoffs
 Ecut = 0.1;
 error_lims = (0,20);
 
-# all possible T_{\alpha -> \beta} for single J
+###############################################
+# the Kondo term is included in Hsys only, so can work in eigenbasis of Sz
+# therefore Kondo shows up in H_sys - HL, causing nonzero overlap between
+# initial, final states of different spin
 if False:
     
     # alpha -> beta
@@ -145,13 +151,13 @@ if False:
         plt.tight_layout();
         fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
         fname = "figs/bard_menez/kernel_well_NC"+str(NC)+".pdf";
-        print("Saving data as",fname);
-        plt.savefig(fname);
-        #plt.show();
+        if(save_figs): plt.savefig(fname); print("Saving data as",fname);
+        else: plt.show();
 
-#############################
+###############################################
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
+# therefore physical basis != eigenbasis of Sz
 
 # T vs Jval
 if False:
@@ -161,17 +167,16 @@ if False:
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = True;
+    plot_alpha = False;
     if(plot_alpha):
         indvals = np.array([-0.5]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
-        alpha_initial, alpha_final = -999,-999;
     else:
         indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,0;
+        alpha_initial, alpha_final = 0,1;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
@@ -192,24 +197,9 @@ if False:
         print("HC =");
         print_H_alpha(HC);
 
-        # change of basis
         # alpha basis is eigenstates of HC[j=0,j=0]
-        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
-        alphastates = alphastates.T;
-        tildestates = np.eye(n_loc_dof);
-        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
-        coefs = np.empty_like(alphastates);
-        for astatei in range(len(alphastates)):
-            for tstatei in range(len(tildestates)):
-                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-
-        if False:
-            print(alphastates);
-            print(tildestates);
-            print(coefs);
-            print(np.matmul(coefs,alphastates[0]));
-            print(np.matmul(coefs,alphastates[1]));
-            assert False
+        # change of basis is automatic in kernel_well_super now
+        defines_alpha = HC[len(HC)//2,len(HC)//2];
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
@@ -218,8 +208,8 @@ if False:
         # where change_basis are coefs that take us from alpha to \tilde{\alpha}
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
-                                  E_cutoff=Ecut,verbose=10);
+                                  Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
+                                  E_cutoff=Ecut,verbose=1);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -271,11 +261,11 @@ if False:
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+"$");
     fname = "figs/bard_menez/bard_menez_Jval";
-    if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
-    elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
-    print("Saving data as",fname);
-    #plt.savefig(fname);
-    plt.show();
+    if(not plot_alpha):
+        if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
+        elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
+    if(save_figs): plt.savefig(fname); print("Saving data as",fname);
+    else: plt.show();
 
 # T vs NJ
 if False:
@@ -319,24 +309,9 @@ if False:
         print("HC =");
         print_H_alpha(HC);
 
-        # change of basis
         # alpha basis is eigenstates of HC[j=0,j=0]
-        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
-        alphastates = alphastates.T;
-        tildestates = np.eye(n_loc_dof);
-        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
-        coefs = np.empty_like(alphastates);
-        for astatei in range(len(alphastates)):
-            for tstatei in range(len(tildestates)):
-                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-
-        if False:
-            print(alphastates);
-            print(tildestates);
-            print(coefs);
-            print(np.matmul(coefs,alphastates[0]));
-            print(np.matmul(coefs,alphastates[1]));
-            assert False
+        # change of basis is automatic in kernel_well_super now
+        defines_alpha = HC[len(HC)//2,len(HC)//2];
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
@@ -345,7 +320,7 @@ if False:
         # where change_basis are coefs that take us from alpha to \tilde{\alpha}
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
+                                  Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
                                   E_cutoff=Ecut,verbose=1);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
@@ -398,10 +373,11 @@ if False:
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
     fname = "figs/bard_menez/bard_menez_NJ";
-    if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
-    elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
-    #plt.savefig(fname); print("Saving data as",fname);
-    plt.show();
+    if(not plot_alpha):
+        if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
+        elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
+    if(save_figs): plt.savefig(fname); print("Saving data as",fname);
+    else: plt.show();
 
 # T vs tC (reduced-tC insulating region of width NC=3)
 if True:
@@ -420,7 +396,7 @@ if True:
         indvals = np.array([1.0*tLR,0.8*tLR,0.2*tLR]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,0;
+        alpha_initial, alpha_final = 0,1;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     if(nplots_y == 1 and nplots_x == 1): axes=[axes]
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
@@ -445,24 +421,9 @@ if True:
         print("HC =");
         print_H_alpha(HC);
 
-        # change of basis
         # alpha basis is eigenstates of HC[j=0,j=0]
-        _, alphastates = np.linalg.eigh(HC[len(HC)//2,len(HC)//2]);
-        alphastates = alphastates.T;
-        tildestates = np.eye(n_loc_dof);
-        # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
-        coefs = np.empty_like(alphastates);
-        for astatei in range(len(alphastates)):
-            for tstatei in range(len(tildestates)):
-                coefs[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-
-        if False:
-            print(alphastates);
-            print(tildestates);
-            print(coefs);
-            print(np.matmul(coefs,alphastates[0]));
-            print(np.matmul(coefs,alphastates[1]));
-            assert False
+        # change of basis is automatic in kernel_well_super now
+        defines_alpha = HC[len(HC)//2,len(HC)//2];
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
@@ -471,7 +432,7 @@ if True:
         # where change_basis are coefs that take us from alpha to \tilde{\alpha}
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, coefs,                                                
+                                  Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
                                   E_cutoff=Ecut,verbose=1);
         # symmetrize
         Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
@@ -524,8 +485,9 @@ if True:
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
     plt.tight_layout();
     fname = "figs/bard_menez/bard_menez_tC";
-    if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
-    elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
-    plt.savefig(fname); print("Saving data as",fname);
-    #plt.show();
+    if(not plot_alpha):
+        if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
+        elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
+    if(save_figs): plt.savefig(fname); print("Saving data as",fname);
+    else: plt.show();
 

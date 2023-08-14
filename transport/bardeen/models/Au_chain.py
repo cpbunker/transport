@@ -2,6 +2,10 @@
 A model of a chain of Au atoms
 
 NB Au electronic structure = [Xe] 4f14 5d10 6s1
+
+Refs:
+https://doi.org/10.1126/science.1075242
+https://doi.org/10.1103/PhysRevB.66.205319 Figs 1, 2
 '''
 
 import numpy as np
