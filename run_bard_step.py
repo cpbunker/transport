@@ -110,7 +110,7 @@ if True:
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axes[VRvali].set_ylabel('$T$',fontsize=myfontsize);
-        axes[VRvali].set_title("$V_R' = "+str(VRvals[VRvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[VRvali].set_title("$V_R = "+str(VRvals[VRvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
         # save
         folder = "data/bardeen/run_bard_step/vsVR/"

@@ -374,6 +374,8 @@ def kernel_well_super(tinfty, tL, tR,
     if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
+    E_cutoff_first = np.max(E_cutoff);
+    print("E_cutoff, E_cutoff_first",E_cutoff, E_cutoff_first);
 
     # convert from matrices to spin-diagonal, spin-independent elements
     to_convert = [tL, tR];
@@ -387,9 +389,15 @@ def kernel_well_super(tinfty, tL, tR,
         converted.append(convert[0,0]);
     tLa, tRa = tuple(converted);
 
+                    ####
+                    ####
+    print(alpha_mat);
+    #alpha_mat = alpha_mat - np.diagflat(np.diagonal(alpha_mat));
+    #print(alpha_mat);
+
     # change of basis
     # alpha basis is eigenstates of alpha_mat
-    _, alphastates = np.linalg.eigh(alpha_mat);
+    alpha_eigvals_exact, alphastates = np.linalg.eigh(alpha_mat);
     alphastates = alphastates.T;
     tildestates = np.eye(n_loc_dof);
     # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
@@ -399,35 +407,41 @@ def kernel_well_super(tinfty, tL, tR,
             change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
     if False: # for checking change of basis
         print("\nalphastates = ",alphastates,"\ntildestates = ", tildestates,"\nchange_basis = ", change_basis);  
-        assert False
+        raise NotImplementedError;
 
     # left well 
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     HL = fci_mod.mat_4d_to_2d(HL_4d);
+
+    # physical system
+    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
+    jvals = np.array(range(len(Hsys_4d))) + offset;
+    if(verbose > 9): # plot hams
+        for alpha in range(n_loc_dof):
+            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
+        for h in (Hsys_4d,HL_4d):
+            h_aa = h[:,:,0,0] ;
+            h_bb = h[:,:,1,1] - np.diagflat(np.diagonal(0.087*np.ones_like(h_aa)));
+            assert( not np.any(h_aa-h_bb));
+        raise NotImplementedError;
     
     # left well eigenstates
     Ems, psims = np.linalg.eigh(HL);
-    psims = psims.T[Ems+2*tLa < E_cutoff];
-    Ems = Ems[Ems+2*tLa < E_cutoff].astype(complex);
+    psims = psims.T[Ems+2*tLa < E_cutoff_first];
+    Ems = Ems[Ems+2*tLa < E_cutoff_first].astype(complex);
     if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
-    n_bound_left = len(Ems);
 
     # measure alpha val for each k_m
     alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
     for sitej in range(n_spatial_dof):
         alpha_mat_4d[sitej,sitej] = np.copy(alpha_mat);
     alpha_mat_2d = fci_mod.mat_4d_to_2d(alpha_mat_4d);
-    alphams = np.empty((n_bound_left,),dtype=complex);
-    for m in range(n_bound_left):
+    alphams = np.empty((len(Ems),),dtype=complex);
+    for m in range(len(Ems)):
         alphams[m] = np.dot( np.conj(psims[m]), np.matmul(alpha_mat_2d, psims[m]));
         if(verbose>5): print(m, Ems[m], alphams[m]);
-    n_bound_left = n_bound_left // n_loc_dof;
 
-    # classify left well eigenstates in the \alpha basis
-    Emas = np.empty((n_loc_dof,n_bound_left),dtype=complex);
-    psimas = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
-
-    # get all unique alpha vals, should be n_loc_dof of them
+    # get all unique alpha vals, should be exactly n_loc_dof of them
     alpha_eigvals = dict();
     for alpha in alphams:
         addin = True;
@@ -437,49 +451,72 @@ def kernel_well_super(tinfty, tL, tR,
                 addin = False;
         if(addin):
             alpha_eigvals[alpha] = 1;
-    if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); assert False;
+    print(">>>\nalpha_eigvals =\n",alpha_eigvals,"\nalpha_eigvals_exact =\n",{alpha_eigvals_exact[0]:0,alpha_eigvals_exact[1]:0});
+    if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); raise Exception("alpha vals");
+    n_bound_left = np.min(list(alpha_eigvals.values()));  print("n_bound_left = ", n_bound_left); # truncate
     alpha_eigvals = list(alpha_eigvals.keys());
 
-    # organize by alpha vals
+    # classify left well eigenstates in the \alpha basis
+    Emas = [];
+    psimas = [];
     for eigvali in range(len(alpha_eigvals)):
         Es_this_a, psis_this_a = [], [];
-        for m in range(n_bound_left*n_loc_dof):
+        for m in range(len(Ems)):
             if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
                 Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
-        Emas[eigvali], psimas[eigvali] = Es_this_a, psis_this_a;
+        Emas.append(Es_this_a); psimas.append(psis_this_a);
+    print("Emas[0] = ",np.real(Emas[0]));
+    print("Emas[1] = ",np.real(Emas[1]));
+
+    # classify again with cutoff
+    Emas_arr = np.empty((n_loc_dof,n_bound_left),dtype=complex);
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):
+            if(Emas[alpha][m] + 2*tLa < E_cutoff[alpha,alpha]):
+                Emas_arr[alpha,m] = Emas[alpha][m];
+                psimas_arr[alpha,m] = psimas[alpha][m];
+    Emas, psimas = Emas_arr, psimas_arr;
     del Ems, psims;
-    
+    print("Emas[0] = ",np.real(Emas[0]));
+    print("Emas[1] = ",np.real(Emas[1]));
+
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
     HR = fci_mod.mat_4d_to_2d(HR_4d);
 
     # right well eigenstates
     Ens, psins = np.linalg.eigh(HR);
-    psins = psins.T[Ens+2*tRa < E_cutoff];
-    Ens = Ens[Ens+2*tRa < E_cutoff].astype(complex);
+    psins = psins.T[Ens+2*tRa < E_cutoff_first];
+    Ens = Ens[Ens+2*tRa < E_cutoff_first].astype(complex);
     if(len(Ens) % n_loc_dof != 0): Ens, psins = Ens[:-1], psins[:-1]; # must be even
-    n_bound_right = len(Ens);
-
+    
     # measure alpha_val for each k_n
-    alphans = np.empty((n_bound_right,),dtype=complex);
-    for n in range(n_bound_right):
+    alphans = np.empty((len(Ens),),dtype=complex);
+    for n in range(len(Ens)):
         alphans[n] = np.dot( np.conj(psins[n]), np.matmul(alpha_mat_2d, psins[n]));
-    n_bound_right= n_bound_right // n_loc_dof;
+    n_bound_right= 1*n_bound_left; # bad
     
     # classify right well eigenstates in the \alpha basis
-    Enbs = np.empty((n_loc_dof,n_bound_right),dtype=complex);
-    psinbs = np.empty((n_loc_dof,n_bound_right,len(psins[0])),dtype=complex);
+    Enbs = [];
+    psinbs = [];
     for eigvali in range(len(alpha_eigvals)):
         Es_this_b, psis_this_b = [], [];
-        for n in range(n_bound_right*n_loc_dof):
+        for n in range(len(Ens)):
             if(abs(np.real(alphans[n] - alpha_eigvals[eigvali])) < eigval_tol):
                 Es_this_b.append(Ens[n]); psis_this_b.append(psins[n]);
-        Enbs[eigvali], psinbs[eigvali] = Es_this_b, psis_this_b;
-    del Ens, psins;
+        Enbs.append(Es_this_b); psinbs.append(psis_this_b);
 
-    # physical system
-    Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
-    jvals = np.array(range(len(Hsys_4d))) + offset;
+    # classify again with cutoff
+    Enbs_arr = np.empty((n_loc_dof,n_bound_right),dtype=complex);
+    psinbs_arr = np.empty((n_loc_dof,n_bound_right,len(psins[0])),dtype=complex);
+    for beta in range(n_loc_dof):
+        for n in range(n_bound_right):
+            if(Enbs[beta][n] + 2*tRa < E_cutoff[beta,beta]):
+                Enbs_arr[beta,n] = Enbs[beta][n];
+                psinbs_arr[beta,n] = psinbs[beta][n];
+    Enbs, psinbs = Enbs_arr, psinbs_arr;
+    del Ens, psins;
     
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -516,50 +553,6 @@ def kernel_well_super(tinfty, tL, tR,
     Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
     Mbmas_tilde = Mbmas_tilde.astype(float);
     del Mbmas
-    
-    # visualize
-    if(verbose > 9):
-
-        # plot hams
-        for alpha in range(n_loc_dof):
-            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
-        assert False;
-
-        # compare energies
-        if False:
-            ps = np.array(range(len(Emas[0])),dtype=int);
-            Efig, Eax = plt.subplots();
-            which = 0;
-            Eax.plot(ps,Enbs[0]-Emas[0,which],label="$\\varepsilon_{p+}-\\varepsilon_{0+}$",color="darkblue");
-            Eax.plot(ps,Enbs[1]-Emas[1,which],label="$\\varepsilon_{p-}-\\varepsilon_{0-}$",color="darkblue",linestyle="dashed");
-            Eax.scatter(ps, (Enbs[0]-Emas[0,which])-(Enbs[1]-Emas[1,which]),label="$(\\varepsilon_{p+}-\\varepsilon_{0+})-(\\varepsilon_{p-}-\\varepsilon_{0-})$",color="darkblue",marker='s',linestyle="solid");
-            plt.legend();
-            plt.show();
-            assert False;
-
-        # compare matrix elements
-        if True:
-            Mfig, Max = plt.subplots();
-            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[0,:,0]),label='00 real');
-            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[0,:,1]),label='01 real');
-            Max.plot(np.real(Emas[0]+2*tLa),np.real(Mbmas_dum[1,:,0]),label='10 real');
-            Max.plot(np.real(Emas[1]+2*tLa),np.real(Mbmas_dum[1,:,1]),label='11 real');
-            Max.legend();
-            plt.show();
-            assert False
-
-        # plot left wfs
-        for m in range(min(n_bound_left,6)):
-            fig, wfax = plt.subplots();
-            wfax.plot(jvals,np.diag(Hsys_4d[:,:,0,0]),color="black");
-            alpha_colors = ["tab:blue", "tab:orange"];
-            for alpha in range(len(alpha_colors)):
-                wfax.plot(jvals, 1e-3*alpha+np.real(psimas[alpha,m]),color=alpha_colors[alpha],linestyle="solid");
-                wfax.plot(jvals, 1e-3*alpha+np.real(psinbs[alpha,m]),color=alpha_colors[alpha],linestyle="dotted");
-            wfax.set_title("Ema = {:.4f}, alpha = {:.2f},\nEnb = {:.4f}, beta = {:.2f},\nM_bma = {:.2e}"
-                           .format(np.real(Emas[alpha,m]),alpha,np.real(Enbs[alpha,m]),beta, Mbmas[alpha,m,alpha]));
-            plt.show();
-        assert False;
 
     return Emas, Mbmas_tilde;
 
