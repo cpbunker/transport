@@ -215,48 +215,23 @@ def kernel_well(tinfty, tL, tR,
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
-    import time
-    start = time.time();
-    if False:
-        n_bound_left = 0;        
-        for alpha in range(n_loc_dof):
-            Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-            psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
-            Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
-            Emas.append(Ems);
-            psimas.append(psims);
-            n_bound_left = max(n_bound_left, len(Emas[alpha]));
-        Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
-        psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
-        for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-            Ems = Emas[alpha];
-            Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
-            Emas_arr[alpha] = Ems_arr;
-            psims = psimas[alpha];
-            psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
-            psimas_arr[alpha] = psims_arr;
-    else:
-        n_bound_left = len(HL_4d); # max possible
-        Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); 
-        psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
-        for alpha in range(n_loc_dof):
-            Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-            Emas_arr[alpha] = Ems;
-            psimas_arr[alpha] = psims;
-            # cutoff
-            replace_shape = np.shape(Ems[Ems+2*tLa > E_cutoff[alpha,alpha]]);
-            replace_index = len(Ems[Ems+2*tLa < E_cutoff[alpha,alpha]])-1; # assume ordered
-            Ems_replace = np.full(replace_shape, Ems[replace_index])
-            Emas_arr[alpha][Ems+2*tLa > E_cutoff[alpha,alpha]] = Ems_replace;
-            psims_replace = np.full(tuple([*replace_shape, n_spatial_dof]), psims[replace_index]);
-            psimas_arr[alpha][Ems+2*tLa > E_cutoff[alpha,alpha]] = psims_replace;
-    stop = time.time();
-    print("time = ",stop-start);
-    assert False
-    print("Ems = ",Ems);
-    print("Emas_arr = ",Emas_arr);
-    print(np.shape(Ems)); print(np.shape(Emas_arr));
-    assert False
+    n_bound_left = 0;        
+    for alpha in range(n_loc_dof):
+        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+        psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
+        Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
+        Emas.append(Ems);
+        psimas.append(psims);
+        n_bound_left = max(n_bound_left, len(Emas[alpha]));
+    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ems = Emas[alpha];
+        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
+        Emas_arr[alpha] = Ems_arr;
+        psims = psimas[alpha];
+        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+        psimas_arr[alpha] = psims_arr;
     del Ems, psims, alpha
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
 
@@ -300,7 +275,6 @@ def kernel_well(tinfty, tL, tR,
     # average over energy but keep spin separate
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
     Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    overlaps = np.empty_like(Emas,dtype=float); # <<<<<
     # initial energy and spin states
     for alpha in range(n_loc_dof):
         for m in range(n_bound_left):               
@@ -311,8 +285,11 @@ def kernel_well(tinfty, tL, tR,
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
                         melement = matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]);
                         Mns.append(np.real(melement*np.conj(melement)));
-                        overlaps[alpha,m] = np.real( np.conj(np.dot(np.conj(psinbs[beta,n]), psimas[alpha,m]))
-                                                     *np.dot(np.conj(psinbs[beta,n]), psimas[alpha,m]));
+
+                if( np.isnan(interval) and Mns==[]): # <--- !!!!
+                    n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
+                    melement = matrix_element(beta,psinbs[:,n_nearest],Hdiff,alpha,psimas[:,m]);
+                    Mns.append(np.real(melement*np.conj(melement)));
 
                 # update M with average
                 if(verbose): print("\tinterval = ",interval, len(Mns));
@@ -324,7 +301,7 @@ def kernel_well(tinfty, tL, tR,
 
 def kernel_well_super(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, alpha_mat, E_cutoff,
+           Ninfty, NL, NR, HC, HCprime, alpha_mat, E_cutoff,
            interval=1e-9,eigval_tol=1e-9,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
@@ -351,8 +328,6 @@ def kernel_well_super(tinfty, tL, tR,
     if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
-    E_cutoff_first = np.max(E_cutoff);
-    print("E_cutoff, E_cutoff_first",E_cutoff, E_cutoff_first);
 
     # convert from matrices to spin-diagonal, spin-independent elements
     to_convert = [tL, tR];
@@ -368,20 +343,21 @@ def kernel_well_super(tinfty, tL, tR,
 
                     ####
                     ####
-    print(alpha_mat);
+    print("alpha_mat = ", alpha_mat);
     #alpha_mat = alpha_mat - np.diagflat(np.diagonal(alpha_mat));
-    #print(alpha_mat);
+    # print("alpha_mat = ", alpha_mat);
 
     # change of basis
     # alpha basis is eigenstates of alpha_mat
     alpha_eigvals_exact, alphastates = np.linalg.eigh(alpha_mat);
     alphastates = alphastates.T;
     tildestates = np.eye(n_loc_dof);
-    # get coefs st \tilde{\alpha}\sum_alpha coefs[\alpha,\tilde{\alpha}] \alpha
+    # get change_basis st \tilde{\alpha}\sum_alpha change_basis[\alpha,\tilde{\alpha}] \alpha
     change_basis = np.empty_like(alphastates);
     for astatei in range(len(alphastates)):
         for tstatei in range(len(tildestates)):
             change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
+    if(verbose): print(">>>\nalpha_eigvals_exact =\n",{el:0 for el in alpha_eigvals_exact});
     if False: # for checking change of basis
         print("\nalphastates = ",alphastates,"\ntildestates = ", tildestates,"\nchange_basis = ", change_basis);  
         raise NotImplementedError;
@@ -403,10 +379,11 @@ def kernel_well_super(tinfty, tL, tR,
         raise NotImplementedError;
     
     # left well eigenstates
+    E_cutoff_first = np.max(E_cutoff);
     Ems, psims = np.linalg.eigh(HL);
     psims = psims.T[Ems+2*tLa < E_cutoff_first];
     Ems = Ems[Ems+2*tLa < E_cutoff_first].astype(complex);
-    if(len(Ems) % n_loc_dof != 0): Ems, psims = Ems[:-1], psims[:-1]; # must be even
+    assert(len(Ems) % n_loc_dof == 0);
 
     # measure alpha val for each k_m
     alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
@@ -428,9 +405,8 @@ def kernel_well_super(tinfty, tL, tR,
                 addin = False;
         if(addin):
             alpha_eigvals[alpha] = 1;
-    print(">>>\nalpha_eigvals =\n",alpha_eigvals,"\nalpha_eigvals_exact =\n",{alpha_eigvals_exact[0]:0,alpha_eigvals_exact[1]:0});
     if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); raise Exception("alpha vals");
-    n_bound_left = np.min(list(alpha_eigvals.values()));  print("n_bound_left = ", n_bound_left); # truncate
+    n_bound_left = np.min(list(alpha_eigvals.values())); 
     alpha_eigvals = list(alpha_eigvals.keys());
 
     # classify left well eigenstates in the \alpha basis
@@ -442,9 +418,7 @@ def kernel_well_super(tinfty, tL, tR,
             if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
                 Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
         Emas.append(Es_this_a); psimas.append(psis_this_a);
-    print("Emas[0] = ",np.real(Emas[0]));
-    print("Emas[1] = ",np.real(Emas[1]));
-
+        
     # classify again with cutoff
     Emas_arr = np.empty((n_loc_dof,n_bound_left),dtype=complex);
     psimas_arr = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
@@ -455,8 +429,12 @@ def kernel_well_super(tinfty, tL, tR,
                 psimas_arr[alpha,m] = psimas[alpha][m];
     Emas, psimas = Emas_arr, psimas_arr;
     del Ems, psims;
-    print("Emas[0] = ",np.real(Emas[0]));
-    print("Emas[1] = ",np.real(Emas[1]));
+
+    # benchmark bound state finder function
+    print(">>>>BENCHMARK");
+    Emas_new, psimas_new = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
+    assert(not np.any(Emas - Emas_new));
+    assert(not np.any(psimas - psimas_new));
 
     # right well 
     HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
@@ -494,6 +472,13 @@ def kernel_well_super(tinfty, tL, tR,
                 psinbs_arr[beta,n] = psinbs[beta][n];
     Enbs, psinbs = Enbs_arr, psinbs_arr;
     del Ens, psins;
+
+    # benchmark bound state finder function
+    print(">>>>BENCHMARK");
+    Enbs_new, psinbs_new = get_bound_states(HR_4d, tRa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
+    assert(not np.any(Enbs - Enbs_new));
+    assert(not np.any(psinbs - psinbs_new));
+    assert False;
     
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -753,6 +738,71 @@ def Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC, bound=True) -> n
 
 ##################################################################################
 #### utils
+
+def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, eigval_tol = 1e-9, verbose=0) -> tuple:
+    '''
+    '''
+    n_spatial_dof = np.shape(H_4d)[0];
+    n_loc_dof = np.shape(H_4d)[-1];
+    E_cutoff_first = np.max(E_cutoff);
+    if(verbose): print("E_cutoff, E_cutoff_first",E_cutoff, E_cutoff_first);
+
+    # all eigenstates
+    H_2d = fci_mod.mat_4d_to_2d(H_4d);
+    Ems, psims = np.linalg.eigh(H_2d);
+    psims = psims.T[Ems+2*ta < E_cutoff_first];
+    Ems = Ems[Ems+2*ta < E_cutoff_first].astype(complex);
+    assert(len(Ems) % n_loc_dof == 0);
+
+    # measure alpha val for each k_m
+    alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
+    for sitej in range(n_spatial_dof):
+        alpha_mat_4d[sitej,sitej] = np.copy(alpha_mat);
+    alpha_mat_2d = fci_mod.mat_4d_to_2d(alpha_mat_4d);
+    alphams = np.empty((len(Ems),),dtype=complex);
+    for m in range(len(Ems)):
+        alphams[m] = np.dot( np.conj(psims[m]), np.matmul(alpha_mat_2d, psims[m]));
+        if(verbose>5): print(m, Ems[m], alphams[m]);
+
+    # get all unique alpha vals, should be exactly n_loc_dof of them
+    alpha_eigvals = dict();
+    for alpha in alphams:
+        addin = True;
+        for k in alpha_eigvals.keys():
+            if(abs(alpha-k) < eigval_tol):
+                alpha_eigvals[k] += 1;
+                addin = False;
+        if(addin):
+            alpha_eigvals[alpha] = 1;
+    if(verbose): print("alpha_eigvals =\n",alpha_eigvals);   
+    if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); raise Exception("alpha vals");
+    n_bound_left = np.min(list(alpha_eigvals.values()));
+    if(verbose): print("n_bound = ", n_bound_left); 
+    alpha_eigvals = list(alpha_eigvals.keys());
+
+    # classify left well eigenstates in the \alpha basis
+    Emas = [];
+    psimas = [];
+    for eigvali in range(len(alpha_eigvals)):
+        Es_this_a, psis_this_a = [], [];
+        for m in range(len(Ems)):
+            if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
+                Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
+        Emas.append(Es_this_a); psimas.append(psis_this_a);
+    for alpha in range(n_loc_dof): print("Emas["+str(alpha)+"] = ",np.real(Emas[alpha]));
+
+    # classify again with cutoff
+    Emas_arr = np.empty((n_loc_dof,n_bound_left),dtype=complex);
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):
+            if(Emas[alpha][m] + 2*ta < E_cutoff[alpha,alpha]):
+                Emas_arr[alpha,m] = Emas[alpha][m];
+                psimas_arr[alpha,m] = psimas[alpha][m];
+    Emas, psimas = Emas_arr, psimas_arr;
+    if(verbose):
+        for alpha in range(n_loc_dof): print("Emas["+str(alpha)+"] = ",np.real(Emas[alpha]));
+    return Emas, psimas;
 
 def matrix_element(beta,psin,op,alpha,psim) -> complex:
     '''
