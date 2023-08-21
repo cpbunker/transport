@@ -215,26 +215,47 @@ def kernel_well(tinfty, tL, tR,
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
     Emas, psimas = [], []; # will index as Emas[alpha,m]
-    n_bound_left = 0;
-    for alpha in range(n_loc_dof):
-        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-        psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
-        Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
-        Emas.append(Ems);
-        psimas.append(psims);
-        n_bound_left = max(n_bound_left, len(Emas[alpha]));
-    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
-    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
-    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ems = Emas[alpha];
-        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
-        Emas_arr[alpha] = Ems_arr;
-        psims = psimas[alpha];
-        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
-        psimas_arr[alpha] = psims_arr;
+    import time
+    start = time.time();
+    if False:
+        n_bound_left = 0;        
+        for alpha in range(n_loc_dof):
+            Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+            psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
+            Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
+            Emas.append(Ems);
+            psimas.append(psims);
+            n_bound_left = max(n_bound_left, len(Emas[alpha]));
+        Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
+        psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+        for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+            Ems = Emas[alpha];
+            Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
+            Emas_arr[alpha] = Ems_arr;
+            psims = psimas[alpha];
+            psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+            psimas_arr[alpha] = psims_arr;
+    else:
+        n_bound_left = len(HL_4d); # max possible
+        Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); 
+        psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+        for alpha in range(n_loc_dof):
+            Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+            Emas_arr[alpha] = Ems;
+            psimas_arr[alpha] = psims;
+            # cutoff
+            replace_shape = np.shape(Ems[Ems+2*tLa > E_cutoff[alpha,alpha]]);
+            replace_index = len(Ems[Ems+2*tLa < E_cutoff[alpha,alpha]])-1; # assume ordered
+            Ems_replace = np.full(replace_shape, Ems[replace_index])
+            Emas_arr[alpha][Ems+2*tLa > E_cutoff[alpha,alpha]] = Ems_replace;
+            psims_replace = np.full(tuple([*replace_shape, n_spatial_dof]), psims[replace_index]);
+            psimas_arr[alpha][Ems+2*tLa > E_cutoff[alpha,alpha]] = psims_replace;
+    stop = time.time();
+    print("time = ",stop-start);
+    assert False
     print("Ems = ",Ems);
-    print("Emas = ",Emas);
     print("Emas_arr = ",Emas_arr);
+    print(np.shape(Ems)); print(np.shape(Emas_arr));
     assert False
     del Ems, psims, alpha
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
