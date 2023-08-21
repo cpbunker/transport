@@ -183,7 +183,7 @@ if True:
     # show
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+"$");
-    fname = "figs/rbmenez/nosup_el/bard_menez_Jval";
+    fname = "figs/rbmenez/nosup_el/menez_Jval";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
@@ -307,7 +307,7 @@ if True:
     # show
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
-    fname = "figs/rbmenez/nosup_el/bard_menez_NJ";
+    fname = "figs/rbmenez/nosup_el/menez_NJ";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
@@ -438,7 +438,7 @@ if True:
     # show
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
-    fname = "figs/rbmenez/nosup_el/bard_menez_tC";
+    fname = "figs/rbmenez/nosup_el/menez_tC";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";

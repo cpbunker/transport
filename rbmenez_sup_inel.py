@@ -186,7 +186,7 @@ if True:
     # show
     plt.tight_layout();
     fig.suptitle("$\Delta = "+str(Delta[-1,-1])+", J = "+str(Jval)+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+"$");
-    fname = "figs/rbmenez/sup_inel/bard_menez_Delta";
+    fname = "figs/rbmenez/sup_inel/menez_Delta";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";

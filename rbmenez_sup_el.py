@@ -111,8 +111,7 @@ if False:
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime, change_basis
-        # where change_basis are coefs that take us from alpha to \tilde{\alpha}
+        # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
@@ -167,7 +166,7 @@ if False:
     # show
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+"$");
-    fname = "figs/rbmenez/sup_el/bard_menez_Jval";
+    fname = "figs/rbmenez/sup_el/menez_Jval";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
@@ -224,8 +223,7 @@ if False:
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime, change_basis
-        # where change_basis are coefs that take us from alpha to \tilde{\alpha}
+        # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
@@ -280,7 +278,7 @@ if False:
     # show
     plt.tight_layout();
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
-    fname = "figs/rbmenez/sup_el/bard_menez_NJ";
+    fname = "figs/rbmenez/sup_el/menez_NJ";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
@@ -339,8 +337,7 @@ if True:
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime, change_basis
-        # where change_basis are coefs that take us from alpha to \tilde{\alpha}
+        # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
@@ -395,7 +392,7 @@ if True:
     # show
     fig.suptitle("$N_C = "+str(NC)+",\, J = "+str(Jval)+"$");
     plt.tight_layout();
-    fname = "figs/rbmenez/sup_el/bard_menez_tC";
+    fname = "figs/rbmenez/sup_el/menez_tC";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
