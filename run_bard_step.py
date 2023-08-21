@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
-save = True;
+save = False;
 
 # fig standardizing
 myxvals = 199;
@@ -43,7 +43,7 @@ tLR = 1.0*np.eye(n_loc_dof);
 tinfty = 1.0*tLR;
 VL = 0.0*tLR;
 Vinfty = 0.5*tLR;
-NLR = 200;
+NLR = 50;
 Ninfty = 20;
 NC = 11;
 
@@ -72,9 +72,11 @@ if True:
     print_H_j(HC);
 
     # bardeen results for heights of barrier covering well
+    import time
+    start = time.time();
     for VRvali in range(len(VRvals)):
-        VLprime, VRprime = 1.0*Vinfty, 1.0*Vinfty;
-        # VLprime = VRvals[VRi]+Vinfty; # left cover needs to be higher from view of right well
+        VLprime = VRvals[VRvali]+Vinfty; # left cover needs to be higher from view of right well
+        VRprime = 0+Vinfty;
         assert(not np.any(np.ones((len(VC)),)[np.diagonal(VC) < np.diagonal(VRvals[VRvali])]));
         
         # bardeen.kernel syntax:
@@ -85,7 +87,8 @@ if True:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VRvals[VRvali], VRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=Ecut,interval = 1e-2, verbose=1);
+                                      E_cutoff=Ecut*np.eye(n_loc_dof),
+                                      interval = 1e-2, verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VL, VRvals[VRvali], NLR, NLR,verbose=1);
 
@@ -113,7 +116,7 @@ if True:
         axes[VRvali].set_title("$V_R = "+str(VRvals[VRvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
 
         # save
-        folder = "data/bardeen/run_bard_step/vsVR/"
+        folder = "data/run_bard_step/vsVR/"
         if(save):
             print("Saving data to "+folder);
             np.save(folder+"VR_{:.3f}_Tvals.npy".format(VRvals[VRvali][0,0]), Tvals);
@@ -124,6 +127,9 @@ if True:
             np.savetxt(folder+"VR_{:.3f}_HC.txt".format(VRvals[VRvali][0,0]),HC[:,:,0,0], fmt="%.4f");
 
         #### end loop over VRvals
+
+    stop=time.time();
+    print("*"*50,"\n","time = ",stop-start);
 
     # format and show
     axes[-1].set_xscale('log', subs = []);

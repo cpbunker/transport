@@ -176,8 +176,8 @@ def kernel(Hsys_4d, tbulk, cutiL, cutiR, interval=1e-9, E_cutoff=1.0, verbose=0)
 
 def kernel_well(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime,
-           interval=1e-9,E_cutoff=1.0,verbose=0) -> tuple:
+           Ninfty, NL, NR, HC,HCprime,E_cutoff,
+           interval=1e-9,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
     states n in aninterval close to the initial energy state m
@@ -199,14 +199,17 @@ def kernel_well(tinfty, tL, tR,
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
 
-    # convert from matrices to _{alpha alpha} elements
-    to_convert = [tL, VL, tR, VR];
+    # convert from matrices to spin-diagonal, spin-independent elements
+    to_convert = [tL, tR];
     converted = [];
     for convert in to_convert:
-        if( np.any(convert - np.diagflat(np.diagonal(convert))) ):
-            raise ValueError; # VL must be diag
-        converted.append(np.diagonal(convert));
-    tLa, VLa, tRa, VRa = tuple(converted);
+        # check spin-diagonal
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
+        # check spin-independent
+        diag = np.diagonal(convert);
+        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
+        converted.append(convert[0,0]);
+    tLa, tRa = tuple(converted);
 
     # left well eigenstates
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
@@ -215,8 +218,8 @@ def kernel_well(tinfty, tL, tR,
     n_bound_left = 0;
     for alpha in range(n_loc_dof):
         Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-        psims = psims.T[Ems+2*tLa[alpha] < E_cutoff];
-        Ems = Ems[Ems+2*tLa[alpha] < E_cutoff];
+        psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
+        Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
         Emas.append(Ems);
         psimas.append(psims);
         n_bound_left = max(n_bound_left, len(Emas[alpha]));
@@ -229,7 +232,11 @@ def kernel_well(tinfty, tL, tR,
         psims = psimas[alpha];
         psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
         psimas_arr[alpha] = psims_arr;
-    del Ems, psims
+    print("Ems = ",Ems);
+    print("Emas = ",Emas);
+    print("Emas_arr = ",Emas_arr);
+    assert False
+    del Ems, psims, alpha
     Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
 
     # right well eigenstates  
@@ -239,20 +246,20 @@ def kernel_well(tinfty, tL, tR,
     n_bound_right = 0;
     for beta in range(n_loc_dof):
         Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
-        psins = psins.T[Ens+2*tRa[alpha] < E_cutoff];
-        Ens = Ens[Ens+2*tRa[alpha] < E_cutoff];
+        psins = psins.T[Ens+2*tRa < E_cutoff[beta,beta]];
+        Ens = Ens[Ens+2*tRa < E_cutoff[beta,beta]];
         Enbs.append(Ens.astype(complex));
         psinbs.append(psins);
         n_bound_right = max(n_bound_right, len(Ens));
     Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
     psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
-    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ens = Enbs[alpha];
+    for beta in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ens = Enbs[beta];
         Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
-        Enbs_arr[alpha] = Ens_arr;
-        psins = psinbs[alpha];
+        Enbs_arr[beta] = Ens_arr;
+        psins = psinbs[beta];
         psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
-        psinbs_arr[alpha] = psins_arr;
+        psinbs_arr[beta] = psins_arr;
     del Ens, psins;
     Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
 
@@ -260,6 +267,12 @@ def kernel_well(tinfty, tL, tR,
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     jvals = np.array(range(len(Hsys_4d))) + offset;
     mid = len(jvals) // 2;
+    if(verbose > 9): # plot hams
+        print("np.shape(Emas) = ",np.shape(Emas));
+        print("np.shape(Enbs) = ",np.shape(Enbs));
+        for alpha in range(n_loc_dof):
+            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
+        raise NotImplementedError;
 
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
@@ -285,70 +298,13 @@ def kernel_well(tinfty, tL, tR,
                 if Mns: Mns = sum(Mns)/len(Mns);
                 else: Mns = 0.0;
                 Mbmas[beta,m,alpha] = Mns;
-
-    # visualize
-    if(verbose > 9):
-        print(Emas);
-        print(Enbs);
-
-        # plot hams
-        for alpha in range(n_loc_dof):
-            plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
-        assert False;
-
+                
     return Emas, Mbmas;
-
-def plot_ham(j, hams, alpha, label=True) -> None:
-    '''
-    '''
-    if( not isinstance(hams, tuple)): raise TypeError;
-    n_loc_dof = np.shape(hams[0])[-1];
-    ham_strs = ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"];
-    if( len(hams) != len(ham_strs)): raise ValueError;
-
-    # construct axes
-    nax = len(hams);
-    myfig,myaxes = plt.subplots(nax, sharex=True);
-    if(nax == 1): myaxes = [myaxes];
-
-    # iter over hams
-    for hami in range(len(hams)):
-        ham_4d = hams[hami];
-        myaxes[hami].plot(j, np.diag(ham_4d[:,:,alpha,alpha]), color="cornflowerblue");
-        myaxes[-1].set_xlabel("$j$");
-        myaxes[hami].set_ylabel("$V_j$");
-        myaxes[hami].set_title(ham_strs[hami]+"["+str(alpha)+""+str(alpha)+"]");
-
-        # label
-        if(label):
-            textbase = -0.1;
-            VL = ham_4d[len(j)//4,len(j)//4,alpha,alpha];
-            VC = ham_4d[len(j)//2,len(j)//2,alpha,alpha];
-            VR = ham_4d[len(j)*3//4,len(j)*3//4,alpha,alpha];
-            Vinfty = ham_4d[-1,-1,alpha,alpha];            
-            if(hami == 0):
-                Vcoords = [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
-                Vs = [VL, VC, VR, Vinfty];
-                Vlabels = ["VL","VC","VR","Vinfty"];
-            elif(hami == 1):
-                Vcoords =  [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
-                Vs = [VL, VC, VR, Vinfty];
-                Vlabels = ["VL","VC","VRprime","Vinfty"];
-            elif(hami == 2):
-                Vcoords = [j[len(j)*3//4]];
-                Vlabels = ["VR - VRprime"];
-                Vs = [VR];
-            for Vi in range(len(Vs)):
-                myaxes[hami].annotate(Vlabels[Vi], xy=(Vcoords[Vi], Vs[Vi]), xytext=(Vcoords[Vi], textbase),arrowprops=dict(arrowstyle="->", relpos=(0,1)),xycoords="data", textcoords="data")
-
-    # format
-    plt.tight_layout();
-    plt.show();
 
 def kernel_well_super(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime, alpha_mat,
-           E_cutoff=1.0,interval=1e-9,eigval_tol=1e-9,verbose=0) -> tuple:
+           Ninfty, NL, NR, HC,HCprime, alpha_mat, E_cutoff,
+           interval=1e-9,eigval_tol=1e-9,verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
     nearby interval
@@ -365,7 +321,7 @@ def kernel_well_super(tinfty, tL, tR,
     the variable change_basis gives the basis transformation according to
     |\tilde{\alpha} > = \sum_\alpha change_basis[\alpha, |tilde{\alpha} ] |\alpha>
 
-    # TODO: consolidate with kernel_well
+    # DO NOT combine with kernel_well b/c that controls "old way"
     
     Optional args:
     -E_cutoff, float, don't calculate T for eigenstates with energy higher 
@@ -824,7 +780,54 @@ def is_alpha_conserving(T,n_loc_dof,tol=1e-9) -> bool:
                         return False;
         return True;
 
-    else: raise Exception; # not supported
+    else: raise NotImplementedError; 
+
+def plot_ham(j, hams, alpha, label=True) -> None:
+    '''
+    '''
+    if( not isinstance(hams, tuple)): raise TypeError;
+    n_loc_dof = np.shape(hams[0])[-1];
+    ham_strs = ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"];
+    if( len(hams) != len(ham_strs)): raise ValueError;
+
+    # construct axes
+    nax = len(hams);
+    myfig,myaxes = plt.subplots(nax, sharex=True);
+    if(nax == 1): myaxes = [myaxes];
+
+    # iter over hams
+    for hami in range(len(hams)):
+        ham_4d = hams[hami];
+        myaxes[hami].plot(j, np.diag(ham_4d[:,:,alpha,alpha]), color="cornflowerblue");
+        myaxes[-1].set_xlabel("$j$");
+        myaxes[hami].set_ylabel("$V_j$");
+        myaxes[hami].set_title(ham_strs[hami]+"["+str(alpha)+""+str(alpha)+"]");
+
+        # label
+        if(label):
+            textbase = -0.1;
+            VL = ham_4d[len(j)//4,len(j)//4,alpha,alpha];
+            VC = ham_4d[len(j)//2,len(j)//2,alpha,alpha];
+            VR = ham_4d[len(j)*3//4,len(j)*3//4,alpha,alpha];
+            Vinfty = ham_4d[-1,-1,alpha,alpha];            
+            if(hami == 0):
+                Vcoords = [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vs = [VL, VC, VR, Vinfty];
+                Vlabels = ["VL","VC","VR","Vinfty"];
+            elif(hami == 1):
+                Vcoords =  [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vs = [VL, VC, VR, Vinfty];
+                Vlabels = ["VL","VC","VRprime","Vinfty"];
+            elif(hami == 2):
+                Vcoords = [j[len(j)*3//4]];
+                Vlabels = ["VR - VRprime"];
+                Vs = [VR];
+            for Vi in range(len(Vs)):
+                myaxes[hami].annotate(Vlabels[Vi], xy=(Vcoords[Vi], Vs[Vi]), xytext=(Vcoords[Vi], textbase),arrowprops=dict(arrowstyle="->", relpos=(0,1)),xycoords="data", textcoords="data")
+
+    # format
+    plt.tight_layout();
+    plt.show();
 
 def nFD(epsilon,mu,kBT):
     '''
