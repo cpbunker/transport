@@ -357,14 +357,18 @@ def kernel_well_super(tinfty, tL, tR,
     for astatei in range(len(alphastates)):
         for tstatei in range(len(tildestates)):
             change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-    if(verbose): print(">>>\nalpha_eigvals_exact =\n",{el:0 for el in alpha_eigvals_exact});
+    if(verbose): print("alpha_eigvals_exact =\n",{el:0 for el in alpha_eigvals_exact});
     if False: # for checking change of basis
         print("\nalphastates = ",alphastates,"\ntildestates = ", tildestates,"\nchange_basis = ", change_basis);  
         raise NotImplementedError;
 
-    # left well 
+    # benchmark bound state finder function
     HL_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    HL = fci_mod.mat_4d_to_2d(HL_4d);
+    Emas, psimas = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
+
+    # benchmark bound state finder function
+    HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    Enbs, psinbs = get_bound_states(HR_4d, tRa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
 
     # physical system
     Hsys_4d, offset = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
@@ -374,124 +378,22 @@ def kernel_well_super(tinfty, tL, tR,
             plot_ham(jvals, (Hsys_4d,HL_4d,Hsys_4d-HL_4d), alpha );
         for h in (Hsys_4d,HL_4d):
             h_aa = h[:,:,0,0] ;
-            h_bb = h[:,:,1,1] - np.diagflat(np.diagonal(0.087*np.ones_like(h_aa)));
+            h_bb = h[:,:,1,1] - np.diagflat(np.diagonal(0.02*np.ones_like(h_aa)));
             assert( not np.any(h_aa-h_bb));
         raise NotImplementedError;
-    
-    # left well eigenstates
-    E_cutoff_first = np.max(E_cutoff);
-    Ems, psims = np.linalg.eigh(HL);
-    psims = psims.T[Ems+2*tLa < E_cutoff_first];
-    Ems = Ems[Ems+2*tLa < E_cutoff_first].astype(complex);
-    assert(len(Ems) % n_loc_dof == 0);
-
-    # measure alpha val for each k_m
-    alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
-    for sitej in range(n_spatial_dof):
-        alpha_mat_4d[sitej,sitej] = np.copy(alpha_mat);
-    alpha_mat_2d = fci_mod.mat_4d_to_2d(alpha_mat_4d);
-    alphams = np.empty((len(Ems),),dtype=complex);
-    for m in range(len(Ems)):
-        alphams[m] = np.dot( np.conj(psims[m]), np.matmul(alpha_mat_2d, psims[m]));
-        if(verbose>5): print(m, Ems[m], alphams[m]);
-
-    # get all unique alpha vals, should be exactly n_loc_dof of them
-    alpha_eigvals = dict();
-    for alpha in alphams:
-        addin = True;
-        for k in alpha_eigvals.keys():
-            if(abs(alpha-k) < eigval_tol):
-                alpha_eigvals[k] += 1;
-                addin = False;
-        if(addin):
-            alpha_eigvals[alpha] = 1;
-    if(len(alpha_eigvals.keys()) != n_loc_dof): print(alpha_eigvals); raise Exception("alpha vals");
-    n_bound_left = np.min(list(alpha_eigvals.values())); 
-    alpha_eigvals = list(alpha_eigvals.keys());
-
-    # classify left well eigenstates in the \alpha basis
-    Emas = [];
-    psimas = [];
-    for eigvali in range(len(alpha_eigvals)):
-        Es_this_a, psis_this_a = [], [];
-        for m in range(len(Ems)):
-            if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
-                Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
-        Emas.append(Es_this_a); psimas.append(psis_this_a);
-        
-    # classify again with cutoff
-    Emas_arr = np.empty((n_loc_dof,n_bound_left),dtype=complex);
-    psimas_arr = np.empty((n_loc_dof,n_bound_left,len(psims[0])),dtype=complex);
-    for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):
-            if(Emas[alpha][m] + 2*tLa < E_cutoff[alpha,alpha]):
-                Emas_arr[alpha,m] = Emas[alpha][m];
-                psimas_arr[alpha,m] = psimas[alpha][m];
-    Emas, psimas = Emas_arr, psimas_arr;
-    del Ems, psims;
-
-    # benchmark bound state finder function
-    print(">>>>BENCHMARK");
-    Emas_new, psimas_new = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
-    assert(not np.any(Emas - Emas_new));
-    assert(not np.any(psimas - psimas_new));
-
-    # right well 
-    HR_4d, _ = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    HR = fci_mod.mat_4d_to_2d(HR_4d);
-
-    # right well eigenstates
-    Ens, psins = np.linalg.eigh(HR);
-    psins = psins.T[Ens+2*tRa < E_cutoff_first];
-    Ens = Ens[Ens+2*tRa < E_cutoff_first].astype(complex);
-    if(len(Ens) % n_loc_dof != 0): Ens, psins = Ens[:-1], psins[:-1]; # must be even
-    
-    # measure alpha_val for each k_n
-    alphans = np.empty((len(Ens),),dtype=complex);
-    for n in range(len(Ens)):
-        alphans[n] = np.dot( np.conj(psins[n]), np.matmul(alpha_mat_2d, psins[n]));
-    n_bound_right= 1*n_bound_left; # bad
-    
-    # classify right well eigenstates in the \alpha basis
-    Enbs = [];
-    psinbs = [];
-    for eigvali in range(len(alpha_eigvals)):
-        Es_this_b, psis_this_b = [], [];
-        for n in range(len(Ens)):
-            if(abs(np.real(alphans[n] - alpha_eigvals[eigvali])) < eigval_tol):
-                Es_this_b.append(Ens[n]); psis_this_b.append(psins[n]);
-        Enbs.append(Es_this_b); psinbs.append(psis_this_b);
-
-    # classify again with cutoff
-    Enbs_arr = np.empty((n_loc_dof,n_bound_right),dtype=complex);
-    psinbs_arr = np.empty((n_loc_dof,n_bound_right,len(psins[0])),dtype=complex);
-    for beta in range(n_loc_dof):
-        for n in range(n_bound_right):
-            if(Enbs[beta][n] + 2*tRa < E_cutoff[beta,beta]):
-                Enbs_arr[beta,n] = Enbs[beta][n];
-                psinbs_arr[beta,n] = psinbs[beta][n];
-    Enbs, psinbs = Enbs_arr, psinbs_arr;
-    del Ens, psins;
-
-    # benchmark bound state finder function
-    print(">>>>BENCHMARK");
-    Enbs_new, psinbs_new = get_bound_states(HR_4d, tRa, alpha_mat, E_cutoff, eigval_tol = eigval_tol, verbose=verbose);
-    assert(not np.any(Enbs - Enbs_new));
-    assert(not np.any(psinbs - psinbs_new));
-    assert False;
     
     # average matrix elements over final states |k_n \beta>
     # with the same energy as the intial state |k_m \alpha>
     # average over energy but keep spin separate
     Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=complex);
+    Mbmas = np.empty((n_loc_dof,np.shape(Emas)[-1],n_loc_dof),dtype=complex);
     # initial energy and spin states
     for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):               
+        for m in range(np.shape(Emas)[-1]):               
             for beta in range(n_loc_dof):
                 # inelastic means averaging over an interval
                 Mns = [];
-                for n in range(n_bound_right):
+                for n in range(np.shape(Enbs)[-1]):
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval/2):
                         melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));
                         if(np.real(melement) < 0):
@@ -511,7 +413,6 @@ def kernel_well_super(tinfty, tL, tR,
         for btilde in range(n_loc_dof):
             for alpha in range(n_loc_dof):
                 Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
-    Mbmas_dum = np.copy(Mbmas); # for plotting
     Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
     Mbmas_tilde = Mbmas_tilde.astype(float);
     del Mbmas
@@ -789,7 +690,8 @@ def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, eigval_tol = 1e-9, verbose=0
             if(abs(np.real(alphams[m] - alpha_eigvals[eigvali])) < eigval_tol):
                 Es_this_a.append(Ems[m]); psis_this_a.append(psims[m]);
         Emas.append(Es_this_a); psimas.append(psis_this_a);
-    for alpha in range(n_loc_dof): print("Emas["+str(alpha)+"] = ",np.real(Emas[alpha]));
+    if(verbose > 2):
+        for alpha in range(n_loc_dof): print("Emas["+str(alpha)+"] = ",np.real(Emas[alpha]));
 
     # classify again with cutoff
     Emas_arr = np.empty((n_loc_dof,n_bound_left),dtype=complex);
@@ -800,7 +702,7 @@ def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, eigval_tol = 1e-9, verbose=0
                 Emas_arr[alpha,m] = Emas[alpha][m];
                 psimas_arr[alpha,m] = psimas[alpha][m];
     Emas, psimas = Emas_arr, psimas_arr;
-    if(verbose):
+    if(verbose > 2):
         for alpha in range(n_loc_dof): print("Emas["+str(alpha)+"] = ",np.real(Emas[alpha]));
     return Emas, psimas;
 
