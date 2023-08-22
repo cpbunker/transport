@@ -1,5 +1,5 @@
 SLURM: start oscillations.py
-Tue 22 Aug 2023 12:56:50 PM PDT
+Tue 22 Aug 2023 01:31:53 PM PDT
 /global/u2/c/cpbunker/GitHub/transport/transport/simmons/landauer.py:131: RuntimeWarning: overflow encountered in multiply
   exp_muL = exp_muR*np.exp(-Vbint*Beta);
 /global/u2/c/cpbunker/GitHub/transport/transport/simmons/landauer.py:137: RuntimeWarning: overflow encountered in true_divide
@@ -27,7 +27,7 @@ Fitting data
       11             12         5.9651e+05      1.26e-03       1.94e-04       1.26e+02    
 `ftol` termination condition is satisfied.
 Function evaluations 12, initial cost 1.3090e+06, final cost 5.9651e+05, first-order optimality 1.26e+02.
-<function dIdV_all_zero at 0x7f74a26aaca0> fitting results:
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
 	V0    = -0.001190,bounds = [-0.012739  0.012739]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -53,7 +53,7 @@ Fitting data
        7              8         5.0139e+05      2.28e-03       1.91e-04       1.89e+02    
 `ftol` termination condition is satisfied.
 Function evaluations 8, initial cost 5.0158e+05, final cost 5.0139e+05, first-order optimality 1.89e+02.
-<function dIdV_all_zero at 0x7f74a26aaca0> fitting results:
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
 	V0    = -0.001168,bounds = [-0.012739  0.012739]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -76,7 +76,7 @@ Fitting data
        4              5         5.0528e+05      2.54e-03       2.15e-08       1.77e+02    
 `ftol` termination condition is satisfied.
 Function evaluations 5, initial cost 5.0536e+05, final cost 5.0528e+05, first-order optimality 1.77e+02.
-<function dIdV_all at 0x7f74a26aad30> fitting results:
+<function dIdV_all at 0x7fb798f29d30> fitting results:
 	V0    = -0.001168,bounds = [-0.00116792 -0.00116792]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -90,6 +90,263 @@ Function evaluations 5, initial cost 5.0536e+05, final cost 5.0528e+05, first-or
 	RMSE  = 0.063215 
 
 Saving plot to Mnv2/lorentz/stored_plots/2
+############################################################
+T = 5.0 K
+
+Loading data from Mnv2/data/5.0KdIdV.txt
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.0780e+06                                    5.45e+06    
+       1              2         7.9797e+05      1.28e+06       3.11e+00       2.26e+06    
+       2              3         5.3520e+05      2.63e+05       8.82e-02       3.89e+05    
+       3              4         5.2160e+05      1.36e+04       2.87e-03       2.97e+04    
+       4              5         5.2061e+05      9.93e+02       1.54e+00       8.92e+03    
+       5              6         5.2057e+05      3.80e+01       3.81e-01       2.26e+03    
+       6              7         5.2057e+05      5.86e-01       3.74e-02       2.17e+02    
+       7              8         5.2057e+05      6.85e-03       3.76e-03       7.34e+01    
+       8              9         5.2057e+05      1.89e-04       3.58e-04       2.55e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 2.0780e+06, final cost 5.2057e+05, first-order optimality 2.55e+01.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.003134,bounds = [-0.011235  0.011235]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.770415,bounds = [ 9.8 16.2]
+	tau0  = 0.006779,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005764,bounds = [0.00342 0.00798]
+	RMSE  = 0.043552 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.6780e+05                                    4.37e+05    
+       1              2         2.6568e+05      2.12e+03       4.58e-01       8.10e+04    
+       2              3         2.6562e+05      6.09e+01       4.60e-02       1.81e+04    
+       3              4         2.6562e+05      2.68e+00       2.09e-02       4.11e+03    
+       4              5         2.6562e+05      1.54e-01       4.21e-03       9.68e+02    
+       5              6         2.6562e+05      8.94e-03       1.40e-03       2.25e+02    
+       6              7         2.6562e+05      6.06e-04       2.82e-04       5.28e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 7, initial cost 2.6780e+05, final cost 2.6562e+05, first-order optimality 5.28e+01.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.003076,bounds = [-0.011235  0.011235]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.293660,bounds = [ 9.8 16.2]
+	tau0  = 0.006684,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005749,bounds = [0.00342 0.00798]
+	RMSE  = 0.047796 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.8757e+05                                    9.12e+04    
+       1              2         2.8690e+05      6.65e+02       7.65e-05       2.59e+04    
+       2              3         2.8684e+05      5.86e+01       2.81e-05       2.25e+03    
+       3              4         2.8684e+05      4.46e-01       2.65e-06       3.04e+01    
+       4              5         2.8684e+05      7.71e-05       3.46e-08       1.50e-01    
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 2.8757e+05, final cost 2.8684e+05, first-order optimality 1.50e-01.
+<function dIdV_all at 0x7fb798f29d30> fitting results:
+	V0    = -0.003076,bounds = [-0.0030755 -0.0030755]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.293660,bounds = [11.29366031 11.29366031]
+	tau0  = 0.006791,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005752,bounds = [0.00342 0.00798]
+	RMSE  = 0.049668 
+
+Saving plot to Mnv2/lorentz/stored_plots/5
+############################################################
+T = 7.0 K
+
+Loading data from Mnv2/data/7.0KdIdV.txt
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         1.5772e+06                                    6.76e+06    
+       1              2         7.0759e+05      8.70e+05       2.67e+00       1.58e+06    
+       2              3         5.5390e+05      1.54e+05       3.66e-01       9.95e+05    
+       3              4         5.3250e+05      2.14e+04       1.18e-01       4.55e+05    
+       4              5         5.3069e+05      1.81e+03       3.95e-02       1.40e+05    
+       5              6         5.3059e+05      1.02e+02       4.32e-03       3.53e+04    
+       6              7         5.3058e+05      5.92e+00       1.21e-04       8.81e+03    
+       7              8         5.3058e+05      3.75e-01       2.13e-06       2.15e+03    
+       8              9         5.3058e+05      2.35e-02       2.08e-07       5.25e+02    
+       9             10         5.3058e+05      1.70e-03       5.08e-08       1.28e+02    
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.5772e+06, final cost 5.3058e+05, first-order optimality 1.28e+02.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.001800,bounds = [-0.012553  0.012553]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.800000,bounds = [11.8 18.2]
+	tau0  = 0.007040,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005550,bounds = [0.00336 0.00784]
+	RMSE  = 0.038508 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.3958e+05                                    1.60e+06    
+       1              2         2.2977e+05      9.81e+03       1.39e-04       2.65e+05    
+       2              3         2.2950e+05      2.71e+02       1.38e-05       7.65e+04    
+       3              4         2.2948e+05      2.48e+01       5.65e-06       2.15e+04    
+       4              5         2.2948e+05      2.02e+00       1.74e-06       5.70e+03    
+       5              6         2.2948e+05      1.40e-01       4.73e-07       1.44e+03    
+       6              7         2.2948e+05      8.17e-03       1.20e-07       3.65e+02    
+       7              8         2.2948e+05      3.13e-04       3.03e-08       9.25e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 8, initial cost 2.3958e+05, final cost 2.2948e+05, first-order optimality 9.25e+01.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.001900,bounds = [-0.012553  0.012553]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.800000,bounds = [11.8 18.2]
+	tau0  = 0.006979,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005573,bounds = [0.00336 0.00784]
+	RMSE  = 0.042932 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.5855e+05                                    1.94e+05    
+       1              2         2.5791e+05      6.32e+02       2.12e-05       1.77e+05    
+       2              3         2.5760e+05      3.19e+02       9.04e-06       1.88e+05    
+       3              4         2.5727e+05      3.29e+02       1.94e-05       1.63e+05    
+       4              5         2.5611e+05      1.15e+03       5.21e-05       1.23e+05    
+       5              6         2.5515e+05      9.67e+02       6.69e-05       7.07e+04    
+       6              7         2.5480e+05      3.48e+02       5.00e-05       3.00e+04    
+       7              8         2.5475e+05      5.30e+01       2.44e-05       6.93e+03    
+       8              9         2.5474e+05      6.69e-01       1.29e-06       4.92e+03    
+       9             10         2.5474e+05      6.00e-01       2.68e-06       5.64e+02    
+      10             11         2.5474e+05      2.20e-03       8.81e-08       4.27e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 2.5855e+05, final cost 2.5474e+05, first-order optimality 4.27e+01.
+<function dIdV_all at 0x7fb798f29d30> fitting results:
+	V0    = -0.001900,bounds = [-0.00190028 -0.00190028]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 11.800000,bounds = [11.8 11.8]
+	tau0  = 0.007223,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005584,bounds = [0.00336 0.00784]
+	RMSE  = 0.045234 
+
+Saving plot to Mnv2/lorentz/stored_plots/7
+############################################################
+T = 10.0 K
+
+Loading data from Mnv2/data/10.0KdIdV.txt
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         1.1333e+06                                    9.93e+06    
+       1              2         3.0330e+05      8.30e+05       2.90e+00       1.57e+06    
+       2              3         1.9409e+05      1.09e+05       2.97e-01       3.75e+05    
+       3              4         1.8591e+05      8.18e+03       5.27e-03       1.14e+05    
+       4              5         1.8559e+05      3.18e+02       5.09e-04       6.73e+04    
+       5              6         1.8554e+05      5.11e+01       1.07e-04       3.17e+04    
+       6              7         1.8553e+05      7.72e+00       1.19e-05       1.25e+04    
+       7              8         1.8553e+05      1.02e+00       1.50e-06       4.60e+03    
+       8              9         1.8553e+05      1.32e-01       4.71e-07       1.66e+03    
+       9             10         1.8553e+05      1.82e-02       1.60e-07       5.99e+02    
+      10             11         1.8553e+05      2.78e-03       5.59e-08       2.15e+02    
+      11             12         1.8553e+05      5.20e-04       1.98e-08       7.70e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.1333e+06, final cost 1.8553e+05, first-order optimality 7.70e+01.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.001947,bounds = [-0.011668  0.011668]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 14.800000,bounds = [14.8 21.2]
+	tau0  = 0.007615,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005422,bounds = [0.00324 0.00756]
+	RMSE  = 0.042601 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         1.8553e+05                                    7.71e+01    
+       1              2         1.8553e+05      4.29e-04       7.16e-09       2.78e+01    
+`ftol` termination condition is satisfied.
+Function evaluations 2, initial cost 1.8553e+05, final cost 1.8553e+05, first-order optimality 2.78e+01.
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
+	V0    = -0.001947,bounds = [-0.011668  0.011668]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 14.800000,bounds = [14.8 21.2]
+	tau0  = 0.007615,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005422,bounds = [0.00324 0.00756]
+	RMSE  = 0.042601 
+
+
+Fitting data
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
+       0              1         2.0270e+05                                    2.60e+05    
+       1              2         1.9536e+05      7.34e+03       2.12e-04       1.21e+05    
+       2              3         1.9496e+05      3.95e+02       1.91e-05       1.09e+05    
+       3              4         1.9480e+05      1.66e+02       9.13e-06       1.16e+05    
+       4              5         1.9452e+05      2.81e+02       1.61e-05       1.04e+05    
+       5              6         1.9440e+05      1.15e+02       9.06e-06       8.89e+04    
+       6              7         1.9429e+05      1.08e+02       7.63e-06       9.42e+04    
+       7              8         1.9415e+05      1.45e+02       1.00e-05       8.70e+04    
+       8              9         1.9407e+05      8.01e+01       7.26e-06       7.46e+04    
+       9             10         1.9372e+05      3.42e+02       2.93e-05       5.60e+04    
+      10             11         1.9347e+05      2.51e+02       3.01e-05       3.71e+04    
+      11             12         1.9332e+05      1.58e+02       3.30e-05       1.65e+04    
+      12             13         1.9328e+05      3.70e+01       2.11e-05       3.34e+03    
+      13             14         1.9328e+05      1.53e+00       5.05e-06       1.51e+02    
+      14             15         1.9328e+05      2.79e-03       2.25e-07       2.64e+00    
+      15             25         1.9328e+05      2.91e-11       7.80e-15       2.64e+00    
+`ftol` termination condition is satisfied.
+Function evaluations 25, initial cost 2.0270e+05, final cost 1.9328e+05, first-order optimality 2.64e+00.
+<function dIdV_all at 0x7fb798f29d30> fitting results:
+	V0    = -0.001947,bounds = [-0.00194656 -0.00194656]
+	eps_0 = 0.011200,bounds = [0.0112 0.0112]
+	eps_c = 0.004804,bounds = [0.004804 0.004804]
+	G1    = 0.493300,bounds = [0.4933 0.4933]
+	G2    = 0.191200,bounds = [0.1912 0.1912]
+	G3    = 0.090600,bounds = [0.0906 0.0906]
+	T_surf= 14.800000,bounds = [14.8 14.8]
+	tau0  = 0.008019,bounds = [0.006 0.014]
+	Gamma = 0.002116,bounds = [0.002116 0.002116]
+	EC    = 0.005444,bounds = [0.00324 0.00756]
+	RMSE  = 0.043481 
+
+Saving plot to Mnv2/lorentz/stored_plots/10
 ############################################################
 T = 20.0 K
 
@@ -141,7 +398,7 @@ Fitting data
       41             42         6.2143e+05      5.26e-03       9.89e-08       4.69e+02    
 `ftol` termination condition is satisfied.
 Function evaluations 42, initial cost 9.7423e+05, final cost 6.2143e+05, first-order optimality 4.69e+02.
-<function dIdV_all_zero at 0x7f74a26aaca0> fitting results:
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
 	V0    = -0.002493,bounds = [-0.012083  0.012083]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -161,7 +418,7 @@ Fitting data
        1              2         6.2143e+05      5.77e-03       7.68e-08       3.64e+02    
 `ftol` termination condition is satisfied.
 Function evaluations 2, initial cost 6.2143e+05, final cost 6.2143e+05, first-order optimality 3.64e+02.
-<function dIdV_all_zero at 0x7f74a26aaca0> fitting results:
+<function dIdV_all_zero at 0x7fb798f29ca0> fitting results:
 	V0    = -0.002493,bounds = [-0.012083  0.012083]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -187,7 +444,7 @@ Fitting data
        7              8         1.9219e+05      1.73e-03       9.43e-08       2.14e+01    
 `ftol` termination condition is satisfied.
 Function evaluations 8, initial cost 2.5515e+05, final cost 1.9219e+05, first-order optimality 2.14e+01.
-<function dIdV_all at 0x7f74a26aad30> fitting results:
+<function dIdV_all at 0x7fb798f29d30> fitting results:
 	V0    = -0.002493,bounds = [-0.00249325 -0.00249325]
 	eps_0 = 0.011200,bounds = [0.0112 0.0112]
 	eps_c = 0.004804,bounds = [0.004804 0.004804]
@@ -203,4 +460,4 @@ Function evaluations 8, initial cost 2.5515e+05, final cost 1.9219e+05, first-or
 Saving plot to Mnv2/lorentz/stored_plots/20
 Saving data to Mnv2/lorentz/
 SLURM: finish oscillations.py
-Tue 22 Aug 2023 12:58:47 PM PDT
+Tue 22 Aug 2023 01:37:51 PM PDT
