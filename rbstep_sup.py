@@ -139,7 +139,7 @@ if True:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    plt.suptitle("$N_C = "+str(NC)+", N_{LR} = "+str(NLR)+", I = 10^{"+str(int_power)+"} $");
+    plt.suptitle("$N_C = "+str(NC)+", N_{LR} = "+str(NLR)+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
     fname = "figs/rbstep/sup/step_VR.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
@@ -235,11 +235,12 @@ if False:
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
-    plt.suptitle("$N_C = "+str(NC)+", V_R = "+str(VR[0,0])+", I = 10^{"+str(int_power)+"} $");
+    plt.suptitle("$N_C = "+str(NC)+", V_R = "+str(VR[0,0])+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
+    fname = "figs/rbstep/sup/step_NLR.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
 
-# T vs I
+# T vs \Delta \varepsilon
 if False:
 
     # variables
@@ -311,18 +312,18 @@ if False:
         # format
         axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
         axes[powervali].set_ylabel('$T$',fontsize=myfontsize);
-        axes[powervali].set_title("$I = "+str(powervals[powervali])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
+        axes[powervali].set_title("$\Delta \\varepsilon = 10^{"+str(powervals[powervali])+"}$", x=0.2, y = 0.7, fontsize=myfontsize);
 
         # save
-        folder = "data/rbstep/nosup/vsI/"
+        folder = "data/rbstep/nosup/vsdeps/"
         if(save_data):
             print("Saving data to "+folder);
-            np.save(folder+"I_{:.0f}_Tvals.npy".format(powervals[powervali]), Tvals);
-            np.save(folder+"I_{:.0f}_Tvals_bench.npy".format(powervals[powervali]), Tvals_bench);
-            np.savetxt(folder+"I_{:.0f}_info.txt".format(powervals[powervali]),
+            np.save(folder+"deps_{:.0f}_Tvals.npy".format(powervals[powervali]), Tvals);
+            np.save(folder+"deps_{:.0f}_Tvals_bench.npy".format(powervals[powervali]), Tvals_bench);
+            np.savetxt(folder+"deps_{:.0f}_info.txt".format(powervals[powervali]),
                        np.array([tinfty[0,0], tLR[0,0], tLR[0,0], Vinfty[0,0], VL[0,0], VLprime[0,0], VR[0,0], VRprime[0,0], Ninfty, NLR, NLR]),
                        header = "tinfty[0,0], tLR[0,0], tLR[0,0], Vinfty[0,0], VL[0,0], VLprime[0,0], VR[0,0], VRprime[0,0], Ninfty, NLR, NLR");
-            np.savetxt(folder+"I_{:.0f}_HC.txt".format(powervals[powervali]),HC[:,:,0,0], fmt="%.4f");
+            np.savetxt(folder+"deps_{:.0f}_HC.txt".format(powervals[powervali]),HC[:,:,0,0], fmt="%.4f");
 
         #### end loop over powervals
 
@@ -331,6 +332,7 @@ if False:
     axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
     plt.tight_layout();
     plt.suptitle("$N_C = "+str(NC)+", V_R = "+str(VR[0,0])+", N_{LR} = "+str(NLR)+" $");
+    fname = "figs/rbstep/sup/step_deps.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
 
