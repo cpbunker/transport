@@ -215,14 +215,14 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
         
     if(metal=="Mnv2/"):
-        freeze_back = False; # whether to freeze the physical background params in the fitting
+        freeze_back = True; # whether to freeze the physical background params in the fitting
         if freeze_back: # physical background params
-            eps0_guess, G2_guess, G3_guess = 0.00832, 0.09985, 0.10336; # impurity, det'd by high temp
-            epsc_guess, G1_guess = 1e-12, 0.06448; # magnon, det'd by low temp 
-            Gamma_guess = 0.002832; # lead coupling, det'd by low temp 
+            eps0_guess, G2_guess, G3_guess = 0.01120, 0.1912, 0.0906; # impurity, det'd by high temp
+            epsc_guess, G1_guess = 0.004804, 0.4933; # magnon, det'd by low temp 
+            Gamma_guess = 0.002116; # lead coupling, det'd by low temp 
         else:
             eps0_guess, G2_guess, G3_guess = 0.014, 0.1, 0.1; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
-            epsc_guess, G1_guess = 0.005, 0.5; # magnon, det'd by low temp # 0.005, 0.5
+            epsc_guess, G1_guess = 0.005, 0.3; # magnon, det'd by low temp # 0.005, 0.5
             Gamma_guess = 0.0022; # lead coupling, det'd by low temp # 0.0021
 
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
