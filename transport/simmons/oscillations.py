@@ -215,14 +215,14 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
         
     if(metal=="Mnv2/"):
-        # physical background params
-        eps0_guess, G2_guess, G3_guess = 0.00832, 0.09985, 0.10336; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
-        epsc_guess, G1_guess = 1e-12, 0.06448; # magnon, det'd by low temp # 0.010, 0.5
-        Gamma_guess = 0.002832; # lead coupling, det'd by low temp # 0.0021
-
-        if True:
-            eps0_guess, G2_guess, G3_guess = 0.008, 0.1, 0.1; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
-            epsc_guess, G1_guess = 0.005, 0.1; # magnon, det'd by low temp # 0.005, 0.5
+        freeze_back = False; # whether to freeze the physical background params in the fitting
+        if freeze_back: # physical background params
+            eps0_guess, G2_guess, G3_guess = 0.00832, 0.09985, 0.10336; # impurity, det'd by high temp
+            epsc_guess, G1_guess = 1e-12, 0.06448; # magnon, det'd by low temp 
+            Gamma_guess = 0.002832; # lead coupling, det'd by low temp 
+        else:
+            eps0_guess, G2_guess, G3_guess = 0.014, 0.1, 0.1; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
+            epsc_guess, G1_guess = 0.005, 0.5; # magnon, det'd by low temp # 0.005, 0.5
             Gamma_guess = 0.0022; # lead coupling, det'd by low temp # 0.0021
 
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
@@ -232,7 +232,6 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         tau0_guess =   0.01; # unitless scale factor
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.1])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -338,7 +337,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [4]):
+        if(True and datai in [0,4]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -353,7 +352,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
             boundsT.append(temp_bounds);
     
             #save processed x and y data, and store plot
-            if(stop_at in ["lorentz/"] and False):
+            if(stop_at in ["lorentz/"]):
                 plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);
                 mytitle="$\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV, T_film = "+"{:.1f} K".format(*temp_results[-4:])
@@ -479,8 +478,8 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
-    verbose=10;
+    stop_at = stop_ats[2];
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
