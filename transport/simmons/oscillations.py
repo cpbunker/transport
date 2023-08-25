@@ -199,7 +199,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbo
 ####################################################################
 #### wrappers
 
-def fit_Mn_data(stop_at, metal, verbose=1):
+def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
     '''
     Wrapper function for calling fit_dIdV on different temperature data sets
     and saving the results of those fits
@@ -207,6 +207,8 @@ def fit_Mn_data(stop_at, metal, verbose=1):
         - stop_at, str telling which fit function to stop at, and return fitting
             params for. For final fit, should always = "lorentz/"
         - metal, path to folder of datset(s) at fixed B, where dIdV data is stored
+        - freeze_back, bool, whether to freeze the physical background
+          params in the fitting
     '''
     stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
@@ -215,19 +217,20 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
         
     if(metal=="Mnv2/"):
-        freeze_back = True; # whether to freeze the physical background params in the fitting
         if freeze_back: # physical background params
-            eps0_guess, G2_guess, G3_guess = 0.01120, 0.1912, 0.0906; # impurity, det'd by high temp
-            epsc_guess, G1_guess = 0.004804, 0.4933; # magnon, det'd by low temp 
-            Gamma_guess = 0.002116; # lead coupling, det'd by low temp 
+            eps0_guess = 0.007150; # cutoff, det'd by HIGH temp
+            G2_guess, G3_guess = 0.1454, 0.1048; # impurity, det'd by low temp
+            epsc_guess, G1_guess = 0.005414, 0.5059; # magnon, det'd by low temp 
+            Gamma_guess = 0.002306; # lead coupling, det'd by low temp 
         else:
-            eps0_guess, G2_guess, G3_guess = 0.014, 0.1, 0.1; # impurity, det'd by high temp # 0.008, 0.1, 0.1;
-            epsc_guess, G1_guess = 0.005, 0.3; # magnon, det'd by low temp # 0.005, 0.5
-            Gamma_guess = 0.0022; # lead coupling, det'd by low temp # 0.0021
-
-        eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+            G2_guess, G3_guess = 0.2, 0.2; # impurity, det'd by low temp
+            eps0_guess = 0.0065; # cutoff, det'd by HIGH temp
+            epsc_guess, G1_guess = 0.005, 0.2; # magnon, det'd by low temp 
+            Gamma_guess = 0.0022; # lead coupling, det'd by low temp 
+        eps0_percent, epsc_percent = 1e-1,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        
         # experimental background params
-        ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
+        ohm_guess, ohm_percent = 4.0, 1.0; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01; # unitless scale factor
         EC_guess =    np.array([5.9, 5.7, 5.6, 5.4, 5.1])*1e-3; # in eV, sometimes needs to be tuned for convergence
@@ -237,17 +240,14 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 
     elif(metal=="Mnv4/"):
         # physical background params
-        eps0_guess, epsc_guess = 0.00665, 0.0165; # in eV # 0.008, 0.010
-        G1_guess, G2_guess, G3_guess = 0.630, 0.530, 0.457; # in A/V/eV^2
-        Gamma_guess = 0.00140 # in eV
         eps0_percent, epsc_percent = 0.2,1; G1_percent, G2_percent, G3_percent = 1,1,1;
+        
         # experimental background params
         ohm_guess, ohm_percent = 8.0, 0.4; # in kelvin # also V0, but that is set by data
         # oscillation guesses # <- change these after background is fixed
         tau0_guess =   0.01 # unitless scale factor
         EC_guess =    np.array([4.9,4.9,4.7,4.6,5.7,5.7])*1e-3; # in eV, sometimes needs to be tuned for convergence
         tau0_percent, Gamma_percent, EC_percent = 0.4, 0.4, 0.4;
-        freeze_back = False; # whether to freeze the physical background params in the fitting
 
     ####
 
@@ -337,7 +337,7 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True):
+        if(True and datai in [0,4]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -478,11 +478,12 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[2];
-    verbose=1;
+    stop_at = stop_ats[1];
+    freeze_back = False;
+    verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    fit_Mn_data(stop_at, metal, freeze_back, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
