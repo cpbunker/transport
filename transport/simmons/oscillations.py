@@ -216,16 +216,17 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
     Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
         
-    if(metal=="Mnv2/"):
-        if freeze_back: # physical background params
-            eps0_guess = 0.007150; # cutoff, det'd by HIGH temp
-            G2_guess, G3_guess = 0.1454, 0.1048; # impurity, det'd by low temp
-            epsc_guess, G1_guess = 0.005414, 0.5059; # magnon, det'd by low temp 
-            Gamma_guess = 0.002306; # lead coupling, det'd by low temp 
+    if(metal=="Mnv2/"):            
+        if freeze_back: # all by high
+            eps0_guess = 0.007150; 
+            G2_guess, G3_guess = 0.1047, 0.1177;
+            epsc_guess, G1_guess = 0.000032, 0.07179; 
+            Gamma_guess = 0.002785;
+            # looks good for unfrozen run, pursue further
         else:
             G2_guess, G3_guess = 0.2, 0.2; # impurity, det'd by low temp
             eps0_guess = 0.0065; # cutoff, det'd by HIGH temp
-            epsc_guess, G1_guess = 0.005, 0.2; # magnon, det'd by low temp 
+            epsc_guess, G1_guess = 0.005, 0.05; # magnon, det'd by low temp 
             Gamma_guess = 0.0022; # lead coupling, det'd by low temp 
         eps0_percent, epsc_percent = 1e-1,1; G1_percent, G2_percent, G3_percent = 1,1,1;
         
@@ -337,7 +338,7 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [0,4]):
+        if(True and datai in [0,1,2,3]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -478,7 +479,7 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[1];
+    stop_at = stop_ats[2];
     freeze_back = False;
     verbose=10;
 
