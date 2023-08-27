@@ -480,8 +480,8 @@ if(__name__ == "__main__"):
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    freeze_back = False;
-    verbose=10;
+    freeze_back = True;
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, freeze_back, verbose=verbose);
