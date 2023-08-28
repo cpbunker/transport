@@ -356,7 +356,7 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
             if(stop_at in ["lorentz/"]):
                 plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);
-                mytitle="$\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV, T_film = "+"{:.1f} K".format(*temp_results[-4:])
+                mytitle="T_surf = "+"{:.1f} K, $\\tau_0 = $ {:.0f} nA/V, $\Gamma = $ {:.5f} eV, $E_C = $ {:.5f} eV".format(*temp_results[-4:])
                 print("Saving plot to "+plot_fname);
                 np.save(plot_fname+"_x.npy", x_forfit);
                 np.save(plot_fname+"_y.npy", y_forfit);
@@ -371,7 +371,45 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
         np.save(metal+stop_at+"results.npy", results);
         np.save(metal+stop_at+"bounds.npy", boundsT);
 
-def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
+def interp_saved_fit(stop_at, metal, interp_factor = 5, offset = 1000, verbose = 1):
+    '''
+    '''
+    stopats_2_func = {"lorentz_zero/":dIdV_all_zero, "lorentz/":dIdV_all, "lorentz_interp/":dIdV_all};
+
+    # experimental params
+    Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
+    Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
+
+    # plot with interpolated fit
+    fig3, ax3 = plt.subplots();
+    for datai in range(len(Ts)):
+        global temp_kwarg; temp_kwarg = Ts[datai];
+        global bfield_kwarg; bfield_kwarg = Bs[datai];
+        print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
+
+        # load exp x and y
+        V_exp, dI_exp = load_dIdV("KdIdV.txt",metal+"data/", temp_kwarg);
+        V_exp_interp = np.linspace(np.min(V_exp), np.max(V_exp), interp_factor*len(V_exp));
+
+        # fit params
+        fit_params = np.loadtxt(metal+"lorentz/stored_plots/"+"{:.0f}".format(temp_kwarg)+"_results.txt");
+        dI_fit = stopats_2_func[stop_at](V_exp_interp, *fit_params);
+
+        # plot
+        ax3.scatter(V_exp,offset*datai+dI_exp, color=mycolors[datai], marker=mymarkers[datai], 
+                            label="$T=$ {:.1f} K".format(Ts[datai])+", B = {:.1f} T".format(Bs[datai]));
+        ax3.plot(V_exp_interp,offset*datai+dI_fit, color="black");
+        ax3.set_xlabel("$V_b$ (V)");
+        #ax3.set_xlim(-0.1,0.1);
+        ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+        #ax3.set_ylim(300,2800);
+
+    # show
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
+    plt.legend(loc='lower right');
+    plt.show();
+
+def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
     '''
     '''
 
@@ -400,7 +438,6 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         # plot
         if(combined): # plot all at once
             if(Tval in combined):
-                offset = 800;
                 ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
                             label="$T=$ {:.1f} K".format(Tval)+", B = {:.1f} T".format(Bs[Tvali]));
                 ax3.plot(x,offset*Tvali+yfit, color="black");
@@ -412,6 +449,7 @@ def plot_saved_fit(stop_at, metal, combined=[], verbose = 1):
         else:
             if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+", B = {:.1f} T".format(Bs[Tvali]));
 
+    # show
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
     plt.show();
@@ -480,13 +518,15 @@ if(__name__ == "__main__"):
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    freeze_back = True;
-    verbose=1;
+    freeze_back = False;
+    verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, freeze_back, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, freeze_back, verbose=verbose);
+
+    #interp_saved_fit(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5,5,7,10,20]);
 
