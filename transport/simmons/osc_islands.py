@@ -60,7 +60,12 @@ def dIdV_mag(Vb, V0, epsc, G1, T_surf):
         ret += -2*kBT*np.log(1-np.exp(-epsc/kBT));
         ret += (E+epsc)/( np.exp( (E+epsc)/kBT) - 1);
         ret += (E-epsc)/(-np.exp(-(E-epsc)/kBT) + 1);
-        return ret
+        return ret;
+
+    # split Vb pos and Vb neg branches
+    Vb_pos, Vb_neg = np.zeros_like(Vb), np.zeros_like(Vb);
+    Vb_pos[Vb>=0] = Vb[Vb>=0];
+    Vb_neg[Vb <0] = Vb[Vb <0];
         
     return G1*Gmag(abs(Vb-V0), kelvin2eV*T_surf);
 
@@ -74,6 +79,12 @@ def dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, Gamma):
     G1, G2, G3 = Gamma*Gamma*G1*1e9, Gamma*Gamma*G2*1e9, Gamma*Gamma*G3*1e9;
     return dIdV_imp(Vb, V0, eps0, G2, G3, T_surf)+dIdV_mag(Vb, V0, epsc, G1, T_surf);
 
+def make_EC_list(EC):
+    EClist = np.full((num_EC_kwarg,), EC);
+    for ECvali in range(num_EC_kwarg):
+        EClist[ECvali] = EC* (2**ECvali);
+    return EClist;
+
 def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC): 
     '''
     '''
@@ -81,14 +92,22 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
     nmax = 100; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
-    return tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
-
-def dIdV_lorentz_3(Vb, V0, EC1, EC2, EC3):
-    '''
-    '''
     ret = np.zeros_like(Vb);
-    for EC in [EC1, EC2, EC3]:
-        ret += dIdV_lorentz_zero(Vb, V0, tau0_kwarg, Gamma_kwarg, EC);
+    for ECval in make_EC_list(EC):
+        ret += tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, ECval, 0.0, ns);
+    return ret;
+
+def dIdV_lorentz_faster(Vb, V0, EC):
+    '''
+    Like dIdV_lorentz_zero, but doesn't fit tau0 or Gamma, so faster
+    '''
+    
+    nmax = 100; # <- has to be increased with increasing Gamma
+    ns = np.arange(-nmax, nmax+1);
+    mymu0 = 0.0; # grounded
+    ret = np.zeros_like(Vb);
+    for ECval in make_EC_list(EC):
+        ret += tau0_kwarg*dI_of_Vb_zero(Vb-V0, mymu0, Gamma_kwarg, ECval, 0.0, ns);
     return ret;
 
 def dIdV_all_zero(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC):
@@ -168,7 +187,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     V0index = np.argmin(dI_exp);   # reset V0 now that outliers are removed
     V0_not = V_exp[V0index];
     V0_bound = abs(V_exp[V0index] - V_exp[3+V0index]);
-    V0_bound = 1e-12;
+    #V0_bound = 1e-12;
     params_init[0] = V0_not;bounds_init[0,0] = V0_not-V0_bound;bounds_init[1,0] = V0_not+V0_bound;
     params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
                                 params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
@@ -211,23 +230,6 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_lorentz_zero(V_exp, *params_osc),
                 mytitle="Oscillation fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");   
     if(stop_at=="osc/"): return V_exp, dI_exp, params_osc, bounds_osc;
-
-    #### oscillations only, fit to single island ####
-    # background removed
-    # V0 frozen
-    # tau0 and Gamma frozen, AND removed from function args for fit speedup
-    # therefore pass them as global args
-    params_3_guess = np.array([params_osc[0], 0.5*EC_not, 1.0*EC_not, 1.5*EC_not]);
-    global tau0_kwarg; tau0_kwarg = params_osc[-3];
-    global Gamma_kwarg; Gamma_kwarg = params_osc[-2];
-    bounds_3 = np.array([ [params_osc[0]+0.000, params_3_guess[-3]*(1-EC_percent), params_3_guess[-2]*(1-EC_percent), params_3_guess[-1]*(1-EC_percent)],
-                          [params_osc[0]+1e-12, params_3_guess[-3]*(1+EC_percent), params_3_guess[-2]*(1+EC_percent), params_3_guess[-1]*(1+EC_percent)] ]);
-    params_3, _ = fit_wrapper(dIdV_lorentz_3, V_exp, dI_exp,
-                              params_3_guess, bounds_3, ["V0", "EC1", "EC2", "EC3"],
-                              stop_bounds = False, verbose=verbose);
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_lorentz_3(V_exp, *params_3),
-                                              mytitle="3 island fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");   
-    if(stop_at=="osc3/"): return V_exp, dI_exp, params_3, bounds_3;
     
     raise NotImplementedError;
 
@@ -264,7 +266,7 @@ def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
 ####################################################################
 #### wrappers
 
-def fit_Mn_data(stop_at, metal, verbose=1):
+def fit_Mn_data(stop_at, metal, num_islands, verbose=1):
     '''
     '''
     stopats_2_func = {"back/" : dIdV_all_zero, "osc/" : dIdV_lorentz_zero};
@@ -276,24 +278,25 @@ def fit_Mn_data(stop_at, metal, verbose=1):
     #### guesses ####
     # surface magnons
     epsc_guess, epsc_percent = 0.002, 1;
-    G1_guess, G1_percent = 0.2, 1;
-    Gamma_guess, Gamma_percent = 0.008, 0.1;
+    G1_guess, G1_percent = 4.0, 1;
+    Gamma_guess, Gamma_percent = 0.002, 0.5;
     # magnetic impurities
     eps0_guess, eps0_percent = 0.002, 0.4;
-    G2_guess, G2_percent = 0.04, 1;
-    G3_guess, G3_percent = 0.002, 0.4;
+    G2_guess, G2_percent = 0.6, 1;
+    G3_guess, G3_percent = 0.032, 0.4;
     # other
     ohm_guess, ohm_percent = 1e-12, 1.0;
-    tau0_guess, tau0_percent = 0.01, 0.4;
+    tau0_guess, tau0_percent = 0.005, 0.4;
     EC_guess, EC_percent = 0.005, 0.4;
 
     #fitting results
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [0,1,2]):
+        if(True and datai in [1,3,5]):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
+            global num_EC_kwarg; num_EC_kwarg = num_islands;
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             
             #### get fit results ####
@@ -330,12 +333,13 @@ def fit_Mn_data(stop_at, metal, verbose=1):
 if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
-    stop_ats = ["back/", "lorentz_zero/", "osc/", "osc3/"];
-    stop_at = stop_ats[1];
+    stop_ats = ["back/", "lorentz_zero/", "osc/"];
+    stop_at = stop_ats[2];
+    num_islands = 3;
     verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    fit_Mn_data(stop_at, metal, num_islands, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
