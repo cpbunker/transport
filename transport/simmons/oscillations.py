@@ -111,7 +111,7 @@ def dIdV_all(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, freeze_back=False, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, num_dev=5, freeze_back=False, verbose=0):
     '''
     The main function for fitting the metal Pc dI/dV data
     The data is stored as metal/__dIdV.txt where __ is the temperature
@@ -488,5 +488,5 @@ if(__name__ == "__main__"):
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[5,7,10]);
+    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5]);
 
