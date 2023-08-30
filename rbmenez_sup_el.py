@@ -34,6 +34,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+error_lims = ();
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -56,9 +57,9 @@ Vinfty = 0.5*tLR;
 NLR = 200;
 Ninfty = 20;
 
-# cutoffs
+#### hyper parameters ####
 Ecut = 0.1;
-error_lims = (0,20);
+defines_alpha = np.array([[0,1],[1,0]]);
 
 ###############################################
 # matrix elements are the right barrier being removed only
@@ -66,7 +67,7 @@ error_lims = (0,20);
 # therefore physical basis != eigenbasis of Sz
 
 # T vs Jval
-if False:
+if True:
     
     # alpha -> beta
     alphas = [0,1];
@@ -82,7 +83,7 @@ if False:
         indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,1;
+        alpha_initial, alpha_final = 0,0;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
@@ -104,10 +105,6 @@ if False:
         print("HC =");
         print_H_alpha(HC);
 
-        # alpha basis is eigenstates of HC[j=0,j=0]
-        # change of basis is automatic in kernel_well_super now
-        defines_alpha = HC[len(HC)//2,len(HC)//2];
-
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
@@ -116,8 +113,6 @@ if False:
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
                                   E_cutoff=np.eye(n_loc_dof)*Ecut,verbose=1);
-        # symmetrize
-        Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
@@ -140,7 +135,7 @@ if False:
                     axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
                     #format
                     if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
+                    if(error_lims): axright.set_ylim(*error_lims);
                     axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
@@ -156,7 +151,7 @@ if False:
             axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
             #format
             axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            #axright.set_ylim(*error_lims);
+            if(error_lims): axright.set_ylim(*error_lims);
             axes[indvali].set_title("$J = "+str(Jval)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
             axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1].set_xscale('log', subs = []);
@@ -216,10 +211,6 @@ if False:
         print("HC =");
         print_H_alpha(HC);
 
-        # alpha basis is eigenstates of HC[j=0,j=0]
-        # change of basis is automatic in kernel_well_super now
-        defines_alpha = HC[len(HC)//2,len(HC)//2];
-
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
@@ -252,7 +243,7 @@ if False:
                     axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
                     #format
                     if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
+                    if(error_lims): axright.set_ylim(*error_lims);
                     axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
@@ -268,7 +259,7 @@ if False:
             axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
             #format
             axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            #axright.set_ylim(*error_lims);
+            if(error_lims): axright.set_ylim(*error_lims);
             axes[indvali].set_title("$N_J = "+str(NJ)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
             axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1].set_xscale('log', subs = []);
@@ -286,7 +277,7 @@ if False:
     else: plt.show();
 
 # T vs tC (reduced-tC insulating region of width NC=3)
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
@@ -366,7 +357,7 @@ if True:
                     axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
                     #format
                     if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
+                    if(error_lims): axright.set_ylim(*error_lims);
                     axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
@@ -382,7 +373,7 @@ if True:
             axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
             #format
             axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            #axright.set_ylim(*error_lims);
+            if(error_lims): axright.set_ylim(*error_lims);
             axes[indvali].set_title("$t_{vac} = "+str(tC[0,0])+"$", x=0.4, y = 0.7, fontsize=myfontsize);
             axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1].set_xscale('log', subs = []);

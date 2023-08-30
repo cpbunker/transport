@@ -36,6 +36,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+error_lims = (0,50);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -55,12 +56,14 @@ tLR = 1.0*np.eye(n_loc_dof);
 tinfty = 1.0*tLR;
 VLR = 0.0*tLR; # NB explicit LR symmetry
 Vinfty = 0.5*tLR;
-NLR = 200;
+NLR = 1000;
 Ninfty = 20;
 
-# cutoffs
+#### hyper parameters ####
 Ecut = 0.1;
-error_lims = (0,20);
+#defines_alpha = np.array([[0,1],[1,0]]);
+interval = 1e-2;
+eigval_tol = 1e-5;
 
 ###############################################
 # matrix elements are the right barrier being removed only
@@ -81,7 +84,7 @@ if True:
     # plotting
     plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([-0.005]);
+        indvals = np.array([-0.0]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
@@ -104,20 +107,15 @@ if True:
 
         # central region
         Jval = indvals[indvali];
-        NC = 3;
+        NC = 11;
         VC = 0.4*tLR + Delta;
-        tC = 0.8*tLR;
+        tC = 1.0*tLR;
 
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
                 if(NCi == NCj): # diagonal in space
-                    if(NCi < NC//2): # left insulator
-                        HC[NCi,NCj] += VL;
-                    elif(NCi == NC//2): # middle to keep LR symmetry !!!
-                        HC[NCi,NCj] += VC+(Jval/2)*np.array([[0,1],[1,0]]); #spin mix
-                    elif(NCi > NC//2): # right insulator
-                        HC[NCi,NCj] += VR;
+                    HC[NCi,NCj] += VC+(Jval/2)*np.array([[0,1],[1,0]]); #spin mix
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HC[NCi,NCj] += -tC;
         print("HC =");
@@ -135,9 +133,7 @@ if True:
                                   Vinfty, VL, Vinfty, VR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
                                   E_cutoff=np.eye(n_loc_dof)*Ecut+Delta,
-                                  interval=1e-2,eigval_tol=1e-5,verbose=1);
-        # symmetrize
-        Evals[0], Evals[1] = (Evals[0]+Evals[1])/2, (Evals[0]+Evals[1])/2;
+                                  interval=interval,eigval_tol=eigval_tol,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VL, VR, NLR, NLR,verbose=1);
 
@@ -146,8 +142,7 @@ if True:
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        if plot_alpha:
-            # iter over initial and final states
+        if plot_alpha: # iter over initial and final states
             for alphai in range(len(alphas)):
                 for betai in range(len(alphas)):
                     alpha, beta = alphas[alphai], alphas[betai];
@@ -160,14 +155,13 @@ if True:
                     axright.plot(xvals,100*abs((Tvals[betai,:,alphai]-Tvals_bench[betai,:,alphai])/Tvals_bench[betai,:,alphai]),color=accentcolors[1]);            
                     #format
                     if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-                    #axright.set_ylim(*error_lims);
-                    axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+                    if(error_lims): axright.set_ylim(*error_lims);
+                    axes[alphai,betai].set_ylabel("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
+                    axes[alphai, betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
-                    axes[alphai,0].set_ylabel("$T$");
 
-        else:
-            # plot based on initial state
+        else: # plot for fixed initial spin
             xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
             axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
             # % error
@@ -176,7 +170,7 @@ if True:
             axright.plot(xvals,100*abs((Tvals[alpha_final,:,alpha_initial]-Tvals_bench[alpha_final,:,alpha_initial])/Tvals_bench[alpha_final,:,alpha_initial]),color=accentcolors[1]);            
             #format
             axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-            #axright.set_ylim(*error_lims);
+            if(error_lims): axright.set_ylim(*error_lims);
             axes[indvali].set_title("$J = "+str(Jval)+"$", x=0.4, y = 0.7, fontsize=myfontsize);
             axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
             axes[-1].set_xscale('log', subs = []);
@@ -184,8 +178,8 @@ if True:
             axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
+    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$");
     plt.tight_layout();
-    fig.suptitle("$\Delta = "+str(Delta[-1,-1])+", J = "+str(Jval)+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+"$");
     fname = "figs/rbmenez/sup_inel/menez_Delta";
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";

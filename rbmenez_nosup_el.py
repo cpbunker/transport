@@ -61,7 +61,7 @@ NLR = 200;
 Ninfty = 20;
 
 # cutoffs
-Ecut = 0.1;
+Ecut = 1.9;
 error_lims = (0,20);
 
 ###############################################
@@ -77,7 +77,7 @@ if True:
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = False;
+    plot_alpha = True;
     if(plot_alpha):
         indvals = np.array([-0.5]);
         nplots_x = len(alphas);
@@ -191,7 +191,7 @@ if True:
     else: plt.show();
 
 # T vs NJ
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
@@ -315,7 +315,7 @@ if True:
     else: plt.show();
 
 # T vs tC (reduced-tC insulating region of width NC=3)
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
