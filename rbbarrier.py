@@ -47,11 +47,10 @@ Vinfty = 0.5*tLR;
 Ninfty = 20;
 
 #### hyper parameters ####
-Ecut = 0.1;
 #defines_alpha = np.copy(tLR);
 
 # T vs NL
-if True:
+if False:
 
     NLvals = [50,200,500];
     numplots = len(NLvals);
@@ -82,7 +81,7 @@ if True:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VLR, Vinfty, VLR, Vinfty,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=VC[0,0]*np.eye(n_loc_dof), verbose=1);
+                                      E_cutoff=VC, verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 
@@ -120,7 +119,7 @@ if True:
     else: plt.show();
 
 # T vs NC
-if False:
+if True:
 
     NCvals = [1,3,5,51];
     numplots = len(NCvals);
@@ -153,7 +152,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=VC[0,0]*np.eye(n_loc_dof),verbose=1);
+                                      E_cutoff=VC,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 
@@ -226,7 +225,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
                                       Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=VCval[0,0]*np.eye(n_loc_dof),verbose=1);
+                                      E_cutoff=VCval,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
 

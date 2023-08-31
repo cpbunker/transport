@@ -29,6 +29,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+error_lims = ()# (0,50);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -47,16 +48,16 @@ Vinfty = 0.5*tLR;
 Ninfty = 20;
 NC = 11;
 
-# cutoffs
+#### hyper parameters ####
 Ecut = 0.1;
-error_lims = (0,50);
+defines_alpha = np.copy(tLR);
 
 # T vs VR
-if True:
+if False:
 
     # variables
     NLR = 200;
-    VRvals = np.array([-0.01*tLR,-0.001*tLR,0.001*tLR,0.01*tLR]);
+    VRvals = np.array([-0.05*tLR,-0.005*tLR,0.005*tLR,0.05*tLR]);
     int_power = -2;
 
     # plotting
@@ -84,13 +85,12 @@ if True:
         assert(not np.any(np.ones((len(VC)),)[np.diagonal(VC) < np.diagonal(VRvals[VRvali])]));
         
         # bardeen.kernel syntax:
-        # tinfty, tL, tLprime, tR, tRprime,
+        # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime,
-        # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
+        # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
+        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VRvals[VRvali], VRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HC, defines_alpha,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(int_power), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -133,11 +133,11 @@ if True:
         #### end loop over VRvals
 
     # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xscale("log", subs = []);
+    axes[-1].set_xlabel("$(\\varepsilon_m + 2t_L)/t_L $",fontsize=myfontsize);
     plt.tight_layout();
-    plt.suptitle("$N_C = "+str(NC)+", N_{LR} = "+str(NLR)+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
-    fname = "figs/rbstep/nosup/step_VR.pdf";
+    plt.suptitle("$N_C = "+str(NC)+", V_C = "+str(VC[0,0])+", N_{LR} = "+str(NLR)+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
+    fname = "figs/rbstep/sup/step_VR.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
 
@@ -146,7 +146,7 @@ if False:
 
     # variables
     NLRvals = [50,200,1000];
-    VR = -0.01*tLR;
+    VR = -0.05*tLR;
     int_power = -2;
 
     # plotting
@@ -167,6 +167,10 @@ if False:
     print("HC =");
     print_H_j(HC);
 
+    # alpha basis is eigenstates of HC[j=0,j=0]
+    # change of basis is automatic in kernel_well_super now
+    defines_alpha = HC[len(HC)//2,len(HC)//2];
+
     # primes
     VLprime = VR+Vinfty; # left cover needs to be higher from view of right well
     VRprime = 0+Vinfty;
@@ -180,9 +184,9 @@ if False:
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
         # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
+        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NLRvals[NLRvali], NLRvals[NLRvali], HC, HC,
+                                      Ninfty, NLRvals[NLRvali], NLRvals[NLRvali], HC, HC, defines_alpha,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(int_power), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -225,21 +229,20 @@ if False:
         #### end loop over NLRvals
 
     # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xscale("log", subs = []);
+    axes[-1].set_xlabel("$(\\varepsilon_m + 2t_L)/t_L $",fontsize=myfontsize);
     plt.tight_layout();
-    plt.suptitle("$N_C = "+str(NC)+", V_R = "+str(VR[0,0])+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
-    fname = "figs/rbstep/nosup/step_NLR.pdf";
+    plt.suptitle("$N_C = "+str(NC)+", V_C = "+str(VC[0,0])+", V_R = "+str(VR[0,0])+", \Delta \\varepsilon = 10^{"+str(int_power)+"} $");
+    fname = "figs/rbstep/sup/step_NLR.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
 
-
 # T vs \Delta \varepsilon
-if False:
+if True:
 
     # variables
-    NLR = 200;
-    VR = -0.01*tLR;
+    NLR = 1000;
+    VR = -0.05*tLR;
     powervals = [-6,-3,-2,np.nan];
 
     # plotting
@@ -260,6 +263,10 @@ if False:
     print("HC =");
     print_H_j(HC);
 
+    # alpha basis is eigenstates of HC[j=0,j=0]
+    # change of basis is automatic in kernel_well_super now
+    defines_alpha = HC[len(HC)//2,len(HC)//2];
+
     # primes
     VLprime = VR+Vinfty; # left cover needs to be higher from view of right well
     VRprime = 0+Vinfty;
@@ -273,9 +280,9 @@ if False:
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
         # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
+        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HC, defines_alpha,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(powervals[powervali]), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -318,11 +325,11 @@ if False:
         #### end loop over powervals
 
     # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
+    axes[-1].set_xscale("log", subs = []);
+    axes[-1].set_xlabel("$(\\varepsilon_m + 2t_L)/t_L $",fontsize=myfontsize);
     plt.tight_layout();
-    plt.suptitle("$N_C = "+str(NC)+", V_R = "+str(VR[0,0])+", N_{LR} = "+str(NLR)+" $");
-    fname = "figs/rbstep/nosup/step_deps.pdf";
+    plt.suptitle("$N_C = "+str(NC)+", V_C = "+str(VC[0,0])+", V_R = "+str(VR[0,0])+", N_{LR} = "+str(NLR)+" $");
+    fname = "figs/rbstep/sup/step_deps.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
 
