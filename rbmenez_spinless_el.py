@@ -13,7 +13,9 @@ only, the Kondo term is included in HL and HR. therefore physical basis !=
 eigenbasis of Sz, so our observables (like current in Sz) are constructed from
 a superposition of bardeen results.
 
-INELASTIC PROCESSES are now considered, via an impurity spin-flip cost Delta
+"Spinless superposition method" : the system is symmetry broken to the point
+that there are no good spin quantum numbers any more. So the superposition
+is in energy space
 '''
 
 from transport import bardeen
@@ -61,20 +63,14 @@ Ninfty = 20;
 
 #### hyper parameters ####
 Ecut = 0.1;
-#defines_alpha = np.array([[0,1],[1,0]]);
-interval = 1e-9;
-expval_tol = 1e-3;
+defines_Sz = np.array([[1,0],[0,-1]]);
 
 ###############################################
 # matrix elements are the right barrier being removed only
 # the Kondo term is included in HL and HR
 # therefore physical basis != eigenbasis of Sz
 
-# inelastic processes
-
 # T vs Jval
-# nonzero Delta (energy cost of impurity spin-flip)
-# compare with PRA paper, Fig 10
 if True:
     
     # alpha -> beta
@@ -82,65 +78,66 @@ if True:
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = True;
+    plot_alpha = False;
     if(plot_alpha):
-        indvals = np.array([-0.05]);
+        indvals = np.array([-0.5]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
         indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,1;
+        alpha_initial, alpha_final = 0,0;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
-
-    #### inelastic
-    Delta = 0.02*np.array([[0,0],[0,1]]);  # <------- !!!!
-    VLR = VLR + Delta;
-    Vinfty = Vinfty + Delta;
         
-    # iter over J
+    # iter over J vals
     for indvali in range(len(indvals)):
 
         # central region
         Jval = indvals[indvali];
-        NC = 11;
-        VC = 0.4*tLR + Delta;
         tC = 1.0*tLR;
-
+        VC = 0.4*tLR;
+        NC = 11;
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
-                if(NCi == NCj): # diagonal in space
-                    HC[NCi,NCj] += VC+(Jval/2)*np.array([[0,1],[1,0]]); #spin mix
+                if(NCi == NCj): 
+                    HC[NCi,NCj] += VC + (Jval/2)*np.array([[0,1],[1,0]]);
                 elif(abs(NCi -NCj) == 1): # nn hopping
                     HC[NCi,NCj] += -tC;
         print("HC =");
         print_H_alpha(HC);
 
-        # alpha basis is eigenstates of HC[j=0,j=0]
-        # change of basis is automatic in kernel_well_super now
-        defines_alpha = HC[len(HC)//2,len(HC)//2];
+        # HC, except Sz is a good quantum number
+        HC_Sz = np.zeros_like(HC);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): 
+                    HC_Sz[NCi,NCj] += VC; # no spin mix
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC_Sz[NCi,NCj] += -tC;
+        print("HC_Sz =");
+        print_H_alpha(HC_Sz);
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well_spinless(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
-                                  E_cutoff=np.eye(n_loc_dof)*Ecut+Delta,
-                                  interval=interval,expval_tol=expval_tol,verbose=1);
+                                  Ninfty, NLR, NLR, HC, HC_Sz, defines_Sz,                                               
+                                  E_cutoff=np.eye(n_loc_dof)*Ecut,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
-
+        
         # benchmark
         Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VLR, HC, Evals, verbose=0);
         print("Output shapes:");
         for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
 
-        if plot_alpha: # iter over initial and final states
+        if plot_alpha:
+            # iter over initial and final states
             for alphai in range(len(alphas)):
                 for betai in range(len(alphas)):
                     alpha, beta = alphas[alphai], alphas[betai];
@@ -154,12 +151,13 @@ if True:
                     #format
                     if(betai==len(alphas)-1): axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
                     if(error_lims): axright.set_ylim(*error_lims);
-                    axes[alphai,betai].set_ylabel("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
-                    axes[alphai, betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+                    axes[alphai,betai].set_title("$T("+alpha_strs[alpha]+"\\rightarrow"+alpha_strs[beta]+")$");
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
+                    axes[alphai,0].set_ylabel("$T$");
 
-        else: # plot for fixed initial spin
+        else:
+            # plot based on initial state
             xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
             axes[indvali].scatter(xvals, Tvals[alpha_final,:,alpha_initial], marker=mymarkers[0],color=mycolors[0]);
             # % error
@@ -176,12 +174,11 @@ if True:
             axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
-    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$, expval_tol = "+str(expval_tol));
     plt.tight_layout();
-    fname = "figs/rbmenez/sup_inel/menez_Delta";
+    fig.suptitle("$N_C = "+str(NC)+"$");
+    fname = "menez_Jval"
     if(not plot_alpha):
         if( (alpha_initial, alpha_final) == (0,0) ): fname +="_nsf.pdf";
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
-

@@ -13,6 +13,10 @@ only, the Kondo term is included in HL and HR. therefore physical basis !=
 eigenbasis of Sz, so our observables (like current in Sz) are constructed from
 a superposition of bardeen results.
 
+"Spinless superposition method" : the system is symmetry broken to the point
+that there are no good spin quantum numbers any more. So the superposition
+is in energy space
+
 INELASTIC PROCESSES are now considered, via an impurity spin-flip cost Delta
 '''
 
@@ -36,7 +40,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-error_lims = ();
+error_lims = (0,50);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -61,9 +65,8 @@ Ninfty = 20;
 
 #### hyper parameters ####
 Ecut = 0.1;
-#defines_alpha = np.array([[0,1],[1,0]]);
 interval = 1e-9;
-expval_tol = 1e-3;
+defines_Sz = np.array([[1,0],[0,-1]]);
 
 ###############################################
 # matrix elements are the right barrier being removed only
@@ -84,11 +87,11 @@ if True:
     # plotting
     plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([-0.05]);
+        indvals = np.array([-0.0]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
-        indvals = np.array([-0.005,-0.05,-0.5]);
+        indvals = np.array([-0.0]);
         nplots_x = 1
         nplots_y = len(indvals);
         alpha_initial, alpha_final = 0,1;
@@ -108,7 +111,6 @@ if True:
         NC = 11;
         VC = 0.4*tLR + Delta;
         tC = 1.0*tLR;
-
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -118,20 +120,27 @@ if True:
                     HC[NCi,NCj] += -tC;
         print("HC =");
         print_H_alpha(HC);
-
-        # alpha basis is eigenstates of HC[j=0,j=0]
-        # change of basis is automatic in kernel_well_super now
-        defines_alpha = HC[len(HC)//2,len(HC)//2];
+        
+        # central region prime
+        HC_Sz = np.zeros_like(HC);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # diagonal in space
+                    HC_Sz[NCi,NCj] += VC; # no spin mix
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC_Sz[NCi,NCj] += -tC;
+        print("HC_Sz =");
+        print_H_alpha(HC_Sz);
 
         # bardeen.kernel syntax:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well_spinless(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                  Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
+                                  Ninfty, NLR, NLR, HC, HC_Sz, defines_Sz,                                                
                                   E_cutoff=np.eye(n_loc_dof)*Ecut+Delta,
-                                  interval=interval,expval_tol=expval_tol,verbose=1);
+                                  interval=interval,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 
@@ -176,7 +185,7 @@ if True:
             axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
 
     # show
-    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$, expval_tol = "+str(expval_tol));
+    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$");
     plt.tight_layout();
     fname = "figs/rbmenez/sup_inel/menez_Delta";
     if(not plot_alpha):

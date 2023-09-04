@@ -61,7 +61,7 @@ NLR = 200;
 Ninfty = 20;
 
 # cutoffs
-Ecut = 1.9;
+Ecut = 0.4;
 error_lims = (0,20);
 
 ###############################################
@@ -79,7 +79,7 @@ if True:
     # plotting
     plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([-0.5]);
+        indvals = np.array([-0.05]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
