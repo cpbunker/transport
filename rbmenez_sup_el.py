@@ -74,7 +74,7 @@ if True:
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = False;
+    plot_alpha = True;
     if(plot_alpha):
         indvals = np.array([-0.5]);
         nplots_x = len(alphas);
@@ -112,7 +112,7 @@ if True:
         Evals, Mvals = bardeen.kernel_well_super(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC, defines_alpha,                                                
-                                  E_cutoff=np.eye(n_loc_dof)*Ecut,verbose=1);
+                                  E_cutoff=np.eye(n_loc_dof)*Ecut,verbose=10);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR,verbose=1);
 

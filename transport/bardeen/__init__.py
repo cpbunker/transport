@@ -381,7 +381,7 @@ def kernel_well_super(tinfty, tL, tR,
     # physical system
     Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
     if(verbose > 9): # plot wfs, hams
-        plot_wfs(HL_4d, psimas, Emas, which_m = 3); assert False;
+        plot_wfs(HL_4d, psimas, Emas, which_m = 13); assert False;
         for alpha in range(n_loc_dof):
             plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
         for h in (Hsys_4d,HL_4d):
@@ -1127,6 +1127,38 @@ def plot_wfs(h_4d, psimas, Emas, which_m = 0, imag_tol = 1e-12, reverse = False)
     # show
     axes[0].legend();
     plt.tight_layout();
+    plt.show();
+
+    def fit_kappa(j, kappa):
+        return np.exp(-kappa*j);
+
+    # fit exponential
+    colors = ["tab:blue", "tab:orange"];
+    expfig, expax = plt.subplots();
+    well_width = 11;
+    exp_j = np.real(jvals[abs(jvals)<well_width//2]);
+    exp_j = exp_j - exp_j[0];
+    for alpha in range(n_loc_dof):
+        exp_wf_a = np.real(psimas[alpha, which_m][1::n_loc_dof][abs(jvals)<well_width//2]);
+        exp_wf_a = exp_wf_a/exp_wf_a[0];
+        E_a = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
+        expax.plot(exp_j, exp_wf_a, color=colors[alpha], label = "$|k_{m="+str(which_m)+"}, \\alpha = "+str(alpha)+"\\rangle (\\varepsilon = "+str(E_a)+")$");
+
+        # interpolate kappa
+        kappa_a = -np.log(exp_wf_a[1]/exp_wf_a[0]);
+        V_kappa = kappa_a*kappa_a + E_a # in units of t
+        exp_fit_a = np.real(np.exp(-kappa_a*exp_j));
+        expax.scatter(exp_j, exp_fit_a, color=colors[alpha], marker='+', label = "$\kappa = "+str(kappa_a)+", V_{eff} = $"+str(V_kappa));
+
+        # fit kappa
+        if False:
+            import scipy
+            from scipy import optimize
+            kappa_fitted, _ = scipy.optimize.curve_fit(fit_kappa, exp_j, exp_wf_a, p0=[kappa_a], bounds =[[0],[3*kappa_a]], verbose=2);
+            V_kappa_fitted = kappa_fitted[0]*kappa_fitted[0] + E_a # in units of t
+            exp_fitted = np.real(np.exp(-kappa_a*exp_j));
+            expax.scatter(exp_j, exp_fitted, color=colors[alpha], marker='x', label = "$\kappa = "+str(kappa_fitted[0])+", V_{eff} = $"+str(V_kappa_fitted));
+    plt.legend();
     plt.show();
 
 def nFD(epsilon,mu,kBT):
