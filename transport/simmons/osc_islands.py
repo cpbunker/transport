@@ -8,6 +8,8 @@ from landauer import dI_of_Vb, dI_of_Vb_zero
 
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+random.seed(1016)
 
 # fig standardizing
 myxvals = 199;
@@ -85,6 +87,13 @@ def make_EC_list(EC):
         EClist[ECvali] = EC* (2**ECvali);
     return EClist;
 
+def make_EC_dist(EC_mu, EC_std):
+    ECvals = np.empty((num_EC_kwarg,),dtype=float);
+    ECvals[0] = EC_mu;
+    for ECvali in range(num_EC_kwarg-1):
+        ECvals[ECvali+1] = np.max([EC_mu/100,random.gauss(EC_mu, EC_std)]);
+    return ECvals;
+
 def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC): 
     '''
     '''
@@ -101,6 +110,7 @@ def dIdV_lorentz_faster(Vb, V0, EC):
     '''
     Like dIdV_lorentz_zero, but doesn't fit tau0 or Gamma, so faster
     '''
+    raise NotImplementedError
     
     nmax = 100; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
@@ -118,7 +128,7 @@ def dIdV_all_zero(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC):
 
     return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, Gamma) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
 
-def cost_func(yexp, yfit, which="rmse"):
+def error_func(yexp, yfit, which="rmse"):
     if(which=="rmse"):
         return np.sqrt( np.mean( np.power(yexp-yfit,2) ))/abs(np.max(yexp)-np.min(yexp));
     elif(which==""):
@@ -149,12 +159,16 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     Vlim = min([abs(np.min(V_exp)), abs(np.max(V_exp))]);
     dI_dev = np.sqrt( np.median(np.power(dI_exp-np.mean(dI_exp),2)));
 
+    #################
+    dropout = 0.01
+    dI_exp = dI_exp[abs(V_exp) < dropout];
+    V_exp = V_exp[abs(V_exp) < dropout];
+
     # unpack
     V0index = np.argmin( abs(V_exp));
-    V0_not = V_exp[V0index];
     V0_bound = abs(V_exp[V0index] - V_exp[3+V0index]);
-    eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not = nots;
-    eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent = percents
+    V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, ohm_not, tau0_not, Gamma_not, EC_not = nots;
+    V0_percent, eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent = percents
     params_base = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, temp_kwarg+ohm_not, tau0_not, Gamma_not, EC_not]);
     bounds_base = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), temp_kwarg+ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent) ],
                             [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), temp_kwarg+ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent) ]]);
@@ -184,10 +198,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     # outliers removed
     # lorentzians still turned off
     # Gamma still frozen
-    V0index = np.argmin(dI_exp);   # reset V0 now that outliers are removed
-    V0_not = V_exp[V0index];
-    V0_bound = abs(V_exp[V0index] - V_exp[3+V0index]);
-    #V0_bound = 1e-12;
+    V0_bound = V0_percent;  # reset V0 now that outliers are removed
     params_init[0] = V0_not;bounds_init[0,0] = V0_not-V0_bound;bounds_init[1,0] = V0_not+V0_bound;
     params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
                                 params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
@@ -208,12 +219,24 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
                                  params_zero_guess, bounds_zero, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0", "Gamma", "EC"],
                                  stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero), derivative = False,
-                              mytitle="Lorentz_zero fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+                              mytitle="Lorentz_zero fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(make_EC_list(params_zero[-1])*1000, decimals=2))+" meV",   
+                              myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at=="lorentz_zero/"): return V_exp, dI_exp, params_zero, bounds_zero;
 
-    # remove background
+    # background
     osc_mask =  np.array([1,0,0,0,0,0,0,1,1,1]);
-    dI_exp = dI_exp - dIdV_back(V_exp, *params_zero[back_mask>0]); # with V0
+    dI_back = dIdV_back(V_exp, *params_zero[back_mask>0]);
+
+    # trials
+    fit_best, EC_best = search_space_lorentz_zero(V_exp, dI_exp, dI_back,
+                        params_zero[0],params_zero[-3],params_zero[-2],EC_not,EC_not*EC_percent);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, fit_best, derivative = False,
+                              mytitle="Best fit from search (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(EC_best*1000, decimals=2))+" meV",
+                              myylabel="$dI/dV_b$ (nA/V)")
+    assert False
+
+    # fit without background
+    dI_exp = dI_exp - dI_back; # with V0
     params_osc_guess = np.copy(params_zero)[osc_mask>0];
     bounds_osc = np.copy(bounds_base)[:,osc_mask>0];
 
@@ -232,6 +255,32 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     if(stop_at=="osc/"): return V_exp, dI_exp, params_osc, bounds_osc;
     
     raise NotImplementedError;
+
+def search_space_lorentz_zero(V_exp, dI_exp, dI_back, V0, tau0, Gamma,
+                              EC_mu, EC_std, which_error = "rmse", num_trials = 1000, verbose=0):
+    '''
+    '''
+
+    # trials
+    trial_errors = np.zeros((num_trials,),dtype=float);
+    trial_ECs = np.zeros((num_trials, num_EC_kwarg),dtype=float);
+    trial_fits = np.zeros((num_trials, len(V_exp)),dtype=float);
+    for trial in range(num_trials):
+        if(trial % 100 == 0): print(trial);
+        # oscillation terms on top of background
+        dI_osc = np.zeros_like(dI_back);
+        trial_ECs[trial] = make_EC_dist(EC_mu, EC_std);
+        for EC in trial_ECs[trial]:
+            dI_osc += dIdV_lorentz_zero(V_exp, V0, tau0, Gamma, EC);
+
+        # get fit and cost function
+        dI_fit = dI_back + dI_osc;
+        trial_errors[trial] = error_func(dI_exp, dI_fit, which=which_error);
+        trial_fits[trial] = dI_fit;
+
+    # compare across trials
+    besti = np.argmin(trial_errors);
+    return trial_fits[besti], trial_ECs[besti];
 
 def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
     '''
@@ -259,7 +308,7 @@ def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
     costfig, costaxes = plt.subplots(len(fits));
     for fiti, fit in enumerate(fits):
         costaxes[fiti].scatter(xvals, yvals, color=mycolors[0], marker=mymarkers[0]);
-        costaxes[fiti].plot(xvals, fit, color=accentcolors[0], label=cost_func(yvals, fit));
+        costaxes[fiti].plot(xvals, fit, color=accentcolors[0], label=error_func(yvals, fit));
         costaxes[fiti].legend(loc="bottom right");
     plt.show();
 
@@ -287,21 +336,23 @@ def fit_Mn_data(stop_at, metal, num_islands, verbose=1):
     # other
     ohm_guess, ohm_percent = 1e-12, 1.0;
     tau0_guess, tau0_percent = 0.005, 0.4;
-    EC_guess, EC_percent = 0.005, 0.4;
+    EC_guess, EC_percent = 0.002, 0.4;
+    V0_guesses = np.array([-0.002413,-0.002089,-0.002226,-0.0026048,-0.001825,-0.001418,-0.003970]);
+    V0_percent = 1e-12;
 
     #fitting results
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [1,3,5]):
+        if(True and datai in [1,3,5]): 
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             global num_EC_kwarg; num_EC_kwarg = num_islands;
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
             
             #### get fit results ####
-            guesses = (eps0_guess, epsc_guess, G1_guess, G2_guess, G3_guess, ohm_guess, tau0_guess, Gamma_guess, EC_guess);
-            percents = (eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent);    
+            guesses = (V0_guesses[datai], eps0_guess, epsc_guess, G1_guess, G2_guess, G3_guess, ohm_guess, tau0_guess, Gamma_guess, EC_guess);
+            percents = (V0_percent, eps0_percent, epsc_percent, G1_percent, G2_percent, G3_percent, ohm_percent, tau0_percent, Gamma_percent, EC_percent);    
             x_forfit, y_forfit, temp_results, temp_bounds = fit_dIdV(metal,
                     guesses, percents, stop_at, verbose=verbose);
             results.append(temp_results); 
@@ -334,7 +385,7 @@ if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "osc/"];
-    stop_at = stop_ats[2];
+    stop_at = stop_ats[0];
     num_islands = 3;
     verbose=10;
 
