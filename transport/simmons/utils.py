@@ -184,10 +184,10 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
         try:
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='linear', xtol = None, max_nfev = max_nfev, verbose=2) #min(1,verbose));
+                                p0=p0,bounds=bounds, loss='linear', xtol = None, max_nfev = max_nfev, verbose=min(2,verbose));
         except:
-            fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
-                                p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
+            raise Exception;
+            #fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
 
     elif(p0 is not None and bounds is None): # fit with guesses but without bounds
         fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, method='trf',verbose=min(1,verbose));
@@ -270,5 +270,23 @@ def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
         costaxes[fiti].plot(xvals, fit, color=accentcolors[0], label=error_func(yvals, fit));
         costaxes[fiti].legend(loc="lower right");
     plt.show();
+
+def remove_jumps(x, y, jumpxs, jumpdys, jumptypes):
+
+    fig, ax = plt.subplots();
+    ax.plot(x,y);
+
+    for jumpi in range(len(jumptypes)):
+        if(jumptypes[jumpi]=="<"):
+            y[x<jumpxs[jumpi]] -= jumpdys[jumpi];
+        elif(jumptypes[jumpi]==">"):
+            y[x>jumpxs[jumpi]] -= jumpdys[jumpi];
+        else: raise NotImplementedError;
+        ax.plot(x,y);
+
+    plt.show();
+    assert False
+
+    return y;
 
 
