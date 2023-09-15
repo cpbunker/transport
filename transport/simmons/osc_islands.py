@@ -82,6 +82,8 @@ def dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, Gamma):
     return dIdV_imp(Vb, V0, eps0, G2, G3, T_surf)+dIdV_mag(Vb, V0, epsc, G1, T_surf);
 
 def make_EC_list(EC):
+    assert(num_EC_kwarg==2);
+    return np.array([EC, 0.9*EC])
     EClist = np.full((num_EC_kwarg,), EC);
     for ECvali in range(num_EC_kwarg):
         EClist[ECvali] = EC* (2**ECvali);
@@ -367,16 +369,16 @@ def fit_Mn_data(stop_at, metal, num_islands, verbose=1):
     #### guesses ####
     # surface magnons
     epsc_guess, epsc_percent = 0.002, 1;
-    G1_guess, G1_percent = 4.0, 0.5;
-    Gamma_guess, Gamma_percent = 0.002, 0.4;
+    G1_guess, G1_percent = 80.0, 0.5;
+    Gamma_guess, Gamma_percent = 0.0006, 0.4;
     # magnetic impurities
-    eps0_guess, eps0_percent = 0.002, 0.4;
-    G2_guess, G2_percent = 0.1, 0.5;
-    G3_guess, G3_percent = 0.016, 0.5;
+    eps0_guess, eps0_percent = 0.004, 0.4;
+    G2_guess, G2_percent = 1.5, 0.5;
+    G3_guess, G3_percent = 0.2, 0.5;
     # other
     ohm_guess, ohm_percent = 1e-12, 1.0;
-    tau0_guess, tau0_percent = 0.005, 0.4;
-    EC_guess, EC_percent = 0.0025, 0.2;
+    tau0_guess, tau0_percent = 0.002, 0.4;
+    EC_guess, EC_percent = 0.001, 0.5;
     V0_guesses = np.array([-0.002413,-0.002089,-0.002226,-0.0026048,-0.001825,-0.001418,-0.003970]);
     V0_percent = 1e-12;
 
@@ -384,7 +386,7 @@ def fit_Mn_data(stop_at, metal, num_islands, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [1,5]): 
+        if(True and datai in [1]): 
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             global num_EC_kwarg; num_EC_kwarg = num_islands;
@@ -398,9 +400,6 @@ def fit_Mn_data(stop_at, metal, num_islands, verbose=1):
             results.append(temp_results); 
             boundsT.append(temp_bounds);            
             if(stop_at in ["lorentz_zero/", "lorentz_fine/"]):
-                print(temp_results);
-                # def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
-
                 # compare with null
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);  
                 comp_with_null(x_forfit, y_forfit, y_fit);
@@ -428,8 +427,8 @@ if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "trial/", "osc/"];
-    stop_at = stop_ats[2];
-    num_islands = 3;
+    stop_at = stop_ats[1];
+    num_islands = 2;
     verbose=10;
 
     # this one executes the fitting and stores results
