@@ -178,7 +178,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
     from scipy.optimize import Bounds as scipy_Bounds
     if( np.shape(xvals) != np.shape(yvals)): raise ValueError;
     if( (p0 is not None) and np.shape(p0) != np.shape(p_names)): raise ValueError;
-    print("\nFitting data");
+    if(verbose): print("\nFitting data");
 
     # use scipy to get fitting params
     if(p0 is not None and bounds is not None): # fit with guesses, bounds
