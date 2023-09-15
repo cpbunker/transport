@@ -229,60 +229,46 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
         print(print_str.format(*fit_params),"\n");
     return fit_params, rmse;
 
-def my_curve_fit(fx, xvals, fxvals, init_params, bounds, focus_i, focus_meshpts=10, verbose=0):
+######################################################
+#### osc_island utils
+
+def error_func(yexp, yfit, which="rmse"):
+    if(which=="rmse"):
+        return np.sqrt( np.mean( np.power(yexp-yfit,2) ))/abs(np.max(yexp)-np.min(yexp));
+    elif(which==""):
+        return -9999;
+    else: raise NotImplementedError;
+
+def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
     '''
-    On top of scipy_curve_fit, build extra resolution to the
-    dependence of the error on params[focus_i]
+    Must have remove background !!!
+    
+    Compare the best fit with the following "null hypotheses"
+    - a convolution of the yvals which smoothes out features on the scale
+        conv_scale, chosen to smooth out the oscillations we are trying to fit
+    - a straight line at y = avg of xvals
+    - previous plus gaussian noise with sigma = std dev of yvals * noise_mult
     '''
-    if(not isinstance(bounds, np.ndarray)): raise TypeError;
-    if(focus_i >= len(init_params)): raise ValueError;
+    if( yvals.shape != yfit.shape): raise ValueError;
+    if(conv_scale==None): conv_scale = len(xvals)//10;
 
-    # mesh search over focus param vals
-    focus_lims = np.linspace(bounds[0][focus_i],bounds[1][focus_i],focus_meshpts);
-    focus_opts = np.empty((len(focus_lims)-1,));
-    focus_errors = np.empty((len(focus_lims)-1,));    
-    for fvali in range(len(focus_lims)-1):
+    # construct covoluted vals
+    kernel = np.ones((conv_scale,)) / conv_scale;
+    conv_vals = np.convolve(yvals, kernel, mode="same");
 
-        # update guess
-        init_fparams = np.copy(init_params);
-        init_fparams[focus_i] = (focus_lims[fvali] + focus_lims[fvali+1])/2;
+    # construct noisy data
+    noise_gen = np.random.default_rng();
+    noise_scale = np.std(yvals)*noise_mult;
+    noise = noise_gen.normal(scale=noise_scale, size = xvals.size);
+    yline = np.mean(yvals)*np.ones_like(xvals);
+    
+    # compare cost func
+    fits = [yfit, conv_vals, yline, yline+noise];
+    costfig, costaxes = plt.subplots(len(fits));
+    for fiti, fit in enumerate(fits):
+        costaxes[fiti].scatter(xvals, yvals, color=mycolors[0], marker=mymarkers[0]);
+        costaxes[fiti].plot(xvals, fit, color=accentcolors[0], label=error_func(yvals, fit));
+        costaxes[fiti].legend(loc="lower right");
+    plt.show();
 
-        # truncate focus bounds
-        fbounds = np.copy(bounds);
-        fbounds[0][focus_i], fbounds[1][focus_i] = focus_lims[fvali], focus_lims[fvali+1];
-
-        # fit within this narrow range
-        nano, convert_J2I = 1e9, 1;
-        #plot_guess(myT, myA, 0.0, 1e-10/convert_J2I, init_params[0], ):
-        fparams, pcov = scipy_curve_fit(fx, xvals, fxvals,
-                                 p0 = init_fparams, bounds = fbounds, max_nfev = 1e6);
-        fxvals_fit = fx(xvals, *fparams);
-        ferror = np.sqrt( np.mean( (fxvals-fxvals_fit)*(fxvals-fxvals_fit) ))/np.mean(fxvals);
-
-        # update error and optimum
-        focus_opts[fvali] = fparams[focus_i];
-        focus_errors[fvali] = ferror;
-
-        # visualize
-        if(verbose > 2):
-            print("my_curve_fit fitting results, focus_i = ",focus_i);
-            print_str = "            d = {:6.4f} "+str((fbounds[0][0],fbounds[1][0]))+" nm\n\
-            phi = {:6.4f} "+str((fbounds[0][1],fbounds[1][1]))+" eV\n\
-            m_r = {:6.4f} "+str((fbounds[0][2],fbounds[1][2]))+"\n\
-            err = {:6.4f}";
-            print(print_str.format(*fparams, ferror));
-        if(verbose > 4): plot_fit(xvals, fxvals*convert_J2I*nano, fxvals_fit*convert_J2I*nano,
-                                  mytitle = "d = {:1.2f} nm, phi = {:1.2f} eV, m_r = {:1.2f} ".format(*fparams));
-
-    # show the results of the mesh search
-    if verbose:
-        fig, ax = plt.subplots();
-        ax.plot(focus_opts, focus_errors, color=accentcolors[0]);
-
-        # format
-        ax.set_xlabel("Params["+str(focus_i)+"]");
-        ax.set_ylabel("Norm. RMS Error");
-        #ax.set_yscale('log');
-        plt.show();
-    return focus_opts, focus_errors;
 
