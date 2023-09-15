@@ -289,7 +289,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
                                  params_fine_guess, bounds_fine, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "EC1", "EC2", "EC3"],
                                  stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_fine(V_exp, *params_fine), derivative = False,
-                              mytitle="Lorentz_fine fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_fine[-3:]*1000, decimals=2))+" meV",   
+                              mytitle="Lorentz_fine fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_fine[-num_EC_kwarg:]*1000, decimals=2))+" meV",   
                               myylabel="$dI/dV_b$ (nA/V)");
     # return osc only
     osc_mask_fine = np.array([1,0,0,0,0,0,1,1,1]);
@@ -301,11 +301,8 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     rmse_trial, fit_trial, back_trial, params_trial = search_space_lorentz_zero(V_exp, dI_exp, params_fine_back, bounds_zero[:,back_mask_zero>0],
                         (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-3:])) );
     if(verbose > 4): plot_fit(V_exp, dI_exp, fit_trial, derivative = False,
-                              mytitle="Best fit from search (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_trial[-3:]*1000, decimals=2))+" meV",
+                              mytitle="Best fit from search (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_trial[-num_EC_kwarg:]*1000, decimals=2))+" meV",
                               myylabel="$dI/dV_b$ (nA/V)");
-    if(verbose > 4): plot_fit(V_exp, dI_exp, back_trial, derivative = False,
-                              mytitle="Background fit from search", myylabel="$dI/dV_b$ (nA/V)");
-    print("params_trial =\n", params_trial);
     if(stop_at=="trial/"): return V_exp, dI_exp-back_trial, params_trial, rmse_trial;
 
 

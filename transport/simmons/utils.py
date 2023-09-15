@@ -186,8 +186,7 @@ def fit_wrapper(fit_func, xvals, yvals, p0, bounds, p_names,
             fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,
                                 p0=p0,bounds=bounds, loss='linear', xtol = None, max_nfev = max_nfev, verbose=min(2,verbose));
         except:
-            raise Exception;
-            #fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
+            fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0,bounds=bounds, loss='arctan', max_nfev = max_nfev, verbose=2);
 
     elif(p0 is not None and bounds is None): # fit with guesses but without bounds
         fit_params, _ = scipy_curve_fit(fit_func, xvals, yvals,p0=p0, method='trf',verbose=min(1,verbose));
