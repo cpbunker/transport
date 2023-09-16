@@ -1,0 +1,10 @@
+SLURM: start osc3islands.py
+Fri 15 Sep 2023 02:51:16 PM PDT
+/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages/scipy/optimize/_lsq/common.py:115: RuntimeWarning: overflow encountered in power
+  phi_prime = -np.sum(suf ** 2 / denom**3) / p_norm
+/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages/scipy/optimize/_lsq/common.py:154: RuntimeWarning: invalid value encountered in double_scalars
+  ratio = phi / phi_prime
+/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages/scipy/optimize/_lsq/trf.py:363: RuntimeWarning: divide by zero encountered in double_scalars
+  alpha *= Delta / Delta_new
+/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages/scipy/optimize/_lsq/common.py:132: RuntimeWarning: divide by zero encountered in double_scalars
+  alpha_upper = norm(suf) / Delta
