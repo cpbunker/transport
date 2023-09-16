@@ -126,7 +126,7 @@ def plot_fit(xvals, yvals, yfit, mytitle = "", myylabel = "", derivative = False
         deriv_colors = ['lightgray', 'tan']
         for derivi in range(len([yvals])):
             yv = [yvals, yfit][derivi];
-            offset = -1000
+            offset = -1200
             stretch = 1.0*(np.max(yv)-np.min(yv))
             derivvals = offset + stretch*np.gradient(yv)/max(np.gradient(yv))
             ax.plot(xvals, derivvals, label="$d^2I/dV_b ^2$", color=deriv_colors[derivi], linewidth=5*mylinewidth);  

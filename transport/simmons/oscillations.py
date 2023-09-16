@@ -164,6 +164,19 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=5, freeze_back=False, verbo
     dI_exp = dI_exp[abs(dI_exp-fit_init) < num_dev*dI_dev];
     assert(with_outliers - len(V_exp) <= with_outliers*0.0999); # remove no more than 10%
 
+    # pretty fit to show signatures
+    if(stop_at in ["back/", "mag/"]):
+        back_mask = np.array([1,1,1,1,1,1,1,0,1,0]);
+        params_back_guess = params_init[back_mask>0];
+        bounds_back = bounds_init[:, back_mask>0];
+        params_back, _ = fit_wrapper(dIdV_back, V_exp, dI_exp,
+                                params_back_guess, bounds_back, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
+                                stop_bounds = False, verbose=verbose);
+        background_only = dIdV_back(V_exp, *params_back);
+        if(verbose > 4): plot_fit(V_exp, dI_exp, background_only, derivative=True,
+                            mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
+        return V_exp, dI_exp, params_back, bounds_back;
+
     #### Step 3: freeze experimental background parameters with lorentz_zero
     params_zero, _ = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
                                 params_init, bounds_init, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0","Gamma", "EC"],
@@ -171,13 +184,6 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=5, freeze_back=False, verbo
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_zero), derivative=False,
                 mytitle="Landauer_zero fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     if(stop_at == 'lorentz_zero/'): return V_exp, dI_exp, params_zero, bounds_init; 
-
-    # pretty fit to show signatures
-    if(stop_at in ["imp/", "mag/", "sin/"]): 
-        background_only = dIdV_back(V_exp, *params_zero[:-4], params_zero[-3]);
-        if(verbose > 4): plot_fit(V_exp, dI_exp, background_only, derivative=True,
-                            mytitle="Magnetic impurities and surface magnons \n $T = ${:.1f} K".format(temp_kwarg)+", B = {:.1f} T".format(bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");                               
-        return V_exp, dI_exp-background_only, params_zero, bounds_init;
 
     #### Step 4: Fit oscillation parameters with lorentz
     params_all_guess = np.copy(params_zero);
@@ -210,7 +216,7 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
         - freeze_back, bool, whether to freeze the physical background
           params in the fitting
     '''
-    stopats_2_func = {'imp/':dIdV_imp, 'mag/':dIdV_mag, 'imp_mag/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
+    stopats_2_func = {'back/':dIdV_back, 'lorentz_zero/':dIdV_all_zero, 'lorentz/':dIdV_all};
 
     # experimental params
     Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
@@ -338,7 +344,7 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
     results = [];
     boundsT = [];
     for datai in range(len(Ts)):
-        if(True and datai in [0,1,2,3]):
+        if(True):
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             print("#"*60+"\nT = {:.1f} K".format(Ts[datai]));
@@ -366,7 +372,7 @@ def fit_Mn_data(stop_at, metal, freeze_back, verbose=1):
 
     # save
     results, boundsT = np.array(results), np.array(boundsT);
-    if(stop_at in ["lorentz_zero/", "lorentz/"]):
+    if(stop_at in ["back/","lorentz_zero/", "lorentz/"]):
         print("Saving data to "+metal+stop_at);
         np.save(metal+stop_at+"results.npy", results);
         np.save(metal+stop_at+"bounds.npy", boundsT);
@@ -414,11 +420,11 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
     '''
 
     # which fit result is which
-    rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)", "$T_{film}$"]);  
-    if(stop_at=='mag/'):
-        rlabels_mask = np.array([1,1,0,0,1,1,0,1,1,1,1]);
+    rlabels = np.array(["$V_0$", "$\\varepsilon_0$ (eV)", "$\\varepsilon_c$ (eV)", "$G_1$ (nA/V)","$G_2$ (nA/V)","$G_3$ (nA/V)", "$T_{surf}$", "$\\tau_0$", "$\Gamma$ (eV)", "$E_C$ (eV)"]);  
+    if(stop_at=='back/'):
+        rlabels_mask = np.array([1,1,1,1,1,1,1,0,1,0]);
     elif(stop_at == 'lorentz_zero/' or stop_at == 'lorentz/'): 
-        rlabels_mask = np.array([1,1,1,1,1,1,1,0,0,0,0]);
+        rlabels_mask = np.array([1,0,0,0,0,0,0,1,1,1]);
     else: raise NotImplementedError;
     
     # plot each fit
@@ -490,11 +496,10 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
     if(stop_at == "lorentz/"): # <-------- !!!!        
         # plot
         pfig, pax = plt.subplots();  
-        periods = 4*results[:,-2]*1000;
+        periods = 4*results[:,-1]*1000;
         periods, Ts = periods, Ts;
-        gammas = results[:,-3]*1000;
-        charges = results[:,-2]*1000;
-        Tfilms = results[:,-1];
+        gammas = results[:,-2]*1000;
+        charges = results[:,-1]*1000;
         myx, myy = gammas, charges;
         myx, myy = Ts, periods;
         pax.scatter(myx, myy, color=mycolors[0], label="Data");
@@ -516,17 +521,18 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
 if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
-    stop_ats = ['mag/', 'lorentz_zero/', 'lorentz/'];
+    stop_ats = ['back/', 'lorentz_zero/', 'lorentz/'];
     stop_at = stop_ats[2];
-    freeze_back = False;
+    freeze_back = True;
     verbose=10;
 
     # this one executes the fitting and stores results
     #fit_Mn_data(stop_at, metal, freeze_back, verbose=verbose);
 
+    # makes prettier, smoother plots
     #interp_saved_fit(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5,5,7,10,20]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5,5,7,10,20]);
 
