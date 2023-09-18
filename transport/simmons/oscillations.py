@@ -522,7 +522,7 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['back/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[2];
+    stop_at = stop_ats[0];
     freeze_back = True;
     verbose=10;
 

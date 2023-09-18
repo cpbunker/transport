@@ -86,13 +86,13 @@ from utils import error_func, comp_with_null
 def make_EC_list(EC, d=0.04):
     '''
     '''
-    assert(num_EC_kwarg==5);
-    return np.array([EC, EC*(1-d), EC*(1-2*d), EC*(1-3*d), EC*(1-4*d)])
+    assert(num_EC_kwarg==4);
+    return np.array([EC, EC*(1-d), EC*(1-2*d), EC*(1-3*d)])
 
 def make_EC_dist(EC_mu):
     '''
     '''
-    assert(num_EC_kwarg==5);
+    assert(num_EC_kwarg==4);
     ECs = [];
     for _ in range(num_EC_kwarg):
         ECs.append( EC_mu*random.lognormvariate(0.1, 0.4) );
@@ -110,17 +110,17 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
         ret += tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, ECval, 0.0, ns);
     return ret;
 
-def dIdV_lorentz_fine(Vb, V0, EC1, EC2, EC3, EC4, EC5):
+def dIdV_lorentz_fine(Vb, V0, EC1, EC2, EC3, EC4):
     '''
     Like dIdV_lorentz_zero, but doesn't fit tau0 or Gamma, so faster
     '''
-    assert(num_EC_kwarg==5);
+    assert(num_EC_kwarg==4);
     
     nmax = 100; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
     ret = np.zeros_like(Vb);
-    for ECval in [EC1, EC2, EC3, EC4, EC5]:
+    for ECval in [EC1, EC2, EC3, EC4]:
         ret += tau0_kwarg*dI_of_Vb_zero(Vb-V0, mymu0, Gamma_kwarg, ECval, 0.0, ns);
     return ret;
 
@@ -132,14 +132,14 @@ def dIdV_all_zero(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, tau0, Gamma, EC):
 
     return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, T_surf, Gamma) + dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
 
-def dIdV_all_fine(Vb, V0, eps0, epsc, G1, G2, G3, EC1, EC2, EC3, EC4, EC5):
+def dIdV_all_fine(Vb, V0, eps0, epsc, G1, G2, G3, EC1, EC2, EC3, EC4):
     '''
     For refining multiple EC
     '''
 
-    return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, temp_kwarg, Gamma_kwarg) + dIdV_lorentz_fine(Vb, V0, EC1, EC2, EC3, EC4, EC5); 
+    return dIdV_back(Vb, V0, eps0, epsc, G1, G2, G3, temp_kwarg, Gamma_kwarg) + dIdV_lorentz_fine(Vb, V0, EC1, EC2, EC3, EC4); 
 
-def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lorentz_params, which_error = "rmse", num_trials = 1000000, verbose=0):
+def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lorentz_params, which_error = "rmse", num_trials = 100, verbose=0):
     '''
     '''
     V0, tau0, Gamma, EC_mu = lorentz_params
@@ -174,9 +174,9 @@ def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lor
     besti = np.argmin(trial_errors);
     return trial_errors[besti], trial_fits[besti], trial_backs[besti], np.array([V0, tau0, Gamma, *trial_ECs[besti]]);
 
-def dIdV_lorentz_trial(Vb, V0, tau0, Gamma, EC1, EC2, EC3, EC4, EC5):
+def dIdV_lorentz_trial(Vb, V0, tau0, Gamma, EC1, EC2, EC3, EC4):
     dI_osc = np.zeros_like(Vb);
-    for EC in [EC1, EC2, EC3, EC4, EC5]:
+    for EC in [EC1, EC2, EC3, EC4]:
         dI_osc += dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
     return dI_osc;
 
@@ -283,10 +283,10 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     global tau0_kwarg; tau0_kwarg = params_zero[-3];
     bounds_fine = bounds_base[:,fine_mask>0];
     bounds_fine[:,0] = bounds_init[:,0]; # update V0 bounds
-    bounds_fine = np.append(bounds_fine, np.array([[EClist[0]*(1-EC_percent),EClist[1]*(1-EC_percent),EClist[2]*(1-EC_percent),EClist[2]*(1-EC_percent),EClist[2]*(1-EC_percent)],
-                                                   [EClist[0]*(1+EC_percent),EClist[1]*(1+EC_percent),EClist[2]*(1+EC_percent),EClist[2]*(1+EC_percent),EClist[2]*(1+EC_percent)]]), axis = 1);
+    bounds_fine = np.append(bounds_fine, np.array([[EClist[0]*(1-EC_percent),EClist[1]*(1-EC_percent),EClist[2]*(1-EC_percent),EClist[2]*(1-EC_percent)],
+                                                   [EClist[0]*(1+EC_percent),EClist[1]*(1+EC_percent),EClist[2]*(1+EC_percent),EClist[2]*(1+EC_percent)]]), axis = 1);
     params_fine, rmse_fine = fit_wrapper(dIdV_all_fine, V_exp, dI_exp,
-                                 params_fine_guess, bounds_fine, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "EC1", "EC2", "EC3", "EC4", "EC5"],
+                                 params_fine_guess, bounds_fine, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "EC1", "EC2", "EC3", "EC4"],
                                  stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_fine(V_exp, *params_fine), derivative = False,
                               mytitle="Lorentz_fine fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_fine[-num_EC_kwarg:]*1000, decimals=2))+" meV",   
@@ -299,7 +299,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
 
     #### try a bunch of different combinations ####
     rmse_trial, fit_trial, back_trial, params_trial = search_space_lorentz_zero(V_exp, dI_exp, params_fine_back, bounds_zero[:,back_mask_zero>0],
-                        (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-3:])) );
+                        (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-num_EC_kwarg:])) );
     if(verbose > 4): plot_fit(V_exp, dI_exp, fit_trial, derivative = False,
                               mytitle="Best fit from search (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_trial[-num_EC_kwarg:]*1000, decimals=2))+" meV",
                               myylabel="$dI/dV_b$ (nA/V)");
@@ -310,7 +310,7 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
 ####################################################################
 #### wrappers
 
-def fit_Mn_data(stop_at, metal, num_islands = 5, verbose=1):
+def fit_Mn_data(stop_at, metal, num_islands = 4, verbose=1):
     '''
     '''
     stopats_2_func = {"back/" : dIdV_all_zero, "lorentz_zero/" : dIdV_lorentz_zero, "lorentz_fine/" : dIdV_lorentz_fine, "trial/" : dIdV_lorentz_trial};
@@ -329,7 +329,7 @@ def fit_Mn_data(stop_at, metal, num_islands = 5, verbose=1):
     Gamma_guess, Gamma_percent = 0.0006, 0.5;
     # magnetic impurities
     eps0_guess, eps0_percent = 0.002, 0.5;
-    G2_guess, G2_percent = 1.2, 0.5;
+    G2_guess, G2_percent = 0.5, 0.5;
     G3_guess, G3_percent = 0.5, 0.5;
     # other
     ohm_guess, ohm_percent = 1e-12, 1.0;
