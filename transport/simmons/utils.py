@@ -238,7 +238,7 @@ def error_func(yexp, yfit, which="rmse"):
         return -9999;
     else: raise NotImplementedError;
 
-def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0):
+def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0, verbose=0):
     '''
     Must have remove background !!!
     

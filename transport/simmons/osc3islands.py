@@ -356,7 +356,6 @@ def fit_Mn_data(stop_at, metal, num_islands = 3, verbose=1):
             if(stop_at in ["lorentz_zero/", "lorentz_fine/", "trial/"]):
                 # compare with null
                 y_fit = stopats_2_func[stop_at](x_forfit, *temp_results);  
-                #comp_with_null(x_forfit, y_forfit, y_fit, verbose=verbose);
 
                 #save processed x and y data, and store plot
                 plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Ts[datai]); # <- where to save the fit plot
@@ -365,7 +364,44 @@ def fit_Mn_data(stop_at, metal, num_islands = 3, verbose=1):
                 np.save(plot_fname+"_y.npy", y_forfit);
                 np.save(plot_fname+"_yfit.npy", y_fit);
                 np.savetxt(plot_fname+"_results.txt", temp_results, header = str(["V0","tau0","Gamma","EC1","EC2","EC3"])+", RMSE = "+str(temp_rmse), fmt = "%.5f", delimiter=' & ');
-                 
+
+def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
+    '''
+    '''
+
+    # plot each fit
+    Ts =  [3,15]
+    Bs = [0,0]
+    fig3, ax3 = plt.subplots();
+    for Tvali, Tval in enumerate(Ts):
+        plot_fname = metal+stop_at+"stored_plots/{:.0f}".format(Tval); # <- where to get/save the fit plot
+        temp_results = np.loadtxt(plot_fname+"_results.txt");
+        x = np.load(plot_fname+"_x.npy");
+        y = np.load(plot_fname+"_y.npy");
+        yfit = np.load(plot_fname+"_yfit.npy");
+        print("Loading fit from "+plot_fname+"_yfit.npy");
+
+        # plot
+        if(combined): # plot all at once
+            if(Tval in combined):
+                ax3.scatter(x,offset*Tvali+y, color=mycolors[Tvali], marker=mymarkers[Tvali], 
+                            label="$T=$ {:.1f} K".format(Tval)+", B = {:.1f} T".format(Bs[Tvali]));
+                ax3.plot(x,offset*Tvali+yfit, color="black");
+                ax3.set_xlabel("$V_b$ (V)");
+                ax3.set_xlim(-0.1,0.1);
+                ax3.set_ylabel("$dI/dV_b$ (nA/V)");
+                #ax3.set_ylim(300,2800);
+
+        else:               
+            from utils import plot_fit
+            if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+", B = {:.1f} T".format(Bs[Tvali]));
+            comp_with_null(x, y, yfit, verbose=verbose);
+
+    # show
+    ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$H$_2$Pc$|$NCO");
+    plt.legend(loc='lower right');
+    plt.show();
+              
 
 ####################################################################
 #### run
@@ -375,12 +411,12 @@ if(__name__ == "__main__"):
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "trial/", "osc/"];
     stop_at = stop_ats[3];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
-    fit_Mn_data(stop_at, metal, verbose=verbose);
+    #fit_Mn_data(stop_at, metal, verbose=verbose);
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    #plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 
