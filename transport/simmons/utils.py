@@ -255,6 +255,16 @@ def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0, verbos
     kernel = np.ones((conv_scale,)) / conv_scale;
     conv_vals = np.convolve(yvals, kernel, mode="same");
 
+    # smoothed vals
+    smooth_vals = np.empty_like(yvals);
+    for yi in range(len(yvals)):
+        ywindow_min = max(0,yi-conv_scale);
+        ywindow_max = min(len(yvals)-1,yi+conv_scale);
+        yavg = 0;
+        for ywin in range(ywindow_min, ywindow_max+1):
+            yavg += yvals[ywin];
+        smooth_vals[yi] = yavg/(1+ywindow_max-ywindow_min);
+
     # construct noisy data
     noise_gen = np.random.default_rng();
     noise_scale = np.std(yvals)*noise_mult;
@@ -262,12 +272,12 @@ def comp_with_null(xvals, yvals, yfit, conv_scale = None, noise_mult=1.0, verbos
     yline = np.mean(yvals)*np.ones_like(xvals);
     
     # compare cost func
-    fits = [yfit, conv_vals, yline, yline+noise];
+    fits = [yfit, smooth_vals, yline, yline+noise];
     costfig, costaxes = plt.subplots(len(fits));
     for fiti, fit in enumerate(fits):
         costaxes[fiti].scatter(xvals, yvals, color=mycolors[0], marker=mymarkers[0]);
         costaxes[fiti].plot(xvals, fit, color=accentcolors[0], label=error_func(yvals, fit));
-        costaxes[fiti].legend(loc="lower right");
+        costaxes[fiti].legend(loc="upper right");
     plt.show();
 
 def remove_jumps(x, y, jumpxs, jumpdys, jumptypes):
