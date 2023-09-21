@@ -74,11 +74,11 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True) -> tuple
     Ts = np.zeros(n_loc_dof, dtype = float);
     for sigma in range(n_loc_dof): # iter over spin dofs
         # sqrt of r flux, numerator of eq:Rcoef in manuscript
-        r_flux = (np.complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
+        r_flux = (complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
         r_el = r_flux/i_flux;
         Rs[sigma] = np.real(r_el*np.conjugate(r_el));
         # sqrt of t flux, numerator of eq:Tcoef in manuscript
-        t_flux = np.complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
+        t_flux = complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
         t_el = t_flux/i_flux;
         Ts[sigma] = np.real(t_el*np.conjugate(t_el));
     

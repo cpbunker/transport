@@ -73,6 +73,10 @@ def h_cicc(J, i1, i2) -> np.ndarray:
         else:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
+
+elecspin = 1; # initial electron is spin down
+assert(elecspin==1); # else add uparrow labels below
+ylabels = ["\downarrow_e \\uparrow_1 \\uparrow_2","\downarrow_e \\uparrow_1 \downarrow_2","\downarrow_e \downarrow_1 \\uparrow_2","\downarrow_e \downarrow_1 \downarrow_2"];
             
 #########################################################
 #### barrier in right lead for total reflection
@@ -80,22 +84,25 @@ def h_cicc(J, i1, i2) -> np.ndarray:
 # tight binding params
 tl = 1.0;
 myspinS = 0.5;
-n_loc_dof = int((2*myspinS+1)**3);
 n_mol_dof = int((2*myspinS+1)**2);
-Jval = -0.1;
+n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
+Jval = -0.2;
 VB = 5.0*tl;
+
 
 if False: # distance of the barrier NB on the x axis
 
     # axes
-    ylabels = ["\downarrow \\uparrow \\uparrow","\downarrow \\uparrow \downarrow","\downarrow \downarrow \\uparrow","\downarrow \downarrow \downarrow"];
     nrows, ncols = n_mol_dof, n_mol_dof;
     fig, axes = plt.subplots(nrows, ncols, sharex='col', sharey = 'row');
     fig.set_size_inches(ncols*7/2,nrows*3/2);
+    vlines = True; # whether to highlight certain x vals with vertical dashed lines
 
     # iter over incident kinetic energy (colors)
-    Kvals = np.array([0.0001,0.001]); # incident kinetic energy/t
+    Kpowers = np.array([-2,-3,-4]); # incident kinetic energy/t = 10^Kpower
+    Kvals = np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers));
     Rvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals)); # by  init spin, final spin, energy, NB
+    Tvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals)); # by  init spin, final spin, energy, NB
     for Kvali in range(len(Kvals)):
 
         # energy
@@ -141,18 +148,38 @@ if False: # distance of the barrier NB on the x axis
                 # get R, T coefs
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, all_debug = False);
                 Rvals[sourcei,:,Kvali,NBvali] = Rdum;
+                Tvals[sourcei,:,Kvali,NBvali] = Tdum;
             #### end loop over sourcei
         #### end loop over NB
 
-        # determine kNB*, ie x val where the SWAP happens
-        kNBstar = kNBvals[np.argmin(Rvals[1,1,Kvali])];
+        # determine fidelity and kNB*, ie x val where the SWAP happens
+        fidelity_list = np.array([np.max(Rvals[n_mol_dof*elecspin+1,n_mol_dof*elecspin+2,Kvali]),
+                                 np.max(Rvals[n_mol_dof*elecspin+2,n_mol_dof*elecspin+1,Kvali]),
+                                 np.max(1-Rvals[n_mol_dof*elecspin+1,n_mol_dof*elecspin+1,Kvali]),
+                                 np.max(1-Rvals[n_mol_dof*elecspin+2,n_mol_dof*elecspin+2,Kvali])]);
+        kNBstar = kNBvals[np.argmin(Rvals[n_mol_dof*elecspin+1,n_mol_dof*elecspin+1,Kvali])];
+        print("kNBstar/pi, fidelity(kNBstar) = ",kNBstar/np.pi, np.mean(fidelity_list));
          
         # plot R_\sigma vs NBvals
-        elecspin = 1; # electron is spin down
+        Rvals_up = Rvals[:,np.array(range(n_loc_dof))<n_mol_dof];
+        Rvals_down = Rvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         for sourcei in range(n_mol_dof):
-            for sigmai in range(n_mol_dof):
-                axes[sourcei,sigmai].plot(kNBvals/np.pi, Rvals[4*elecspin+sourcei,4*elecspin+sigmai,Kvali], color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery, linewidth=mylinewidth);
-                #if(sourcei == sigmai): axes[sourcei,sigmai].axvline(kNBstar/np.pi, color=mycolors[EKali]);
+            for sigmai in range(sourcei+1):
+                axes[sourcei,sigmai].plot(kNBvals/np.pi, Rvals[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,Kvali], label = "$K_i/t= 10^{"+str(Kpowers[Kvali])+"}$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery, linewidth=mylinewidth);
+                
+                ##### additional plotting
+                # starred SWAP locations
+                if(vlines and sourcei == sigmai): axes[sourcei,sigmai].axvline(kNBstar/np.pi, color=mycolors[Kvali], linestyle="dotted"); 
+                # reflection summed over final states (columns)
+                if(sourcei<n_mol_dof-1):
+                    if(Kvali==0): showlegstring = ""; 
+                    else: showlegstring = "_"; # hides duplicate labels
+                    axes[sourcei,-1].plot(kNBvals/np.pi, np.sum(Rvals_down[n_mol_dof*elecspin+sourcei,:,Kvali],axis=0), linestyle="solid", label=showlegstring+"Total $R(\\rightarrow \downarrow_e)$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[sourcei,-1].plot(kNBvals/np.pi, np.sum(Rvals_up[n_mol_dof*elecspin+sourcei,:,Kvali],axis=0), linestyle="dashed", label=showlegstring+"Total $R(\\rightarrow \\uparrow_e)$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    #axes[sourcei,-1].plot(kNBvals/np.pi, 0.5-np.sum(Tvals[n_mol_dof*elecspin+sourcei,:,Kvali],axis=0), linestyle="dashdot", label=showlegstring+"0.5-Total $T$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[0,-1].legend();
+
+                # formatting
                 axes[sourcei,sigmai].set_title("$R("+str(ylabels[sourcei])+"\\rightarrow"+str(ylabels[sigmai])+")$");
                 axes[sourcei,-1].set_ylim(-0.1,1.1);
                 axes[sourcei,-1].set_yticks([0,1.0]);
@@ -160,16 +187,16 @@ if False: # distance of the barrier NB on the x axis
                 axes[sourcei,sigmai].axhline(1.0,color='lightgray',linestyle='dashed');
                 axes[-1,sigmai].set_xlim(0,0.5);
                 axes[-1,sigmai].set_xlabel('$k_i aN_B /\pi$',fontsize=myfontsize);
-                #axes[sourcei,-1].plot(kNBvals/np.pi, np.sum(Rvals[4*elecspin+sourcei,:,Kvali],axis=0), color='red');
+                axes[1,0].legend();
                     
     # show
     plt.tight_layout();
     plt.show();
 
     # save data
-    param_vals = np.array([myspinS,tl,Jval]);
-    fname = "data/wfm_swap/NB/"+str(rhoJvals.round(1));
-    #np.savetxt(fname+".txt", Evals, header="[tl, tp, JK, J12, Dval, myspinS, n_loc_dof] =\n"+str(param_vals)+"\nEvals =");
+    param_vals = np.array([tl,myspinS,Jval,VB]);
+    fname = "data/wfm_swap/NB/";
+    #np.savetxt(fname+".txt", Kvals, header="[tl,myspinS,Jval,VB] =\n"+str(param_vals)+"\nKvals =");
     #np.save(fname+"_x", kNBvals/np.pi);
     #np.save(fname, Rvals);
 
@@ -178,19 +205,20 @@ if True: # incident kinetic energy on the x axis
          # this is where another voltage might be useful!!!
 
     # axes
-    ylabels = ["\downarrow \\uparrow \\uparrow","\downarrow \\uparrow \downarrow","\downarrow \downarrow \\uparrow","\downarrow \downarrow \downarrow"];
     nrows, ncols = n_mol_dof, n_mol_dof;
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
+    vlines = True; # whether to highlight certain x vals with vertical dashed lines
 
     # iter over kNBvals (colors)
-    kNBvals = np.pi*np.array([0.3]); # 0.4, 0.5
-    myxvals = 9
+    kNBvals = np.pi*np.array([0.2,0.3,0.4,0.5]);
     Rvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(kNBvals))); # by  init spin, final spin, energy, NB
+    Tvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(kNBvals))); # by  init spin, final spin, energy, NB
     for NBvali in range(len(kNBvals)):
 
         # iter over incident kinetic energy (x axis)
-        Kvals = np.logspace(-4,-3,myxvals);
+        Kpowers = np.array([-2,-3,-4]); # incident kinetic energy/t = 10^Kpower
+        Kvals = np.logspace(Kpowers[-1],Kpowers[0],num=myxvals);
         print("longest NB = ",int((kNBvals[-1]/np.arccos( (Kvals-2*tl)/(-2*tl)))[0]));
         for Kvali in range(len(Kvals)):
 
@@ -232,26 +260,46 @@ if True: # incident kinetic energy on the x axis
                 # get R, T coefs
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, all_debug = False);
                 Rvals[sourcei,:,Kvali,NBvali] = Rdum;
+                Tvals[sourcei,:,Kvali,NBvali] = Tdum;
             #### end loop over sourcei
         #### end loop over E
 
-        # determine K*, ie x val where the SWAP happens
+        # determine fidelity and K*, ie x val where the SWAP happens
+        fidelity_list = np.array([np.max(Rvals[n_mol_dof*elecspin+1,n_mol_dof*elecspin+2,:,NBvali]),
+                                 np.max(Rvals[n_mol_dof*elecspin+2,n_mol_dof*elecspin+1,:,NBvali]),
+                                 np.max(1-Rvals[n_mol_dof*elecspin+1,n_mol_dof*elecspin+1,:,NBvali]),
+                                 np.max(1-Rvals[n_mol_dof*elecspin+2,n_mol_dof*elecspin+2,:,NBvali])]);
         Kstar = Kvals[np.argmin(Rvals[1,1,:,NBvali])];
+        print("Kstar/t, fidelity(kNBstar) = ",Kstar, np.mean(fidelity_list));
              
         # plot R_\sigma vs NBvals
-        elecspin = 1;
+        Rvals_up = Rvals[:,np.array(range(n_loc_dof))<n_mol_dof];
+        Rvals_down = Rvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         for sourcei in range(n_mol_dof):
-            for sigmai in range(n_mol_dof):
-                axes[sourcei,sigmai].plot(Kvals, Rvals[4*elecspin+sourcei,4*elecspin+sigmai,:,NBvali], color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
-                #if(sourcei == sigmai): axes[sourcei,sigmai].axvline(rhoJstar, color=mycolors[NBvali]);
+            for sigmai in range(sourcei+1):
+                axes[sourcei,sigmai].plot(Kvals, Rvals[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,:,NBvali], label = "$k_i a N_B/\pi$ = {:.2f}".format(kNBvals[NBvali]/np.pi), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+
+                #### other plotting
+                # starred SWAP locations
+                if(vlines and sourcei == sigmai): axes[sourcei,sigmai].axvline(Kstar, color=mycolors[NBvali], linestyle="dotted");
+                # reflection summed over final states (columns)
+                if(sourcei<n_mol_dof-1):
+                    if(NBvali==0): showlegstring = ""; 
+                    else: showlegstring = "_"; # hides duplicate labels
+                    axes[sourcei,-1].plot(Kvals, np.sum(Rvals_down[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="solid", label=showlegstring+"Total $R(\\rightarrow \downarrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[sourcei,-1].plot(Kvals, np.sum(Rvals_up[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashed", label=showlegstring+"Total $R(\\rightarrow \\uparrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    #axes[sourcei,-1].plot(Kvals, 0.5-np.sum(Tvals[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashdot", label=showlegstring+"0.5-Total $T$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[0,-1].legend();
+                
+                # formatting
                 axes[sourcei,sigmai].set_title("$R("+str(ylabels[sourcei])+"\\rightarrow"+str(ylabels[sigmai])+")$");
                 axes[sourcei,sigmai].set_ylim(-0.1,1.1);
                 axes[sourcei,sigmai].axhline(0.0,color='lightgray',linestyle='dashed');
                 axes[sourcei,sigmai].axhline(1.0,color='lightgray',linestyle='dashed');
                 axes[-1,sigmai].set_xlabel('$K_i/t$',fontsize=myfontsize);
                 axes[-1,sigmai].set_xscale('log', subs = []);
-                #axes[sourcei,-1].plot(kNBvals/np.pi, np.sum(Rvals[4*elecspin+sourcei,4*elecspin+sigmai,:,NBvali],axis=0), color='red');
-                    
+                axes[1,0].legend();
+                  
     # show
     plt.tight_layout();
     plt.show();
