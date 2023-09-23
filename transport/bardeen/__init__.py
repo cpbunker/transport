@@ -369,7 +369,7 @@ def kernel_well_super(tinfty, tL, tR,
     for astatei in range(len(alphastates)):
         for tstatei in range(len(tildestates)):
             change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-            
+
     # find left lead bound states, they will be in alpha basis
     HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
     Emas, psimas = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, expval_tol = expval_tol, verbose=verbose);
@@ -381,7 +381,8 @@ def kernel_well_super(tinfty, tL, tR,
     # physical system
     Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
     if(verbose > 9): # plot wfs, hams
-        plot_wfs(HL_4d, psimas, Emas, which_m = 13); assert False;
+        plot_wfs(HL_4d, psimas, Emas, which_m = 13);
+        plot_wfs(HR_4d, psinbs, Enbs, which_m = 13);
         for alpha in range(n_loc_dof):
             plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
         for h in (Hsys_4d,HL_4d):
@@ -406,7 +407,7 @@ def kernel_well_super(tinfty, tL, tR,
                     if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval):
                         melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));
                         if(np.real(melement) < 0):
-                            print("\tWARNING: changing sign of melement");
+                            if(verbose>5): print("\tWARNING: changing sign of melement");
                             melement *= (-1);
                         Mns.append(melement);
 
@@ -415,7 +416,7 @@ def kernel_well_super(tinfty, tL, tR,
                     n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
                     melement = np.dot(np.conj(psinbs[beta,n_nearest]), np.matmul(Hdiff, psimas[alpha,m]));
                     if(np.real(melement) < 0):
-                        print("\tWARNING: changing sign of melement");
+                        if(verbose>5): print("\tWARNING: changing sign of melement");
                         melement *= (-1);
                     Mns.append(melement);
 
@@ -436,7 +437,7 @@ def kernel_well_super(tinfty, tL, tR,
     # norm squared of effective matrix elements 
     Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
     Mbmas_tilde = Mbmas_tilde.astype(float);
-    return Emas, Mbmas_tilde;
+    return Emas, Mbmas_tilde; #NB sometimes up and down get switched in Emas
 
 def kernel_well_spinless(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
@@ -490,6 +491,9 @@ def kernel_well_spinless(tinfty, tL, tR,
         if(np.any(diag-diag[0])): raise ValueError("not spin independent");
         converted.append(convert[0,0]);
     tLa, tRa = tuple(converted);
+
+    # physical system
+    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
     
     # left lead bound states, energy is only good quantum number
     HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HC);
@@ -500,14 +504,6 @@ def kernel_well_spinless(tinfty, tL, tR,
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HLobs_4d),n_loc_dof));
     Emus, psimus = get_mstates(HLobs_4d, tLa, verbose=verbose);
 
-    print("Ems:",len(Ems), Ems[-1]);
-    print("Emus:",len(Emus), Emus[-1]);
-    
-    if(verbose > 9 and False): # plot wfs
-        plot_wfs(HL_4d, np.array([psims,psims]), np.array([Ems,Ems]), which_m = 1+3*n_loc_dof);
-        plot_wfs(HLobs_4d, np.array([psimus,psimus]), np.array([Emus, Emus]), which_m = 1+3*n_loc_dof);
-        raise NotImplementedError;
-
     # right lead bound states, energy is only good quantum number
     HR_4d = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HC);
     Ens, psins = get_mstates(HR_4d, tRa, verbose=verbose);
@@ -517,13 +513,24 @@ def kernel_well_spinless(tinfty, tL, tR,
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HRobs_4d),n_loc_dof));
     Enus, psinus = get_mstates(HRobs_4d, tRa, verbose=verbose);
 
-    if(verbose > 9 and False): # plot wfs
-        plot_wfs(HR_4d, np.array([psins,psins]), np.array([Ens,Ens]), which_m = 3*n_loc_dof);
-        plot_wfs(HRobs_4d, np.array([psinus,psinus]), np.array([Enus, Enus]), which_m = 3*n_loc_dof);
-        raise NotImplementedError;
+    if False: # some properties of n and nu states
+        print("Ens:",len(Ens), Ens[:10]);
+        print("Enus:",len(Enus), Enus[:10]);
+        for n in range(20):
+            for nu in range(20):
+                if( abs(Ens[n]-Enus[nu])<1e-8 or abs(Ens[n]-Enus[nu]-0.02)<1e-8):
+                    print("<n="+str(n)+", E_n="+str(Ens[n])+"|\\nu="+str(nu)+", E_\\nu>="+str(Enus[nu])+"> = ", np.dot(np.conj(psins[n]), psinus[nu]) );  
+        assert False
 
-    # physical system
-    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+    if(verbose > 9): # plot wfs
+        #plot_ham((Hsys_4d,), ["$H_{sys}$"], 0 );
+        #plot_ham((HL_4d,), ["$H_{L}$"], 0 );
+        #plot_ham((HR_4d,), ["$H_{R}$"], 0 );
+        plot_wfs(Hsys_4d, np.array([psims,psims]), np.array([Ems,Ems]), which_m = None, title="$H_{sys}$");
+        plot_wfs(HL_4d, np.array([psims,psims]), np.array([Ems,Ems]), which_m = 1+3*n_loc_dof, title="$H_L$");
+        plot_wfs(HLobs_4d, np.array([psimus,psimus]), np.array([Emus, Emus]), which_m = 1+3*n_loc_dof, title="$\\tilde{H}_L$");
+        plot_ham((Hsys_4d,HL_4d,HR_4d), ["$H_{sys}$","$H_{L}$","$H_R$"], 0 );
+        raise NotImplementedError;
 
     # average matrix elements over final states |k_n >
     # with the energy sufficiently close to that of the
@@ -538,7 +545,7 @@ def kernel_well_spinless(tinfty, tL, tR,
             if( abs(Ems[m] - Ens[n]) < interval):
                 melement = np.dot(np.conj(psins[n]), np.matmul(Hdiff, psims[m]));
                 if(np.real(melement) < 0):
-                    print("\tWARNING: changing sign of melement");
+                    if(verbose>5): print("\tWARNING: changing sign of melement");
                     melement *= (-1);
                 Mns.append(melement);
 
@@ -547,7 +554,7 @@ def kernel_well_spinless(tinfty, tL, tR,
             n_nearest = np.argmin( abs(Ems[m] - Ens[beta]) );
             melement = np.dot(np.conj(psins[n_nearest]), np.matmul(Hdiff, psims[m]));
             if(np.real(melement) < 0):
-                print("\tWARNING: changing sign of melement");
+                if(verbose>5): print("\tWARNING: changing sign of melement");
                 melement *= (-1);
             Mns.append(melement);
 
@@ -592,9 +599,9 @@ def kernel_well_spinless(tinfty, tL, tR,
 
     # classify the psi_mus and psi_nus by \sigma_z, and likewise break up M nu mus
     E_mualphas = np.zeros((n_loc_dof,len(Emus)),dtype=complex);
-    #psi_mualphas = np.zeros((n_loc_dof,len(Emus),len(psimus[0])),dtype=complex);
+    psi_mualphas = np.zeros((n_loc_dof,len(Emus),len(psimus[0])),dtype=complex);
     E_nubetas = np.zeros((n_loc_dof,len(Enus)),dtype=complex);
-    #psi_nubetas = np.zeros((n_loc_dof,len(Enus),len(psinus[0])),dtype=complex);
+    psi_nubetas = np.zeros((n_loc_dof,len(Enus),len(psinus[0])),dtype=complex);
     M_betanu_alphamus = np.empty((n_loc_dof,len(Enus),n_loc_dof,len(Emus)),dtype=float);
 
     # need to take exp vals of Sz to do this
@@ -614,7 +621,7 @@ def kernel_well_spinless(tinfty, tL, tR,
             if(abs(expSz_mu-expvals_exact[expvali_mu])<expval_tol):                
                 Sz_index_mu = expvali_mu;
                 E_mualphas[Sz_index_mu,mucounter[Sz_index_mu]] = Emus[mu];
-                #psi_mualphas[Sz_index_mu,mucounter[Sz_index_mu]] = psimus[mu];
+                psi_mualphas[Sz_index_mu,mucounter[Sz_index_mu]] = psimus[mu];
                 mucounter[Sz_index_mu] += 1;                                
         if(Sz_index_mu not in np.array(range(n_loc_dof))): raise Exception("<Sz>_mu = "+str(expSz_mu)+" not an eigenval of Sz");
         # classify nu states
@@ -626,7 +633,7 @@ def kernel_well_spinless(tinfty, tL, tR,
                 if(abs(expSz_nu-expvals_exact[expvali_nu])<expval_tol):
                     Sz_index_nu = expvali_nu;
                     E_nubetas[Sz_index_nu,nucounter[Sz_index_nu]] = Enus[nu];
-                    #psi_nubetas[Sz_index_nu,nucounter[Sz_index_nu]] = psinus[nu];
+                    psi_nubetas[Sz_index_nu,nucounter[Sz_index_nu]] = psinus[nu];
                     nucounter[Sz_index_nu] += 1;
             if(Sz_index_nu not in np.array(range(n_loc_dof))): raise Exception("<Sz>_nu = "+str(expSz_nu)+" not an eigenval of Sz");
              # classify M nu mus
@@ -634,35 +641,34 @@ def kernel_well_spinless(tinfty, tL, tR,
     del Emus, psimus, Enus, psinus, Mnumus;
 
     # truncate again
-    Emas = np.empty((n_loc_dof,np.min(mucounter)),dtype=complex);
-    Enbs = np.empty((n_loc_dof,np.min(nucounter)),dtype=complex);
+    E_mualphas_trunc = np.empty((n_loc_dof,np.min(mucounter)),dtype=complex);
+    E_nubetas_trunc = np.empty((n_loc_dof,np.min(nucounter)),dtype=complex);
     Mnbmas_eff = np.empty((n_loc_dof,np.min(nucounter),n_loc_dof,np.min(mucounter)),dtype=float);
     for alpha in range(n_loc_dof):
-        Emas[alpha,:] = E_mualphas[alpha,:np.min(mucounter)];
+        E_mualphas_trunc[alpha,:] = E_mualphas[alpha,:np.min(mucounter)];
         for beta in range(n_loc_dof):
-            Enbs[beta,:] = E_nubetas[beta,:np.min(nucounter)];
+            E_nubetas_trunc[beta,:] = E_nubetas[beta,:np.min(nucounter)];
             Mnbmas_eff[alpha,:,beta,:] = M_betanu_alphamus[beta,:np.min(nucounter),alpha,:np.min(mucounter)];
-    # del
-
     if(verbose > 9): # plot wfs
         print("E_mualphas = ", np.shape(E_mualphas),"\n",E_mualphas+2*tLa);
-        print("Emas = ", np.shape(Emas),"\n",Emas_arr+2*tLa);
+        print("E_mualphas_trunc = ", np.shape(E_mualphas_trunc),"\n",E_mualphas_trunc+2*tLa);
         for mymu in [18,19]:
             print("psi_mu = ",mymu);
             expSz_mu_alpha0 = np.dot( np.conj(psi_mualphas[0,mymu]), np.dot(defines_Sz_2d, psi_mualphas[0,mymu]));
             expSz_mu_alpha1 = np.dot( np.conj(psi_mualphas[1,mymu]), np.dot(defines_Sz_2d, psi_mualphas[1,mymu]));
             print("<Sz> of alpha0 = ", expSz_mu_alpha0);
             print("<Sz> of alpha1 = ", expSz_mu_alpha1);
-            plot_wfs(HLobs_4d, psi_mualphas, Emas_arr, which_m = mymu);
+            plot_wfs(HLobs_4d, psi_mualphas, E_mualphas_trunc, which_m = mymu);
         raise NotImplementedError;
+    E_mualphas, E_nubetas = E_mualphas_trunc, E_nubetas_trunc;
     
     # get rid of n as free index
-    Mbmas_eff = np.empty((n_loc_dof,np.shape(Emas)[-1],n_loc_dof),dtype=float);
+    Mbmas_eff = np.empty((n_loc_dof,np.shape(E_mualphas)[-1],n_loc_dof),dtype=float);
     for beta in range(n_loc_dof):
         for alpha in range(n_loc_dof):
             Mbmas_eff[beta,:,alpha] = np.diagonal(Mnbmas_eff[beta,:,alpha]);
 
-    return Emas, Mbmas_eff;
+    return E_mualphas, Mbmas_eff;
 
 #######################################################################
 #### generate observables from matrix elements
@@ -710,7 +716,9 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
     Tbmas = np.empty_like(Mbmas);
     kmas = np.arccos((Emas-fci_mod.scal_to_vec(VLa,n_bound_left))
                     /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
-
+    if(abs(np.max(np.imag(kmas)))>1e-10): print(abs(np.max(np.imag(kmas)))); raise ValueError;
+    kmas = np.real(kmas); # force to be real
+    
     # check
     check = False;
     if(check):
@@ -720,6 +728,8 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
     for alpha in range(n_loc_dof):
         for beta in range(n_loc_dof):
             factor_from_dos = 1/np.sqrt(1-np.power((Emas[alpha]-VRa[beta])/(2*tRa[beta]),2));
+            if(abs(np.max(np.imag(factor_from_dos)))>1e-10): print(abs(np.max(np.imag(factor_from_dos)))); raise ValueError;
+            factor_from_dos = np.real(factor_from_dos); # force to be real
             Tbmas[alpha,:,beta] = NL/(kmas[alpha]*tLa[alpha]) * NR/tRa[beta] *factor_from_dos*Mbmas[alpha,:,beta];
 
             if(check):
@@ -780,7 +790,6 @@ def Ts_wfm(Hsys, Emas, tbulk, verbose=0) -> np.ndarray:
         for m in range(n_bound_left):
             Energy = Emas[alpha,m];
             if( np.isnan(Emas[alpha,m])):
-                #Energy = Emas[alpha,m-1]
                 Tdum = np.full( (n_loc_dof,), np.nan);
             else:
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tbulk, Energy, source, verbose = verbose);
@@ -936,7 +945,7 @@ def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, expval_tol = 1e-9, verbose=0
     num_cutoff = len(Ems[Ems+2*ta < E_cutoff_first]);
     Ems = Ems[:(num_cutoff//n_loc_dof)*n_loc_dof].astype(complex);
     psims = psims.T[:(num_cutoff//n_loc_dof)*n_loc_dof];
-    print(">>>", np.shape(Ems));
+    if(verbose): print(">>>", np.shape(Ems));
 
     # measure alpha val for each k_m
     alpha_mat_4d = np.zeros((n_spatial_dof, n_spatial_dof, n_loc_dof, n_loc_dof),dtype=complex);
@@ -950,7 +959,7 @@ def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, expval_tol = 1e-9, verbose=0
     # commutator of alpha_mat with H
     # when alpha eigval classification fails, it is because they don't commute!
     commutator = np.matmul(alpha_mat_2d, H_2d) - np.matmul(H_2d, alpha_mat_2d);
-    print("\ncommutator = ", np.max(abs(commutator)));
+    if(verbose): print("\ncommutator = ", np.max(abs(commutator)));
 
     # get all unique alpha vals, should be exactly n_loc_dof of them
     if(verbose):
@@ -989,7 +998,7 @@ def get_bound_states(H_4d, ta, alpha_mat, E_cutoff, expval_tol = 1e-9, verbose=0
             if(Emas[alpha][m] + 2*ta < E_cutoff[alpha,alpha]):
                 Emas_arr[alpha,m] = Emas[alpha][m];
                 psimas_arr[alpha,m] = psimas[alpha][m];
-    print(">>>", np.shape(Emas_arr));
+    if(verbose): print(">>>", np.shape(Emas_arr));
 
     return Emas_arr, psimas_arr;
 
@@ -1050,7 +1059,7 @@ def plot_ham(hams, ham_strs, alpha, label=True) -> None:
     if( len(hams) != len(ham_strs)): raise ValueError;
 
     # spatial dofs
-    spatial_orbs = np.shape(h_4d)[0];    
+    spatial_orbs = np.shape(hams[0])[0];    
     mid = spatial_orbs // 2;
     jvals = np.array(range(-mid,mid+1));
 
@@ -1062,7 +1071,7 @@ def plot_ham(hams, ham_strs, alpha, label=True) -> None:
     # iter over hams
     for hami in range(len(hams)):
         ham_4d = hams[hami];
-        myaxes[hami].plot(j, np.diag(ham_4d[:,:,alpha,alpha]), color="cornflowerblue");
+        myaxes[hami].plot(jvals, np.real(np.diag(ham_4d[:,:,alpha,alpha])), color="cornflowerblue");
         myaxes[-1].set_xlabel("$j$");
         myaxes[hami].set_ylabel("$V_j$");
         myaxes[hami].set_title(ham_strs[hami]+"["+str(alpha)+""+str(alpha)+"]");
@@ -1070,20 +1079,24 @@ def plot_ham(hams, ham_strs, alpha, label=True) -> None:
         # label
         if(label):
             textbase = -0.1;
-            VL = ham_4d[len(j)//4,len(j)//4,alpha,alpha];
-            VC = ham_4d[len(j)//2,len(j)//2,alpha,alpha];
-            VR = ham_4d[len(j)*3//4,len(j)*3//4,alpha,alpha];
+            VL = ham_4d[len(jvals)//4,len(jvals)//4,alpha,alpha];
+            VC = ham_4d[len(jvals)//2,len(jvals)//2,alpha,alpha];
+            VR = ham_4d[len(jvals)*3//4,len(jvals)*3//4,alpha,alpha];
             Vinfty = ham_4d[-1,-1,alpha,alpha];            
             if(hami == 0):
-                Vcoords = [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vcoords = [jvals[len(jvals)//4],jvals[len(jvals)//2],jvals[len(jvals)*3//4],jvals[-1]];
                 Vs = [VL, VC, VR, Vinfty];
                 Vlabels = ["VL","VC","VR","Vinfty"];
             elif(hami == 1):
-                Vcoords =  [j[len(j)//4],j[len(j)//2],j[len(j)*3//4],j[-1]];
+                Vcoords =  [jvals[len(jvals)//4],jvals[len(jvals)//2],jvals[len(jvals)*3//4],jvals[-1]];
                 Vs = [VL, VC, VR, Vinfty];
                 Vlabels = ["VL","VC","VRprime","Vinfty"];
             elif(hami == 2):
-                Vcoords = [j[len(j)*3//4]];
+                Vcoords =  [jvals[len(jvals)//4],jvals[len(jvals)//2],jvals[len(jvals)*3//4],jvals[-1]];
+                Vs = [VL, VC, VR, Vinfty];
+                Vlabels = ["VLprime","VC","VR","Vinfty"];
+            elif(hami == 3):
+                Vcoords = [jvals[len(jvals)*3//4]];
                 Vlabels = ["VR - VRprime"];
                 Vs = [VR];
             for Vi in range(len(Vs)):
@@ -1093,7 +1106,7 @@ def plot_ham(hams, ham_strs, alpha, label=True) -> None:
     plt.tight_layout();
     plt.show();
 
-def plot_wfs(h_4d, psimas, Emas, which_m = 0, imag_tol = 1e-12, reverse = False):
+def plot_wfs(h_4d, psimas, Emas, which_m = 0, title = "$H$", imag_tol = 1e-12, reverse = False, fit_exp=False):
     '''
     '''
     if(len(np.shape(h_4d)) != 4): raise ValueError;
@@ -1109,71 +1122,64 @@ def plot_wfs(h_4d, psimas, Emas, which_m = 0, imag_tol = 1e-12, reverse = False)
     # separate by up, down channels
     channel_strs = ["$| \\uparrow \\rangle $", "$|\\downarrow \\rangle$"];
     for channel in range(n_loc_dof):
-        # plot H
+        # plot spin-diagonal part of H
         axes[channel].plot(jvals, np.real(np.diagonal(h_4d[:,:,channel,channel])), color="black");
-        # plot wf
-        alphas = np.array(range(n_loc_dof));
-        if(reverse): alphas = alphas[::-1];
-        for alpha in alphas:
-            psi = psimas[alpha, which_m][channel::n_loc_dof];
-            energy = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
-            scale = np.max(abs(psi));
-            if(scale < 1e-12): scale = 1.0;
-            assert(np.max(np.imag(psi)) < imag_tol); # otherwise plot complex part
-            axes[channel].plot(jvals, np.real((0.25/scale)*psi),
-                               label = "$|k_{m="+str(which_m)+"}, \\alpha = "+str(alpha)+"\\rangle (\\varepsilon = "+str(energy)+")$");  
+        axes[channel].axhline(0.0,color="gray",linestyle="dashed");
+        # off-diagonal (spin-flip)
+        axes[channel].fill_between(jvals, np.zeros_like(jvals), abs(np.real(np.diagonal(h_4d[:,:,channel,channel-1]))),color="green",alpha=0.5);
+
+        # plot wfs
+        if(which_m is not None): 
+            alphas = np.array(range(n_loc_dof));
+            if(reverse): alphas = alphas[::-1];
+            for alpha in alphas:
+                psi = psimas[alpha, which_m][channel::n_loc_dof];
+                energy = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
+                scale = np.max(abs(psi));
+                if(scale < 1e-12): scale = 1.0;
+                assert(np.max(np.imag(psi)) < imag_tol); # otherwise plot complex part
+                axes[channel].plot(jvals, np.real((0.25/scale)*psi),
+                                   label = "$|k_{m="+str(which_m)+"}, \\alpha = "+str(alpha)+"\\rangle (\\varepsilon = "+str(energy)+")$");  
         axes[channel].set_ylabel(channel_strs[channel]);
 
     # show
     axes[0].legend();
+    axes[0].set_title(title);
     plt.tight_layout();
     plt.show();
 
-    def fit_kappa(j, kappa):
-        return np.exp(-kappa*j);
+    if(fit_exp):
+        def fit_kappa(j, kappa):
+            return np.exp(-kappa*j);
 
-    # fit exponential
-    colors = ["tab:blue", "tab:orange"];
-    expfig, expax = plt.subplots();
-    well_width = 11;
-    exp_j = np.real(jvals[abs(jvals)<well_width//2]);
-    exp_j = exp_j - exp_j[0];
-    for alpha in range(n_loc_dof):
-        exp_wf_a = np.real(psimas[alpha, which_m][1::n_loc_dof][abs(jvals)<well_width//2]);
-        exp_wf_a = exp_wf_a/exp_wf_a[0];
-        E_a = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
-        expax.plot(exp_j, exp_wf_a, color=colors[alpha], label = "$|k_{m="+str(which_m)+"}, \\alpha = "+str(alpha)+"\\rangle (\\varepsilon = "+str(E_a)+")$");
+        # fit exponential
+        colors = ["tab:blue", "tab:orange"];
+        expfig, expax = plt.subplots();
+        well_width = 11;
+        exp_j = np.real(jvals[abs(jvals)<well_width//2]);
+        exp_j = exp_j - exp_j[0];
+        for alpha in range(n_loc_dof):
+            exp_wf_a = np.real(psimas[alpha, which_m][1::n_loc_dof][abs(jvals)<well_width//2]);
+            exp_wf_a = exp_wf_a/exp_wf_a[0];
+            E_a = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
+            expax.plot(exp_j, exp_wf_a, color=colors[alpha], label = "$|k_{m="+str(which_m)+"}, \\alpha = "+str(alpha)+"\\rangle (\\varepsilon = "+str(E_a)+")$");
 
-        # interpolate kappa
-        kappa_a = -np.log(exp_wf_a[1]/exp_wf_a[0]);
-        V_kappa = kappa_a*kappa_a + E_a # in units of t
-        exp_fit_a = np.real(np.exp(-kappa_a*exp_j));
-        expax.scatter(exp_j, exp_fit_a, color=colors[alpha], marker='+', label = "$\kappa = "+str(kappa_a)+", V_{eff} = $"+str(V_kappa));
+            # interpolate kappa
+            kappa_a = -np.log(exp_wf_a[1]/exp_wf_a[0]);
+            V_kappa = kappa_a*kappa_a + E_a # in units of t
+            exp_fit_a = np.real(np.exp(-kappa_a*exp_j));
+            expax.scatter(exp_j, exp_fit_a, color=colors[alpha], marker='+', label = "$\kappa = "+str(kappa_a)+", V_{eff} = $"+str(V_kappa));
 
-        # fit kappa
-        if False:
-            import scipy
-            from scipy import optimize
-            kappa_fitted, _ = scipy.optimize.curve_fit(fit_kappa, exp_j, exp_wf_a, p0=[kappa_a], bounds =[[0],[3*kappa_a]], verbose=2);
-            V_kappa_fitted = kappa_fitted[0]*kappa_fitted[0] + E_a # in units of t
-            exp_fitted = np.real(np.exp(-kappa_a*exp_j));
-            expax.scatter(exp_j, exp_fitted, color=colors[alpha], marker='x', label = "$\kappa = "+str(kappa_fitted[0])+", V_{eff} = $"+str(V_kappa_fitted));
-    plt.legend();
-    plt.show();
-
-def nFD(epsilon,mu,kBT):
-    '''
-    Fermi-Dirac distribution function
-    '''
-    assert isinstance(mu,float);
-    return 1/(np.exp((np.real(epsilon)-mu)/kBT )+1)
-
-def get_self_energy(t, V, E) -> np.ndarray:
-    if(not isinstance(t, float) or t < 0): raise TypeError;
-    if(not isinstance(V, float)): raise TypeError;
-    if(not isinstance(E, float)): raise TypeError;
-    dummy = (E-V)/(-2*t);
-    return-(dummy+np.lib.scimath.sqrt(dummy*dummy-1));
+            # fit kappa
+            if False:
+                import scipy
+                from scipy import optimize
+                kappa_fitted, _ = scipy.optimize.curve_fit(fit_kappa, exp_j, exp_wf_a, p0=[kappa_a], bounds =[[0],[3*kappa_a]], verbose=2);
+                V_kappa_fitted = kappa_fitted[0]*kappa_fitted[0] + E_a # in units of t
+                exp_fitted = np.real(np.exp(-kappa_a*exp_j));
+                expax.scatter(exp_j, exp_fitted, color=colors[alpha], marker='x', label = "$\kappa = "+str(kappa_fitted[0])+", V_{eff} = $"+str(V_kappa_fitted));
+        plt.legend();
+        plt.show();
 
 def couple_to_cont(H, E, alpha0) -> np.ndarray:
     '''
@@ -1198,28 +1204,6 @@ def couple_to_cont(H, E, alpha0) -> np.ndarray:
                 H[sidei,sidei,alpha,alpha] += selfenergy;
 
     return H;
-
-def get_eigs(h_4d, E_cutoff) -> tuple:
-    '''
-    Get eigenvalues and eigenvectors of a 4d (non hermitian) hamiltonian
-    '''
-    h_2d = fci_mod.mat_4d_to_2d(h_4d);
-    eigvals, eigvecs = np.linalg.eig(h_2d);
-    
-    # sort
-    inds = np.argsort(eigvals);
-    eigvals = eigvals[inds];
-    eigvecs = eigvecs[:,inds].T;
-    
-    # truncate
-    eigvecs = eigvecs[eigvals < E_cutoff];
-    eigvals = eigvals[eigvals < E_cutoff];
-    
-    return eigvals, eigvecs;
-
-
-
-
 
 
 #####################################################################################################

@@ -38,7 +38,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-error_lims = ();
+error_lims = (0,10);
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -87,7 +87,7 @@ if True:
         indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,0;
+        alpha_initial, alpha_final = 0,1;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
