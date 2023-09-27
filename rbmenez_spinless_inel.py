@@ -40,7 +40,7 @@ mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
-error_lims = (0,10);
+error_lims = ();
 
 def print_H_j(H):
     assert(len(np.shape(H)) == 4);
@@ -74,7 +74,7 @@ interval = 1e-9;
 
 # inelastic processes
 
-# T vs Delta *** when J=0 ***
+# T vs Delta at fixed J
 if True:
     
     # alpha -> beta
@@ -84,14 +84,14 @@ if True:
     # plotting
     plot_alpha = False;
     if(plot_alpha):
-        indvals = np.array([0.02]);
+        indvals = np.array([2e-2]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
-        indvals = np.array([0.0002,0.002,0.02]);
+        indvals = np.array([2e-6,2e-5,2e-4]);
         nplots_x = 1;
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 1,1;
+        alpha_initial, alpha_final = 0,1;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
@@ -102,7 +102,7 @@ if True:
         Deltaval = indvals[indvali]*np.array([[0,0],[0,1]]);  # <------- !!!!
 
         # central region
-        Jval = 0.0;
+        Jval = -0.5;
         NC = 11;
         VC = 0.4*tLR;
         tC = 1.0*tLR;
@@ -191,7 +191,7 @@ if True:
     else: plt.show();
 
 # T vs Jval
-# nonzero Delta (energy cost of impurity spin-flip)
+# fixed, nonzero Delta (energy cost of impurity spin-flip)
 # compare with PRA paper, Fig 10
 if False:
     
@@ -200,16 +200,16 @@ if False:
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = True;
+    plot_alpha = False;
     if(plot_alpha):
         indvals = np.array([-0.05]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
-        indvals = np.array([-0.05,-0.5]);
+        indvals = np.array([-5e-3,-5e-2,-5e-1]);
         nplots_x = 1;
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,1;
+        alpha_initial, alpha_final = 0,0;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
 
@@ -280,6 +280,7 @@ if False:
                     axes[alphai, betai].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
                     axes[-1,betai].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L$',fontsize=myfontsize);
                     axes[-1,betai].set_xscale('log', subs = []);
+                    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$");
 
         else: # plot for fixed initial spin
             xvals = np.real(Evals[alpha_initial])+2*tLR[alpha_initial,alpha_initial];
@@ -296,9 +297,9 @@ if False:
             axes[-1].set_xscale('log', subs = []);
             axes[indvali].set_ylabel("$T("+alpha_strs[alpha_initial]+"\\rightarrow"+alpha_strs[alpha_final]+")$");
             axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+            fig.suptitle("$\Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$");
 
     # show
-    fig.suptitle("$ J = "+str(Jval)+", \Delta = "+str(Delta[-1,-1])+", V_C = "+str(VC[0,0])+", N_C = "+str(NC)+", t_{vac} = "+str(tC[0,0])+", \Delta \\varepsilon = "+str(interval)+"$");
     plt.tight_layout();
     fname = "figs/rbmenez/sup_inel/menez_Delta";
     if(not plot_alpha):

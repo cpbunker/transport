@@ -517,18 +517,21 @@ def kernel_well_spinless(tinfty, tL, tR,
         print("Ens:",len(Ens), Ens[:10]);
         print("Enus:",len(Enus), Enus[:10]);
         for n in range(20):
-            for nu in range(20):
-                if( abs(Ens[n]-Enus[nu])<1e-8 or abs(Ens[n]-Enus[nu]-0.02)<1e-8):
-                    print("<n="+str(n)+", E_n="+str(Ens[n])+"|\\nu="+str(nu)+", E_\\nu>="+str(Enus[nu])+"> = ", np.dot(np.conj(psins[n]), psinus[nu]) );  
-        assert False
+            for nu in range(30):
+                if(n%2==0 and nu in [n,n+1,n+2,n+3]): # abs(Ens[n]-Enus[nu])<1e-8 or abs(Ens[n]-Enus[nu]-0.02)<1e-8):
+                    print("<n="+str(n)+", E_n="+str(Ens[n])+"|\\nu="+str(nu)+", E_\\nu>="+str(Enus[nu])+"> = ", np.dot(np.conj(psins[n]), psinus[nu]) );
+                    #plot_wfs(HR_4d, np.array([psins,psins]), np.array([Ens,Ens]), which_m = n, title="$\psi_n$");
+                    #plot_wfs(HRobs_4d, np.array([psinus,psinus]), np.array([Enus,Enus]), which_m = nu, title="$\psi_\\nu$");
+                    # NB we want this to be \pm 1 but the sign does not matter
+        assert False;
 
     if(verbose > 9): # plot wfs
         #plot_ham((Hsys_4d,), ["$H_{sys}$"], 0 );
         #plot_ham((HL_4d,), ["$H_{L}$"], 0 );
         #plot_ham((HR_4d,), ["$H_{R}$"], 0 );
         plot_wfs(Hsys_4d, np.array([psims,psims]), np.array([Ems,Ems]), which_m = None, title="$H_{sys}$");
-        plot_wfs(HL_4d, np.array([psims,psims]), np.array([Ems,Ems]), which_m = 1+3*n_loc_dof, title="$H_L$");
-        plot_wfs(HLobs_4d, np.array([psimus,psimus]), np.array([Emus, Emus]), which_m = 1+3*n_loc_dof, title="$\\tilde{H}_L$");
+        plot_wfs(HL_4d, np.array([psims[::n_loc_dof],psims[1::n_loc_dof]]), np.array([Ems[::n_loc_dof],Ems[1::n_loc_dof]]), which_m = 13, title="$H_L$");
+        plot_wfs(HLobs_4d, np.array([psimus[::n_loc_dof],psimus[1::n_loc_dof]]), np.array([Emus[::n_loc_dof], Emus[1::n_loc_dof]]), which_m = 13, title="$\\tilde{H}_L$");
         plot_ham((Hsys_4d,HL_4d,HR_4d), ["$H_{sys}$","$H_{L}$","$H_R$"], 0 );
         raise NotImplementedError;
 
@@ -922,10 +925,6 @@ def get_mstates(H_4d, ta, verbose=0) -> tuple:
     '''
     There is no cutoff because we need a complete basis!
     '''
-    n_spatial_dof = np.shape(H_4d)[0];
-    n_loc_dof = np.shape(H_4d)[-1];
-
-    # all eigenstates
     H_2d = fci_mod.mat_4d_to_2d(H_4d);
     Ems, psims = np.linalg.eigh(H_2d);
     return Ems.astype(complex), psims.T;
@@ -1132,10 +1131,10 @@ def plot_wfs(h_4d, psimas, Emas, which_m = 0, title = "$H$", imag_tol = 1e-12, r
         if(which_m is not None): 
             alphas = np.array(range(n_loc_dof));
             if(reverse): alphas = alphas[::-1];
+            scale = np.max(abs(psimas[:, which_m]));
             for alpha in alphas:
                 psi = psimas[alpha, which_m][channel::n_loc_dof];
                 energy = np.round(np.real(Emas[alpha, which_m])+2.0, decimals=10);
-                scale = np.max(abs(psi));
                 if(scale < 1e-12): scale = 1.0;
                 assert(np.max(np.imag(psi)) < imag_tol); # otherwise plot complex part
                 axes[channel].plot(jvals, np.real((0.25/scale)*psi),

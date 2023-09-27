@@ -74,7 +74,7 @@ expval_tol = 1e-3;
 # inelastic processes
 
 # T vs Delta *** when J=0 ***
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
@@ -185,7 +185,7 @@ if True:
 # T vs Jval
 # nonzero Delta (energy cost of impurity spin-flip)
 # compare with PRA paper, Fig 10
-if False:
+if True:
     
     # alpha -> beta
     alphas = [0,1];
