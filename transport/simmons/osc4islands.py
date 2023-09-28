@@ -8,8 +8,6 @@ from landauer import dI_of_Vb, dI_of_Vb_zero
 
 import numpy as np
 import matplotlib.pyplot as plt
-import random
-random.seed(1016)
 
 # fig standardizing
 myxvals = 199;
@@ -183,7 +181,7 @@ def dIdV_lorentz_trial(Vb, V0, tau0, Gamma, EC1, EC2, EC3, EC4):
 ####################################################################
 #### main
 
-def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
+def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, halve=False, verbose=0):
     '''
     The main function for fitting the metal Pc dI/dV data
     The data is stored as metal/__dIdV.txt where __ is the temperature
@@ -212,9 +210,10 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     bounds_base = np.array([[V0_not-V0_bound, Vslope_not*(1-Vslope_percent), eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), temp_kwarg+ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent), delta_not*(1-delta_percent) ],
                             [V0_not+V0_bound, Vslope_not*(1+Vslope_percent), eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), temp_kwarg+ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent), delta_not*(1+delta_percent) ]]);
 
-    #################
-    #dI_exp = dI_exp[V_exp > V0_not];
-    #V_exp = V_exp[V_exp > V0_not];
+    #### halve for better fitting <--- !!!!!
+    if(halve):
+        dI_exp = dI_exp[V_exp > V0_not];
+        V_exp = V_exp[V_exp > V0_not];
 
     #### initial fit ####
     # all data present
@@ -270,6 +269,45 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     dI_back_zero = dIdV_back(V_exp, *params_zero[back_mask_zero>0]);
     if(stop_at=="lorentz_zero/"): return V_exp, dI_exp-dI_back_zero, params_zero[osc_mask_zero>0], rmse_zero;
 
+
+    #################
+    from osc_distribution import dIdV_lorentz_integrand, make_EC_square
+    from scipy.integrate import simpson as scipy_integ
+    #################
+
+    # EC distribution
+    myEC, myV0, mytau0, myGamma = params_zero[-2], params_zero[0], num_EC_kwarg*params_zero[-4], params_zero[-3];
+    EC_mesh = np.linspace(0.0,10*myEC,int(1e3));
+    EC_dist = make_EC_square(EC_mesh, myEC, 0.9*EC_not);
+
+    # integrate over EC dist
+    dist_vals = np.zeros_like(V_exp);
+    for Vbi in range(len(V_exp)):
+        integrand = dIdV_lorentz_integrand(V_exp[Vbi], myV0, mytau0, myGamma, EC_mesh);
+        dist_vals[Vbi] += scipy_integ(integrand*EC_dist, EC_mesh);
+    del EC_dist;
+
+    # again with smaller tau0 and EC
+    mytau0, myEC = mytau0/2, myEC*3/4
+    EC_dist = make_EC_square(EC_mesh, myEC, 0.05*EC_not);
+    for Vbi in range(len(V_exp)):
+        integrand = dIdV_lorentz_integrand(V_exp[Vbi], myV0, mytau0, myGamma, EC_mesh);
+        dist_vals[Vbi] += scipy_integ(integrand*EC_dist, EC_mesh);
+    del EC_dist;
+
+    # fit corresponding background
+    dI_exp_backdist = dI_exp - dist_vals;
+    params_backdist, rmse_backdist = fit_wrapper(dIdV_back, V_exp, dI_exp_backdist,
+                                params_init, bounds_init, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
+                                stop_bounds = False, verbose=verbose);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_back(V_exp, *params_backdist), derivative=False,
+                mytitle="New background fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    dist_fit = dIdV_back(V_exp, *params_backdist) + dist_vals;
+
+    # plot
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dist_fit, mytitle="Distribution fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    assert False;
+
     #### fine tune the lorentz_zero fit ####
     # outliers removed
     # lorentzians turned on
@@ -314,21 +352,20 @@ def fit_Mn_data(stop_at, metal, num_islands = 4, verbose=1):
     #### guesses ####
     # surface magnons
     epsc_guess, epsc_percent = 0.002, 1;
-    G1_guess, G1_percent = 50.0, 0.5;
-    Gamma_guess, Gamma_percent = 0.0006, 0.5;
+    G1_guess, G1_percent = 200.0, 0.5;
+    Gamma_guess, Gamma_percent = 0.0003, 0.5;
     # magnetic impurities
-    eps0_guess, eps0_percent = 0.002, 0.5;
-    G2_guess, G2_percent = 0.8, 0.5; 
-    G3_guess, G3_percent = 0.5, 0.5;
+    eps0_guess, eps0_percent = 0.002*2, 0.5;
+    G2_guess, G2_percent = 2.5, 0.5; 
+    G3_guess, G3_percent = 1.0, 0.5;
     # other
     ohm_guess, ohm_percent = 1e-12, 1.0;
-    tau0_guess, tau0_percent = 0.001, 0.5; 
+    tau0_guess, tau0_percent = 0.002, 0.5; 
     EC_guess, EC_percent = 0.0007, 0.5; 
-    delta_guess, delta_percent = 0.05, 1.0;
+    delta_guess, delta_percent = 1e-12, 1 #0.05, 1.0;
     V0_guesses = np.array([-0.002413,-0.0035,-0.002089,-0.002226,-0.0026048,-0.001825,-0.001418]);
     V0_percent = 1e-12;
-    Vslope_guess = 1500;
-    Vslope_percent = 0.5;
+    Vslope_guess, Vslope_percent = 1500, 0.5;
 
     #fitting results
     results = [];
@@ -365,7 +402,7 @@ if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/"];
-    stop_at = stop_ats[1];
+    stop_at = stop_ats[2];
     verbose=10;
 
     # this one executes the fitting and stores results
