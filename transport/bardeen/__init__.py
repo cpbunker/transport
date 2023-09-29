@@ -16,298 +16,51 @@ import matplotlib.pyplot as plt
 
 def kernel_well(tinfty, tL, tR,
            Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC,HCprime,E_cutoff,
-           interval=1e-9,verbose=0) -> tuple:
-    '''
-    Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
-    states n in aninterval close to the initial energy state m
-
-    Physical params are classified by region: infty, L, R.
-    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
-    docstring below. Primed quantities represent the values given to
-    the unperturbed Hamiltonians HL and HR
-
-    This kernel requires the initial and final states to have definite spin,
-    and so CAN RESOLVE the spin -> spin transitions
-
-    Optional args:
-    -interval, float, rectangle func energy window, corresponding to 2\pi\hbar/t
-    -E_cutoff, float, don't calculate for m, n with energy higher 
-        than this. That way we limit to bound states
-
-    Returns:
-    -Emas, complex 2d array, initial energies separated by spin and energy
-    - Mbmas, real 3d array, NORM SQUARED of Oppenheimer matrix elements,
-        after averaging over final energies so that n is not a free index
-    '''
-    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
-    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
-    n_loc_dof = np.shape(HC)[-1];
-
-    # convert from matrices to spin-diagonal, spin-independent elements
-    to_convert = [tL, tR];
-    converted = [];
-    for convert in to_convert:
-        # check spin-diagonal
-        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
-        # check spin-independent
-        diag = np.diagonal(convert);
-        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
-        converted.append(convert[0,0]);
-    tLa, tRa = tuple(converted);
-
-    # left well eigenstates
-    HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
-    Emas, psimas = [], []; # will index as Emas[alpha,m]
-    n_bound_left = 0;        
-    for alpha in range(n_loc_dof):
-        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
-        psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
-        Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
-        Emas.append(Ems);
-        psimas.append(psims);
-        n_bound_left = max(n_bound_left, len(Emas[alpha]));
-    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
-    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
-    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ems = Emas[alpha];
-        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
-        Emas_arr[alpha] = Ems_arr;
-        psims = psimas[alpha];
-        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
-        psimas_arr[alpha] = psims_arr;
-    del Ems, psims, alpha
-    Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
-
-    # right well eigenstates  
-    HR_4d = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
-    Enbs, psinbs = [], []; # will index as Enbs[beta,n]
-    n_bound_right = 0;
-    for beta in range(n_loc_dof):
-        Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
-        psins = psins.T[Ens+2*tRa < E_cutoff[beta,beta]];
-        Ens = Ens[Ens+2*tRa < E_cutoff[beta,beta]];
-        Enbs.append(Ens.astype(complex));
-        psinbs.append(psins);
-        n_bound_right = max(n_bound_right, len(Ens));
-    Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
-    psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
-    for beta in range(n_loc_dof):# un-ragged the array by filling in highest Es
-        Ens = Enbs[beta];
-        Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
-        Enbs_arr[beta] = Ens_arr;
-        psins = psinbs[beta];
-        psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
-        psinbs_arr[beta] = psins_arr;
-    del Ens, psins;
-    Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
-
-    # operator
-    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
-    if(verbose > 9): # plot hams
-        print("np.shape(Emas) = ",np.shape(Emas));
-        print("np.shape(Enbs) = ",np.shape(Enbs));
-        for alpha in range(n_loc_dof):
-            plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
-        raise NotImplementedError;
-
-    # average matrix elements over final states |k_n \beta>
-    # with the same energy as the intial state |k_m \alpha>
-    # average over energy but keep spin separate
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    # initial energy and spin states
-    for alpha in range(n_loc_dof):
-        for m in range(n_bound_left):               
-            for beta in range(n_loc_dof):
-                # inelastic means averaging over an energy interval
-                Mns = [];
-                for n in range(n_bound_right):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval):
-                        Mns.append( matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]));
-
-                # "adaptive" interval 
-                if( np.isnan(interval) and Mns==[]): 
-                    n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
-                    Mns.append( matrix_element(beta,psinbs[:,n_nearest],Hdiff,alpha,psimas[:,m]));    
-
-                # update M with average
-                if(verbose): print("\tinterval = ",interval, len(Mns));
-                if Mns: Mns = sum(Mns)/len(Mns);
-                else: Mns = 0.0;
-                Mbmas[beta,m,alpha] = Mns;
-
-    # norm squared of Oppenheimer matrix elements               
-    Mbmas = np.real(np.conj(Mbmas)*Mbmas);
-    Mbmas = Mbmas.astype(float);               
-    return Emas, Mbmas;
-
-def kernel_well_super(tinfty, tL, tR,
-           Vinfty, VL, VLprime, VR, VRprime,
-           Ninfty, NL, NR, HC, HCprime, alpha_mat, E_cutoff,
-           interval=1e-9,expval_tol=1e-9,verbose=0) -> tuple:
-    '''
-    Calculate the Oppenheimer matrix elements M_nbma averaged over n in a
-    nearby interval
-    
-    Physical params are classified by region: infty, L, R.
-    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
-    docstring below. Primed quantities represent the values given to
-    the unperturbed Hamiltonians HL and HR
-    
-    For this kernel, the initial and final states are superpositions of
-    the eigenstates of HL and HR. If the latter are in the basis |\alpha>,
-    then the former are in the basis |\tilde{\alpha} >
-    the alpha basis is chosen by the spin matrix alpha_mat
-    the variable change_basis gives the basis transformation according to
-    |\tilde{\alpha} > = \sum_\alpha change_basis[\alpha, |tilde{\alpha} ] |\alpha>
-
-    # DO NOT combine with kernel_well b/c that controls "old way"
-    
-    Optional args:
-    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
-        than this. That way we limit to bound states
-    -interval, float, the maximum allowed difference between initial and final
-        state energies.
-    -expval_tol, float, when classifying eigenstates into the alpha basis,
-        there will be some deviation of <k_m \alpha | alpha_mat | k_m \alpha>
-        around its true value due to symmetry breaking. This is the allowed
-        tolerance of such deviation
-
-    Returns:
-    -Emas, complex 2d array, initial energies separated by spin and energy
-    - Mbmas_tilde, real 3d array, NORM SQUARED of EFFECTIVE Oppenheimer
-        matrix elements, after averaging over final energies (ie n is not
-        a free index)
-    '''
-    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
-    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
-    n_loc_dof = np.shape(HC)[-1];
-
-    # convert from matrices to spin-diagonal, spin-independent elements
-    to_convert = [tL, tR];
-    converted = [];
-    for convert in to_convert:
-        # check spin-diagonal
-        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
-        # check spin-independent
-        diag = np.diagonal(convert);
-        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
-        converted.append(convert[0,0]);
-    tLa, tRa = tuple(converted);
-
-    # change of basis
-    # alpha basis is eigenstates of alpha_mat, alpha still a good spin quant #
-    _, alphastates = np.linalg.eigh(alpha_mat);
-    alphastates = alphastates.T;
-    tildestates = np.eye(n_loc_dof);
-    # get change_basis matrix st
-    # |\tilde{\alpha}> = \sum_alpha change_basis[\alpha,\tilde{\alpha}] |\alpha>
-    change_basis = np.empty_like(alphastates);
-    for astatei in range(len(alphastates)):
-        for tstatei in range(len(tildestates)):
-            change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
-
-    # find left lead bound states, they will be in alpha basis
-    HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
-    Emas, psimas = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, expval_tol = expval_tol, verbose=verbose);
-
-    # find right lead bound states, they will be in alpha basis
-    HR_4d = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
-    Enbs, psinbs = get_bound_states(HR_4d, tRa, alpha_mat, E_cutoff, expval_tol = expval_tol, verbose=verbose);
-
-    # physical system
-    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
-    if(verbose > 9): # plot wfs, hams
-        plot_wfs(HL_4d, psimas, Emas, which_m = 13);
-        plot_wfs(HR_4d, psinbs, Enbs, which_m = 13);
-        for alpha in range(n_loc_dof):
-            plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
-        for h in (Hsys_4d,HL_4d):
-            h_aa = h[:,:,0,0] ;
-            h_bb = h[:,:,1,1] - np.diagflat(np.diagonal(0.02*np.ones_like(h_aa)));
-            assert( not np.any(h_aa-h_bb));
-        raise NotImplementedError;
-    
-    # average matrix elements over final states |k_n \beta>
-    # with the energy sufficiently close to that of the
-    # initial state |k_m \alpha>
-    # keep spin separate
-    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
-    Mbmas = np.empty((n_loc_dof,np.shape(Emas)[-1],n_loc_dof),dtype=complex);
-    # initial energy and spin states
-    for alpha in range(n_loc_dof):
-        for m in range(np.shape(Emas)[-1]):               
-            for beta in range(n_loc_dof):
-                # inelastic means averaging over an enegy interval
-                Mns = [];
-                for n in range(np.shape(Enbs)[-1]):
-                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval):
-                        melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));
-                        if(np.real(melement) < 0):
-                            if(verbose>5): print("\tWARNING: changing sign of melement");
-                            melement *= (-1);
-                        Mns.append(melement);
-
-                # "adaptive" interval 
-                if( np.isnan(interval) and Mns==[]): 
-                    n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
-                    melement = np.dot(np.conj(psinbs[beta,n_nearest]), np.matmul(Hdiff, psimas[alpha,m]));
-                    if(np.real(melement) < 0):
-                        if(verbose>5): print("\tWARNING: changing sign of melement");
-                        melement *= (-1);
-                    Mns.append(melement);
-
-                # update M with average
-                if(verbose): print("\tinterval = ",interval, len(Mns));
-                if Mns: Mns = sum(Mns)/len(Mns);
-                else: Mns = 0.0;
-                Mbmas[beta,m,alpha] = Mns;
-
-    # get effective matrix elements
-    Mbmas_tilde = np.zeros_like(Mbmas);
-    for atilde in range(n_loc_dof):
-        for btilde in range(n_loc_dof):
-            for alpha in range(n_loc_dof):
-                Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
-    del Mbmas;
-    
-    # norm squared of effective matrix elements 
-    Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
-    Mbmas_tilde = Mbmas_tilde.astype(float);
-    return Emas, Mbmas_tilde; #NB sometimes up and down get switched in Emas
-
-def kernel_well_spinless(tinfty, tL, tR,
-           Vinfty, VL, VLprime, VR, VRprime,
            Ninfty, NL, NR, HC, HCobs, defines_Sz,
             E_cutoff, interval=1e-12, expval_tol=1e-12, verbose=0) -> tuple:
     '''
     Calculate the Oppenheimer matrix elements M_nm averaged over n in a
-    nearby interval. NB there is no alpha and beta anymore because
-    spin translational symmetry has been broken so that there are no more
-    good spin quantum numbers.
+    nearby interval. NB the eigenstates of HL/HR, and thus the Oppenheimer
+    marix elements between them, are not labeled by alpha and beta anymore
+    because we are generalizing to situations where Hsys breaks spin
+    translational symmetry so much that there are no more good spin quantum
+    numbers.
+    
+    Here, we form the physical initial/final states as superpositions
+    the eigenstates of HL/HR. The latter are imposed on us by the system
+    we are studying; we cannot choose them. In general, the energy is the only
+    good quantum number for the eigenstates of HL and HR. Therefore, all
+    transformations between eigenstates of HL/HR and chosen initial/final
+    states take place in energy space. This allows for the possibility that
+    unbound states can be mixed in. Since the calculation of the Oppenheimer
+    matrix elements is not valid for unbound states, this is a source of error
+
+    Args:
     
     Physical params are classified by region: infty, L, R.
     tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
-    
-    For this kernel, the initial and final states are superpositions of
-    the eigenstates of HL and HR. The latter is the basis imposed on us
-    by the physics, we cannot choose it, and energy is in general the only
-    good quantum number in this basis.
 
-    Optional args:
-    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
-        than this. That way we limit to bound states
-    -interval, float, the maximum allowed difference between initial and final
-        state energies
-    -expval_tol, float, when classifying eigenstates of the observable basis,
-        we compare their expectation values of the defines_Sz operator with
-        the eigenvalues of that operator. This gives the tolerance for binning
-        a state as having a certain eigenvalue of that operator
+    HCobs is the central region part of the Hamiltonian HLobs (HRobs) which
+    whose eigenstates are the chosen initial (final) states of the tunneling.
+    The code assumes that HLobs (HRobs) is the same as HL outside the central
+    region, but this is for convenience not a strict requirement. Typically,
+    it is only the off-diagonal spin elements of HC that differ (are missing
+    from) HCobs.
+
+    defines_Sz is a spin space matrix, we use the expectation values of
+    this to classify the eigenstates of HLobs (HRobs) by spin. This is done
+    so we can identify the basis-transformed matrix elements
+    
+    E_cutoff stops calculation of matrix elements for eigenstates of HL with
+    energy higher than it.
+
+    interval is the maximum allowed difference between initial and final
+    state energies which contribute to the matrix elements
+        
+    expval_tol: tolerance for classifying eigenstates of HLobs based on
+    their expectation values of the defines_Sz operator 
 
     Returns:
     -Emas, complex 2d array, initial energies separated by spin and energy
@@ -512,6 +265,272 @@ def kernel_well_spinless(tinfty, tL, tR,
             Mbmas_eff[beta,:,alpha] = np.diagonal(Mnbmas_eff[beta,:,alpha]);
 
     return E_mualphas, Mbmas_eff;
+
+def kernel_well_super(tinfty, tL, tR,
+           Vinfty, VL, VLprime, VR, VRprime,
+           Ninfty, NL, NR, HC, HCprime, alpha_mat, E_cutoff,
+           interval=1e-9,expval_tol=1e-9,verbose=0) -> tuple:
+    '''
+    Calculate the Oppenheimer matrix elements M_nbma averaged over n in a
+    nearby interval
+    
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+    
+    For this kernel, the initial and final states are superpositions of
+    the eigenstates of HL and HR. If the latter are in the basis |\alpha>,
+    then the former are in the basis |\tilde{\alpha} >
+    the alpha basis is chosen by the spin matrix alpha_mat
+    the variable change_basis gives the basis transformation according to
+    |\tilde{\alpha} > = \sum_\alpha change_basis[\alpha, |tilde{\alpha} ] |\alpha>
+
+    # DO NOT combine with kernel_well b/c that controls "old way"
+    
+    Optional args:
+    -E_cutoff, float, don't calculate T for eigenstates with energy higher 
+        than this. That way we limit to bound states
+    -interval, float, the maximum allowed difference between initial and final
+        state energies.
+    -expval_tol, float, when classifying eigenstates into the alpha basis,
+        there will be some deviation of <k_m \alpha | alpha_mat | k_m \alpha>
+        around its true value due to symmetry breaking. This is the allowed
+        tolerance of such deviation
+
+    Returns:
+    -Emas, complex 2d array, initial energies separated by spin and energy
+    - Mbmas_tilde, real 3d array, NORM SQUARED of EFFECTIVE Oppenheimer
+        matrix elements, after averaging over final energies (ie n is not
+        a free index)
+    '''
+    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
+    n_loc_dof = np.shape(HC)[-1];
+
+    # convert from matrices to spin-diagonal, spin-independent elements
+    to_convert = [tL, tR];
+    converted = [];
+    for convert in to_convert:
+        # check spin-diagonal
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
+        # check spin-independent
+        diag = np.diagonal(convert);
+        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
+        converted.append(convert[0,0]);
+    tLa, tRa = tuple(converted);
+
+    # change of basis
+    # alpha basis is eigenstates of alpha_mat, alpha still a good spin quant #
+    _, alphastates = np.linalg.eigh(alpha_mat);
+    alphastates = alphastates.T;
+    tildestates = np.eye(n_loc_dof);
+    # get change_basis matrix st
+    # |\tilde{\alpha}> = \sum_alpha change_basis[\alpha,\tilde{\alpha}] |\alpha>
+    change_basis = np.empty_like(alphastates);
+    for astatei in range(len(alphastates)):
+        for tstatei in range(len(tildestates)):
+            change_basis[astatei, tstatei] = np.dot( np.conj(alphastates[astatei]), tildestates[tstatei]);
+
+    # find left lead bound states, they will be in alpha basis
+    HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    Emas, psimas = get_bound_states(HL_4d, tLa, alpha_mat, E_cutoff, expval_tol = expval_tol, verbose=verbose);
+
+    # find right lead bound states, they will be in alpha basis
+    HR_4d = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    Enbs, psinbs = get_bound_states(HR_4d, tRa, alpha_mat, E_cutoff, expval_tol = expval_tol, verbose=verbose);
+
+    # physical system
+    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);  
+    if(verbose > 9): # plot wfs, hams
+        plot_wfs(HL_4d, psimas, Emas, which_m = 13);
+        plot_wfs(HR_4d, psinbs, Enbs, which_m = 13);
+        for alpha in range(n_loc_dof):
+            plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
+        for h in (Hsys_4d,HL_4d):
+            h_aa = h[:,:,0,0] ;
+            h_bb = h[:,:,1,1] - np.diagflat(np.diagonal(0.02*np.ones_like(h_aa)));
+            assert( not np.any(h_aa-h_bb));
+        raise NotImplementedError;
+    
+    # average matrix elements over final states |k_n \beta>
+    # with the energy sufficiently close to that of the
+    # initial state |k_m \alpha>
+    # keep spin separate
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mbmas = np.empty((n_loc_dof,np.shape(Emas)[-1],n_loc_dof),dtype=complex);
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(np.shape(Emas)[-1]):               
+            for beta in range(n_loc_dof):
+                # inelastic means averaging over an enegy interval
+                Mns = [];
+                for n in range(np.shape(Enbs)[-1]):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval):
+                        melement = np.dot(np.conj(psinbs[beta,n]), np.matmul(Hdiff, psimas[alpha,m]));
+                        if(np.real(melement) < 0):
+                            if(verbose>5): print("\tWARNING: changing sign of melement");
+                            melement *= (-1);
+                        Mns.append(melement);
+
+                # "adaptive" interval 
+                if( np.isnan(interval) and Mns==[]): 
+                    n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
+                    melement = np.dot(np.conj(psinbs[beta,n_nearest]), np.matmul(Hdiff, psimas[alpha,m]));
+                    if(np.real(melement) < 0):
+                        if(verbose>5): print("\tWARNING: changing sign of melement");
+                        melement *= (-1);
+                    Mns.append(melement);
+
+                # update M with average
+                if(verbose): print("\tinterval = ",interval, len(Mns));
+                if Mns: Mns = sum(Mns)/len(Mns);
+                else: Mns = 0.0;
+                Mbmas[beta,m,alpha] = Mns;
+
+    # get effective matrix elements
+    Mbmas_tilde = np.zeros_like(Mbmas);
+    for atilde in range(n_loc_dof):
+        for btilde in range(n_loc_dof):
+            for alpha in range(n_loc_dof):
+                Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
+    del Mbmas;
+    
+    # norm squared of effective matrix elements 
+    Mbmas_tilde = np.real(np.conj(Mbmas_tilde)*Mbmas_tilde);
+    Mbmas_tilde = Mbmas_tilde.astype(float);
+    return Emas, Mbmas_tilde; #NB sometimes up and down get switched in Emas
+
+def kernel_well_prime(tinfty, tL, tR,
+           Vinfty, VL, VLprime, VR, VRprime,
+           Ninfty, NL, NR, HC,HCprime,E_cutoff,
+           interval=1e-9,verbose=0) -> tuple:
+    '''
+    Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
+    states n in aninterval close to the initial energy state m
+
+    Physical params are classified by region: infty, L, R.
+    tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
+    docstring below. Primed quantities represent the values given to
+    the unperturbed Hamiltonians HL and HR
+
+    This kernel requires the initial and final states to have definite spin,
+    and so CAN RESOLVE the spin -> spin transitions
+
+    Optional args:
+    -interval, float, rectangle func energy window, corresponding to 2\pi\hbar/t
+    -E_cutoff, float, don't calculate for m, n with energy higher 
+        than this. That way we limit to bound states
+
+    Returns:
+    -Emas, complex 2d array, initial energies separated by spin and energy
+    - Mbmas, real 3d array, NORM SQUARED of Oppenheimer matrix elements,
+        after averaging over final energies so that n is not a free index
+    '''
+    if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
+    n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
+    n_loc_dof = np.shape(HC)[-1];
+    assert(np.any(HC-HCprime)); # otherwise should not be using this kernel!
+
+    # convert from matrices to spin-diagonal, spin-independent elements
+    to_convert = [tL, tR];
+    converted = [];
+    for convert in to_convert:
+        # check spin-diagonal
+        if( np.any(convert - np.diagflat(np.diagonal(convert))) ): raise ValueError("not spin diagonal"); 
+        # check spin-independent
+        diag = np.diagonal(convert);
+        if(np.any(diag-diag[0])): raise ValueError("not spin independent");
+        converted.append(convert[0,0]);
+    tLa, tRa = tuple(converted);
+
+    # left well eigenstates
+    HL_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VRprime, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HL_4d),n_loc_dof));
+    Emas, psimas = [], []; # will index as Emas[alpha,m]
+    n_bound_left = 0;        
+    for alpha in range(n_loc_dof):
+        Ems, psims = np.linalg.eigh(HL_4d[:,:,alpha,alpha]);
+        psims = psims.T[Ems+2*tLa < E_cutoff[alpha,alpha]];
+        Ems = Ems[Ems+2*tLa < E_cutoff[alpha,alpha]];
+        Emas.append(Ems);
+        psimas.append(psims);
+        n_bound_left = max(n_bound_left, len(Emas[alpha]));
+    Emas_arr = np.empty((n_loc_dof,n_bound_left), dtype = complex); # make un-ragged
+    psimas_arr = np.empty((n_loc_dof,n_bound_left,n_spatial_dof), dtype = complex);
+    for alpha in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ems = Emas[alpha];
+        Ems_arr = np.append(Ems, np.full((n_bound_left-len(Ems),), Ems[-1]));
+        Emas_arr[alpha] = Ems_arr;
+        psims = psimas[alpha];
+        psims_arr = np.append(psims, np.full((n_bound_left-len(Ems),n_spatial_dof), psims[-1]),axis=0);
+        psimas_arr[alpha] = psims_arr;
+    del Ems, psims, alpha
+    Emas, psimas = Emas_arr, psimas_arr # shape is (n_loc_dof, n_bound_left)
+
+    # right well eigenstates  
+    HR_4d = Hsysmat(tinfty, tL, tR, Vinfty, VLprime, VR, Ninfty, NL, NR, HCprime);
+    assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HR_4d),n_loc_dof));
+    Enbs, psinbs = [], []; # will index as Enbs[beta,n]
+    n_bound_right = 0;
+    for beta in range(n_loc_dof):
+        Ens, psins = np.linalg.eigh(HR_4d[:,:,beta,beta]);
+        psins = psins.T[Ens+2*tRa < E_cutoff[beta,beta]];
+        Ens = Ens[Ens+2*tRa < E_cutoff[beta,beta]];
+        Enbs.append(Ens.astype(complex));
+        psinbs.append(psins);
+        n_bound_right = max(n_bound_right, len(Ens));
+    Enbs_arr = np.empty((n_loc_dof,n_bound_right), dtype = complex); # make un-ragged
+    psinbs_arr = np.empty((n_loc_dof,n_bound_right,n_spatial_dof), dtype = complex);
+    for beta in range(n_loc_dof):# un-ragged the array by filling in highest Es
+        Ens = Enbs[beta];
+        Ens_arr = np.append(Ens, np.full((n_bound_right-len(Ens),), Ens[-1]));
+        Enbs_arr[beta] = Ens_arr;
+        psins = psinbs[beta];
+        psins_arr = np.append(psins, np.full((n_bound_right-len(Ens),n_spatial_dof), psins[-1]),axis=0);
+        psinbs_arr[beta] = psins_arr;
+    del Ens, psins;
+    Enbs, psinbs = Enbs_arr, psinbs_arr # shape is (n_loc_dof, n_bound_right)
+
+    # operator
+    Hsys_4d = Hsysmat(tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC);
+    if(verbose > 9): # plot hams
+        print("np.shape(Emas) = ",np.shape(Emas));
+        print("np.shape(Enbs) = ",np.shape(Enbs));
+        for alpha in range(n_loc_dof):
+            plot_ham((Hsys_4d,HL_4d,Hsys_4d-HL_4d), ["$H_{sys}$","$H_{L}$","$H_{sys}-H_L$"], alpha );
+        raise NotImplementedError;
+
+    # average matrix elements over final states |k_n \beta>
+    # with the same energy as the intial state |k_m \alpha>
+    # average over energy but keep spin separate
+    Hdiff = fci_mod.mat_4d_to_2d(Hsys_4d - HL_4d);
+    Mbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
+    # initial energy and spin states
+    for alpha in range(n_loc_dof):
+        for m in range(n_bound_left):               
+            for beta in range(n_loc_dof):
+                # inelastic means averaging over an energy interval
+                Mns = [];
+                for n in range(n_bound_right):
+                    if( abs(Emas[alpha,m] - Enbs[beta,n]) < interval):
+                        Mns.append( matrix_element(beta,psinbs[:,n],Hdiff,alpha,psimas[:,m]));
+
+                # "adaptive" interval 
+                if( np.isnan(interval) and Mns==[]): 
+                    n_nearest = np.argmin( abs(Emas[alpha,m] - Enbs[beta]) );
+                    Mns.append( matrix_element(beta,psinbs[:,n_nearest],Hdiff,alpha,psimas[:,m]));    
+
+                # update M with average
+                if(verbose): print("\tinterval = ",interval, len(Mns));
+                if Mns: Mns = sum(Mns)/len(Mns);
+                else: Mns = 0.0;
+                Mbmas[beta,m,alpha] = Mns;
+
+    # norm squared of Oppenheimer matrix elements               
+    Mbmas = np.real(np.conj(Mbmas)*Mbmas);
+    Mbmas = Mbmas.astype(float);               
+    return Emas, Mbmas;
 
 #######################################################################
 #### generate observables from matrix elements
