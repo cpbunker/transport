@@ -50,7 +50,7 @@ NC = 11;
 
 #### hyper parameters ####
 Ecut = 0.1;
-defines_alpha = np.copy(tLR);
+defines_Sz = np.copy(tLR);
 
 # T vs VR
 if False:
@@ -58,6 +58,7 @@ if False:
     # variables
     NLR = 200;
     VRvals = np.array([-0.05*tLR,-0.005*tLR,0.005*tLR,0.05*tLR]);
+    #VRvals = np.array([0.05*tLR]);
     int_power = -2;
 
     # plotting
@@ -78,6 +79,9 @@ if False:
     print("HC =");
     print_H_j(HC);
 
+    # HC, except Sz is a good quantum number
+    HCobs = np.copy(HC);
+
     # bardeen results for heights of barrier covering well
     for VRvali in range(len(VRvals)):
         VLprime = VRvals[VRvali]+Vinfty; # left cover needs to be higher from view of right well
@@ -88,9 +92,9 @@ if False:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VRvals[VRvali], VRprime,
-                                      Ninfty, NLR, NLR, HC, HC, defines_alpha,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(int_power), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -167,9 +171,8 @@ if False:
     print("HC =");
     print_H_j(HC);
 
-    # alpha basis is eigenstates of HC[j=0,j=0]
-    # change of basis is automatic in kernel_well_super now
-    defines_alpha = HC[len(HC)//2,len(HC)//2];
+    # HC, except Sz is a good quantum number
+    HCobs = np.copy(HC);
 
     # primes
     VLprime = VR+Vinfty; # left cover needs to be higher from view of right well
@@ -184,9 +187,9 @@ if False:
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
         # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NLRvals[NLRvali], NLRvals[NLRvali], HC, HC, defines_alpha,
+                                      Ninfty, NLRvals[NLRvali], NLRvals[NLRvali], HC, HCobs, defines_Sz,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(int_power), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
@@ -241,7 +244,7 @@ if False:
 if True:
 
     # variables
-    NLR = 1000;
+    NLR = 200;
     VR = -0.05*tLR;
     powervals = [-6,-3,-2,np.nan];
 
@@ -263,9 +266,8 @@ if True:
     print("HC =");
     print_H_j(HC);
 
-    # alpha basis is eigenstates of HC[j=0,j=0]
-    # change of basis is automatic in kernel_well_super now
-    defines_alpha = HC[len(HC)//2,len(HC)//2];
+    # HC, except Sz is a good quantum number
+    HCobs = np.copy(HC);
 
     # primes
     VLprime = VR+Vinfty; # left cover needs to be higher from view of right well
@@ -280,9 +282,9 @@ if True:
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
         # returns two arrays of size (n_loc_dof, n_left_bound)
-        Evals, Mvals = bardeen.kernel_well_super(tinfty, tLR, tLR,
+        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NLR, NLR, HC, HC, defines_alpha,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=Ecut*np.eye(n_loc_dof),
                                       interval = 10**(powervals[powervali]), verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,

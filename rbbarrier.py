@@ -47,9 +47,10 @@ Vinfty = 0.5*tLR;
 Ninfty = 20;
 
 #### hyper parameters ####
-#defines_alpha = np.copy(tLR);
+Ecut = 0.1;
+defines_Sz = np.array([[1]]);
 
-# T vs NL
+#T vs NL
 if False:
 
     NLvals = [50,200,500];
@@ -71,6 +72,9 @@ if False:
     print("HC =");
     print_H_j(HC);
 
+    # HC, except Sz is a good quantum number
+    HCobs = np.copy(HC);
+
     # bardeen results for different well widths
     for NLi in range(len(NLvals)):
         NLR = NLvals[NLi];
@@ -80,7 +84,7 @@ if False:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR,
                                       Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=VC, verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
@@ -119,7 +123,7 @@ if False:
     else: plt.show();
 
 # T vs NC
-if True:
+if False:
 
     NCvals = [1,3,5,51];
     numplots = len(NCvals);
@@ -144,6 +148,9 @@ if True:
             HC[j+1,j] += -tC;
         print("HC =");
         print_H_j(HC);
+
+        # HC, except Sz is a good quantum number
+        HCobs = np.copy(HC);
         
         # bardeen.kernel syntax:
         # tinfty, tL, tR, 
@@ -151,7 +158,7 @@ if True:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=VC,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
@@ -217,6 +224,9 @@ if False:
             HC[j+1,j] += -tC;
         print("HC =");
         print_H_j(HC);
+
+        # HC, except Sz is a good quantum number
+        HCobs = np.copy(HC);
         
         # bardeen.kernel syntax:
         # tinfty, tL, tR, 
@@ -224,7 +234,7 @@ if False:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=VCval,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
@@ -292,6 +302,9 @@ if False:
             HC[j+1,j] += -tCvals[tCvali];
         print("HC =");
         print_H_j(HC);
+
+        # HC, except Sz is a good quantum number
+        HCobs = np.copy(HC);
         
         # bardeen.kernel syntax:
         # tinfty, tL, tR, 
@@ -299,7 +312,7 @@ if False:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=VC,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=0);
@@ -339,7 +352,7 @@ if False:
     else: plt.show();
 
 # T vs VLR prime
-if False:
+if True:
 
     Vprimevals = [Vinfty/5,Vinfty,10*Vinfty];
     numplots = len(Vprimevals);
@@ -360,6 +373,9 @@ if False:
     print("HC =");
     print_H_j(HC);
 
+    # HC, except Sz is a good quantum number
+    HCobs = np.copy(HC);
+
     # bardeen results for heights of barrier covering well
     for Vprimei in range(len(Vprimevals)):
         NLR = 200;
@@ -371,7 +387,7 @@ if False:
         # Ninfty, NL, NR, HC,HCprime,
         Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
                                       Vinfty, VLR, VLRprime, VLR, VLRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
+                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
                                       E_cutoff=VC,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR, VLR, NLR, NLR, verbose=1);
@@ -417,316 +433,8 @@ if False:
 
 
 ###############################################################################
-#### left right symmetry breaking
+#### current through the barrier
 
-# T vs VR
 if False:
-
-    VRvals = [0.0*tLR, 0.001*tLR, 0.01*tLR];
-    numplots = len(VRvals);
-    fig, axes = plt.subplots(numplots, sharex = True);
-    if numplots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*numplots/2);
-
-    # central region
-    tC = 1*tLR;
-    VC = 0.4*tLR;
-    NC = 11;
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
-    for j in range(NC):
-        HC[j,j] += VC;
-    for j in range(NC-1):
-        HC[j,j+1] += -tC;
-        HC[j+1,j] += -tC;
-    print("HC =");
-    print_H_j(HC);
-
-    # bardeen results for heights of barrier covering well
-    for VRvali in range(len(VRvals)):
-        NLR = 200; # try increasing
-        VLRprime = Vinfty;
-        
-        # bardeen.kernel syntax:
-        # tinfty, tL, tR, 
-        # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
-                                      Vinfty, VLR, VLRprime, VRvals[VRvali], VLRprime,
-                                      Ninfty, NLR, NLR, HC, HC,
-                                      E_cutoff=VC[0,0],interval=1e-2,verbose=1);
-        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                                   tLR, tLR, VLR, VRvals[VRvali], NLR, NLR, verbose=1);
-
-        # benchmark
-        Tvals_bench = bardeen.Ts_wfm_well(tLR, tLR, VLR, VRvals[VRvali], HC, Evals, verbose=0);
-        print("Output shapes:");
-        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-        # only one loc dof, and transmission is diagonal
-        for alpha in range(n_loc_dof):
-            axright = axes[VRvali].twinx();
-
-            # truncate to bound states and plot
-            xvals = np.real(Evals[alpha])+2*tLR[alpha,alpha];
-            axes[VRvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
-            # % error
-            axes[VRvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-        # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        #axright.set_ylim(*error_lims);
-        axes[VRvali].set_ylabel('$T$',fontsize=myfontsize);
-        axes[VRvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
-        axes[VRvali].set_title("$V_R = "+str(VRvals[VRvali][0,0])+'$', x=0.4, y = 0.7, fontsize=myfontsize);
-
-    # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
-    plt.tight_layout();
-    plt.show();
-    fname = "figs/bard_barrier/bard_barrier_VLprime.pdf";
-    if(save_figs): plt.savefig(fname); print("Saving data as",fname);
-    else: plt.show();
-
-###############################################################################
-#### messing with hopping
-
-# perturbation is hopping from central region to right lead ONLY
-if False:
-
-    # sizes
-    NC = 5;
-    Ninfty = 20;
-    NL = 200;
-    NR = 1*NL;
-
-    # central region
-    tC = 1.0*tL;
-    VC = 0.5*tL; #### do for 0.5, 2.5, 5.0, 50.0 ####
-
-    hopvals = np.array([0.0*tC,1.0*tC]);
-    numplots = len(hopvals);
-    fig, axes = plt.subplots(numplots, sharex = True);
-    if numplots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*numplots/2);
-
-    # compare perturb being thyb vs VRprime
-    for hopvali in range(len(hopvals)):
-        #hopvali=1;
-        hopval = hopvals[hopvali];
-
-        # V primes
-        if(hopvali == 0): # thyb is perturbation
-            VLprime = 1*VL;
-            VRprime = 1*VR;
-            HT_perturb = True;
-            myinterval = 1e-3;
-        else: # VRprime is perturbation
-            VLprime = 1*Vinfty;
-            VRprime = 1*Vinfty;
-            HT_perturb = False;
-            myinterval = 1e-9;
-        thyb = 1.0*tL;
-        Vhyb = 1.0*VLprime;
-
-        # construct ham
-        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
-        for j in range(NC):
-            HC[j,j] += VC;
-        for j in range(NC-1):
-            HC[j,j+1] += -tC;
-            HC[j+1,j] += -tC;
-        # overwrite hyb
-        HC[0,0] = Vhyb;
-        HC[-1,-1] = Vhyb;
-        HC[0,1] = -thyb;
-        HC[1,0] = -thyb;
-        HC[-2,-1] = -thyb;
-        HC[-1,-2] = -thyb;
-        print("HC =");
-        print_H_j(HC);
-
-        # central region prime
-        HCprime = np.copy(HC);
-        HCprime[0,0] = Vhyb;
-        HCprime[-1,-1] = Vhyb;
-        #HCprime[0,1] = -hopval;
-        #HCprime[1,0] = -hopval;
-        HCprime[-2,-1] = -hopval;
-        HCprime[-1,-2] = -hopval;
-        print("HC - HCprime =");
-        print_H_j(HC-HCprime);
-        
-        # bardeen.kernel syntax:
-        # tinfty, tL, tLprime, tR, tRprime,
-        # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel_well(tinfty, tL, tinfty, tR, tinfty,
-                                      Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,interval=myinterval,
-                                      HT_perturb=HT_perturb,verbose=1);
-        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                                   tL, tR, VL, VR, NL, NR, verbose=1);
-        
-        # benchmark
-        Tvals_bench = bardeen.Ts_wfm_well(tL, tR, VL, VR, HC, Evals, verbose=0);
-        print("Output shapes:");
-        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-        # only one loc dof, and transmission is diagonal
-        for alpha in range(n_loc_dof):
-
-            # sort
-            sortis = np.argsort(Evals[alpha]);
-            Evals[alpha] = Evals[alpha][sortis];
-            Tvals[alpha,:,alpha] = Tvals[alpha,:,alpha][sortis];
-            Tvals_bench[alpha,:,alpha] = Tvals_bench[alpha,:,alpha][sortis];
-
-            # truncate to bound states and plot
-            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-            axes[hopvali].set_xlim(min(xvals),0.1);
-            for ax in axes: ax.set_ylim(0.0,np.real(max(Tvals[alpha,:,alpha])).round(4) );
-            
-            # % error
-            axright = axes[hopvali].twinx();
-            axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-        # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axrighttops = [100,50,50,20]; VCoptions = [0.5,2.5,5.0,50];
-        axright.set_ylim(0,axrighttops[VCoptions.index(VC)]);
-        axes[hopvali].set_ylabel("$T (t_{DR} = "+str(hopvals[hopvali][0,0])+")$",fontsize=myfontsize);
-
-    # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
-    plt.tight_layout();
-    plt.show();
-
-# perturbation is HT
-if False:
-
-    # sizes
-    NC = 3;
-    Ninfty = 20;
-    NL = 200;
-    NR = 1*NL;
-
-    # central region
-    tC = 1.0*tL;
-    VC = 0.5*tL;
-    thyb = 1.0*tL;
-    Vhyb = 1.0*VL;
-    Ueff = 0.0;
-    Weff = (2*VC+Ueff)*thyb*np.conj(thyb)/( 2*(VC+Ueff)*(-VC));
-    #Weff = 0.0;
-
-    # construct central region ham
-    assert(Ueff == 0.0);
-    HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof));
-    for j in range(NC):
-        HC[j,j] += VC;
-    for j in range(NC-1):
-        HC[j,j+1] += -tC;
-        HC[j+1,j] += -tC;
-    # overwrite hyb
-    HC[0,0] = Vhyb;
-    HC[-1,-1] = Vhyb;
-    HC[0,1] = -thyb;
-    HC[1,0] = -thyb;
-    HC[-2,-1] = -thyb;
-    HC[-1,-2] = -thyb;
-    assert(Ueff == 0.0 and NC == 3);
-    HC[0,2] = Weff;
-    HC[2,0] = Weff;
-    print("HC =");
-    print_H_j(HC);
-
-    hopvals = np.array([0.0*tC,1.0*tC]);
-    numplots = len(hopvals);
-    fig, axes = plt.subplots(numplots, sharex = True);
-    if numplots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*numplots/2);
-
-    # compare perturb being thyb vs VRprime
-    for hopvali in range(len(hopvals)):
-        hopval = hopvals[hopvali];
-
-        # central region prime
-        HCprime = np.copy(HC);
-        HCprime[0,0] = Vhyb;
-        HCprime[-1,-1] = Vhyb;
-        HCprime[0,1] = -hopval;
-        HCprime[1,0] = -hopval;
-        HCprime[-2,-1] = -hopval;
-        HCprime[-1,-2] = -hopval;
-        HCprime[0,2] = 0.0;
-        HCprime[2,0] = 0.0;
-
-        # V primes
-        if(hopvali == 0):
-            VLprime = 1*VL;
-            VRprime = 1*VR;
-            HT_perturb = True;
-        else:
-            VLprime = 1*Vinfty;
-            VRprime = 1*Vinfty;
-            HT_perturb = False;
-            HC[0,2] = 0.0;
-            HC[2,0] = 0.0;
-        print("HC - HCprime =");
-        print_H_j(HC-HCprime);
-        
-        # bardeen.kernel syntax:
-        # tinfty, tL, tLprime, tR, tRprime,
-        # Vinfty, VL, VLprime, VR, VRprime,
-        # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel(tinfty, tL, tinfty, tR, tinfty,
-                                      Vinfty, VL, VLprime, VR, VRprime,
-                                      Ninfty, NL, NR, HC, HCprime,
-                                      E_cutoff=0.1,HT_perturb=HT_perturb,verbose=10);
-        Tvals = bardeen.Ts_bardeen(Evals, Mvals,
-                                   tL, tR, VL, VR, NL, NR, verbose=1);
-
-        # benchmark
-        Tvals_bench = bardeen.Ts_wfm(tL, tR, VL, VR, HC, Evals, verbose=0);
-        print("Output shapes:");
-        for arr in [Evals, Tvals, Tvals_bench]: print(np.shape(arr));
-
-        # only one loc dof, and transmission is diagonal
-        for alpha in range(n_loc_dof):
-
-            # sort
-            sortis = np.argsort(Evals[alpha]);
-            Evals[alpha] = Evals[alpha][sortis];
-            Tvals[alpha,:,alpha] = Tvals[alpha,:,alpha][sortis];
-            Tvals_bench[alpha,:,alpha] = Tvals_bench[alpha,:,alpha][sortis];
-
-            # truncate to bound states and plot
-            xvals = np.real(Evals[alpha])+2*tL[alpha,alpha];
-            axes[hopvali].scatter(xvals, Tvals[alpha,:,alpha], marker=mymarkers[0], color=mycolors[0]);
-
-            # % error
-            axright = axes[hopvali].twinx();
-            axes[hopvali].scatter(xvals, Tvals_bench[alpha,:,alpha], marker=mymarkers[1], color=accentcolors[0], linewidth=mylinewidth);
-            axright.plot(xvals,100*abs((Tvals[alpha,:,alpha]-Tvals_bench[alpha,:,alpha])/Tvals_bench[alpha,:,alpha]),color=accentcolors[1]); 
-
-        # format
-        axright.set_ylabel("$\%$ error",fontsize=myfontsize,color=accentcolors[1]);
-        axright.set_ylim(0,100);
-        axes[hopvali].set_ylabel('$T$',fontsize=myfontsize);
-        axes[hopvali].set_title("$t_{hyb} = "+str(hopvals[hopvali][0,0])+'$', x=0.2, y = 0.7, fontsize=myfontsize);
-
-    # format and show
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlabel('$(\\varepsilon_m + 2t_L)/t_L \,\,|\,\, V_C = '+str(VC[0,0])+'$',fontsize=myfontsize);
-    plt.tight_layout();
-    plt.show();
-
-
+    pass;
 

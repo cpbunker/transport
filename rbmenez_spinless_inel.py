@@ -26,7 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # top level
-np.set_printoptions(precision = 4, suppress = True);
+#np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
 save_figs = False;
 
@@ -75,7 +75,7 @@ interval = 1e-9;
 # inelastic processes
 
 # T vs Delta at fixed J
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
@@ -91,7 +91,7 @@ if True:
         indvals = np.array([2e-6,2e-5,2e-4]);
         nplots_x = 1;
         nplots_y = len(indvals);
-        alpha_initial, alpha_final = 0,1;
+        alpha_initial, alpha_final = 0,0;
     fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
     fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
         
@@ -131,7 +131,7 @@ if True:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_spinless(tinfty,tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well(tinfty,tLR, tLR, 
                                   Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval,
                                   Ninfty, NLR, NLR, HC, HC_Sz, Deltaval, #defines_Sz = Delta!                                               
                                   E_cutoff=np.eye(n_loc_dof)*Ecut+Deltaval,
@@ -193,7 +193,7 @@ if True:
 # T vs Jval
 # fixed, nonzero Delta (energy cost of impurity spin-flip)
 # compare with PRA paper, Fig 10
-if False:
+if True:
     
     # alpha -> beta
     alphas = [0,1];
@@ -206,7 +206,7 @@ if False:
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
-        indvals = np.array([-5e-3,-5e-2,-5e-1]);
+        indvals = np.array([-0.005,-0.05,-0.5]);
         nplots_x = 1;
         nplots_y = len(indvals);
         alpha_initial, alpha_final = 0,0;
@@ -249,7 +249,7 @@ if False:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_spinless(tinfty,tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well(tinfty,tLR, tLR, 
                                   Vinfty+Delta, VLR+Delta, Vinfty+Delta, VLR+Delta, Vinfty+Delta,
                                   Ninfty, NLR, NLR, HC, HC_Sz, Delta, #defines_Sz = Delta!                                               
                                   E_cutoff=np.eye(n_loc_dof)*Ecut+Delta,

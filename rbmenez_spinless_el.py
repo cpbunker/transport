@@ -52,6 +52,11 @@ def print_H_alpha(H):
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",H[i,j,:,:]);
 
+###############################################
+# matrix elements are the right barrier being removed only
+# the Kondo term is included in HL and HR
+# therefore physical basis != eigenbasis of Sz
+
 # tight binding params
 n_loc_dof = 2; 
 tLR = 1.0*np.eye(n_loc_dof);
@@ -64,11 +69,6 @@ Ninfty = 20;
 #### hyper parameters ####
 Ecut = 0.1;
 defines_Sz = np.array([[1,0],[0,-1]]);
-
-###############################################
-# matrix elements are the right barrier being removed only
-# the Kondo term is included in HL and HR
-# therefore physical basis != eigenbasis of Sz
 
 # T vs Jval
 if True:
@@ -124,7 +124,7 @@ if True:
         # tinfty, tL, tR,
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
-        Evals, Mvals = bardeen.kernel_well_spinless(tinfty,tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well(tinfty,tLR, tLR, 
                                   Vinfty, VLR, Vinfty, VLR, Vinfty,
                                   Ninfty, NLR, NLR, HC, HC_Sz, defines_Sz,                                               
                                   E_cutoff=np.eye(n_loc_dof)*Ecut,verbose=1);

@@ -106,18 +106,6 @@ def kernel_well(tinfty, tL, tR,
     assert(is_alpha_conserving(fci_mod.mat_4d_to_2d(HRobs_4d),n_loc_dof));
     Enus, psinus = get_mstates(HRobs_4d, tRa, verbose=verbose);
 
-    if False: # some properties of n and nu states
-        print("Ens:",len(Ens), Ens[:10]);
-        print("Enus:",len(Enus), Enus[:10]);
-        for n in range(20):
-            for nu in range(30):
-                if(n%2==0 and nu in [n,n+1,n+2,n+3]): # abs(Ens[n]-Enus[nu])<1e-8 or abs(Ens[n]-Enus[nu]-0.02)<1e-8):
-                    print("<n="+str(n)+", E_n="+str(Ens[n])+"|\\nu="+str(nu)+", E_\\nu>="+str(Enus[nu])+"> = ", np.dot(np.conj(psins[n]), psinus[nu]) );
-                    #plot_wfs(HR_4d, np.array([psins,psins]), np.array([Ens,Ens]), which_m = n, title="$\psi_n$");
-                    #plot_wfs(HRobs_4d, np.array([psinus,psinus]), np.array([Enus,Enus]), which_m = nu, title="$\psi_\\nu$");
-                    # NB we want this to be \pm 1 but the sign does not matter
-        assert False;
-
     if(verbose > 9): # plot wfs
         #plot_ham((Hsys_4d,), ["$H_{sys}$"], 0 );
         #plot_ham((HL_4d,), ["$H_{L}$"], 0 );
@@ -147,7 +135,7 @@ def kernel_well(tinfty, tL, tR,
 
         # "adaptive" interval 
         if( np.isnan(interval) and Mns==[]): 
-            n_nearest = np.argmin( abs(Ems[m] - Ens[beta]) );
+            n_nearest = np.argmin( abs(Ems[m] - Ens) );
             melement = np.dot(np.conj(psins[n_nearest]), np.matmul(Hdiff, psims[m]));
             if(np.real(melement) < 0):
                 if(verbose>5): print("\tWARNING: changing sign of melement");
@@ -192,7 +180,7 @@ def kernel_well(tinfty, tL, tR,
     Enus = Enus[:(nu_cutoff//n_loc_dof)*n_loc_dof];
     psinus = psinus[:(nu_cutoff//n_loc_dof)*n_loc_dof];
     Mnumus = Mnumus[:(nu_cutoff//n_loc_dof)*n_loc_dof,:(mu_cutoff//n_loc_dof)*n_loc_dof];
-
+    
     # classify the psi_mus and psi_nus by \sigma_z, and likewise break up M nu mus
     E_mualphas = np.zeros((n_loc_dof,len(Emus)),dtype=complex);
     psi_mualphas = np.zeros((n_loc_dof,len(Emus),len(psimus[0])),dtype=complex);
@@ -258,11 +246,13 @@ def kernel_well(tinfty, tL, tR,
         raise NotImplementedError;
     E_mualphas, E_nubetas = E_mualphas_trunc, E_nubetas_trunc;
     
-    # get rid of n as free index
+    # get rid of nu as free index
+    interval = np.nan
     Mbmas_eff = np.empty((n_loc_dof,np.shape(E_mualphas)[-1],n_loc_dof),dtype=float);
     for beta in range(n_loc_dof):
         for alpha in range(n_loc_dof):
-            Mbmas_eff[beta,:,alpha] = np.diagonal(Mnbmas_eff[beta,:,alpha]);
+            for mu in range(np.shape(E_mualphas)[-1]):
+                Mbmas_eff[beta,mu,alpha] = np.sum(Mnbmas_eff[beta,:,alpha,mu]);
 
     return E_mualphas, Mbmas_eff;
 
@@ -307,6 +297,7 @@ def kernel_well_super(tinfty, tL, tR,
     if(np.shape(HC) != np.shape(HCprime)): raise ValueError;
     n_spatial_dof = Ninfty+NL+len(HC)+NR+Ninfty;
     n_loc_dof = np.shape(HC)[-1];
+    assert(not np.any(HC-HCprime)); # phase out HCprime
 
     # convert from matrices to spin-diagonal, spin-independent elements
     to_convert = [tL, tR];
@@ -394,6 +385,11 @@ def kernel_well_super(tinfty, tL, tR,
         for btilde in range(n_loc_dof):
             for alpha in range(n_loc_dof):
                 Mbmas_tilde[btilde,:,atilde] += change_basis[alpha,atilde]*change_basis[alpha,btilde]*Mbmas[alpha,:,alpha];
+
+    print(np.shape(Mbmas));
+    print(np.shape(Mbmas_tilde));
+    assert False
+
     del Mbmas;
     
     # norm squared of effective matrix elements 
@@ -409,18 +405,21 @@ def kernel_well_prime(tinfty, tL, tR,
     Calculate the Oppenheimer matrix elements M_nbma averaged over final energy
     states n in aninterval close to the initial energy state m
 
+    Args:
+    
     Physical params are classified by region: infty, L, R.
     tinfty, tL, tR, Vinfty, VL, VR, Ninfty, NL, NR, HC are as in Hsysmat
     docstring below. Primed quantities represent the values given to
     the unperturbed Hamiltonians HL and HR
 
-    This kernel requires the initial and final states to have definite spin,
-    and so CAN RESOLVE the spin -> spin transitions
-
-    Optional args:
-    -interval, float, rectangle func energy window, corresponding to 2\pi\hbar/t
-    -E_cutoff, float, don't calculate for m, n with energy higher 
+    E_cutoff: don't calculate for m, n with energy higher 
         than this. That way we limit to bound states
+
+    interval: rectangle func energy window, corresponding to 2\pi\hbar/t
+
+    This kernel REQUIRES the eigenstates of HL/HR to be Sz eigenstates,
+    and so CAN RESOLVE the spin -> spin transitions. It allows those
+    transitions because Hsys-HL has a spin-flip term.
 
     Returns:
     -Emas, complex 2d array, initial energies separated by spin and energy
