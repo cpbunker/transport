@@ -47,6 +47,7 @@ def get_spin_Hamiltonian(s,Bx,By,Bz,D,E):
 def get_intensities_CG(s,j,eigvecs,verbose=0):
     '''
     transition intensities, a la Guayacq
+    https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.103.176601
     '''
     # expand the S_z eigenstates in terms of Ham eiegenstates
     # total spin mag is j = Fe spin mag (2) + elec spin mag (1/2) = 5/2

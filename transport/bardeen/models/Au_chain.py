@@ -50,4 +50,24 @@ if True: # experimental model from https://doi.org/10.1126/science.1075242
     print("Saving to "+fname);
     np.save(fname,Hsys);
         
-    
+if False: # loading the parameterized ham
+
+    # load Hsys
+    fname = "transport/bardeen/models/Au_chain_"+str(tvacvals[tvaci])+".npy";
+    print("Loading data from "+fname);
+    Hsys = np.load(fname);
+    Ntotal, n_loc_dof = np.shape(Hsys)[0], np.shape(Hsys)[-1];
+    tbulk = -Hsys[0,1,0,0];
+    print(">>> tbulk = ",tbulk," Ha"); 
+
+    # visualize Hsys
+    figH, axesH = plt.subplots(n_loc_dof, sharex = True);
+    if(n_loc_dof == 1): axesH = [axesH];
+    mid = len(Hsys)//2;
+    jvals = np.linspace(-mid, -mid +len(Hsys)-1,len(Hsys), dtype=int);
+    for alpha in range(n_loc_dof):
+        axesH[alpha].plot(jvals, np.diagonal(Hsys[:,:,alpha,alpha]), label = "V", color=accentcolors[0]);
+        axesH[alpha].plot(jvals[:-1], np.diagonal(Hsys[:,:,alpha,alpha], offset=1), label = "t", color=mycolors[0]);
+    axesH[0].legend();
+    axesH[0].set_title("$H_{sys} "+str(np.shape(Hsys))+"$");
+    figH.show();
