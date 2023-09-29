@@ -319,6 +319,7 @@ if True: # incident kinetic energy on the x axis
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
     vlines = True; # whether to highlight certain x vals with vertical dashed lines
+    K_indep = True; # whether to put Ki/t on x axis, alternatively wavenumber
 
     # iter over fixed NB (colors)
     NBvals = np.array([50,75,94,100]);
@@ -331,12 +332,9 @@ if True: # incident kinetic energy on the x axis
                                               # note that at the right NB, R(SWAP) approaches 1 asymptotically at
                                               # lower Ki. But diminishing returns kick in around 10^-4
         Kvals = np.logspace(Kpowers[-1],Kpowers[0],num=myxvals);
+        Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
+        knumbers = np.arccos(Energies/(-2*tl)); # wavenumbers
         for Kvali in range(len(Kvals)):
-
-            # energy
-            Kval = Kvals[Kvali]; # Kval > 0 always, what I call K in paper
-            Energy = Kval - 2*tl; # -2t < Energy < 2t, what I call E in paper
-            k_rho = np.arccos(Energy/(-2*tl)); # k corresponding to fixed \rho J a
 
             # set barrier distance
             NBval = int(NBvals[NBvali])
@@ -369,7 +367,7 @@ if True: # incident kinetic energy on the x axis
                     hb += -E_shift*np.eye(n_loc_dof);
                 
                 # get R, T coefs
-                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, all_debug = False);
+                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, all_debug = False);
                 Rvals[sourcei,:,Kvali,NBvali] = Rdum;
                 Tvals[sourcei,:,Kvali,NBvali] = Tdum;
             #### end loop over sourcei
@@ -384,11 +382,14 @@ if True: # incident kinetic energy on the x axis
         print("Kstar/t, fidelity(kNBstar) = ",Kstar, np.mean(fidelity_list));
              
         # plot R_\sigma vs NBvals
+        if(K_indep): indep_var = Kvals; # what to put on x axis
+        else: indep_var = knumbers*NBvals[NBvali]/np.pi;
+        if(not K_indep): vlines = False;
         Rvals_up = Rvals[:,np.array(range(n_loc_dof))<n_mol_dof];
         Rvals_down = Rvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         for sourcei in range(n_mol_dof):
             for sigmai in range(sourcei+1):
-                axes[sourcei,sigmai].plot(Kvals, Rvals[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                axes[sourcei,sigmai].plot(indep_var, Rvals[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
 
                 #### other plotting
                 # starred SWAP locations
@@ -397,9 +398,9 @@ if True: # incident kinetic energy on the x axis
                 if(sourcei<n_mol_dof-1):
                     if(NBvali==0): showlegstring = ""; 
                     else: showlegstring = "_"; # hides duplicate labels
-                    axes[sourcei,-1].plot(Kvals, np.sum(Rvals_down[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="solid", label=showlegstring+"Total $R(\\rightarrow \downarrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
-                    axes[sourcei,-1].plot(Kvals, np.sum(Rvals_up[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashed", label=showlegstring+"Total $R(\\rightarrow \\uparrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
-                    #axes[sourcei,-1].plot(Kvals, 0.5-np.sum(Tvals[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashdot", label=showlegstring+"0.5-Total $T$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[sourcei,-1].plot(indep_var, np.sum(Rvals_down[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="solid", label=showlegstring+"Total $R(\\rightarrow \downarrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    axes[sourcei,-1].plot(indep_var, np.sum(Rvals_up[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashed", label=showlegstring+"Total $R(\\rightarrow \\uparrow_e)$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
+                    #axes[sourcei,-1].plot(indep_var, 0.5-np.sum(Tvals[n_mol_dof*elecspin+sourcei,:,:,NBvali],axis=0), linestyle="dashdot", label=showlegstring+"0.5-Total $T$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery, linewidth=mylinewidth);
                     axes[0,-1].legend();
                 
                 # formatting
@@ -407,8 +408,11 @@ if True: # incident kinetic energy on the x axis
                 axes[sourcei,sigmai].set_ylim(-0.1,1.1);
                 axes[sourcei,sigmai].axhline(0.0,color='lightgray',linestyle='dashed');
                 axes[sourcei,sigmai].axhline(1.0,color='lightgray',linestyle='dashed');
-                axes[-1,sigmai].set_xlabel('$K_i/t$',fontsize=myfontsize);
-                axes[-1,sigmai].set_xscale('log', subs = []);
+                if(K_indep): 
+                    axes[-1,sigmai].set_xlabel('$K_i/t$',fontsize=myfontsize);
+                    axes[-1,sigmai].set_xscale('log', subs = []);
+                else:
+                    axes[-1,sigmai].set_xlabel('$k_i a N_B/\pi$',fontsize=myfontsize);
                 axes[1,0].legend();
                   
     # show

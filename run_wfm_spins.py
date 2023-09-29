@@ -89,6 +89,13 @@ if True: # T+ at different Delta E by changing D
             if(j == impis[0]): JK1 = JK;
             elif(j == impis[1]): JK2 = JK;
             params = Dval, Dval, J12, JK1, JK2;
+
+            #### test diag_ham operation
+            myparams = 0.2,0.2,0.0,1.9,1.0;
+            print(diag_ham(myparams, myspinS));
+            assert False
+
+            
             # construct h_SR in |+>, |->, |i> basis
             hSR_diag = diag_ham(params,myspinS);           
             hblocks.append(np.copy(hSR_diag));
