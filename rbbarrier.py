@@ -19,7 +19,7 @@ kelvin2eV =  8.617e-5; # units eV/K
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
-save_figs = True;
+save_figs = False;
 
 # fig standardizing
 myxvals = 199;
@@ -464,7 +464,7 @@ if True:
     # bardeen results for heights of barrier covering well
     for NCvali in range(len(NCvals)):
         NCval = NCvals[NCvali];
-        NLR = 200;
+        NLR = 800;
 
         # central region
         HC = np.zeros((NCval,NCval,n_loc_dof,n_loc_dof));
@@ -483,9 +483,9 @@ if True:
         # tinfty, tL, tR, 
         # Vinfty, VL, VLprime, VR, VRprime,
         # Ninfty, NL, NR, HC,HCprime,
-        Evals, Mvals = bardeen.kernel_well(tinfty, tLR, tLR, 
+        Evals, Mvals = bardeen.kernel_well_prime(tinfty, tLR, tLR, 
                                       Vinfty, VLR, Vinfty, VLR, Vinfty,
-                                      Ninfty, NLR, NLR, HC, HCobs, defines_Sz,
+                                      Ninfty, NLR, NLR, HC, HCobs,
                                       E_cutoff=VC,verbose=1);
 
         # get Bardeen expression for current

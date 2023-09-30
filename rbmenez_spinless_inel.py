@@ -75,16 +75,24 @@ interval = 1e-9;
 # inelastic processes
 
 # T vs Delta at fixed J
-if False:
+if True:
+
+    # params
+    Jval = -0.5;
+    NC = 11;
+    VC = 0.4*tLR;
+    tC = 1.0*tLR;
+    VC = 1.0*tLR; ########### !!
+    Vinfty = 1.0*tLR;######## !!
     
     # alpha -> beta
     alphas = [0,1];
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = False;
+    plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([2e-2]);
+        indvals = np.array([2e-5]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
@@ -102,10 +110,6 @@ if False:
         Deltaval = indvals[indvali]*np.array([[0,0],[0,1]]);  # <------- !!!!
 
         # central region
-        Jval = -0.5;
-        NC = 11;
-        VC = 0.4*tLR;
-        tC = 1.0*tLR;
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -134,7 +138,7 @@ if False:
         Evals, Mvals = bardeen.kernel_well(tinfty,tLR, tLR, 
                                   Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval,
                                   Ninfty, NLR, NLR, HC, HC_Sz, Deltaval, #defines_Sz = Delta!                                               
-                                  E_cutoff=np.eye(n_loc_dof)*Ecut+Deltaval,
+                                  E_cutoff=VC+Deltaval,
                                   interval=interval,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR+Deltaval, VLR+Deltaval, NLR, NLR,verbose=1);
@@ -193,7 +197,7 @@ if False:
 # T vs Jval
 # fixed, nonzero Delta (energy cost of impurity spin-flip)
 # compare with PRA paper, Fig 10
-if True:
+if False:
     
     # alpha -> beta
     alphas = [0,1];
@@ -202,7 +206,7 @@ if True:
     # plotting
     plot_alpha = False;
     if(plot_alpha):
-        indvals = np.array([-0.05]);
+        indvals = np.array([-0.005]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:

@@ -21,10 +21,13 @@ from transport import bardeen
 import numpy as np
 import matplotlib.pyplot as plt
 
+# units
+kelvin2eV =  8.617e-5; # units eV/K
+
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
-save_figs = False;
+save_figs = True;
 
 # fig standardizing
 myxvals = 199;
@@ -72,16 +75,22 @@ eigval_tol = 1e-5;
 # inelastic processes
 
 # T vs Delta at fixed J
-if True:
+if False:
+
+    # params
+    Jval = -0.005;
+    NC = 11;
+    VC = 0.4*tLR;
+    tC = 1.0*tLR;
     
     # alpha -> beta
     alphas = [0,1];
     alpha_strs = ["\\uparrow","\downarrow"];
 
     # plotting
-    plot_alpha = False;
+    plot_alpha = True;
     if(plot_alpha):
-        indvals = np.array([0.02]);
+        indvals = np.array([0.01]);
         nplots_x = len(alphas);
         nplots_y = len(alphas);
     else:
@@ -99,10 +108,6 @@ if True:
         Deltaval = indvals[indvali]*np.array([[0,0],[0,1]]);  # <------- !!!!
 
         # central region
-        Jval = -0.05;
-        NC = 11;
-        VC = 0.4*tLR;
-        tC = 1.0*tLR;
         HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
         for NCi in range(NC):
             for NCj in range(NC):
@@ -134,7 +139,7 @@ if True:
         Evals, Mvals = bardeen.kernel_well_prime(tinfty,tLR, tLR, 
                                   Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval,
                                   Ninfty, NLR, NLR, HC, HCprime,                                                
-                                  E_cutoff=np.eye(n_loc_dof)*Ecut+Deltaval,
+                                  E_cutoff=VC+Deltaval,
                                   interval=interval,verbose=1);
         Tvals = bardeen.Ts_bardeen(Evals, Mvals,
                                    tLR, tLR, VLR+Deltaval, VLR+Deltaval, NLR, NLR,verbose=1);
@@ -310,4 +315,122 @@ if False:
         elif( (alpha_initial, alpha_final) == (0,1) ): fname +="_sf.pdf";
     if(save_figs): plt.savefig(fname); print("Saving data as",fname);
     else: plt.show();
+
+
+
+
+
+
+
+
+
+
+
+
+##########################################################
+#### current
+# T vs Delta at fixed J
+if True:
+
+    # experimental params
+    Vbmax = 0.05;
+    chempot_R = -1.8; # middle of the band
+    kBT = 0.0001;
+    Vbvals = np.linspace(-Vbmax, Vbmax, 99);
+
+    # params
+    Jval = -0.005;
+    NC = 11;
+    VC = 0.4*tLR;
+    tC = 1.0*tLR;
+    VC = 1.0*tLR; ########### !!
+    Vinfty = 1.0*tLR;######## !!
+    NLR = 2000;
+    
+    # alpha -> beta
+    alphas = [0,1];
+    alpha_strs = ["\\uparrow","\downarrow"];
+
+    # plotting
+    indvals = np.array([0.002,0.02]);
+    nplots_x = 1
+    nplots_y = len(indvals);
+    fig, axes = plt.subplots(nrows = nplots_y, ncols = nplots_x, sharex = True);
+    fig.set_size_inches(nplots_x*7/2,nplots_y*3/2);
+        
+    # iter over J
+    for indvali in range(len(indvals)):
+
+        #### inelastic
+        Deltaval = indvals[indvali]*np.array([[0,0],[0,1]]);  # <------- !!!!
+
+        # central region
+        HC = np.zeros((NC,NC,n_loc_dof,n_loc_dof),dtype=complex);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # diagonal in space
+                    HC[NCi,NCj] += VC+Deltaval+(Jval/2)*np.array([[0,1],[1,0]]); #spin mix
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HC[NCi,NCj] += -tC;
+
+        # central region prime
+        tCprime = tC;
+        HCprime = np.zeros_like(HC);
+        for NCi in range(NC):
+            for NCj in range(NC):
+                if(NCi == NCj): # diagonal in space
+                    HCprime[NCi,NCj] += VC+Deltaval; # no spin mix
+                elif(abs(NCi -NCj) == 1): # nn hopping
+                    HCprime[NCi,NCj] += -tCprime;
+
+        # print
+        print("HC =");
+        print_H_alpha(HC);
+        print("HC - HCprime =");
+        print_H_alpha(HC-HCprime);
+
+        # bardeen.kernel syntax:
+        # tinfty, tL, tR,
+        # Vinfty, VL, VLprime, VR, VRprime,
+        # Ninfty, NL, NR, HC, HCprime, matrix that defines alpha (non-observable) basis
+        Evals, Mvals = bardeen.kernel_well_prime(tinfty,tLR, tLR, 
+                                  Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval, VLR+Deltaval, Vinfty+Deltaval,
+                                  Ninfty, NLR, NLR, HC, HCprime,                                                
+                                  E_cutoff=VC+Deltaval,
+                                  interval=interval,verbose=1);
+
+        # get Bardeen expression for current
+        current = bardeen.current(Evals, Mvals, Vbvals,
+                                  tLR, chempot_R, kBT, verbose = 1);
+
+        print("Output shapes:");
+        for arr in [Evals, Mvals, current, Evals[abs(Evals-chempot_R)<Vbmax]]: print(np.shape(arr));
+
+        # just plot total current
+        total_current = np.sum( np.sum(current, axis=0), axis=0);
+        total_dI = np.gradient(total_current, Vbvals);
+        if(indvali==0): I0, dI0 = np.max(total_current), np.max(total_dI); # normalize
+        axes[indvali].plot(Vbvals, total_current/I0, color=mycolors[0]);
+        axes[indvali].plot(Vbvals, total_dI/dI0, color=mycolors[1]);
+
+        # format
+        axes[indvali].set_ylabel('$I/I_0$',fontsize=myfontsize);
+        axes[indvali].ticklabel_format(axis='y',style='sci',scilimits=(0,0));
+        axes[indvali].set_title("$\Delta = {:.4f}$".format(indvals[indvali]), x=0.4, y = 0.7, fontsize=myfontsize);
+
+        # save data
+        fname = "data/rbmenez/nosup_inel/D{:.4f}_".format(indvals[indvali]);
+        np.save(fname+"current.npy",current);
+        np.save(fname+"Vb.npy",Vbvals);
+
+    # format and show
+    axes[-1].set_xlabel("$V_b$",fontsize=myfontsize);
+    fig.suptitle("$ \mu_R = {:.2f}, k_B T = {:.2f}, J = {:.2f}, N_L = {:.0f}, V_C = {:.2f}$".format(chempot_R, kBT/kelvin2eV, Jval, NLR, VC[0,0]));
+    plt.tight_layout();
+    fname = "figs/rbmenez/nosup_inel/current"
+    if(save_figs):
+        print("Saving data as",fname);
+        plt.savefig(fname+".pdf"); 
+    else: plt.show();
+    
 
