@@ -534,23 +534,43 @@ def kernel_well_prime(tinfty, tL, tR,
 #######################################################################
 #### generate observables from matrix elements
 
-def current(Emas, Mbmas, muR, eVb, kBT) -> np.ndarray:
+def current(Emas, Mbmas, Vb, tbulk, muR, kBT, verbose=0) -> np.ndarray:
     '''
     current as a function of bias voltage
     '''
+    for arr in [Emas, Mbmas, Vb]:
+        if(not isinstance(arr, np.ndarray)): raise TypeError;
     n_loc_dof, n_bound_left = np.shape(Emas);
+    Emas = np.real(Emas);
 
-    # bias voltage window
-    stat_part = nFD(Emas, muR+eVb,kBT)*(1-nFD(Emas,muR,kBT)) - nFD(Emas,muR,kBT)*(1-nFD(Emas, muR+eVb,kBT));
-    print(Emas.T,"\n",nFD(Emas,muR,kBT).T,"\n",stat_part.T);
-    # sum over spin
-    Iab = np.empty((n_loc_dof, n_loc_dof));
+    # current as a function of spin, Vb
+    Iab = np.empty((n_loc_dof, n_loc_dof, len(Vb)),dtype=float);
+
+    # iter over spin
     for alpha in range(n_loc_dof):
         for beta in range(n_loc_dof):
 
-            # sum over initial energy m
-            #print( 2*np.pi*np.dot(stat_part[alpha],Mbmas[alpha,:,beta] ) ); assert False
-            Iab[alpha,beta] = 2*np.pi*np.dot(stat_part[alpha],Mbmas[alpha,:,beta]);
+            # iter over bias voltage window
+            for Vbi in range(len(Vb)):
+
+                # bias voltage window
+                muL = muR + Vb[Vbi];
+                stat_part = nFD(Emas[alpha],muL,kBT)*(1-nFD(Emas[alpha],muR,kBT)) - nFD(Emas[alpha],muR,kBT)*(1-nFD(Emas[alpha], muL,kBT));
+    
+                # sum over initial energy m
+                Iab[alpha,beta,Vbi] = 2*np.pi*np.dot(stat_part, Mbmas[alpha,:,beta]);
+
+                # debug
+                if(verbose>9 and alpha==0 and Vbi in [0,len(Vb)//2-20,len(Vb)//2-10, len(Vb)//2+10,len(Vb)//2+20,len(Vb)-1]):
+                    print("stat_part = ", np.shape(stat_part))
+                    print("Mbmas = ", np.shape(Mbmas))
+                    fig, ax = plt.subplots();
+                    ax.plot(Emas[alpha], stat_part,marker='o');
+                    ax.plot(Emas[alpha], Mbmas[alpha,:,alpha]/np.max(Mbmas[alpha,:,alpha]),marker='s'); # normed
+                    ax.axvline(muR, color="gray", linestyle="dashed");
+                    ax.set_title("$V_b = {:.2f}, \mu_L = {:.2f}, \mu_R = {:.2f}$".format(Vb[Vbi], muL, muR));
+                    plt.show();
+    if(verbose>9): assert False
 
     return Iab;
 
@@ -609,53 +629,6 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
         plt.show();
         assert False
 
-    return Tbmas;
-
-def Ts_wfm(Hsys, Emas, tbulk, verbose=0) -> np.ndarray:
-    '''
-    Given bound state energies and Hsys, calculate the transmission
-    probability for each energy using wfm code
-
-    Used when the initial and final states have definite spin,
-    and so CAN RESOLVE the spin -> spin transitions
-    '''
-    n_spatial_dof = np.shape(Hsys)[0];
-    n_loc_dof = np.shape(Hsys)[-1];
-    n_bound_left = np.shape(Emas)[-1];
-    if(np.shape(Emas)[0] != n_loc_dof): raise ValueError;
-    if(Hsys[0,0,0,0] != 0): raise Exception("Is for continuous leads not wells");
-
-    # convert from Hsys to hblocks, tnn, tnnn 
-    hblocks = np.empty((n_spatial_dof,n_loc_dof,n_loc_dof),dtype=complex);
-    for sitei in range(n_spatial_dof):
-        hblocks[sitei] = Hsys[sitei, sitei];
-    tnn = np.empty((n_spatial_dof-1,n_loc_dof,n_loc_dof),dtype=complex);
-    for sitei in range(n_spatial_dof-1):
-        tnn[sitei] = Hsys[sitei, sitei+1];
-    tnnn = np.empty((n_spatial_dof-2,n_loc_dof,n_loc_dof),dtype=complex);
-    for sitei in range(n_spatial_dof-2):
-        tnnn[sitei] = Hsys[sitei, sitei+2];
-    for sitei in range(n_spatial_dof-3):
-        assert(not np.any(Hsys[sitei, sitei+3]));
-    if(verbose > 9):
-        print(hblocks);
-        print(tnn);
-        print(tnnn);
-        assert False;
-
-    # get probabilities, final spin state resolved
-    Tbmas = np.empty((n_loc_dof,n_bound_left,n_loc_dof),dtype=float);
-    for alpha in range(n_loc_dof):
-        source = np.zeros((n_loc_dof,));
-        source[alpha] = 1.0;
-        for m in range(n_bound_left):
-            Energy = Emas[alpha,m];
-            if( np.isnan(Emas[alpha,m])):
-                Tdum = np.full( (n_loc_dof,), np.nan);
-            else:
-                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tbulk, Energy, source, verbose = verbose);
-            Tbmas[:,m,alpha] = Tdum;
-            
     return Tbmas;
 
 def Ts_wfm_well(tL, tR, VL, VR, HC, Emas, verbose=0) -> np.ndarray:
@@ -1037,6 +1010,14 @@ def plot_wfs(h_4d, psimas, Emas, which_m = 0, title = "$H$", imag_tol = 1e-12, r
                 expax.scatter(exp_j, exp_fitted, color=colors[alpha], marker='x', label = "$\kappa = "+str(kappa_fitted[0])+", V_{eff} = $"+str(V_kappa_fitted));
         plt.legend();
         plt.show();
+
+def nFD(epsilon,mu,kBT):
+     '''
+     Fermi-Dirac distribution function, epsilon is the free variable
+     '''
+     if(not isinstance(epsilon, np.ndarray)): raise TypeError;
+     if(not isinstance(mu, float)): raise TypeError;
+     return 1/(np.exp((epsilon-mu)/kBT )+1)
 
 def couple_to_cont(H, E, alpha0) -> np.ndarray:
     '''
