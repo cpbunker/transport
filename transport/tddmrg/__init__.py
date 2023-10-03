@@ -24,7 +24,7 @@ import time
 #### time propagation
 
 #def kernel(mpo, h_obj, mps, tf, dt, bdims, verbose = 0):
-def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0) -> np.ndarray:
+def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
     '''
     Drive time prop for dmrg
     Use real time time dependent dmrg method outlined here:
