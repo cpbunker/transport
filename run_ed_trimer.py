@@ -7,7 +7,8 @@ Toy model of molecule with itinerant electrons
 solved in time-dependent DMRG (approximate many body QM) method in transport/tddmrg
 '''
 
-from dmrg_utils import *
+from transport import tddmrg
+from transport.tddmrg import utils
 
 from transport import fci_mod
 #from transport.fci_mod import ops_dmrg
@@ -48,9 +49,9 @@ hilbert_size = n_loc_dof**n_fer_orbs;
 bdims = 500*n_fer_orbs**2*np.array([1.0,1.2,1.4,1.6,1.8]);
 bdims = list(bdims.astype(int));
 noises = [2e-1,1e-1,2e-2,1e-2,1e-5];
-h_arr = get_h1e(n_mols,s_mols,n_sys_orbs,tm, Bmol, Belec,JH,JK,chiral_breaking,verbose=verbose);
+h_arr = utils.get_h1e(n_mols,s_mols,n_sys_orbs,tm, Bmol, Belec,JH,JK,chiral_breaking,verbose=verbose);
 if(verbose): print("1. Hamiltonian\n-h1e = \n");
-if(verbose>1): print_H_alpha(h_arr);
+if(verbose>1): utils.print_H_alpha(h_arr);
               
 #### exact soln
 if(verbose): print("4. Exact solution");
@@ -62,7 +63,7 @@ if(verbose):
     print("-exact gd state:\n",psi0);
 
 # chirality
-chiral_arr = get_chiral_op(n_mols, s_mols,n_sys_orbs);
+chiral_arr = utils.get_chiral_op(n_mols, s_mols,n_sys_orbs);
 chiral_arr = fci_mod.mat_4d_to_2d(chiral_arr);
 chiral_exp = np.dot(np.conj(psi0),np.dot(chiral_arr,psi0));
 print("-<\chi> = ",chiral_exp);
@@ -70,14 +71,14 @@ print("-<\chi> = ",chiral_exp);
 # site occupancy
 occ_vals = np.zeros((n_sys_orbs),dtype=complex);
 for a in range(n_sys_orbs):
-    occ_arr = get_occ(n_loc_dof, n_sys_orbs, a);
+    occ_arr = utils.get_occ(n_loc_dof, n_sys_orbs, a);
     occ_vals[a] = np.dot(np.conj(psi0),np.dot(fci_mod.mat_4d_to_2d(occ_arr),psi0));
     print("-<occ["+str(a)+"]>",occ_vals[a]);
 
 # site electron spin
 sigz_vals = np.zeros((n_sys_orbs),dtype=complex);
 for a in range(n_sys_orbs):
-    sigz_arr = get_sigz(n_loc_dof, n_sys_orbs, a);
+    sigz_arr = utils.get_sigz(n_loc_dof, n_sys_orbs, a);
     sigz_vals[a] = np.dot(np.conj(psi0),np.dot(fci_mod.mat_4d_to_2d(sigz_arr),psi0));
     print("-<sigma_z["+str(a)+"]>",sigz_vals[a]);
 
@@ -86,7 +87,7 @@ SaSb_vals = np.zeros((n_mols,n_mols),dtype=complex);
 for a in range(n_mols):
     for b in range(n_mols):
         if(a < b or True):
-            SaSb_arr = get_SaSb(n_mols,s_mols,n_sys_orbs,a,b);
+            SaSb_arr = utils.get_SaSb(n_mols,s_mols,n_sys_orbs,a,b);
             if(verbose > 3): print(SaSb_arr[0,0][::2,::2]);
             SaSb_exp = np.dot(np.conj(psi0),np.dot(fci_mod.mat_4d_to_2d(SaSb_arr),psi0));
             if(verbose): print("-< S_"+str(a)+" S_"+str(b)+"> = ",SaSb_exp);
@@ -97,7 +98,7 @@ SaSb_sum = np.zeros_like(SaSb_arr);
 for a in range(n_mols):
     for b in range(n_mols):
         if(a < b or True):
-            SaSb_sum += get_SaSb(n_mols,s_mols,n_sys_orbs,a,b);
+            SaSb_sum += utils.get_SaSb(n_mols,s_mols,n_sys_orbs,a,b);
 SaSb_sum_exp = np.dot(np.conj(psi0),np.dot(fci_mod.mat_4d_to_2d(SaSb_sum),psi0));
 print("- <\sum_ab S_a S_b> = ",SaSb_sum_exp);
 
@@ -106,7 +107,7 @@ SaSigb_vals = np.zeros((n_mols,n_sys_orbs),dtype=complex);
 for a in range(n_mols):
     for b in range(n_sys_orbs):
         if(a <= b or True):
-            SaSigb_arr = get_SaSigb(n_mols,s_mols,n_sys_orbs,a,b);
+            SaSigb_arr = utils.get_SaSigb(n_mols,s_mols,n_sys_orbs,a,b);
             if(verbose > 3): print(SaSigb_arr[a,b][::2,::2]);
             SaSigb_arr = fci_mod.mat_4d_to_2d(SaSigb_arr);
             SaSigb_exp = np.dot(np.conj(psi0),np.dot(SaSigb_arr,psi0));

@@ -4,14 +4,14 @@ import itertools
 
 from transport import fci_mod
 
-def print_H_alpha(H) -> None:
+def print_H_alpha(H):
     assert(len(np.shape(H)) == 4);
     numj = np.shape(H)[0];
     for i in range(numj):
         for j in [max(0,i-1),i,min(numj-1,i+1)]:
             print("H["+str(i)+","+str(j)+"] =\n",np.real(H[i,j,:,:]));
 
-def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_chiral, verbose = 0) -> np.ndarray:
+def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_chiral, verbose = 0):
     '''
     make the 1body and 2body parts of the 2nd qu'd ham
     The Ham is Kumar 2017 Eqs (1)-(3)
@@ -89,7 +89,7 @@ def get_h1e(n_mols,s_mols,spatial_orbs,mytm, myB_mm, myB_elec, myJH, myJK, my_ch
     # return
     return h1e;
 
-def get_occ(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
+def get_occ(n_loc_dof,spatial_orbs,aindex):
     '''
     Get the operator for the occupancy of site a
     '''
@@ -100,7 +100,7 @@ def get_occ(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
 
     return occ;
 
-def get_sigz(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
+def get_sigz(n_loc_dof,spatial_orbs,aindex):
     '''
     Get the operator for the electron z spin of site a
     '''
@@ -113,7 +113,7 @@ def get_sigz(n_loc_dof,spatial_orbs,aindex) -> np.ndarray:
     return sigz;
  
 
-def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex, verbose = 0) -> np.ndarray:
+def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex, verbose = 0):
     '''
     Get the operator mol spin S_a dotted into mol spin S_b
     '''
@@ -159,7 +159,7 @@ def get_SaSb(n_mols,s_mols,spatial_orbs,aindex,bindex, verbose = 0) -> np.ndarra
     # return                       
     return SaSb;
 
-def get_SaSigb(n_mols, s_mols, spatial_orbs, aindex, bindex, verbose=0) -> np.ndarray:
+def get_SaSigb(n_mols, s_mols, spatial_orbs, aindex, bindex, verbose=0):
     '''
     Get the operator mol spin S_a dotted into elec spin sigma on site b
     '''
