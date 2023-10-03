@@ -2,7 +2,7 @@
 '''
 
 from utils import plot_fit, load_dIdV, fit_wrapper
-from landauer import En, dI_of_Vb_zero
+from landauer import En
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,11 +48,28 @@ def make_EC_square(EC, EC_not, d_not):
     ret = np.zeros_like(EC);
     ret[abs(EC-EC_not)<d_not] = np.ones_like(ret[abs(EC-EC_not)<d_not]);
     ret = ret/(2*d_not);
-    plt.plot(EC, ret);
-    plt.show();
-    return ret
 
-def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC): 
+    # visualize
+    fig, ax = plt.subplots()
+    ax.plot(EC, ret, label=scipy_integ(ret, EC));
+    ax.set_xlabel("$E_C$"); ax.set_ylabel("PDF"); plt.legend();
+    plt.show();
+    return ret;
+
+# antisymmetry in coupling
+def Sfunc(Sdummy, Edummy, Eintercept = 0.0005):
+    if(not isinstance(Edummy, np.ndarray)): raise TypeError;
+    slope = Sdummy/Eintercept;
+    ret = slope*Edummy - Sdummy;
+    ret[Edummy<Eintercept] = np.zeros_like(ret[Edummy<Eintercept]);
+    return ret;
+
+    slope = -Sdummy/Eintercept;
+    ret = slope*Edummy + Sdummy;
+    ret[Edummy>Eintercept] = np.zeros_like(ret[Edummy>Eintercept]);
+    return ret;
+
+def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC, Sparam=0): 
     '''
     '''
     if(not isinstance(Vb, np.ndarray)): raise TypeError;
@@ -60,12 +77,22 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC):
     nmax = 100; # <- has to be increased with increasing Gamma
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
-    ret = np.zeros_like(Vb);
-    for ECval in make_EC_list(EC):
-        ret += dI_of_Vb_zero(Vb-V0, mymu0, Gamma, ECval, 0.0, ns);
-    return tau0*ret; # overall factor of tau0
+    Vb = Vb - V0; # shifted
 
-def dIdV_lorentz_integrand(Vb, V0, tau0, Gamma, EC):
+    # chem potentials
+    muL, muR = mymu0+Vb, mymu0;
+
+    # conductance
+    conductance = np.zeros_like(Vb);
+    for n in ns:
+        Enval = En(n,EC,Vb) + Sfunc(Sparam, np.array([EC]))[0]*Vb;
+        term1 = 1/(1+(muL-Enval)*(muL-Enval)/(Gamma*Gamma) );
+        term2 = 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
+        conductance += (1/2)*(term1+term2) - Sparam*(term1-term2);
+    conductance = e2overh*conductance; # return val of landauer, dI_of_Vb_zero
+    return tau0*conductance; # overall factor of tau0
+
+def dIdV_lorentz_integrand(Vb, V0, tau0, Gamma, EC, Sparam=0):
     '''
     '''
     if(not isinstance(EC, np.ndarray)): raise TypeError;
@@ -77,47 +104,53 @@ def dIdV_lorentz_integrand(Vb, V0, tau0, Gamma, EC):
 
     # chem potentials
     muL, muR = mymu0+Vb, mymu0;
+    if False:
+        fig, ax = plt.subplots();
+        y = Sfunc(Sparam, EC);
+        ax.plot(EC, y)
+        plt.show()
+        assert False
 
     # conductance
     conductance = np.zeros_like(EC);
     for n in ns:
-        Enval = En(n,EC,Vb);
-        conductance += 1/(1+(muL-Enval)*(muL-Enval)/(Gamma*Gamma) );
-        conductance += 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
-    conductance = e2overh*(1/2)*conductance; # return val of landauer, dI_of_Vb_zero
+        Enval = En(n,EC,Vb) + Sfunc(Sparam, EC)*Vb;
+        term1 = 1/(1+(muL-Enval)*(muL-Enval)/(Gamma*Gamma) );
+        term2 = 1/(1+(muR-Enval)*(muR-Enval)/(Gamma*Gamma) );
+        conductance += (1/2)*(term1+term2) - Sparam*(term1-term2);
+    conductance = e2overh*conductance; # return val of landauer, dI_of_Vb_zero
     return tau0*conductance; # overall factor of tau0
-
 
 ####################################################################
 #### run
 
 if(__name__ == "__main__"):
 
-    Vbvals = np.linspace(-0.1,0.1,int(200));
+    Vbvals = np.linspace(-0.1,0.1,int(400));
 
     # fitting params
-    V0_not, tau0_not, Gamma_not, EC_not =0.0, 0.011/4, 0.002, 0.005; 
-    single_vals = dIdV_lorentz_zero(Vbvals, V0_not, tau0_not, Gamma_not, EC_not);
+    V0_not, tau0_not, Gamma_not, EC_not, Snot = 0.0, 0.011/4, 0.001, 0.005, 0.15; 
+    single_vals = dIdV_lorentz_zero(Vbvals, V0_not, tau0_not, Gamma_not, EC_not, 0.0);
 
     # EC distribution
     EC_mesh = np.linspace(0.0,10*EC_not,int(1e3));
     square = True;
-    if(square): EC_dist = make_EC_square(EC_mesh, EC_not, 0.01*EC_not);
+    if(square): EC_dist = make_EC_square(EC_mesh, EC_not, 0.1*EC_not);
     else: EC_dist = make_EC_dist(EC_mesh, EC_not);
-    plt.plot(EC_mesh, EC_dist, label=scipy_integ(EC_dist, EC_mesh));
-    plt.legend();
-    plt.show();
     
     # integrate over EC dist
     dist_vals = np.empty_like(Vbvals);
     for Vbi in range(len(Vbvals)):
-        integrand = dIdV_lorentz_integrand(Vbvals[Vbi], V0_not, tau0_not, Gamma_not, EC_mesh);
+        integrand = dIdV_lorentz_integrand(Vbvals[Vbi], V0_not, tau0_not, Gamma_not, EC_mesh, Snot);
         dist_vals[Vbi] = scipy_integ(integrand*EC_dist, EC_mesh);
         
     # plot
     fig, ax = plt.subplots();
     ax.plot(Vbvals, single_vals);
     ax.plot(Vbvals, dist_vals);
+    ax.set_xlabel("$V_b$");
+    ax.set_ylabel("$dI/dV_b$");
+    ax.set_title("$\Gamma = {:.3f}, E_C = {:.3f}, S = {:.3f}$".format(Gamma_not, EC_not, Snot)); 
     plt.show();
 
     

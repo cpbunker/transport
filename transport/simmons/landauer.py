@@ -24,11 +24,8 @@ def En(n, EC, Vb):
     This gives the energy of a single-fermion level rather than a
     many-body charge state. 
     '''
-    if False:
-        assert(EC == 0.0);
-        return EC*n*n-Vg*n;
-    else:
-        return EC*(2*n+1)+Vb/2 # chem potential of island is zero of energy scale
+
+    return EC*(2*n+1)+Vb/2 # chem potential of island is zero of energy scale
 
 def nFD(epsilon, kBT):
     '''
