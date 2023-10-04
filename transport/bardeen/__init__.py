@@ -599,7 +599,7 @@ def Ts_bardeen(Emas, Mbmas, tL, tR, VL, VR, NL, NR, verbose = 0) -> np.ndarray:
                     /(-2*fci_mod.scal_to_vec(tLa,n_bound_left))); # wavenumbers in the left well
     if(abs(np.max(np.imag(kmas)))>1e-10): print(abs(np.max(np.imag(kmas)))); raise ValueError;
     kmas = np.real(kmas); # force to be real
-    
+
     # check
     check = False;
     if(check):

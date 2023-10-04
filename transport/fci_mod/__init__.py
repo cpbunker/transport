@@ -182,7 +182,9 @@ def scal_to_vec(scal, n_dof):
     energy space, etc and make it a constant vector in that space
     '''
 
-    return np.full((n_dof, *np.shape(scal)), scal).T;
+    ret_shape = [n_dof];
+    for dim in np.shape(scal): ret_shape.append(dim);
+    return np.full(ret_shape, scal).T;
 
 def vec_1d_to_2d(vec, n_loc_dof):
     '''
