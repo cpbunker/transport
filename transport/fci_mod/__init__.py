@@ -168,7 +168,7 @@ def scf_to_arr(mol, scf_obj):
     norbs = np.shape(coeffs)[0];
 
     # convert to h1e and h2e array reps in molecular orb basis
-    h1e = np.dot(coeffs.T, hcore @ coeffs);
+    h1e = np.dot(coeffs.T, np.matmul(hcore,coeffs));
     g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
 
     return h1e, g2e;
