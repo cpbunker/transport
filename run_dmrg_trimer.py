@@ -21,6 +21,20 @@ solve_dmrg = True; # whether to do DMRG solution
 verbose = 1;
 np.set_printoptions(precision = 4, suppress = True);
 
+# set up molecule geometry
+from pyscf import gto, scf, fci
+coords = [["O", (0,0,0)],["H",(0,0,1.92)]];
+basis = "sto-3g"; # minimal
+X_mol = gto.M(atom=coords, basis=basis, unit="bohr", spin = 1); # mol geometry
+if(verbose):
+    print("Basis = ");
+    for label in X_mol.ao_labels(): print(label);
+X_scf = scf.RHF(X_mol).run();
+print("\n\n\n");
+
+h, g = fci_mod.scf_to_arr(X_mol, X_scf)
+
+
 ##################################################################################
 #### toy model of molecule
 
@@ -56,7 +70,7 @@ if(verbose>1): utils.print_H_alpha(h_arr);
 if(solve_dmrg):
     if(verbose): print("2. DMRG solution");
     from pyblock3.algebra.mpe import MPE
-    if(sum(nelecs) != 1): raise NotImplementedError;
+    if(sum(n_elecs) != 1): raise NotImplementedError;
 
     # MPS ansatz
     h_arr = fci_mod.mat_4d_to_2d(h_arr);

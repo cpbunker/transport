@@ -27,7 +27,7 @@ kelvin2eV =  8.617e-5; # units eV/K
 # top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 3;
-save_figs = True;
+save_figs = False;
 
 # fig standardizing
 myxvals = 199;
@@ -345,7 +345,7 @@ if True:
     tC = 1.0*tLR;
     VC = 1.0*tLR; ########### !!
     Vinfty = 1.0*tLR;######## !!
-    NLR = 2000;
+    NLR = 200;
     
     # alpha -> beta
     alphas = [0,1];
