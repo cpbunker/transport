@@ -21,9 +21,9 @@ import sys
 
 # top level
 verbose = 3;
-get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
-nleads = (3,3);
-nelecs = (2,0); # one electron on dot and one itinerant
+get_data = sys.argv[1]; # whether to run computations, if not data already exists
+nleads = (2,2);
+nelecs = (1,0); # one electron on dot and one itinerant
 ndots = 1;
 myspinstate = "ab";
 myprefix = "data/dmrg_dot/";
@@ -54,7 +54,7 @@ if(get_data): # command line tells whether to get data
 else: # plot data
     datafs = sys.argv[2:];
     splots = ['lead_occ','lead_Sz','E']; # which subplots to plot
-    mysites = ['L1','L2','L3','D','R1','R2','R3'];
+    mysites = ['L1','L2','D','R1','R2'];
     assert(len(mysites) == sum(nleads)+ndots);
     title = "Itinerant electron scatters from spin impurity";
     paramstr = "$t_h$ = "+str(th)+"\n$V_b$ = "+str(Vb)+"\n$V_g$ = "+str(Vg)+"\n$U$ = "+str(U)
