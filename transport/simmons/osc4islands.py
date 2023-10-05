@@ -178,6 +178,29 @@ def dIdV_lorentz_trial(Vb, V0, tau0, Gamma, EC1, EC2, EC3, EC4):
         dI_osc += dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
     return dI_osc;
 
+def dIdV_lorentz_dist(Vb, V0, tau0, Gamma, EC, dEC):
+    '''
+    '''
+    from osc_distribution import dIdV_lorentz_integrand, make_EC_square
+    from scipy.integrate import simpson as scipy_integ
+
+    # EC distribution
+    EC_mesh = np.linspace(0.0,10*EC,int(1e3));
+    EC_dist = make_EC_square(EC_mesh, EC, dEC*EC);
+
+    # integrate over EC dist
+    dist_vals = np.zeros_like(Vb);
+    for Vbi in range(len(Vb)):
+        integrand = dIdV_lorentz_integrand(Vb[Vbi], V0, tau0, Gamma, EC_mesh);
+        dist_vals[Vbi] += scipy_integ(integrand*EC_dist, EC_mesh);
+    return dist_vals;
+
+def dIdV_all_dist(Vb, V0, Vslope, eps0, epsc, G1, G2, G3, Gamma, tau01, EC1, dEC1, tau02, EC2,  dEC2):
+    ret = dIdV_back(Vb, V0, Vslope, eps0, epsc, G1, G2, G3, temp_kwarg, Gamma);
+    ret += dIdV_lorentz_dist(Vb, V0, tau01, Gamma, EC1, dEC1);
+    ret += dIdV_lorentz_dist(Vb, V0, tau02, Gamma, EC2, dEC2);
+    return ret;
+
 ####################################################################
 #### main
 
@@ -276,9 +299,9 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, halve=False, verbose=0):
     #################
 
     # EC distribution
-    myEC, myV0, mytau0, myGamma = params_zero[-2], params_zero[0], num_EC_kwarg*params_zero[-4], params_zero[-3];
+    myEC, mydEC, myV0, mytau0, myGamma = params_zero[-2], 0.6, params_zero[0], num_EC_kwarg*params_zero[-4], params_zero[-3];
     EC_mesh = np.linspace(0.0,10*myEC,int(1e3));
-    EC_dist = make_EC_square(EC_mesh, myEC, 0.9*EC_not);
+    EC_dist = make_EC_square(EC_mesh, myEC, mydEC);
 
     # integrate over EC dist
     dist_vals = np.zeros_like(V_exp);
@@ -288,8 +311,8 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, halve=False, verbose=0):
     del EC_dist;
 
     # again with smaller tau0 and EC
-    mytau0, myEC = mytau0/2, myEC*3/4
-    EC_dist = make_EC_square(EC_mesh, myEC, 0.05*EC_not);
+    mytau0, myEC, mydEC = mytau0/2, myEC*3/4, 0.05;
+    EC_dist = make_EC_square(EC_mesh, myEC, mydEC);
     for Vbi in range(len(V_exp)):
         integrand = dIdV_lorentz_integrand(V_exp[Vbi], myV0, mytau0, myGamma, EC_mesh);
         dist_vals[Vbi] += scipy_integ(integrand*EC_dist, EC_mesh);
@@ -304,8 +327,26 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, halve=False, verbose=0):
                 mytitle="New background fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
     dist_fit = dIdV_back(V_exp, *params_backdist) + dist_vals;
 
-    # plot
-    if(verbose > 4): plot_fit(V_exp, dI_exp, dist_fit, mytitle="Distribution fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    # plot pre fit
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dist_fit, mytitle="Distribution pre-fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    
+    # do full dist fit
+    params_dist_guess = np.array([num_EC_kwarg*params_zero[-4], params_zero[-2], 0.6, mytau0, myEC, mydEC]);
+    bounds_dist = [[],[]];
+    for guess in params_dist_guess:
+        bounds_dist[0].append(guess*(1-0.4));
+        bounds_dist[1].append(guess*(1+0.4));
+    exclude_Tsurf_mask = np.array([0,0,0,0,0,0,0,1,0]);
+    params_dist_guess = np.append(params_backdist[exclude_Tsurf_mask<1], params_dist_guess);
+    bounds_dist = np.append(bounds_init[:,exclude_Tsurf_mask<1],bounds_dist, axis=1)
+    params_dist, rmse_dist = fit_wrapper(dIdV_all_dist, V_exp, dI_exp,
+                                params_dist_guess, bounds_dist, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "Gamma", "tau01", "EC1", "dEC1", "tau02", "EC2", "dEC2"],
+                                stop_bounds = False, verbose=verbose);
+    if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_dist(V_exp, *params_dist), derivative=False,
+                mytitle="Distribution fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
+    
+    
+    
     assert False;
 
     #### fine tune the lorentz_zero fit ####

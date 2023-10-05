@@ -43,11 +43,13 @@ def make_EC_dist(EC, EC_not, n=2):
 
 def make_EC_square(EC, EC_not, d_not):
     if(not isinstance(EC, np.ndarray)): raise TypeError;
+    d_not = d_not*EC_not;
     assert(EC_not - d_not > EC[0] and EC_not + d_not < EC[-1]);
 
     ret = np.zeros_like(EC);
     ret[abs(EC-EC_not)<d_not] = np.ones_like(ret[abs(EC-EC_not)<d_not]);
     ret = ret/(2*d_not);
+    return ret;
 
     # visualize
     fig, ax = plt.subplots()
