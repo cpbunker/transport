@@ -338,13 +338,23 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, halve=False, verbose=0):
         bounds_dist[1].append(guess*(1+0.4));
     exclude_Tsurf_mask = np.array([0,0,0,0,0,0,0,1,0]);
     params_dist_guess = np.append(params_backdist[exclude_Tsurf_mask<1], params_dist_guess);
-    bounds_dist = np.append(bounds_init[:,exclude_Tsurf_mask<1],bounds_dist, axis=1)
+    bounds_dist = np.append(bounds_init[:,exclude_Tsurf_mask<1],bounds_dist, axis=1);
+    freeze_bounds_mask = np.array([1,1,1,1,1,1,1,1,0,0,0,0,0,0]);
+    for guessi in range(len(params_dist_guess)):
+        if(freeze_bounds_mask[guessi]):
+            bounds_dist[0,guessi] = params_dist_guess[guessi]-1e-12;
+            bounds_dist[1,guessi] = params_dist_guess[guessi]+1e-12;
+    labels_dist = ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "Gamma", "tau01", "EC1", "dEC1", "tau02", "EC2", "dEC2"];
+    for i in range(len(labels_dist)):
+        print(labels_dist[i]+" = "+str(params_dist_guess[i])+", "+str(bounds_dist[:,i]));
+
+    
     params_dist, rmse_dist = fit_wrapper(dIdV_all_dist, V_exp, dI_exp,
-                                params_dist_guess, bounds_dist, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "Gamma", "tau01", "EC1", "dEC1", "tau02", "EC2", "dEC2"],
+                                params_dist_guess, bounds_dist, labels_dist,
                                 stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_dist(V_exp, *params_dist), derivative=False,
                 mytitle="Distribution fit (T= {:.1f} K, B = {:.1f} T)".format(temp_kwarg, bfield_kwarg), myylabel="$dI/dV_b$ (nA/V)");
-    
+    return V_exp, dI_exp-dIdV_back(V_exp, *params_backdist), params_zero[osc_mask_zero>0], rmse_backdist;
     
     
     assert False;
@@ -444,7 +454,7 @@ if(__name__ == "__main__"):
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/"];
     stop_at = stop_ats[2];
-    verbose=10;
+    verbose=1;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
