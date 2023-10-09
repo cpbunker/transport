@@ -85,5 +85,5 @@ ax.set_title(atoms[0]+"$-$"+atoms[1]+" bond (compute time = {:.1f} minutes)".for
 plt.legend();
 plt.tight_layout();
 fname = "figs/dmrg/"+atoms[0]+"-"+atoms[1]+".pdf";
-if False: print("Saving plot to "+fname); plt.savefig(fname);
+if True: ("Saving plot to "+fname); plt.savefig(fname);
 else: plt.show();
