@@ -2,6 +2,8 @@
 Plotting module for quick methods of making matplotlib plots in pyscf context
 '''
 
+import ops, ops_dmrg
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines

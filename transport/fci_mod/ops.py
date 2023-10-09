@@ -27,6 +27,22 @@ pyscf/fci module:
 
 import numpy as np
 
+def compute_obs(op, psi)"
+    '''
+    '''
+    raise NotImplementedError; # see tddmrg/__init__.py/compute_energy
+
+def charge_vs_site(psi, norbs):
+    '''
+    '''
+    
+    sites = np.array(range(norbs),dtype=int)
+    charges = np.empty_like(sites, dtype=float);
+    for sitei in sites:
+        occ_op = occ([sitei], norbs);
+        charges[sitei] = np.dot(np.conj(psi), np.dot(occ_op, psi));
+    return sites, charges;
+
 #######################################################
 #### 1e operators
 

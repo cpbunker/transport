@@ -22,21 +22,50 @@ import numpy as np
 ##########################################################################################################
 #### type conversions
 
-def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
+def rhf_to_arr(mol, scf_obj):
     '''
-    Converts hamiltonians in array form to scf object
+    Converts physics of an atomic/molecular system, as contained in a
+    spin-degen SCF object (ie result of passing atomic coords to
+        scf.RHF(mol) restricted hartree fock,
+        scf.RKS(mol).run() restricted Kohn sham, etc)
+    to spinless 1-body, 2-body hamiltonian arrays h1e and g2e.
+
+    Args:
+    mol, an instance of gto.mole.Mole, defines physical system
+    scf_obj, restricted mean field kernel result, contains elec matrix els
+    '''
+    from pyscf import ao2mo, gto
+    if(not isinstance(mol, gto.mole.Mole)): raise TypeError;
+
+    # unpack scf object
+    hcore = scf_obj.get_hcore();
+    coeffs = scf_obj.mo_coeff;
+    if(len(np.shape(coeffs)) != 2): raise ValueError("Not spinless");
+    norbs = np.shape(coeffs)[-1];
+
+    # convert to h1e and h2e array reps in molecular orb basis
+    h1e = np.dot(coeffs.T, np.matmul(hcore,coeffs));
+    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
+
+    return h1e, g2e;
+
+def arr_to_uhf(h1e, g2e, norbs, nelecs, verbose = 0):
+    '''
+    Converts spinless 1-body, 2-body Hamiltonian arrays to scf object
     
     Args:
-    - h1e, 2d np array, 1e part of siam ham
-    - g2e, 2d np array, 2e part of siam ham
+    - h1e, 2d np array, 1e part of Hamiltonian
+    - g2e, 2d np array, 2e part of Hamiltonian
     - norbs, int, total num spin orbs
-    - nelecs, tuple of number es, 0 due to All spin up formalism
+    - nelecs, tuple of (number es, 0) (ALL SPIN UP formalism)
     
     Returns: tuple of
-    mol, gto.mol object which holds some physical params
-    scf inst, holds physics: h1e, h2e, mo coeffs etc
+    mol, an instance of gto.mole.Mole, defines physical system
+    scf_obj, restricted mean field kernel result, contains elec matrix els
     '''
     from pyscf import gto, scf
+    if(len(np.shape(h1e)) != 2 or len(np.shape(g2e)) != 4): raise ValueError("Not spinless");
+    if(np.shape(h1e)[0] != np.shape(g2e)[0]): raise ValueError;
     if(not isinstance(h1e, np.ndarray)): raise TypeError;
     if(not isinstance(g2e, np.ndarray)): raise TypeError;
     
@@ -52,7 +81,7 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
     mol.incore_anyway = True
     mol.nelectron = sum(nelecs)
     mol.spin = nelecs[1] - nelecs[0]; # in all spin up formalism, mol is never spinless!
-    scf_inst = scf.UHF(mol)
+    scf_inst = scf.UHF(mol) # necessary to do UHF since there are no spin downs
     scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
     scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
     scf_inst._eri = g2e # put h2e into scf solver
@@ -64,22 +93,20 @@ def arr_to_scf(h1e, g2e, norbs, nelecs, verbose = 0):
 
     return mol, scf_inst;
 
-def arr_to_eigen(h1e, g2e, nelecs, verbose = 0):
+def arr_to_fd(h1e, g2e, nelec, fname, energy_nuc=0):
     '''
     '''
-    if(not isinstance(h1e, np.ndarray)): raise TypeError;
-    if(not isinstance(g2e, np.ndarray)): raise TypeError;
+    from pyscf.tools import fcidump
 
-    # unpack
-    norbs = np.shape(h1e)[0];
+    fcidump.from_integrals(fname, h1e, g2e, h1e.shape[0], nelec, nuc=energy_nuc);
 
-    # to scf
-    mol, scfo = arr_to_scf(h1e, g2e, norbs, nelecs);
+def fd_to_rhf(fname):
+    '''
+    '''
+    from pyscf.tools import fcidump
 
-    # to eigenstates
-    e, v = scf_FCI(mol, scfo, nroots = norbs, verbose = verbose);
-
-    return e,v;
+    scf_inst = fcidump.to_scf(fname);
+    return scf_inst;
 
 def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     '''
@@ -93,7 +120,6 @@ def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     Returns:
     MPE object
     '''
-
     from pyblock3 import fcidump, hamiltonian, algebra
     from pyblock3.algebra.mpe import MPE
 
@@ -111,67 +137,53 @@ def fd_to_mpe(fd, bdim_i, cutoff = 1e-9):
     # MPE
     return MPE(psi_mps, h_mpo, psi_mps);
 
-def arr_to_mpo(h1e, g2e, nelecs, bdim_i, cutoff = 1e-15):
+def arr_to_mpo(h1e, g2e, nelec, bdim_i, spinless = True, energy_nuc = 0, cutoff = 1e-15, verbose=0):
     '''
-    Convert physics contained in an FCIDUMP object or file
+    Convert spinless 1-body, 2-body Hamiltonian arrays
     to a MatrixProduct Expectation (MPE) for doing DMRG
 
     Args:
-    fd, a pyblock3.fcidump.FCIDUMP object, or filename of such an object
-    bdim_i, int, initial bond dimension of the MPE
+
+    # TODO #
 
     Returns:
-    tuple of ham as MPO, state as mps
+    tuple of ham object, ham as MPO, state as mps
     '''
     from pyblock3 import hamiltonian, fcidump
-    from pyblock3.algebra.mpe import MPE
-    
-    if(not isinstance(h1e, np.ndarray)): raise TypeError;
-    if(not isinstance(g2e, np.ndarray)): raise TypeError;
+    if(spinless and not isinstance(h1e, np.ndarray)): raise TypeError;
+    if(not spinless and not isinstance(h1e, tuple)): raise TypeError;
+    if(len(np.shape(h1e)) != 2 and spinless): raise ValueError("Not spinless");
+    if(len(np.shape(h1e)) != 3 and not spinless): raise ValueError("Not spinful");
 
     # unpack
     norbs = np.shape(h1e)[0];
 
     # convert arrays to fcidump
-    fd = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',n_sites=norbs,n_elec=sum(nelecs), twos=nelecs[0]-nelecs[1]);
+    fd = fcidump.FCIDUMP(h1e=h1e,g2e=g2e,pg='c1',
+                         n_sites=norbs,n_elec=sum(nelec),const_e=energy_nuc,
+                         twos=nelec[0]-nelec[1],uhf=(not spinless)); #<- why?
 
     # convert fcidump to hamiltonian obj
     h_obj = hamiltonian.Hamiltonian(fd,flat=True);
 
     # from hamiltonian obj, build Matrix Product Operator
     h_mpo = h_obj.build_qc_mpo();
-    h_mpo, _ = h_mpo.compress(cutoff = cutoff);
+    h_mpo, _ = h_mpo.compress(cutoff = cutoff); # compress
     
     # from hamiltonian onj, build Matrix Product State
     psi_mps = h_obj.build_mps(bdim_i);
+    #psi_mps = psi_mps.canonicalize(center=0); # canonicalize
+    #psi_mps /= psi_mps.norm(); # normalize
+    if(verbose): print("MPS = ",psi_mps.show_bond_dims());
 
-    # MPE
     return h_obj, h_mpo, psi_mps;
 
-
-def scf_to_arr(mol, scf_obj):
+def mpo_to_mpe(h_mpo, psi_mps):
     '''
-    Converts physics of an atomic/molecular system, as contained in an scf inst
-    ie produced by passing molecular geometry object mol to
-    - scf.RHF(mol) restricted hartree fock
-    - scf.UHF(mol) unrestricted hartree fock
-    - scf.RKS(mol).run() restricted Kohn sham
-    - etc
-    to ab initio hamiltonian arrays h1e and g2e
     '''
-    from pyscf import ao2mo, gto
-    if(not isinstance(mol, gto.mol)): raise TypeError;
-
-    # unpack scf object
-    hcore = scf_obj.get_hcore();
-    coeffs = scf_obj.mo_coeff;
-    norbs = np.shape(coeffs)[0];
-
-    # convert to h1e and h2e array reps in molecular orb basis
-    h1e = np.dot(coeffs.T, np.matmul(hcore,coeffs));
-    g2e = ao2mo.restore(1, ao2mo.kernel(mol, coeffs), norbs);
-
-    return h1e, g2e;
+    from pyblock3.algebra.mpe import MPE
+    
+    return MPE(psi_mps, h_mpo, psi_mps);
 
 ################################################################################
 #### array dimensionality

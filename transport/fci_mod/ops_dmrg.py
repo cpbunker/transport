@@ -28,13 +28,27 @@ pyscf/fci module:
 
 import numpy as np
 
-def compute_obs(op,mps):
+def compute_obs(op,psi):
     '''
     Compute expectation value of observable repped by given operator from MPS wf
     op must be an MPO
     '''
-    raise NotImplementedError
-    #return np.dot(mps.conj(), op @ mps)/np.dot(mps.conj(),mps);
+    #raise NotImplementedError # sometimes have to remove @
+    return np.dot(psi.conj(), op @ psi)/np.dot(psi.conj(),psi);
+
+def charge_vs_site(psi, norbs, h_obj):
+    '''
+    '''
+    
+    sites = np.array(range(norbs),dtype=int).reshape(norbs,1);
+    #sites = np.array(range(norbs)).reshape(norbs//2,2);
+    #sites[i] gives a list of fermion orb indices spanning spin space
+    
+    charges = np.empty_like(sites,dtype=float);
+    for sitei in range(len(sites)):
+        occ_mpo = h_obj.build_mpo(occ(sites[sitei], norbs));
+        charges[sitei] = compute_obs(occ_mpo, psi);
+    return sites, charges;
 
 #######################################################
 #### 1 e operators, yield form
@@ -48,11 +62,13 @@ def occ(site_i, norbs):
     - norbs, total num orbitals in system
     '''
     if(not isinstance(site_i, np.ndarray)): raise TypeError;
+    print(">>>",norbs, site_i)
 
     def occ_yield(norbs, adag, a):
 
         # iter over site(s) we want occupancies of
         for i in site_i:
+            print(norbs, site_i, i)
             spin = 0; # ASU formalism
             yield adag[i,spin]*a[i,spin]; # yield number operator of this site
 
