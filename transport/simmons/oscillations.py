@@ -430,6 +430,7 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
     # plot each fit
     Ts = np.loadtxt(metal+"Ts.txt", ndmin=1);
     Bs = np.loadtxt(metal+"Bs.txt", ndmin=1);
+    widths = [];
     
     from utils import plot_fit
     fig3, ax3 = plt.subplots();
@@ -455,10 +456,56 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
         else:
             if(verbose): plot_fit(x, y, yfit, myylabel="$dI/dV_b$ (nA/V)", mytitle="$T=$ {:.1f} K".format(Tval)+", B = {:.1f} T".format(Bs[Tvali]));
 
+            # fit the width of a single oscillation
+            def lineshape(Vb,G0,width,res1,res2,res3,res4,res5):
+                ret = dIdV_back(x, *temp_results[:7], temp_results[-2]);
+                for res in [res1,res2,res3,res4,res5]:
+                    ret += G0/(np.cosh((Vb-res)/(2*width))*np.cosh((Vb-res)/(2*width)));
+                return ret;
+
+            # setup
+            global temp_kwarg; temp_kwarg = Ts[Tvali];
+            global bfield_kwarg; bfield_kwarg = Bs[Tvali];
+            Vlower, Vupper = 0.02,0.13;
+            y = y[x<Vupper];
+            x = x[x<Vupper];
+            y = y[x>Vlower];
+            x = x[x>Vlower];
+            the_guesses = np.array([300,0.005,0.035,0.055,0.075,0.095,0.120])
+            the_bounds = [[],[]];
+            for guess in the_guesses:
+                the_bounds[0].append(guess*(1-0.8));
+                the_bounds[1].append(guess*(1+0.8));
+
+            # fit
+            params_lineshape, _ = fit_wrapper(lineshape, x, y,
+                            the_guesses, np.array(the_bounds), [ "G0", "width", "res1", "res2", "res3", "res4", "res5"],
+                            stop_bounds = False, verbose=verbose);
+            fit_lineshape = lineshape(x, *params_lineshape);
+            widths.append(params_lineshape[1]);
+            #if(verbose): plot_fit(x, y, fit_lineshape, mytitle="Peak width fit (T= {:.1f} K, B = {:.1f} T)".format(Ts[Tvali],Bs[Tvali]));
+
+                    
+
     # show
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
     plt.show();
+
+    # width vs T
+    if(True):
+        widthfig, widthax = plt.subplots();
+        widths = np.array(widths)*1000; # in eV
+        widthax.scatter(Ts, widths);
+        coefs = np.polyfit(Ts, widths, 1);
+        width_fit = coefs[0]*Ts+coefs[1];
+        widthax.plot(Ts, width_fit, color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
+        widthax.set_title("Dataset = "+str(metal[:-1]));
+        widthax.set_xlabel("$T$(K)");
+        widthax.set_ylabel("width (meV)");
+        plt.legend();
+        plt.tight_layout();
+        plt.show();
 
     # load
     print("Loading data from "+metal+stop_at);
@@ -496,10 +543,10 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
     if(stop_at == "lorentz/"): # <-------- !!!!        
         # plot
         pfig, pax = plt.subplots();  
-        periods = 4*results[:,-1]*1000;
+        periods = 4*results[:,-1]*1000; # in meV
         periods, Ts = periods, Ts;
-        gammas = results[:,-2]*1000;
-        charges = results[:,-1]*1000;
+        gammas = results[:,-2]*1000; # in meV
+        charges = results[:,-1]*1000; # in meV
         myx, myy = gammas, charges;
         myx, myy = Ts, periods;
         pax.scatter(myx, myy, color=mycolors[0], label="Data");
@@ -507,10 +554,16 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
         coefs = np.polyfit(myx, myy, 1);
         myyfit = coefs[0]*myx+coefs[1];
         myrmse = np.sqrt( np.mean( np.power(myy-myyfit,2) ))/abs(np.max(myy)-np.min(myy));
-        pax.plot(myx, myyfit, color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));
+        pax.plot(myx, myyfit, color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));    
         pax.plot( [np.mean(myx)], [np.mean(myy)], color='white', label = "RMSE = {:1.5f}".format(myrmse));
+        # thermal exp coef
+        alpha_t = 0.01
+        from_thermal = 23.88/(1+alpha_t *myx);
+        pax.plot(myx, from_thermal, label="thermal model, $\\alpha_t = ${:.4f}".format(alpha_t))
         # format
         pax.set_title("Dataset = "+str(metal[:-1]));
+        pax.set_xlabel("$T$(K)");
+        pax.set_xlabel("$4E_C$(meV)");
         plt.legend();
         plt.tight_layout();
         plt.show();
@@ -522,7 +575,7 @@ if(__name__ == "__main__"):
 
     metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ['back/', 'lorentz_zero/', 'lorentz/'];
-    stop_at = stop_ats[0];
+    stop_at = stop_ats[2];
     freeze_back = True;
     verbose=10;
 
@@ -534,5 +587,5 @@ if(__name__ == "__main__"):
 
     # this one plots the stored results
     # combined allows you to plot two temps side by side
-    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[2.5,5,7,10,20]);
+    plot_saved_fit(stop_at, metal, verbose=verbose, combined=[]);
 

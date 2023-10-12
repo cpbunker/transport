@@ -294,8 +294,8 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     if(stop_at=="lorentz_fine/"): return V_exp, dI_exp-dI_back_fine, params_fine[osc_mask_fine>0], rmse_fine;
 
     #### try a bunch of different combinations ####
-    raise NotImplementedError; # still have to add Vslope
     if(stop_at == "trial/"):
+        raise NotImplementedError; # still have to add Vslope
         rmse_trial, fit_trial, back_trial, params_trial = search_space_lorentz_zero(V_exp, dI_exp, params_fine_back, bounds_zero[:,back_mask_zero>0],
                             (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-num_EC_kwarg:])) );
         if(verbose > 4): plot_fit(V_exp, dI_exp, fit_trial, derivative = False,
@@ -313,24 +313,24 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     V_exp = V_exp[V_exp>V0_not];
     dI_exp = dI_exp[V_exp<Vmax];
     V_exp = V_exp[V_exp<Vmax];
-    params_local_guess = np.array([V0_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, temp_kwarg+ohm_not, tau0_not, Gamma_not, EC_not, delta_not]);
-    bounds_local = np.array([[V0_not-V0_bound, eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), temp_kwarg+ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent), delta_not*(1-delta_percent) ],
-                            [V0_not+V0_bound, eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), temp_kwarg+ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent), delta_not*(1+delta_percent) ]]);
+    params_local_guess = np.array([V0_not, Vslope_not, eps0_not, epsc_not, G1_not, G2_not, G3_not, temp_kwarg+ohm_not, tau0_not, Gamma_not, EC_not, delta_not]);
+    bounds_local = np.array([[V0_not-V0_bound, Vslope_not*(1-Vslope_percent), eps0_not*(1-eps0_percent), epsc_not*(1-epsc_percent), G1_not*(1-G1_percent), G2_not*(1-G2_percent), G3_not*(1-G3_percent), temp_kwarg+ohm_not*(1-ohm_percent), tau0_not*(1-tau0_percent), Gamma_not*(1-Gamma_percent), EC_not*(1-EC_percent), delta_not*(1-delta_percent) ],
+                             [V0_not+V0_bound, Vslope_not*(1+Vslope_percent), eps0_not*(1+eps0_percent), epsc_not*(1+epsc_percent), G1_not*(1+G1_percent), G2_not*(1+G2_percent), G3_not*(1+G3_percent), temp_kwarg+ohm_not*(1+ohm_percent), tau0_not*(1+tau0_percent), Gamma_not*(1+Gamma_percent), EC_not*(1+EC_percent), delta_not*(1+delta_percent) ]]);
     params_local, rmse_local = fit_wrapper(dIdV_all_zero, V_exp, dI_exp,
-                                 params_local_guess, bounds_local, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0", "Gamma", "EC", "delta"],
+                                 params_local_guess, bounds_local, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "tau0", "Gamma", "EC", "delta"],
                                  stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_zero(V_exp, *params_local), derivative = False,
                               mytitle="Local fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(make_EC_list(params_local[-2], params_local[-1])*1000, decimals=2))+" meV",   
                               myylabel="$dI/dV_b$ (nA/V)");
 
     # return osc only
-    back_mask_local = np.array([1,1,1,1,1,1,1,0,1,0,0]);
-    osc_mask_local = np.array([1,0,0,0,0,0,0,1,1,1,1]);
+    back_mask_local = np.array([1,1,1,1,1,1,1,1,0,1,0,0]);
+    osc_mask_local = np.array([1,0,0,0,0,0,0,0,1,1,1,1]);
     dI_back_local = dIdV_back(V_exp, *params_local[back_mask_local>0]);
     if(stop_at=="local/"): return V_exp, dI_exp-dI_back_local, params_local[osc_mask_local>0], rmse_local;
 
     #### in above local fit EC1 = EC2 = EC3, now we fine tune this ####
-    localfine_mask = np.array([1,1,1,1,1,1,0,0,0,0,0]);
+    localfine_mask = np.array([1,1,1,1,1,1,1,0,0,0,0,0]);
     params_localfine_guess = params_local[localfine_mask>0];
     EClist = make_EC_list(params_local[-2], params_local[-1]);
     params_localfine_guess = np.append(params_localfine_guess, EClist);
@@ -341,15 +341,15 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
     bounds_localfine = np.append(bounds_localfine, np.array([[EClist[0]*(1-EC_percent),EClist[1]*(1-EC_percent),EClist[2]*(1-EC_percent)],
                                                    [EClist[0]*(1+EC_percent),EClist[1]*(1+EC_percent),EClist[2]*(1+EC_percent)]]), axis = 1);
     params_localfine, rmse_localfine = fit_wrapper(dIdV_all_fine, V_exp, dI_exp,
-                                 params_localfine_guess, bounds_localfine, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "EC1", "EC2", "EC3"],
+                                 params_localfine_guess, bounds_localfine, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "EC1", "EC2", "EC3"],
                                  stop_bounds = False, verbose=verbose);
     if(verbose > 4): plot_fit(V_exp, dI_exp, dIdV_all_fine(V_exp, *params_localfine), derivative = False,
                               mytitle="Local fine fit (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_localfine[-num_EC_kwarg:]*1000, decimals=2))+" meV",   
                               myylabel="$dI/dV_b$ (nA/V)");
     
     # return osc only
-    osc_mask_localfine = np.array([1,0,0,0,0,0,1,1,1]);
-    params_localfine_back = np.array([params_localfine[0], params_localfine[1], params_localfine[2], params_localfine[3], params_localfine[4], params_localfine[5], temp_kwarg, Gamma_kwarg]);
+    osc_mask_localfine = np.array([1,0,0,0,0,0,0,1,1,1]);
+    params_localfine_back = np.array([params_localfine[0], params_localfine[1], params_localfine[2], params_localfine[3], params_localfine[4], params_localfine[5], params_localfine[6], temp_kwarg, Gamma_kwarg]);
     dI_back_localfine = dIdV_back(V_exp, *params_localfine_back);
     if(stop_at=="localfine/"): return V_exp, dI_exp-dI_back_localfine, params_localfine[osc_mask_localfine>0], rmse_localfine;
 
@@ -390,7 +390,7 @@ def fit_Mn_data(stop_at, metal, num_islands = 3, verbose=1):
     #fitting results
     results = [];
     for datai in range(len(Ts)):
-        if(True and Ts[datai] in [3.0,15.0]): 
+        if(True and Ts[datai] in [15.0]): 
             global temp_kwarg; temp_kwarg = Ts[datai];
             global bfield_kwarg; bfield_kwarg = Bs[datai];
             global num_EC_kwarg; num_EC_kwarg = num_islands;
@@ -462,7 +462,7 @@ if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "local/", "localfine/", "trial/"];
-    stop_at = stop_ats[2];
+    stop_at = stop_ats[4];
     verbose=10;
 
     # this one executes the fitting and stores results

@@ -454,7 +454,7 @@ if(__name__ == "__main__"):
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/"];
     stop_at = stop_ats[2];
-    verbose=1;
+    verbose=10;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);
