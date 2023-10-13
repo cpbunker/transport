@@ -15,7 +15,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True) -> tuple:
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = True, all_debug = True) -> tuple:
     '''
     coefficient for a transmitted up and down electron
     Args
@@ -45,7 +45,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True) -> tuple
     for sigma in range(len(Ajsigma)): # always set incident mu = 0
         if(Ajsigma[sigma] != 0):
             pass;
-            #assert(h[0,sigma,sigma] == 0);
+            assert(h[0,sigma,sigma] == 0);
 
     # check incident amplitude
     assert( isinstance(Ajsigma, np.ndarray));
@@ -81,6 +81,11 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, all_debug = True) -> tuple
         t_flux = complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
         t_el = t_flux/i_flux;
         Ts[sigma] = np.real(t_el*np.conjugate(t_el));
+
+    # determine matrix elements < \sigma | rhat | \sigma'> of the reflection
+    # operator rhat, which scatters \sigma' -> \sigma
+    rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
+    if(rhat): return rhat_matrix;
     
     return Rs, Ts;
 
