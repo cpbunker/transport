@@ -1,0 +1,3 @@
+{"tl":1.0, "Vconf":10.0, "Be":100.0, "BFM":-100.0, "Jz":0.1, "Jx":0.1005, "Jsd":0.5,
+"NL":35, "NFM":5, "NR":35, "Nconf":10, "Ne":5, "TwoSz":0,
+"symmetry":"Sz","spin_strs":["cd","CD"]}

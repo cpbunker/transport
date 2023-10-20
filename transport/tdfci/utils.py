@@ -52,36 +52,37 @@ def rhf_to_arr(mol, scf_obj):
 def arr_to_uhf(h1e, g2e, norbs, nelecs, verbose = 0):
     '''
     Converts spinless 1-body, 2-body Hamiltonian arrays to scf object
-    
+
     Args:
     - h1e, 2d np array, 1e part of Hamiltonian
     - g2e, 2d np array, 2e part of Hamiltonian
     - norbs, int, total num spin orbs
     - nelecs, tuple of (number es, 0) (ALL SPIN UP formalism)
-    
+
     Returns: tuple of
     mol, an instance of gto.mole.Mole, defines physical system
     scf_obj, restricted mean field kernel result, contains elec matrix els
     '''
     from pyscf import gto, scf
     if(len(np.shape(h1e)) != 2 or len(np.shape(g2e)) != 4): raise ValueError("Not spinless");
+    if(nelecs[1] != 0): raise ValueError("Not spinless");
     if(np.shape(h1e)[0] != np.shape(g2e)[0]): raise ValueError;
     if(not isinstance(h1e, np.ndarray)): raise TypeError;
     if(not isinstance(g2e, np.ndarray)): raise TypeError;
-    
+
     # initial guess density matrices
     Pa = np.zeros(norbs)
     Pa[::2] = 1.0
     Pa = np.diag(Pa)
-    
+
     # put everything into UHF scf object
     if(verbose):
         print("\nUHF energy calculation")
-    mol = gto.M(); # geometry is meaningless
-    mol.incore_anyway = True
-    mol.nelectron = sum(nelecs)
-    mol.spin = nelecs[1] - nelecs[0]; # in all spin up formalism, mol is never spinless!
-    scf_inst = scf.UHF(mol) # necessary to do UHF since there are no spin downs
+    mol_inst = gto.M(); # geometry is meaningless
+    mol_inst.incore_anyway = True
+    mol_inst.nelectron = sum(nelecs)
+    mol_inst.spin = nelecs[1] - nelecs[0]; # in all spin up formalism, mol is never spinless!
+    scf_inst = scf.UHF(mol_inst) # necessary to do UHF since there are no spin downs
     scf_inst.get_hcore = lambda *args:h1e # put h1e into scf solver
     scf_inst.get_ovlp = lambda *args:np.eye(norbs) # init overlap as identity matrix
     scf_inst._eri = g2e # put h2e into scf solver
@@ -89,9 +90,8 @@ def arr_to_uhf(h1e, g2e, norbs, nelecs, verbose = 0):
         scf_inst.kernel(); # no dm
     else:
         scf_inst.kernel(dm0=(Pa, Pa)); # prints HF gd state but this number is meaningless
-                                   # what matter is h1e, h2e are now encoded in this scf instance
-
-    return mol, scf_inst;
+                                   # what matter is h1e, g2e are now encoded in this scf instance
+    return mol_inst, scf_inst;
 
 def arr_to_fd(h1e, g2e, nelec, fname, energy_nuc=0):
     '''
@@ -184,6 +184,45 @@ def mpo_to_mpe(h_mpo, psi_mps):
     from pyblock3.algebra.mpe import MPE
     
     return MPE(psi_mps, h_mpo, psi_mps);
+
+##########################################################################################################
+#### solvers
+
+def scf_FCI(mol_inst, scf_inst, nroots, verbose = 0):
+    '''
+    '''
+    from pyscf import fci, ao2mo, gto
+    import functools
+
+    # init ci solver with ham from molecule inst
+    cisolver = fci.direct_uhf.FCISolver(mol_inst);
+
+    # get unpack from scf inst
+    h1e = scf_inst.get_hcore(mol_inst);
+    norbs = np.shape(h1e)[0];
+    nelecs = (mol_inst.nelectron,0); # all spin up
+
+    # slater determinant coefficients
+    mo_a = scf_inst.mo_coeff[0]
+    mo_b = scf_inst.mo_coeff[1]
+
+    # since we are in UHF formalism, need to split all hams by alpha, beta
+    # but since everything is spin blind, all beta matrices are zeros
+    h1e_a = functools.reduce(np.dot, (mo_a.T, h1e, mo_a))
+    h1e_b = functools.reduce(np.dot, (mo_b.T, h1e, mo_b))
+    h2e_aa = ao2mo.incore.general(scf_inst._eri, (mo_a,)*4, compact=False)
+    h2e_aa = h2e_aa.reshape(norbs,norbs,norbs,norbs)
+    h2e_ab = ao2mo.incore.general(scf_inst._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
+    h2e_ab = h2e_ab.reshape(norbs,norbs,norbs,norbs)
+    h2e_bb = ao2mo.incore.general(scf_inst._eri, (mo_b,)*4, compact=False)
+    h2e_bb = h2e_bb.reshape(norbs,norbs,norbs,norbs)
+    h1e_tup = (h1e_a, h1e_b)
+    h2e_tup = (h2e_aa, h2e_ab, h2e_bb)
+
+    # run kernel to get exact energy
+    E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs, nroots = nroots)
+
+    return E_fci, v_fci;
 
 ################################################################################
 #### array dimensionality
@@ -576,63 +615,6 @@ def cj_to_ck(h1e, nleads):
     # resulting ham should be real
     #assert(np.max(abs(np.imag(hk))) < 1e-10);
     return hk;
-
-##########################################################################################################
-#### solvers
-
-def direct_FCI(h1e, h2e, norbs, nelecs, nroots = 1, verbose = 0):
-    '''
-    solve gd state with direct FCI
-    '''
-
-    from pyscf import fci
-    
-    cisolver = fci.direct_spin1.FCI();
-    E_fci, v_fci = cisolver.kernel(h1e, h2e, norbs, nelecs, nroots = nroots);
-    if(verbose):
-        print("\nDirect FCI energies, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
-        print("- E = ",E_fci);
-
-    return E_fci, v_fci;
-
-def scf_FCI(mol, scf_inst, nroots = 1, verbose = 0):
-    '''
-    '''
-    from pyscf import fci, ao2mo, gto
-    import functools
-
-    # init ci solver with ham from molecule inst
-    cisolver = fci.direct_uhf.FCISolver(mol);
-
-    # get unpack from scf inst
-    h1e = scf_inst.get_hcore(mol);
-    norbs = np.shape(h1e)[0];
-    nelecs = (mol.nelectron,0);
-
-    # slater determinant coefficients
-    mo_a = scf_inst.mo_coeff[0]
-    mo_b = scf_inst.mo_coeff[1]
-   
-    # since we are in UHF formalism, need to split all hams by alpha, beta
-    # but since everything is spin blind, all beta matrices are zeros
-    h1e_a = functools.reduce(np.dot, (mo_a.T, h1e, mo_a))
-    h1e_b = functools.reduce(np.dot, (mo_b.T, h1e, mo_b))
-    h2e_aa = ao2mo.incore.general(scf_inst._eri, (mo_a,)*4, compact=False)
-    h2e_aa = h2e_aa.reshape(norbs,norbs,norbs,norbs)
-    h2e_ab = ao2mo.incore.general(scf_inst._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
-    h2e_ab = h2e_ab.reshape(norbs,norbs,norbs,norbs)
-    h2e_bb = ao2mo.incore.general(scf_inst._eri, (mo_b,)*4, compact=False)
-    h2e_bb = h2e_bb.reshape(norbs,norbs,norbs,norbs)
-    h1e_tup = (h1e_a, h1e_b)
-    h2e_tup = (h2e_aa, h2e_ab, h2e_bb)
-    
-    # run kernel to get exact energy
-    E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs, nroots = nroots)
-    if(verbose):
-        print("\nFCI from UHF, zero bias, norbs = ",norbs,", nelecs = ",nelecs);
-        print("- E = ", E_fci);
-
-    return E_fci, v_fci;
 
 ##########################################################################################################
 #### exec code

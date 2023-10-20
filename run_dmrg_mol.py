@@ -6,7 +6,8 @@ October 2023
 
 '''
 
-from transport import fci_mod
+from transport import tdfci
+from transport.tdfci import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ for rvali in range(len(rvals)):
     Evals_rhf[rvali] = X_rhf.energy_tot();
 
     # convert RHF results to spinless electron matrix elements
-    h1e, g2e = fci_mod.rhf_to_arr(X_mol, X_rhf);
+    h1e, g2e = utils.rhf_to_arr(X_mol, X_rhf);
     fci_solver = fci.direct_nosym.FCI();
     if(do_fci):
         Evals_fci[rvali], _ = fci_solver.kernel(h1e, g2e, len(h1e), X_mol.nelec, ecore = X_rhf.energy_nuc());
@@ -62,9 +63,9 @@ for rvali in range(len(rvals)):
     #### do DMRG ####
 
     # convert electron integrals to MPO and run DMRG algorithm
-    dmrg_ham, dmrg_mpo, dmrg_mps = fci_mod.arr_to_mpo(h1e, g2e, X_mol.nelec, bdims[0],
+    dmrg_ham, dmrg_mpo, dmrg_mps = utils.arr_to_mpo(h1e, g2e, X_mol.nelec, bdims[0],
                                   energy_nuc = X_rhf.energy_nuc(), cutoff=1e-6, verbose=verbose);
-    dmrg_mpe = fci_mod.mpo_to_mpe(dmrg_mpo, dmrg_mps);
+    dmrg_mpe = utils.mpo_to_mpe(dmrg_mpo, dmrg_mps);
     dmrg_mpe_output = dmrg_mpe.dmrg(bdims=bdims, noises=noises, iprint=0);
     Evals_dmrg[rvali] = dmrg_mpe_output.energies[-1];
     

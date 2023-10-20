@@ -5,16 +5,9 @@ July 2021
 
 Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 '''
-from transport import fci_mod
-from transport.fci_mod import ops_dmrg
 
 import numpy as np
 
-from pyblock3 import hamiltonian, fcidump
-from pyblock3.algebra.mpe import MPE
-
-import time
-import json
     
 ##########################################################################################################
 #### driver of time propagation
@@ -96,13 +89,22 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
     # return observables as arrays vs time
     return observables;
 
-##########################################################################################################
-#### hamiltonian constructor
-
-def Hsys_base(json_file):
+def compute_obs(op,psi):
     '''
-    Builds the t<0 Hamiltonian in which the electrons are confined
-    NB this contains one-body terms only
+    Compute expectation value of observable repped by given operator from the wf
+    The wf psi must be a matrix product state, and the operator an MPO
+    '''
+
+    return driver.expectation(psi, mpo_obj, psi);
+
+##########################################################################################################
+#### hamiltonian constructors
+
+def Hsys_builder(params_dict, block, verbose=0):
+    '''
+    Builds the parts of the Hamiltonian which apply at all t
+    NB this contains one-body terms, which are spin-independent, and
+    two-body terms, which are spin-dependent
 
     The physical params are contained in a .json file. They are all in eV.
     They are:
@@ -113,97 +115,311 @@ def Hsys_base(json_file):
 
     NL (number sites in left lead), NFM (number of sites in central region
     = number of loc spins), NR (number of sites in right lead), Nconf (width
-    of confining region)
+    of confining region), Ne (number of electrons), TwoSz (Twice the total Sz
+    of the system)
+
+    Returns:
+        if block is True: a tuple of DMRGDriver, ExprBuilder objects
+        else: a tuple of 1-body, 2-body 2nd quantized Hamiltonian arrays
     '''
 
     # load data from json
-    params_dict = json.load(open(json_file));
+    #params_dict = json.load(open(json_file));
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
-    NL, NFM, NR, Nconf, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"];
+    NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
     # unpack data
-    Nsites = NL+NFM+NR; # number physical sites
-    Ndofs = Nsites + NFM; # extra site for loc'd spins
+    Nsites = NL+NFM+NR; # number of sites in 1D chain
+    Ndofs = Nsites + NFM; # includes off-chain sites for loc'd spins
+    Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
+    spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
+    spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(NL>0 and NR>0); # leads must exist
 
     # return objects
-    h1e = np.zeros((Ndofs, Ndofs));
-    g2e = np.zeros((Ndofs, Ndofs, Ndofs, Ndofs));
+    if(block): # construct ExprBuilder
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./tmp", symm_type=core.SymmetryTypes.SZ, n_threads=4);
+            driver.initialize_system(n_sites=Ndofs, n_elec=Ne+NFM, spin=TwoSz);
+        else:
+            raise NotImplementedError;
+        builder = driver.expr_builder()
+    else:
+      h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
-    # hopping everywhere in leads
-    for sitei in range(0,NL-1):
-        h1e[sitei,sitei+1] += -tl;
-        h1e[sitei+1,sitei] += -tl;
-    for sitei in range(Ndofs-NR,Ndofs-1):
-        h1e[sitei,sitei+1] += -tl;
-        h1e[sitei+1,sitei] += -tl;
+    # hopping everywhere in left lead
+    for j in range(0,NL-1):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[j,j+1],-tl);
+                builder.add_term(spin_strs[spin],[j+1,j],-tl);
+            else:
+                h1e[nloc*j+spin,nloc*(j+1)+spin] += -tl;
+                h1e[nloc*(j+1)+spin,nloc*j+spin] += -tl;
+
+    # hopping in right lead
+    for j in range(Ndofs-NR,Ndofs-1):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[j,j+1],-tl);
+                builder.add_term(spin_strs[spin],[j+1,j],-tl);
+            else:
+                h1e[nloc*j+spin,nloc*(j+1)+spin] += -tl;
+                h1e[nloc*(j+1)+spin,nloc*j+spin] += -tl;
 
     # hopping skips a site in central region
-    central_sites = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==0];
+    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
     # hopping within the central region
     for central_listi in range(len(central_sites[:-1])):
         central_sitei = central_sites[central_listi];
         central_nexti = central_sites[central_listi+1];
-        h1e[central_sitei, central_nexti] += -tl;
-        h1e[central_nexti, central_sitei] += -tl;
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[central_sitei, central_nexti],-tl);
+                builder.add_term(spin_strs[spin],[central_nexti, central_sitei],-tl);
+            else:
+                h1e[nloc*central_sitei+spin, nloc*central_nexti+spin] += -tl;
+                h1e[nloc*central_nexti+spin, nloc*central_sitei+spin] += -tl;
 
     if(central_sites): # couple first(last) to left (right) lead
-        h1e[NL-1,central_sites[0]] += -tl;
-        h1e[central_sites[0],NL-1] += -tl;
-        h1e[central_sites[-1],Ndofs-NR] += -tl;
-        h1e[Ndofs-NR,central_sites[-1]] += -tl;
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[NL-1, central_sites[0]],-tl);
+                builder.add_term(spin_strs[spin],[central_sites[0], NL-1],-tl);
+                builder.add_term(spin_strs[spin],[central_sites[-1],Ndofs-NR],-tl);
+                builder.add_term(spin_strs[spin],[Ndofs-NR,central_sites[-1]],-tl);
+            else:
+                h1e[nloc*(NL-1)+spin,nloc*central_sites[0]+spin] += -tl;
+                h1e[nloc*central_sites[0]+spin,nloc*(NL-1)+spin] += -tl;
+                h1e[nloc*central_sites[-1]+spin,nloc*(Ndofs-NR)+spin] += -tl;
+                h1e[nloc*(Ndofs-NR)+spin,nloc*central_sites[-1]+spin] += -tl;
     else: # special case there are no central region sites
-        h1e[NL-1,Ndofs-NR] += -tl;
-        h1e[Ndofs-NR,NL-1] += -tl;
-
-    return h1e, g2e;
-
-    # XXZ for loc spins
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
-    raise NotImplementedError;
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[NL-1,Ndofs-NR],-tl);
+                builder.add_term(spin_strs[spin],[Ndofs-NR,NL-1],-tl);
+            else:
+                h1e[nloc*(NL-1)+spin,nloc*(Ndofs-NR)+spin] += -tl;
+                h1e[nloc*(Ndofs-NR)+spin,nloc*(NL-1)+spin] += -tl;
 
     # sd exchange between loc spins and adjacent central sites
-    
-    return h1e, g2e;
+    # central sites are indexed j, loc spin sites are indexed d
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+    sdpairs = [(central_sites[index], loc_spins[index]) for index in range(len(loc_spins))];
+    if(verbose): print("j - d site pairs = ",sdpairs);
+    # form of this interaction is
+    # \sum_{\mu=x,y,z} \sum_{\sigma \sigma' \tau \tau'}
+    #            c_j\sigma^\dagger c_j\sigma' c_d\tau^\dagger c_d\tau'
+    #            (J \sigma^\mu_{\sigma\sigma'} \sigma^\mu_{\tau\tau'}
+    # where \sigma^\mu denotes a single Pauli matrix, the mu^th compoent of the Pauli vector
+    for (j,d) in sdpairs:
+        print("Jsd = ",Jsd)
+        if(block):
+            # z component terms
+            builder.add_term("cdcd",[j,j,d,d],-Jsd/4);
+            builder.add_term("cdCD",[j,j,d,d], Jsd/4);
+            builder.add_term("CDcd",[j,j,d,d], Jsd/4);
+            builder.add_term("CDCD",[j,j,d,d],-Jsd/4);
+            # x+y component -> +- terms
+            builder.add_term("cDCd",[j,j,d,d],-Jsd/2);
+            builder.add_term("CdcD",[j,j,d,d],-Jsd/2);
+        else:
+            # z component terms
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jsd/4;
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += Jsd/4;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += Jsd/4;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jsd/4;
+            # x+y component -> +- terms
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[1],nloc*(d)+spin_inds[1],nloc*(d)+spin_inds[0]] += -Jsd/2;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[0],nloc*(d)+spin_inds[0],nloc*(1)+spin_inds[1]] += -Jsd/2;
+            # repeat above with switched particle labels (pq|rs) = (rs|pq)
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += -Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += Jsd/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=-Jsd/4;
+            g2e[nloc*(d)+spin_inds[1],nloc*(d)+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[1]] += -Jsd/2;
+            g2e[nloc*(d)+spin_inds[0],nloc*(1)+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[0]] += -Jsd/2;
 
-def Hsys_polarizer(json_file):
+
+    # XXZ for loc spins
+    JXXZ_pauli = None;
+    for loci in range(len(loc_spins)-1): # nearest neighbor only
+        d, dp1 = loc_spins[loci], loc_spins[loci+1];
+        if(block):
+            # z component termse
+            builder.add_term("cdcd",[d,d,dp1,dp1],-Jz/4);
+            builder.add_term("cdCD",[d,d,dp1,dp1], Jz/4);
+            builder.add_term("CDcd",[d,d,dp1,dp1], Jz/4);
+            builder.add_term("CDCD",[d,d,dp1,dp1],-Jz/4);
+            # x+y component -> +- terms
+            builder.add_term("cDCd",[d,d,d+1,d+1],-Jx/2);
+            builder.add_term("CdcD",[d,d,d+1,d+1],-Jx/2);
+        else:
+            # z component terms
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += -Jz/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] += Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=-Jz/4;
+            # x+y component -> +- terms
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0]] += -Jx/2;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1]] +=-Jx/2;
+            # repeat above with switched particle labels (pq|rs) = (rs|pq)
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += Jz/4;
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[1]] += -Jx/2;
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[0]] += -Jx/2;
+
+    if(block):
+        return driver, builder;
+    else:
+        return h1e, g2e;
+
+def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     '''
-    Builds the t<0 Hamiltonian in which the deloc e's, loc spins are confined,
-    polarized by application of external fields Be, BFM
-    NB this contains one-body terms only
+    Adds terms specific to the t<0 Hamiltonian in which the deloc e's, loc spins are
+    confined and polarized by application of external fields Be, BFM
+    NB this contains one-body terms only, and these terms differ by spin
 
-    The physical params are discussed in Hsys_base
+    Args:
+    Params_dict: dict containing physical param values, these are defined in Hsys_base
+    block: bool, tells how to construct the object that will hold the Hamiltonian:
+      if True: construct a block2 ExprBuilder object
+      else: construct a tuple of 1body 2nd quantized hams
+    to_add_to, tuple of objects to add terms to:
+        if block is True: these will be DMRGDriver, ExprBuilder objects
+        else: these will be 1-body and 2-body parts of the second quantized
+        Hamiltonian
+
+    Returns:
+        if block is True: a tuple of DMRGDriver, MPO
+        else: return a tuple of 1-body and 2-body Hamiltonian arrays
     '''
 
     # load data from json
-    params_dict = json.load(open(json_file));
+    #params_dict = json.load(open(json_file));
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
-    NL, NFM, NR, Nconf, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"];
+    NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
     # unpack data
-    Nsites = NL+NFM+NR; # number physical sites
-    Ndofs = Nsites + NFM; # extra site for loc'd spins
+    Nsites = NL+NFM+NR; # number of sites in 1D chain
+    Ndofs = Nsites + NFM; # includes off-chain sites for loc'd spins
+    Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
+    spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
+    spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(Nconf <= NL); # must be able to confine within left lead
     assert(Nconf >= Ne); # must be enough room for all deloc es
 
     # return objects
-    h1e_aa, h1e_bb = np.zeros((Ndofs, Ndofs)), np.zeros((Ndofs, Ndofs));
-    
+    if(block): # construct ExprBuilder
+        driver, builder = to_add_to;
+        if(driver.n_sites != Ndofs): raise ValueError;
+    else:
+        h1e, g2e = to_add_to;
+        if(len(h1e) != Nspinorbs): raise ValueError;
+
     # confining potential in left lead
-    for sitei in range(Nconf):
-        h1e_aa[sitei,sitei] += -Vconf;
-        h1e_bb[sitei,sitei] += -Vconf;
-        
+    for j in range(Nconf):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[j,j],-Vconf);
+            else:
+                h1e[nloc*j+spin,nloc*j+spin] += -Vconf;
+
     # B field in the confined region ---------- ASSUMED IN THE Z
-    # confining potential in left lead
-    for sitei in range(Nconf):
-        h1e_aa[sitei,sitei] +=-Be/2; # if Be>0, spin up should be favored
-        h1e_bb[sitei,sitei] += Be/2;
+    # only within the region of confining potential
+    for j in range(Nconf):
+        if(block):
+            builder.add_term(spin_strs[0],[j,j],-Be/2);
+            builder.add_term(spin_strs[1],[j,j], Be/2);
+        else:
+            h1e[nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += -Be/2; # if Be>0, spin up should be favored
+            h1e[nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += Be/2;
+
+    # confining potential on loc spins
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+    for d in loc_spins:
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[d,d],-2*Vconf);
+            else:
+                h1e[nloc*d+spin,nloc*d+spin] += -2*Vconf;
 
     # B field on the loc spins
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
-    for spini in loc_spins:
-        h1e_aa[spini,spini] +=-BFM/2;
-        h1e_bb[spini,spini] += BFM/2; # if BFM<0, spin down should be favored
+    for d in loc_spins:
+        if(block):
+            builder.add_term(spin_strs[0],[d,d],-BFM/2);
+            builder.add_term(spin_strs[1],[d,d], BFM/2);
+        else:
+            h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM/2;
+            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += BFM/2; # typically BFM<0, spin down should be favored
 
-    return h1e_aa, h1e_bb;
+    if("BFM_first" in params_dict.keys()):
+        BFM_first = params_dict["BFM_first"];
+        d = loc_spins[0];
+        if(block):
+            builder.add_term(spin_strs[0],[d,d],-BFM_first/2);
+            builder.add_term(spin_strs[1],[d,d], BFM_first/2);
+        else:
+            h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2;
+            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += BFM_first/2; # typically BFM<0, spin down should be favored
+
+        
+
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
+
+    # small perturbation favoring concurrence
+    perturb = 3.33e-4;
+    g2e += perturb*get_concurrence(params_dict, None, (loc_spins[0], loc_spins[1]), False, g2e_only=True);
+
+    # add in penalty*(\hat{N}_conf - N_e \hat{I})^2 so that occupation of conf
+    # region is favored to be Ne
+    penalty = 2*(abs(Be)+abs(Vconf)); # since it needs to overcome these effects
+    for j in range(Nconf):
+        for jprime in range(Nconf):
+            if(block):
+                builder.add_term("cdcd",[j,j,jprime,jprime],penalty);
+                builder.add_term("cdCD",[j,j,jprime,jprime],penalty);
+                builder.add_term("CDcd",[j,j,jprime,jprime],penalty);
+                builder.add_term("CDCD",[j,j,jprime,jprime],penalty);
+            else:
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += penalty;
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += penalty;
+    for j in range(Ndofs):
+        for jprime in range(Nconf):
+            if(block):
+                builder.add_term("cdcd",[j,j,jprime,jprime],-2*Ne*penalty);
+                builder.add_term("cdCD",[j,j,jprime,jprime],-2*Ne*penalty);
+                builder.add_term("CDcd",[j,j,jprime,jprime],-2*Ne*penalty);
+                builder.add_term("CDCD",[j,j,jprime,jprime],-2*Ne*penalty);
+            else:
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += -2*Ne*penalty;
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += -2*Ne*penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += -2*Ne*penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += -2*Ne*penalty;
+    for j in range(Nconf):
+        for jprime in range(Nconf):
+            if(block):
+                builder.add_term("cdcd",[j,j,jprime,jprime],Ne*Ne*penalty);
+                builder.add_term("cdCD",[j,j,jprime,jprime],Ne*Ne*penalty);
+                builder.add_term("CDcd",[j,j,jprime,jprime],Ne*Ne*penalty);
+                builder.add_term("CDCD",[j,j,jprime,jprime],Ne*Ne*penalty);
+            else:
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += Ne*Ne*penalty;
+                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += Ne*Ne*penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += Ne*Ne*penalty;
+                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += Ne*Ne*penalty;
+
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;

@@ -8,14 +8,15 @@ general formalism: all sites map to all the different
 degrees of freedom of the system
 '''
 
-from transport import fci_mod
+from transport import tdfci
+from transport.tdfci import utils as fci_mod
 
 import numpy as np
 
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = True, all_debug = True) -> tuple:
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = True) -> tuple:
     '''
     coefficient for a transmitted up and down electron
     Args

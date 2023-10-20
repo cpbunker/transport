@@ -30,11 +30,11 @@ import numpy as np
 
 def compute_obs(op,psi):
     '''
-    Compute expectation value of observable repped by given operator from MPS wf
-    op must be an MPO
+    Compute expectation value of observable repped by given operator from the wf
+    The wf psi must be a matrix product state, and the operator an MPO
     '''
-    #raise NotImplementedError # sometimes have to remove @
-    return np.dot(psi.conj(), op @ psi)/np.dot(psi.conj(),psi);
+
+    return driver.expectation(psi, mpo_obj, psi);
 
 def charge_vs_site(psi, norbs, h_obj):
     '''

@@ -11,100 +11,28 @@ tdfci module:
 - outputs current and energy vs time
 '''
 
-from transport import fci_mod
-from transport.fci_mod import ops
-
 from pyscf import lib, fci, scf, gto, ao2mo
-from pyscf.fci import direct_uhf, direct_nosym, cistring
+from pyscf.fci import direct_uhf, cistring
 
 import numpy as np
 import functools
-import os
-import time
-einsum = lib.einsum
+
 
 ################################################################
 #### kernel
 
-def kernel(h1e, g2e, i_state, mol_inst, scf_inst, tf, dt, verbose=0):
-    '''
-    Kernel for getting observables at each time step, for plotting
-    Outputs 1d arrays of time, energy, current, occupancy, Sz
-
-    Returns
-    init_obs, 2d arr, rows are sites and columns are occ, Sx, Sy, Sz at t=0
-    observables, 2d arr, rows are time and columns are all observables
-    '''
-
-    # assertion statements to check inputs
-    assert( np.shape(h1e)[0] == np.shape(g2e)[0]);
-    assert( type(mol_inst) == type(gto.M()));
-    assert( type(scf_inst) == type(scf.UHF(mol_inst)));
-
-    # unpack
-    Norbs = np.shape(h1e)[0];
-    Nelecs = (mol_inst.nelectron,0);
-    N = int(tf/dt+1e-6); # number of time steps beyond t=0
-    
-    # time propagation requires
-    # - ERIS object to encode hamiltonians
-    # - CI object to encode ci states
-    Eeris = ERIs(h1e, g2e, scf_inst.mo_coeff); # hamiltonian info
-    ci = CIObject(i_state, Norbs, Nelecs); # wf info
-
-    # from the time prop we want to record
-    # - ci object at each step ? (time, vec)
-    # - observables  at each step (time, total E, occ for each orb)
-    civecs = np.zeros((N+1, 1+len(i_state)), dtype = complex);
-    observables = np.zeros((N+1, 2+Norbs), dtype = complex );
-    
-    # operators for observables
-    obs_ops = [];
-    for orbi in range(Norbs): # orb occupancies
-        obs_ops.append(ops.occ([orbi], Norbs) );
-    assert( 2+len(obs_ops) == np.shape(observables)[1] ); # 2 is time and energy
-
-    # convert ops (which are ndarrays) to ERIs objects
-    obs_eris = [Eeris];
-    for op in obs_ops:
-
-        # depends on if a 1e or 2e operator
-        if(len(np.shape(op)) == 2): # 1e op
-            obs_eris.append(ERIs(op, np.zeros((Norbs, Norbs, Norbs, Norbs)), Eeris.mo_coeff) );
-        elif(len(np.shape(op)) == 4): # 2e op
-            obs_eris.append(ERIs(np.zeros((Norbs, Norbs)), op, Eeris.mo_coeff) );
-        else: assert(False);
-    
-    # time step loop
-    for i in range(N+1):
-
-        if(verbose > 3): print(" - time: ", i*dt);
-    
-        # density matrices
-        (d1a, d1b), (d2aa, d2ab, d2bb) = ci.compute_rdm12();
-        
-        # time step
-        dr, dr_imag = compute_update(ci, Eeris, dt) # update state (r, an fcivec) at each time step
-        r = ci.r + dt*dr
-        r_imag = ci.i + dt*dr_imag # imag part of fcivec
+def kernel(ci_inst, eris_inst, tf, dt):
+    Nsteps = int(tf/dt+1e-6); # number of time steps beyond t=0
+    for i in range(Nsteps+1):
+        # update state
+        dr, dr_imag = compute_update(ci_inst, eris_inst, dt) # update state (r, an fcivec) at each time step
+        r = ci_inst.r + dt*dr
+        r_imag = ci_inst.i + dt*dr_imag # imag part of fcivec
         norm = np.linalg.norm(r + 1j*r_imag) # normalize complex vector
-        ci.r = r/norm # update cisolver attributes
-        ci.i = r_imag/norm
+        ci_inst.r = r/norm # update cisolver attributes
+        ci_inst.i = r_imag/norm
 
-        # store ci
-        civecs[i,0] = i*dt;
-        civecs[i, 1:] = (ci.r + complex(0,1)*ci.i).flatten()
-        
-        # compute observables
-        observables[i,0] = i*dt; # time
-        for ei in range(len(obs_eris)): # iter over eris list
-            observables[i, ei+1] = compute_energy((d1a,d1b),(d2aa,d2ab,d2bb), obs_eris[ei] );
-
-        # before any time stepping, get initial state
-
-    # return val is array of observables
-    # column ordering is always t, E, JupL, JupR, JdownL, JdownR, concurrence, (occ, Sx, Sy, Sz for each site)
-    return civecs, observables
+    return ci_inst;
 
 ################################################################
 #### util functions
@@ -148,68 +76,76 @@ def compute_update(ci, eris, h, RK=4):
 
         dr = (dr1+2.0*dr2+2.0*dr3+dr4)/6.0
         di = (di1+2.0*di2+2.0*di3+di4)/6.0
-        return dr, di       
+        return dr, di      
     
 def compute_energy(d1, d2, eris, time=None):
+    raise NotImplementedError("see ompute_obs below");
+
+def compute_obs(ci_inst, op_eris):
     '''
     Ruojing's code
     Computes <H> by
         1) getting h1e, h2e from eris object
-        2) contracting with density matrix
+        2) contracting these with density matrices from co object
 
     I overload this function by passing it eris w/ arb op x stored
     then ruojings code gets <x> for any eris operator x
 
     Args:
-    d1, d2, 1 and 2 particle density matrices
-    eris, object which contains hamiltonians
-    ''' 
+    ci_obj, object which contains a particular many body state
+    eris_obj, object which contains hamiltonians
+    '''
 
-    h1e_a, h1e_b = eris.h1e
-    g2e_aa, g2e_ab, g2e_bb = eris.g2e
+    # set up return values
+    h1e_a, h1e_b = op_eris.h1e
+    g2e_aa, g2e_ab, g2e_bb = op_eris.g2e
     h1e_a = np.array(h1e_a,dtype=complex)
     h1e_b = np.array(h1e_b,dtype=complex)
     g2e_aa = np.array(g2e_aa,dtype=complex)
     g2e_ab = np.array(g2e_ab,dtype=complex)
     g2e_bb = np.array(g2e_bb,dtype=complex)
-    d1a, d1b = d1
-    d2aa, d2ab, d2bb = d2
-    # to physicts notation
+
+    # get density matrices
+    (d1a, d1b), (d2aa, d2ab, d2bb) = ci_inst.compute_rdm12();
+
+    # convert to physicts notation
     g2e_aa = g2e_aa.transpose(0,2,1,3)
     g2e_ab = g2e_ab.transpose(0,2,1,3)
     g2e_bb = g2e_bb.transpose(0,2,1,3)
     d2aa = d2aa.transpose(0,2,1,3)
     d2ab = d2ab.transpose(0,2,1,3)
     d2bb = d2bb.transpose(0,2,1,3)
+
     # antisymmetrize integral
     g2e_aa -= g2e_aa.transpose(1,0,2,3)
     g2e_bb -= g2e_bb.transpose(1,0,2,3)
 
-    e  = einsum('pq,qp',h1e_a,d1a)
-    e += einsum('PQ,QP',h1e_b,d1b)
-    e += 0.25 * einsum('pqrs,rspq',g2e_aa,d2aa)
-    e += 0.25 * einsum('PQRS,RSPQ',g2e_bb,d2bb)
-    e +=        einsum('pQrS,rSpQ',g2e_ab,d2ab)
+    # calculate energy
+    e  = lib.einsum('pq,qp',h1e_a,d1a)
+    e += lib.einsum('PQ,QP',h1e_b,d1b)
+    e += 0.25 * lib.einsum('pqrs,rspq',g2e_aa,d2aa)
+    e += 0.25 * lib.einsum('PQRS,RSPQ',g2e_bb,d2bb)
+    e +=        lib.einsum('pQrS,rSpQ',g2e_ab,d2ab)
     return e
 
 class ERIs():
     def __init__(self, h1e, g2e, mo_coeff):
-        ''' SIAM-like model Hamiltonian
-            h1e: 1-elec Hamiltonian in site basis 
-            g2e: 2-elec Hamiltonian in site basis
-                 chemists notation (pr|qs)=<pq|rs>
-            mo_coeff: moa, mob 
+        '''
+        h1e: 1-elec Hamiltonian in site basis
+        g2e: 2-elec Hamiltonian in site basis
+              chemists notation (pr|qs)=<pq|rs>
+        mo_coeff: moa, mob
         '''
         moa, mob = mo_coeff
-        
-        h1e_a = einsum('uv,up,vq->pq',h1e,moa,moa)
-        h1e_b = einsum('uv,up,vq->pq',h1e,mob,mob)
-        g2e_aa = einsum('uvxy,up,vr->prxy',g2e,moa,moa)
-        g2e_aa = einsum('prxy,xq,ys->prqs',g2e_aa,moa,moa)
-        g2e_ab = einsum('uvxy,up,vr->prxy',g2e,moa,moa)
-        g2e_ab = einsum('prxy,xq,ys->prqs',g2e_ab,mob,mob)
-        g2e_bb = einsum('uvxy,up,vr->prxy',g2e,mob,mob)
-        g2e_bb = einsum('prxy,xq,ys->prqs',g2e_bb,mob,mob)
+
+        h1e_a = lib.einsum('uv,up,vq->pq',h1e,moa,moa)
+        h1e_b = lib.einsum('uv,up,vq->pq',h1e,mob,mob)
+        g2e_aa = lib.einsum('uvxy,up,vr->prxy',g2e,moa,moa)
+        g2e_aa = lib.einsum('prxy,xq,ys->prqs',g2e_aa,moa,moa)
+        g2e_ab = lib.einsum('uvxy,up,vr->prxy',g2e,moa,moa)
+        g2e_ab = lib.einsum('prxy,xq,ys->prqs',g2e_ab,mob,mob)
+        g2e_bb = lib.einsum('uvxy,up,vr->prxy',g2e,mob,mob)
+        g2e_bb = lib.einsum('prxy,xq,ys->prqs',g2e_bb,mob,mob)
 
         self.mo_coeff = mo_coeff
         self.h1e = h1e_a, h1e_b
@@ -221,11 +157,19 @@ class CIObject():
            fcivec: ground state uhf fcivec
            norb: size of site basis
            nelec: nea, neb
-        '''
+        '''       
         self.r = fcivec.copy() # ie r is the state in slater det basis
         self.i = np.zeros_like(fcivec)
         self.norb = norb
         self.nelec = nelec
+
+    def dot(self, ket):
+        if(not isinstance(ket, CIObject)): raise TypeError;
+        if(self.norb != ket.norb or self.nelec != ket.nelec): raise ValueError;
+        return np.dot( np.conj(self.r + complex(0,1)*self.i)[:,0], (ket.r + complex(0,1)*ket.i)[:,0]);
+
+    def __str__(self):
+        return str((self.r + complex(0,1)*self.i)[:,0]);
 
     def compute_rdm1(self):
         rr = direct_uhf.make_rdm1s(self.r, self.norb, self.nelec) # tuple of 1 particle density matrices for alpha, beta spin. self.r is fcivec
@@ -250,10 +194,11 @@ class CIObject():
         d2ab = rr2[1] + ii2[1] + 1j*(ri2[1]-ri2[2].transpose(3,2,1,0))
         d2bb = rr2[2] + ii2[2] + 1j*(ri2[3]-ri2[3].transpose(1,0,3,2))
         # 2pdm[r,p,s,q] = \langle p^\dagger q^\dagger s r\rangle
-        d2aa = d2aa.transpose(1,0,3,2) 
+        d2aa = d2aa.transpose(1,0,3,2)
         d2ab = d2ab.transpose(1,0,3,2)
         d2bb = d2bb.transpose(1,0,3,2)
         return (d1a, d1b), (d2aa, d2ab, d2bb)
+
 
 #####################################################################################
 #### run code

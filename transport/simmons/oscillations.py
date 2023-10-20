@@ -483,10 +483,9 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
                             stop_bounds = False, verbose=verbose);
             fit_lineshape = lineshape(x, *params_lineshape);
             widths.append(params_lineshape[1]);
-            #if(verbose): plot_fit(x, y, fit_lineshape, mytitle="Peak width fit (T= {:.1f} K, B = {:.1f} T)".format(Ts[Tvali],Bs[Tvali]));
+            if(verbose): plot_fit(x, y, fit_lineshape, mytitle="Peak width fit (T= {:.1f} K, B = {:.1f} T)".format(Ts[Tvali],Bs[Tvali]));
 
-                    
-
+                
     # show
     ax3.set_title("Conductance oscillations in EGaIn$|$H$_2$Pc$|$MnPc$|$NCO");
     plt.legend(loc='lower right');
@@ -557,13 +556,14 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
         pax.plot(myx, myyfit, color=accentcolors[0], label = "Slope = {:.2f} meV/T = {:.2f}$k_B$, b = {:.2f} meV".format(coefs[0], coefs[0]/1000/kelvin2eV, coefs[1]));    
         pax.plot( [np.mean(myx)], [np.mean(myy)], color='white', label = "RMSE = {:1.5f}".format(myrmse));
         # thermal exp coef
-        alpha_t = 0.01
-        from_thermal = 23.88/(1+alpha_t *myx);
-        pax.plot(myx, from_thermal, label="thermal model, $\\alpha_t = ${:.4f}".format(alpha_t))
+        alpha_t = 0.0001;
+        beta_t = alpha_t/0.1;
+        from_thermal = 23.88*(1+alpha_t*myx)/(1+beta_t*myx)**2;
+        pax.plot(myx, from_thermal, label="thermal model, $\\alpha_t = ${:.6f}, $\\beta_t = ${:.6f}".format(alpha_t,beta_t))
         # format
         pax.set_title("Dataset = "+str(metal[:-1]));
         pax.set_xlabel("$T$(K)");
-        pax.set_xlabel("$4E_C$(meV)");
+        pax.set_ylabel("$4E_C$(meV)");
         plt.legend();
         plt.tight_layout();
         plt.show();

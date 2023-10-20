@@ -76,21 +76,25 @@ spinstate = "", prefix = "dat/", namevar="Vg", verbose = 0) -> str:
         
     # get scf implementation siam by passing hamiltonian arrays
     if(verbose): print("2. FCI solution");
-    mol, dotscf = fci_mod.arr_to_scf(h1e, g2e, norbs, nelecs, verbose = verbose);
-    
+    mol, dotscf = fci_mod.arr_to_uhf(h1e, g2e, norbs, nelecs, verbose = verbose);
+
     # from scf instance, do FCI, get exact gd state of equilibrium system
     E_fci, v_fci = fci_mod.scf_FCI(mol, dotscf, verbose = verbose);
     if( verbose > 3): print("|initial> = ",v_fci);
-    
+    x=ops.spinflip([0],len(h1e))
+    print(x)
+    raise NotImplementedError;
     # prepare in nonequilibrium state by turning on t_hyb (hopping onto dot)
     if(verbose > 3 ): print("- Add nonequilibrium terms");
     neq_params = t_leads, t_hyb, t_dots, V_bias, mu, V_gate, U, 0.0, 0.0; # thyb, Vbias turned on, no mag field
     neq_h1e, neq_g2e, input_str_noneq = ops.dot_hams(nleads, ndots, neq_params, spinstate, verbose = verbose);
-
+    
     # from fci gd state, do time propagation
     if(verbose): print("3. Time propagation")
     init, observables = tdfci.kernel(neq_h1e, neq_g2e, v_fci, mol, dotscf, timestop, deltat, verbose = verbose);
-    
+
+    return;
+
     # write results to external file
     if namevar == "Vg":
         fname = prefix+"siam_"+str(nleads[0])+"_"+str(ndots)+"_"+str(nleads[1])+"_e"+str(sum(nelecs))+"_Vg"+str(V_gate)+".npy";

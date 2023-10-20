@@ -9,7 +9,6 @@ August 2021
 from transport import tdfci
 from transport.tdfci import wrappers
 from transport import fci_mod
-from transport.fci_mod import plot
 
 import numpy as np
     
@@ -18,7 +17,7 @@ import sys
 #### top level
 verbose = 4;
 get_data = int(sys.argv[1]); # whether to run computations, if not data already exists
-nleads = (3,3);
+nleads = (2,2);
 nelecs = (2,0); # one electron on dot and one itinerant
 ndots = 1;
 myspinstate = "ab";
