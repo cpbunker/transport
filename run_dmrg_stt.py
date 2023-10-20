@@ -197,7 +197,7 @@ def plot_wrapper(psi_ci, psi_mps, eris_inst, driver_inst, title_s = ""):
 # top level
 verbose = 5;
 np.set_printoptions(precision = 4, suppress = True);
-do_dmrg = False;
+do_dmrg = True;
 json_name = sys.argv[1];
 shorter_params = json.load(open(json_name));
 
@@ -266,7 +266,7 @@ gd_s0 = tdfci.compute_obs(gdstate_ci_inst, s0_eris);
 print("Site 0 spin (FCI) = {:.6f}".format(gd_s0));
 if(do_dmrg):
     s0_mpo = get_spin(len(H_1e), H_driver, 0, True);
-    gd_s0_dmrg = tddmrg.compute_obs_dmrg(gdstate_mps_inst, s0_mpo, H_driver);
+    gd_s0_dmrg = tddmrg.compute_obs(gdstate_mps_inst, s0_mpo, H_driver);
     print("Site 0 occupancy (DMRG) = {:.6f}".format(gd_s0_dmrg));
 
 # site 5 (ie the impurity site) spin
@@ -311,14 +311,14 @@ t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
 # observables
 plot_wrapper(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, title_s = "$t = ${:.2f}".format(mytime));
 
-# time evol again
+# time evol 2nd time
 time_update = 0.6*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
 if(do_dmrg): # dynamics dmrg
-    t2_mps_inst = H_driver_neq.td_dmrg(H_mpo_neq, t1_mps_inst, delta_t=time_step, target_t=time_update,
-                bond_dims=bdims_noises_threads[0], hermitian=False, iprint=0);
+    t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
+                bond_dims=bdims, hermitian=False, iprint=0);
 else:
     t2_mps_inst = None;
     
@@ -328,14 +328,14 @@ t2_ci_inst = tdfci.kernel(t1_ci_inst, H_eris_dyn, time_update, time_step);
 # observables
 plot_wrapper(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, title_s = "$t = ${:.2f}".format(mytime));
 
-# time evol again
+# time evol 3rd time
 time_update = 1.0*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
 if(do_dmrg): # dynamics dmrg
-    t3_mps_inst = H_driver_neq.td_dmrg(H_mpo_neq, t1_mps_inst, delta_t=time_step, target_t=time_update,
-                bond_dims=bdims_noises_threads[0], hermitian=False, iprint=0);
+    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
+                bond_dims=bdims, hermitian=False, iprint=0);
 else:
     t3_mps_inst = None;
     

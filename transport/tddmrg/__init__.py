@@ -6,6 +6,7 @@ July 2021
 Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 '''
 
+from pyblock2.driver import core
 import numpy as np
 
     
@@ -89,13 +90,13 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
     # return observables as arrays vs time
     return observables;
 
-def compute_obs(op,psi):
+def compute_obs(psi, mpo_inst, driver):
     '''
     Compute expectation value of observable repped by given operator from the wf
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
-    return driver.expectation(psi, mpo_obj, psi);
+    return driver.expectation(psi, mpo_inst, psi);
 
 ##########################################################################################################
 #### hamiltonian constructors

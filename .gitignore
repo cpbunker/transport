@@ -1,13 +1,2 @@
 
-transport/simmons/Co/120KExp.txt
-transport/simmons/Co/160KExp.txt
-transport/simmons/Co/200KExp.txt
-transport/simmons/Co/40KExp.txt
-transport/simmons/Co/80KExp.txt
-transport/simmons/Mn/5KExp.txt
-transport/simmons/Mn/5KdIdV.txt
-transport/simmons/Mn/25KdIdV.txt
-transport/simmons/Mn/10KdIdV.txt
-transport/simmons/Mn/15KdIdV.txt
-transport/simmons/Mn/20KdIdV.txt
-transport/simmons/Mn/30KdIdV.txt
+tmp/*
