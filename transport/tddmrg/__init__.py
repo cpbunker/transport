@@ -254,8 +254,8 @@ def Hsys_builder(params_dict, block, verbose=0):
             builder.add_term("CDcd",[d,d,dp1,dp1], Jz/4);
             builder.add_term("CDCD",[d,d,dp1,dp1],-Jz/4);
             # x+y component -> +- terms
-            builder.add_term("cDCd",[d,d,d+1,d+1],-Jx/2);
-            builder.add_term("CdcD",[d,d,d+1,d+1],-Jx/2);
+            builder.add_term("cDCd",[d,d,dp1,dp1],-Jx/2);
+            builder.add_term("CdcD",[d,d,dp1,dp1],-Jx/2);
         else:
             # z component terms
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += -Jz/4;
