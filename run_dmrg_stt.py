@@ -212,7 +212,8 @@ mynelec = (myNFM+myNe,0);
 assert(shorter_params["Jz"]==shorter_params["Jx"]);
 espin = myNe*np.sign(shorter_params["Be"]);
 locspin = myNFM*np.sign(shorter_params["BFM"]);
-#assert(espin+locspin == shorter_params["TwoSz"]);
+myTwoSz = shorter_params["TwoSz"];
+#assert(espin+locspin == myTwoSz);
 
 #### FCI initialization
 ####
@@ -243,14 +244,22 @@ if(do_dmrg):
     H_driver, H_builder = tddmrg.Hsys_builder(shorter_params, True, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
     # add in t<0 terms
-    H_driver, HMPO_initial = tddmrg.Hsys_polarizer(shorter_params, True, (H_driver,H_builder), verbose=0);
+    H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(shorter_params, True, (H_driver,H_builder), verbose=0);
 
+    # from fcidump
+    H_driver.write_fcidump(H_1e, H_2e, 0.0, n_sites=H_driver.n_sites, n_elec=myNe, spin=myTwoSz, filename="from_driver.fd")
+    H_driver.read_fcidump(filename="from_driver.fd")
+    H_driver.initialize_system(n_sites=H_driver.n_sites, n_elec=myNe,
+                         spin=myTwoSz)
+    H_mpo_initial = H_driver.get_qc_mpo(h1e=H_driver.h1e, g2e=H_driver.g2e, ecore=H_driver.ecore, iprint=1)
+    print(np.shape(H_1e))
+    print(np.shape(H_driver.h1e))
     # gd state
-    gdstate_mps_inst, gdstate_E_dmrg = get_energy_dmrg(H_driver, HMPO_initial, verbose=0);
+    gdstate_mps_inst, gdstate_E_dmrg = get_energy_dmrg(H_driver, H_mpo_initial, verbose=0);
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 
     # check gd state
-    check_E_dmrg = tddmrg.compute_obs(gdstate_mps_inst, HMPO_initial, H_driver);
+    check_E_dmrg = tddmrg.compute_obs(gdstate_mps_inst, H_mpo_initial, H_driver);
     print("Manually computed energy (DMRG) = {:.6f}".format(check_E_dmrg));
 
 else:
@@ -280,36 +289,45 @@ if(do_dmrg):
 
 # plot observables
 mytime=0;
-plot_wrapper(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, title_s = "$t = ${:.2f}".format(mytime));
+#plot_wrapper(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, title_s = "$t = ${:.2f}".format(mytime));
 
 #### Time evolution
 ####
 ####
-time_step = 0.01;
+time_step = 0.002;
 time_update = 0.4*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
-    
-if(do_dmrg): # dynamics DMRG
-    H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(shorter_params, True, verbose=verbose);
-    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
-
-    # time evol
-    bdims = [500];
-
-    t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
-                    bond_dims=bdims, hermitian=False, normalize_mps=True, iprint=0);
-else:
-    t1_mps_inst, H_driver_dyn = None, None;
-    
+        
 # dynamics FCI
 H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(shorter_params, False, verbose=verbose);
 print("H_1e_dyn = ");print(H_1e_dyn[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e_dyn[2*(myNL+myNFM):,2*(myNL+myNFM):]);
 H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
 t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
 
+if(do_dmrg): # dynamics DMRG
+    H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(shorter_params, True, verbose=verbose);
+    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
+
+    # from fcidump
+    H_driver_dyn.write_fcidump(H_1e_dyn, H_2e_dyn, 0.0, filename="from_driver_dyn.fd")
+    H_driver_dyn.read_fcidump(filename="from_driver_dyn.fd")
+    H_driver_dyn.initialize_system(n_sites=H_driver_dyn.n_sites, n_elec=myNe,
+                         spin=myTwoSz)
+    H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_driver_dyn.h1e, g2e=H_driver_dyn.g2e, ecore=H_driver_dyn.ecore, iprint=1)
+    print(np.shape(H_1e_dyn))
+    print(np.shape(H_driver_dyn.h1e))
+
+    # time evol
+    bdims = None;
+
+    t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
+                    bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
+else:
+    t1_mps_inst, H_driver_dyn = None, None;
+
 # observables
-plot_wrapper(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, title_s = "$t = ${:.2f}".format(mytime));
+#plot_wrapper(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, title_s = "$t = ${:.2f}".format(mytime));
 
 # time evol 2nd time
 time_update = 0.6*np.pi;
@@ -318,7 +336,7 @@ mytime += time_update;
 
 if(do_dmrg): # dynamics dmrg
     t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
-                bond_dims=bdims, hermitian=False, iprint=0);
+                bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t2_mps_inst = None;
     
@@ -334,8 +352,8 @@ time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discre
 mytime += time_update;
 
 if(do_dmrg): # dynamics dmrg
-    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
-                bond_dims=bdims, hermitian=False, iprint=0);
+    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=time_step, target_t=time_update,
+                bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t3_mps_inst = None;
     
