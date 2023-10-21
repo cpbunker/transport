@@ -6,7 +6,7 @@ July 2021
 Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 '''
 
-#from pyblock2.driver import core
+from pyblock2.driver import core
 import numpy as np
 
     
@@ -325,7 +325,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     for j in range(Nconf):
         for spin in spin_inds:
             if(block):
-                builder.add_term(spin_strs[spin],[j,j],-Vconf);
+                builder.add_term(spin_strs[spin],[j,j],-Vconf); 
             else:
                 h1e[nloc*j+spin,nloc*j+spin] += -Vconf;
 

@@ -1,4 +1,4 @@
-{"tl":0.0, "Vconf":0.0, "Be":0.0, "BFM":-100.0, "B_sd":100.0,
+{"tl":1e-4, "Vconf":0.0, "Be":0.0, "BFM":-100.0, "B_sd":100.0,
 "Jz":0.0, "Jx":0.0, "Jsd":0.5,
 "NL":2, "NFM":1, "NR":2, "Nconf":2, "Ne":1, "TwoSz":0,
 "symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[2,3]}

@@ -122,20 +122,20 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False
     print("Concurrence("+str(whichsites)+")");
     which1, which2 = whichsites;
     if(block):
-        builder.add_term("cDcD",[which1,which2],-1.0);
-        builder.add_term("cDCd",[which1,which2], 1.0);
-        builder.add_term("CdcD",[which1,which2], 1.0);
-        builder.add_term("CdCd",[which1,which2],-1.0);
+        #builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
+        builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
+        builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
+        #builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
     else:
-        g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
+        #g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
         g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
         g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
-        g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
+        #g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
         # switch particle labels
-        g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
+        #g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
         g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
         g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
-        g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
+        #g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
 
     if(g2e_only): return g2e;
 
@@ -198,7 +198,7 @@ def plot_wrapper(psi_ci, psi_mps, eris_inst, driver_inst, concur_sites, title_s 
     if(not isinstance(eris_inst, tdfci.ERIs)): raise TypeError;
 
     # plot charge and spin vs site
-    obs_strs = ["occ","sx"];
+    obs_strs = ["occ","sz"];
     ylabels = ["$\langle n_j \\rangle $","$ \langle S_j^{\mu} \\rangle $"];
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
@@ -212,8 +212,8 @@ def plot_wrapper(psi_ci, psi_mps, eris_inst, driver_inst, concur_sites, title_s 
             axes[obsi].plot(x,y, label = ("FCI ($E=${:.2f}, $C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci), color='tab:blue');
 
     if(psi_mps is not None): # with dmrg
-        E_dmrg = tddmrg.compute_obs(psi_mps, driver_inst.get_mpo(), driver_inst);
-        C_dmrg = tdfci.compute_obs(psi_mps,
+        E_dmrg = -999# tddmrg.compute_obs(psi_mps, driver_inst.get_mpo(), driver_inst);
+        C_dmrg = tddmrg.compute_obs(psi_mps,
                     get_concurrence(len(eris_inst.h1e[0]), driver_inst, concur_sites, True),
                     driver_inst);
         for obsi in range(len(obs_strs)):
