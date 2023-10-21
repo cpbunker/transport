@@ -6,7 +6,7 @@ July 2021
 Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
 '''
 
-from pyblock2.driver import core
+#from pyblock2.driver import core
 import numpy as np
 
     
@@ -215,7 +215,6 @@ def Hsys_builder(params_dict, block, verbose=0):
     #            (J \sigma^\mu_{\sigma\sigma'} \sigma^\mu_{\tau\tau'}
     # where \sigma^\mu denotes a single Pauli matrix, the mu^th compoent of the Pauli vector
     for (j,d) in sdpairs:
-        print("Jsd = ",Jsd)
         if(block):
             # z component terms
             builder.add_term("cdcd",[j,j,d,d],-Jsd/4);
@@ -228,19 +227,19 @@ def Hsys_builder(params_dict, block, verbose=0):
         else:
             # z component terms
             g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jsd/4;
-            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += Jsd/4;
-            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += Jsd/4;
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  Jsd/4;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] +=  Jsd/4;
             g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jsd/4;
             # x+y component -> +- terms
             g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[1],nloc*(d)+spin_inds[1],nloc*(d)+spin_inds[0]] += -Jsd/2;
-            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[0],nloc*(d)+spin_inds[0],nloc*(1)+spin_inds[1]] += -Jsd/2;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[0],nloc*(d)+spin_inds[0],nloc*(d)+spin_inds[1]] += -Jsd/2;
             # repeat above with switched particle labels (pq|rs) = (rs|pq)
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += -Jsd/4;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += Jsd/4;
-            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += Jsd/4;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=-Jsd/4;
-            g2e[nloc*(d)+spin_inds[1],nloc*(d)+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[1]] += -Jsd/2;
-            g2e[nloc*(d)+spin_inds[0],nloc*(1)+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[0]] += -Jsd/2;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] +=  Jsd/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=  Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += -Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[1]] += -Jsd/2;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[0]] += -Jsd/2;
 
 
     # XXZ for loc spins
@@ -259,20 +258,21 @@ def Hsys_builder(params_dict, block, verbose=0):
         else:
             # z component terms
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += -Jz/4;
-            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] += Jz/4;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += Jz/4;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=-Jz/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=  Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] +=  Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=- Jz/4;
             # x+y component -> +- terms
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0]] += -Jx/2;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1]] +=-Jx/2;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1]] += -Jx/2;
             # repeat above with switched particle labels (pq|rs) = (rs|pq)
             g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jz/4;
-            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += Jz/4;
-            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] +=  Jz/4;
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  Jz/4;
             g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jz/4;
             g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[1]] += -Jx/2;
             g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[0]] += -Jx/2;
 
+    # return
     if(block):
         return driver, builder;
     else:
@@ -337,9 +337,10 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             builder.add_term(spin_strs[1],[j,j], Be/2);
         else:
             h1e[nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += -Be/2; # if Be>0, spin up should be favored
-            h1e[nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += Be/2;
+            h1e[nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=  Be/2;
 
     # confining potential on loc spins
+    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
     for d in loc_spins:
         for spin in spin_inds:
@@ -355,26 +356,36 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             builder.add_term(spin_strs[1],[d,d], BFM/2);
         else:
             h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM/2;
-            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += BFM/2; # typically BFM<0, spin down should be favored
+            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM/2; # typically BFM<0, spin down should be favored
 
+    # special case initialization
     if("BFM_first" in params_dict.keys()):
         BFM_first = params_dict["BFM_first"];
         d = loc_spins[0];
         if(block):
-            builder.add_term(spin_strs[0],[d,d],-BFM_first/2);
-            builder.add_term(spin_strs[1],[d,d], BFM_first/2);
+            builder.add_term(spin_strs[0],[d,d],-BFM_first/2 + BFM/2);
+            builder.add_term(spin_strs[1],[d,d], BFM_first/2 - BFM/2);
         else:
-            h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2;
-            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += BFM_first/2; # typically BFM<0, spin down should be favored
-
-        
-
+            h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2 + BFM/2;
+            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM_first/2 - BFM/2; 
+    if("B_sd" in params_dict.keys()):
+        B_sd = params_dict["B_sd"];
+        s = central_sites[0];
+        if(block):
+            builder.add_term(spin_strs[0],[s,s],-B_sd/2);
+            builder.add_term(spin_strs[1],[s,s], B_sd/2);
+        else:
+            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -B_sd/2;
+            h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  B_sd/2;
+            
+    # return
     if(block):
         mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;
 
+    raise NotImplementedError;
     # small perturbation favoring concurrence
     perturb = 3.33e-4;
     g2e += perturb*get_concurrence(params_dict, None, (loc_spins[0], loc_spins[1]), False, g2e_only=True);
