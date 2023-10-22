@@ -1,14 +1,28 @@
 '''
-Time dependent fci code 
-Author: Ruojing Peng
+Ruojing Peng
+Chan group, Caltech
 
-tdfci module:
-- have to run thru direct_uhf solver
-- I use all spin up formalism: only alpha electrons input, only h1e_a and g1e_aa matter to solver
-- benchmarked with dot impurity model from ruojings_td_fci.py
-- TimeProp is main driver
-- turn on bias in leads, pass hamiltonians, molecule, and scf object to time prop
-- outputs current and energy vs time
+This code uses RK4 exact diagonalization to do discrete time evolution on a
+quantum state.
+
+Christian Bunker has adapted this code from Ruojing to
+benchmark model Hamiltonians, where the spin degrees of freedom are more
+important than the original quantum chemistry setting. Therefore the "all
+spin up" formalism is used:
+- instead of N spatial orbitals with up to double occupancy, we have 2N
+    fermionic orbitals with up to single occupancy. The even ones are spin
+    up and the odd ones are spin down
+- The electron tuple is always (Ne, 0), ie code sees no down electrons
+- the Hamiltonian matrix elements are not spin-degenerate, but only the
+    up-up elements are nonzero (ie only h1e_aa and g2e_aa)
+- because of the previous point, the direct_uhf solver must always be used
+
+Other notes:
+- kernel is main driver
+- observables should be calculated within kernel
+- the Hamiltonian for time propagation (the dynamic Hamiltonian) must include
+    a perturbation relative to the ground state Hamiltonian. Often this is
+    turning on a bias voltage, or hopping through the central region
 '''
 
 from pyscf import lib, fci, scf, gto, ao2mo
@@ -22,6 +36,18 @@ import functools
 #### kernel
 
 def kernel(ci_inst, eris_inst, tf, dt):
+    '''
+    Main driver of time evolution
+
+    Args:
+    ci_inst, a CIObject (def'd below) which contains the FCI state. This
+        state is time evolved IN PLACE
+    eris_inst, an ERIs object (def'd below) which contains the matrix elements
+        of the dynamic Hamiltonian
+
+    Calculation of observables:
+    '''
+
     Nsteps = int(tf/dt+1e-6); # number of time steps beyond t=0
     for i in range(Nsteps+1):
         # update state
@@ -120,13 +146,15 @@ def compute_obs(ci_inst, op_eris):
     g2e_aa -= g2e_aa.transpose(1,0,2,3)
     g2e_bb -= g2e_bb.transpose(1,0,2,3)
 
-    # calculate energy
+    # calculate observable
     e  = lib.einsum('pq,qp',h1e_a,d1a)
     e += lib.einsum('PQ,QP',h1e_b,d1b)
     e += 0.25 * lib.einsum('pqrs,rspq',g2e_aa,d2aa)
     e += 0.25 * lib.einsum('PQRS,RSPQ',g2e_bb,d2bb)
     e +=        lib.einsum('pQrS,rSpQ',g2e_ab,d2ab)
-    return e
+
+    if(np.imag(e) > 1e-12): print(e); raise ValueError;
+    return np.real(e);
 
 class ERIs():
     def __init__(self, h1e, g2e, mo_coeff):

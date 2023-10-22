@@ -1,11 +1,13 @@
 '''
 Christian Bunker
 M^2QM at UF
-July 2021
+October 2023
 
-Use Huanchen Zhai's DMRG code (pyblock3) to do time dependence in SIAM
+Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
+(Chan group, Caltech) to study molecular spin qubit (MSQ) systems
 '''
 
+from transport import tdfci
 from pyblock2.driver import core
 import numpy as np
 
@@ -90,13 +92,147 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
     # return observables as arrays vs time
     return observables;
 
+################################################################################
+#### observables
+
 def compute_obs(psi, mpo_inst, driver):
     '''
     Compute expectation value of observable repped by given operator from the wf
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
-    return driver.expectation(psi, mpo_inst, psi);
+    ret = driver.expectation(psi, mpo_inst, psi);
+
+def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIs) representing the occupancy of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): # construct ExprBuilder
+        builder = eris_or_driver.expr_builder()
+    else:
+      h1e, g2e = np.zeros((N,N),dtype=float), np.zeros((N,N,N,N),dtype=float);
+
+    # construct
+    for spin in spin_inds:
+        if(block):
+            builder.add_term(spin_strs[spin],[whichsite,whichsite],1.0);
+        else:
+            h1e[nloc*whichsite+spin,nloc*whichsite+spin] += 1.0;
+
+    # return
+    if(block):
+        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        return mpo_from_builder;
+    else:
+        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+        return occ_eri;
+
+def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or matrix) representing <Sz> of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): # construct ExprBuilder
+        builder = eris_or_driver.expr_builder()
+    else:
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cd",[whichsite,whichsite], 0.5);
+        builder.add_term("CD",[whichsite,whichsite],-0.5);
+    else:
+        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[0]] += 0.5;
+        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[1]] +=-0.5;
+
+    # return
+    if(block):
+        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        return mpo_from_builder;
+    else:
+        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+        return occ_eri;
+
+def get_sx(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): # construct ExprBuilder
+        builder = eris_or_driver.expr_builder()
+    else:
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cD",[whichsite,whichsite], 0.5);
+        builder.add_term("Cd",[whichsite,whichsite],0.5);
+    else:
+        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += 0.5;
+        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += 0.5;
+        
+    # return
+    if(block):
+        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        return mpo_from_builder;
+    else:
+        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+        return occ_eri;
+
+def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False, verbose=0):
+    '''
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): # construct ExprBuilder
+        builder = eris_or_driver.expr_builder()
+    else:
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    print("Concurrence("+str(whichsites)+")");
+    which1, which2 = whichsites;
+    if(block):
+        #builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
+        builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
+        builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
+        #builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
+    else:
+        #g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
+        g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
+        g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
+        #g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
+        # switch particle labels
+        #g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
+        g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
+        g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
+        #g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
+
+    if(g2e_only): return g2e;
+
+    # return
+    if(block):
+        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        return mpo_from_builder;
+    else:
+        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+        return occ_eri;
 
 ##########################################################################################################
 #### hamiltonian constructors
@@ -435,3 +571,4 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;
+

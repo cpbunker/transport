@@ -3,7 +3,10 @@ Christian Bunker
 M^2QM at UF
 October 2023
 
-
+Use density matrix renormalization group (DMRG) code from Huanchen Zhai (block2)
+to study a 1D array of localized spins interacting with itinerant electrons in a
+nanowire. In spintronics, this system is of interest because elecrons can impart
+angular momentum on the localized spins, exerting spin transfer torque (STT).
 '''
 
 import numpy as np
@@ -15,137 +18,6 @@ import sys
 
 ##################################################################################
 #### wrappers
-
-def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or ERIs) representing the occupancy of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-      h1e, g2e = np.zeros((N,N),dtype=float), np.zeros((N,N,N,N),dtype=float);
-
-    # construct
-    for spin in spin_inds:
-        if(block):
-            builder.add_term(spin_strs[spin],[whichsite,whichsite],1.0);
-        else:
-            h1e[nloc*whichsite+spin,nloc*whichsite+spin] += 1.0;
-
-    # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
-
-def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or matrix) representing <Sz> of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cd",[whichsite,whichsite], 0.5);
-        builder.add_term("CD",[whichsite,whichsite],-0.5);
-    else:
-        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[0]] += 0.5;
-        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[1]] +=-0.5;
-
-    # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
-
-def get_sx(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cD",[whichsite,whichsite], 0.5);
-        builder.add_term("Cd",[whichsite,whichsite],0.5);
-    else:
-        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += 0.5;
-        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += 0.5;
-        
-    # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
-
-def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False, verbose=0):
-    '''
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    print("Concurrence("+str(whichsites)+")");
-    which1, which2 = whichsites;
-    if(block):
-        #builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
-        builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
-        builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
-        #builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
-    else:
-        #g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
-        g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
-        g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
-        #g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
-        # switch particle labels
-        #g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
-        g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
-        g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
-        #g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
-
-    if(g2e_only): return g2e;
-
-    # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
 
 def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     # convert from arrays to uhf instance
@@ -170,8 +42,26 @@ def get_energy_dmrg(driver, mpo, verbose=0):
         thrds=threads, cutoff=0, iprint=verbose);
     return ket, ret;
 
+def check_observables(the_sites,psi,eris_or_driver,block):
+    if(not block):
+        # site 0 spin
+        s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
+        gd_s0 = tdfci.compute_obs(psi, s0_eris);
+        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0));
+        # site 5 (ie the impurity site) spin
+        sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
+        gd_sdot = tdfci.compute_obs(psi, sdot_eris);
+        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[1],gd_sdot));       
+    else:
+        s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
+        gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
+        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
+        sdot_mpo = get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
+        gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
+        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
+
 def vs_site(psi,eris_or_driver,block,which_obs):
-    obs_funcs = {"occ":get_occ, "sz":get_sz, "sx":get_sx}
+    obs_funcs = {"occ":tddmrg.get_occ, "sz":tddmrg.get_sz, "sx":tddmrg.get_sx}
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
@@ -191,46 +81,82 @@ def vs_site(psi,eris_or_driver,block,which_obs):
 
     return js, vals;
 
-def plot_wrapper(psi_ci, psi_mps, eris_inst, driver_inst, concur_sites, title_s = ""):
+# fig standardizing
+mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+accentcolors = ["black","red"];
+mymarkers = ["o","+","^","s","d","*","X"];
+mylinewidth = 3.0;
+mypanels = ["(a)","(b)","(c)","(d)"];
+#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+
+def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, draw_arrow=False):
     '''
     '''
     import matplotlib.pyplot as plt
     if(not isinstance(eris_inst, tdfci.ERIs)): raise TypeError;
 
+    # unpack
+    concur_sites = params_dict["ex_sites"];
+    Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
+    NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
+    Ndofs = NL+2*NFM+NR;
+    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+
     # plot charge and spin vs site
     obs_strs = ["occ","sz"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle S_j^{\mu} \\rangle $"];
+    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{\mu} \\rangle $"];
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
         E_ci = tdfci.compute_obs(psi_ci, eris_inst);
         C_ci = tdfci.compute_obs(psi_ci,
-                    get_concurrence(len(eris_inst.h1e[0]), eris_inst, concur_sites, False));
+                    tddmrg.get_concurrence(len(eris_inst.h1e[0]), eris_inst, concur_sites, False));
         for obsi in range(len(obs_strs)):
-            x, y = vs_site(psi_ci,H_eris,False,obs_strs[obsi])
-            axes[obsi].plot(x,y, label = ("FCI ($E=${:.2f}, $C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci), color='tab:blue');
-
+            x, y = vs_site(psi_ci,H_eris,False,obs_strs[obsi]);
+            y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
+            y_ds = y[np.isin(x,loc_spins)];# off chain impurities
+            js = np.array(range(len(y_js)));
+            # delocalized spins
+            axes[obsi].plot(js,y_js,color=mycolors[0],
+                            label = ("FCI ($E=${:.0f}, $C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci),linewidth=mylinewidth);
+            # localized spins
+            if(draw_arrow and obs_strs[obsi] != "occ"):
+                for di in range(len(central_sites)):
+                    axes[obsi].arrow(central_sites[di],0,0,y_ds[di],color=mycolors[1],
+                                     width=0.01*mylinewidth,length_includes_head=True);
+            else:
+                axes[obsi].scatter(central_sites, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+                
     if(psi_mps is not None): # with dmrg
         E_dmrg = -999# tddmrg.compute_obs(psi_mps, driver_inst.get_mpo(), driver_inst);
         C_dmrg = tddmrg.compute_obs(psi_mps,
-                    get_concurrence(len(eris_inst.h1e[0]), driver_inst, concur_sites, True),
+                    tddmrg.get_concurrence(len(eris_inst.h1e[0]), driver_inst, concur_sites, True),
                     driver_inst);
         for obsi in range(len(obs_strs)):
-            x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi])
-            axes[obsi].scatter(x,y, label = ("DMRG ($E=${:.2f}, $C"+str(concur_sites)+"=${:.2f})").format(E_dmrg,C_dmrg),
-                               marker='o', edgecolors='tab:red', facecolors='none');
-
+            x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi]);
+            y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
+            y_ds = y[np.isin(x,loc_spins)];# off chain impurities
+            js = np.array(range(len(y_js)));
+            # delocalized spins
+            axes[obsi].scatter(js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
+                               s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($E=${:.0f}, $C"+str(concur_sites)+"=${:.2f})").format(E_dmrg,C_dmrg));
+            # localized spins
+            axes[obsi].scatter(central_sites, y_ds, marker="^", edgecolors=accentcolors[1],
+                               s=(3*mylinewidth)**2, facecolors='none');
+                
     #format
     for obsi in range(len(obs_strs)):
         axes[obsi].set_ylabel(ylabels[obsi]);
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j$");
-    axes[0].set_title(title_s);
-    plt.legend();
+    axes[-1].set_xlim(np.min(js), np.max(js));
+    axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}, $J_z = ${:.4f}, $N_e = ${:.0f}".format(Jx, Jz, Ne));
+    plt.legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     plt.tight_layout();
-    plt.show();
+    plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
 ##################################################################################
 #### run code
@@ -248,6 +174,7 @@ from transport.tdfci import utils
 # some unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
 mynelec = (myNFM+myNe,0);
+my_sites = params["ex_sites"];
 
 # checks
 assert(params["Jz"]==params["Jx"]);
@@ -259,6 +186,7 @@ myTwoSz = params["TwoSz"];
 #### FCI initialization
 ####
 ####
+init_start = time.time();
 
 # construct arrays with terms there for all times
 H_1e, H_2e = tddmrg.Hsys_builder(params, False, verbose=verbose);
@@ -307,36 +235,23 @@ if(do_dmrg):
 else:
     H_driver, gdstate_mps_inst = None, None;
 
+init_end = time.time();
+print(">>> Init compute time (DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
+
 #### Observables
 ####
 ####
-
-# site 0 spin
-my_sites = tuple(params["ex_sites"]);
-s0_eris = get_sz(len(H_1e), H_eris, my_sites[0], False);
-gd_s0 = tdfci.compute_obs(gdstate_ci_inst, s0_eris);
-print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(my_sites[0],gd_s0));
-if(do_dmrg):
-    s0_mpo = get_sz(len(H_1e), H_driver, my_sites[0], True);
-    gd_s0_dmrg = tddmrg.compute_obs(gdstate_mps_inst, s0_mpo, H_driver);
-    print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(my_sites[0],gd_s0_dmrg));
-
-# site 5 (ie the impurity site) spin
-sdot_eris = get_sz(len(H_1e), H_eris, my_sites[1], False);
-gd_sdot = tdfci.compute_obs(gdstate_ci_inst, sdot_eris);
-print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(my_sites[1],gd_sdot));
-if(do_dmrg):
-    sdot_mpo = get_sz(len(H_1e), H_driver, my_sites[1], True);
-    gd_sdot_dmrg = tddmrg.compute_obs(gdstate_mps_inst, sdot_mpo, H_driver);
-    print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(my_sites[1], gd_sdot_dmrg));
+mytime=0;
 
 # plot observables
-mytime=0;
-plot_wrapper(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, my_sites, title_s = "$t = ${:.2f}".format(mytime));
+check_observables(my_sites, gdstate_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
+snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime, draw_arrow=True);
 
 #### Time evolution
 ####
 ####
+evol1_start = time.time();
 time_step = 0.01;
 time_update = 0.4*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
@@ -352,32 +267,29 @@ if(do_dmrg): # dynamics DMRG
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
 
-    if False: # from fcidump
-        H_driver_dyn.write_fcidump(H_1e_dyn, H_2e_dyn, 0.0, filename="from_driver_dyn.fd")
-        H_driver_dyn.read_fcidump(filename="from_driver_dyn.fd")
-        H_driver_dyn.initialize_system(n_sites=H_driver_dyn.n_sites, n_elec=myNe,
-                             spin=myTwoSz)
-        H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_driver_dyn.h1e, g2e=H_driver_dyn.g2e, ecore=H_driver_dyn.ecore, iprint=1)
-        print(np.shape(H_1e_dyn))
-        print(np.shape(H_driver_dyn.h1e))
-
     # time evol
     bdims = None;
-
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
                     bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t1_mps_inst, H_driver_dyn = None, None;
 
+evol1_end = time.time();
+print(">>> Evol1 compute time (DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
+
 # observables
-plot_wrapper(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, my_sites, title_s = "$t = ${:.2f}".format(mytime));
+check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
+if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
+
+snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 # time evol 2nd time
+evol2_start = time.time();
 time_update = 0.6*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
-if(do_dmrg): # dynamics dmrg
+if(do_dmrg): # dynamics DMRG
     t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
                 bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
@@ -386,10 +298,16 @@ else:
 # dynamics fci
 t2_ci_inst = tdfci.kernel(t1_ci_inst, H_eris_dyn, time_update, time_step);
 
+evol2_end = time.time();
+print(">>> Evol2 compute time (DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
+
 # observables
-plot_wrapper(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, my_sites, title_s = "$t = ${:.2f}".format(mytime));
+check_observables(my_sites, t2_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
+snapshot(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 # time evol 3rd time
+evol3_start = time.time();
 time_update = 1.0*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
@@ -403,8 +321,13 @@ else:
 # dynamics fci
 t3_ci_inst = tdfci.kernel(t2_ci_inst, H_eris_dyn, time_update, time_step);
 
+evol3_end = time.time();
+print(">>> Evol3 compute time (DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
+
 # observables
-plot_wrapper(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, my_sites, title_s = "$t = ${:.2f}".format(mytime));
+check_observables(my_sites, t3_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
+snapshot(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 
 
