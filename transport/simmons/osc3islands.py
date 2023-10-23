@@ -461,8 +461,8 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
 if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
-    stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "local/", "localfine/", "trial/"];
-    stop_at = stop_ats[4];
+    stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "trial/"];
+    stop_at = stop_ats[2];
     verbose=10;
 
     # this one executes the fitting and stores results

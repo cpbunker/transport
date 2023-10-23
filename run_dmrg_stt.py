@@ -118,7 +118,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
             js = np.array(range(len(y_js)));
             # delocalized spins
-            axes[obsi].plot(js,y_js,color=mycolors[0],
+            axes[obsi].plot(js,y_js,color=mycolors[0],marker='o',
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
             if(draw_arrow and obs_strs[obsi] != "occ"):
@@ -152,7 +152,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     axes[-1].set_xlabel("$j$");
     axes[-1].set_xlim(np.min(js), np.max(js));
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
-    axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}, $J_z = ${:.4f}, $N_e = ${:.0f}".format(Jx, Jz, Ne));
+    axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne));
     plt.tight_layout();
     plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
@@ -249,14 +249,14 @@ mytime=0;
 # plot observables
 if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
-snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime, draw_arrow=True);
+snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime);
 
 #### Time evolution
 ####
 ####
 evol1_start = time.time();
 time_step = 0.01;
-time_update = 0.4*np.pi;
+time_update = params["t1"];
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
         
@@ -288,7 +288,7 @@ snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime)
 
 # time evol 2nd time
 evol2_start = time.time();
-time_update = 0.6*np.pi;
+time_update = params["t2"];
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
@@ -313,7 +313,7 @@ snapshot(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime)
 
 # time evol 3rd time
 evol3_start = time.time();
-time_update = 1.0*np.pi;
+time_update = params["t3"];
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
