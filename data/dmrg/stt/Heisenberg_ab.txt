@@ -1,4 +1,8 @@
-{"tl":1e-4, "Vconf":0.0, "Be":0.0, "BFM": -100.0, 
+{
+"tl":1e-4, "Vconf":0.0, "Be":0.0, "BFM": -100.0, 
 "Jz":0.5, "Jx":0.5, "Jsd":0.0, "BFM_first":100.0,
 "NL":2, "NFM":2, "NR":2, "Nconf":2, "Ne":0, "TwoSz":0,
-"symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[3,5]}
+"symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[3,5],
+"t1":0.4*3.14159,"t2":0.6*3.14159, "t3":1.0*3.13159
+}
+

@@ -1,3 +1,6 @@
-{"tl":1.0, "Vconf":10.0, "Be":100.0, "BFM":-100.0, "Jz":0.0, "Jx":0.0, "Jsd":0.5,
-                "NL":35, "NFM":1, "NR":1, "Nconf":10, "Ne":8, "TwoSz":7,
-                "symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[35,36]}
+{
+"tl":1.0, "Vconf":10.0, "Be":100.0, "BFM":-100.0, "Jz":0.0, "Jx":0.0, "Jsd":0.5,
+"NL":35, "NFM":1, "NR":1, "Nconf":10, "Ne":8, "TwoSz":7,
+"symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[35,36],
+"t1":1.0,"t2":2.0,"t3":3.0
+}
