@@ -110,7 +110,6 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
-        E_ci = tdfci.compute_obs(psi_ci, eris_inst);
         C_ci = tdfci.compute_obs(psi_ci,
                     tddmrg.get_concurrence(len(eris_inst.h1e[0]), eris_inst, concur_sites, False));
         for obsi in range(len(obs_strs)):
@@ -120,7 +119,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             js = np.array(range(len(y_js)));
             # delocalized spins
             axes[obsi].plot(js,y_js,color=mycolors[0],
-                            label = ("FCI ($E=${:.0f}, $C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci),linewidth=mylinewidth);
+                            label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci),linewidth=mylinewidth);
             # localized spins
             if(draw_arrow and obs_strs[obsi] != "occ"):
                 for di in range(len(central_sites)):
@@ -130,7 +129,6 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
                 axes[obsi].scatter(central_sites, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
                 
     if(psi_mps is not None): # with dmrg
-        E_dmrg = -999# tddmrg.compute_obs(psi_mps, driver_inst.get_mpo(), driver_inst);
         C_dmrg = tddmrg.compute_obs(psi_mps,
                     tddmrg.get_concurrence(len(eris_inst.h1e[0]), driver_inst, concur_sites, True),
                     driver_inst);
@@ -141,7 +139,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             js = np.array(range(len(y_js)));
             # delocalized spins
             axes[obsi].scatter(js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
-                               s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($E=${:.0f}, $C"+str(concur_sites)+"=${:.2f})").format(E_dmrg,C_dmrg));
+                               s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(E_dmrg,C_dmrg));
             # localized spins
             axes[obsi].scatter(central_sites, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
@@ -153,8 +151,8 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j$");
     axes[-1].set_xlim(np.min(js), np.max(js));
+    axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}, $J_z = ${:.4f}, $N_e = ${:.0f}".format(Jx, Jz, Ne));
-    plt.legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     plt.tight_layout();
     plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
