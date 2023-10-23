@@ -164,9 +164,12 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
 # top level
 verbose = 5;
 np.set_printoptions(precision = 4, suppress = True);
-do_dmrg = True;
 json_name = sys.argv[1];
 params = json.load(open(json_name));
+do_fci = bool(int(sys.argv[2]));
+do_dmrg = bool(int(sys.argv[3]));
+assert(do_fci or do_dmrg);
+print(do_fci, do_dmrg)
 
 from transport import tdfci, tddmrg
 from transport.tdfci import utils
@@ -181,34 +184,36 @@ assert(params["Jz"]==params["Jx"]);
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
-#assert(espin+locspin == myTwoSz);
+if("BFM_first" not in params.keys()): assert(espin+locspin == myTwoSz);
 
-#### FCI initialization
+#### Initialization
 ####
 ####
 init_start = time.time();
 
-# construct arrays with terms there for all times
-H_1e, H_2e = tddmrg.Hsys_builder(params, False, verbose=verbose);
+if(do_fci): # fci gd state
 
-# add in t<0 terms
-H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
-print("H_1e = ");print(H_1e[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e[2*(myNL+myNFM):,2*(myNL+myNFM):]);
+    # construct arrays with terms there for all times
+    H_1e, H_2e = tddmrg.Hsys_builder(params, False, verbose=verbose);
 
-# gd state
-gdstate_ci_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, mynelec, nroots=1, verbose=verbose);
-H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
-print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
+    # add in t<0 terms
+    H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
+    print("H_1e = ");print(H_1e[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e[2*(myNL+myNFM):,2*(myNL+myNFM):]);
 
-# check gd state
-check_E = tdfci.compute_obs(gdstate_ci_inst, H_eris)
-print("Manually computed energy (FCI) = {:.6f}".format(check_E));
+    # gd state
+    gdstate_ci_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, mynelec, nroots=1, verbose=verbose);
+    H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
+    print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
 
-#### DMRG initialization
-####
-####
+    # check gd state
+    check_E = tdfci.compute_obs(gdstate_ci_inst, H_eris)
+    print("Manually computed energy (FCI) = {:.6f}".format(check_E));
 
-if(do_dmrg):
+else:
+    H_eris, gdstate_ci_inst = None, None;
+
+if(do_dmrg): # dmrg gd state
+    
     # init ExprBuilder object with terms that are there for all times
     H_driver, H_builder = tddmrg.Hsys_builder(params, True, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
@@ -236,7 +241,7 @@ else:
     H_driver, gdstate_mps_inst = None, None;
 
 init_end = time.time();
-print(">>> Init compute time (DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
+print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
 
 #### Observables
 ####
@@ -244,7 +249,7 @@ print(">>> Init compute time (DMRG="+str(do_dmrg)+") = "+str(init_end-init_start
 mytime=0;
 
 # plot observables
-check_observables(my_sites, gdstate_ci_inst, H_eris, False);
+if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
 snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime, draw_arrow=True);
 
@@ -257,28 +262,28 @@ time_update = 0.4*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
         
-# dynamics FCI
-H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
-print("H_1e_dyn = ");print(H_1e_dyn[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e_dyn[2*(myNL+myNFM):,2*(myNL+myNFM):]);
-H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
-t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
-
-if(do_dmrg): # dynamics DMRG
+if(do_fci): # FCI dynamics 
+    H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
+    print("H_1e_dyn = ");print(H_1e_dyn[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e_dyn[2*(myNL+myNFM):,2*(myNL+myNFM):]);
+    H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
+    t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t1_ci_inst, H_eris_dyn = None, None;
+    
+if(do_dmrg): # DMRG dynamics
+    bdims = None;
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
-
-    # time evol
-    bdims = None;
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
                     bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t1_mps_inst, H_driver_dyn = None, None;
 
 evol1_end = time.time();
-print(">>> Evol1 compute time (DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
+print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
 
 # observables
-check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
+if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
 if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
 
 snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
@@ -289,20 +294,22 @@ time_update = 0.6*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
-if(do_dmrg): # dynamics DMRG
+if(do_dmrg): # DMRG dynamics
     t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step, target_t=time_update,
                 bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t2_mps_inst = None;
     
-# dynamics fci
-t2_ci_inst = tdfci.kernel(t1_ci_inst, H_eris_dyn, time_update, time_step);
+if(do_fci): # FCI dynamics
+    t2_ci_inst = tdfci.kernel(t1_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t2_ci_inst = None;
 
 evol2_end = time.time();
-print(">>> Evol2 compute time (DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
+print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
 
 # observables
-check_observables(my_sites, t2_ci_inst, H_eris, False);
+if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
 snapshot(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
@@ -312,20 +319,22 @@ time_update = 1.0*np.pi;
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
 
-if(do_dmrg): # dynamics dmrg
+if(do_dmrg): # DMRG dynamics
     t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=time_step, target_t=time_update,
                 bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);
 else:
     t3_mps_inst = None;
     
-# dynamics fci
-t3_ci_inst = tdfci.kernel(t2_ci_inst, H_eris_dyn, time_update, time_step);
-
+if(do_fci): # FCI dynamics
+    t3_ci_inst = tdfci.kernel(t2_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t3_ci_inst = None;
+    
 evol3_end = time.time();
-print(">>> Evol3 compute time (DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
+print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
 
 # observables
-check_observables(my_sites, t3_ci_inst, H_eris, False);
+if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
 snapshot(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
