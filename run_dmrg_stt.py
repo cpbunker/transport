@@ -93,7 +93,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     '''
     '''
     import matplotlib.pyplot as plt
-    if(not isinstance(eris_inst, tdfci.ERIs)): raise TypeError;
+    if(not isinstance(eris_inst, tdfci.ERIs) and (driver_inst == None)): raise TypeError;
 
     # unpack
     concur_sites = params_dict["ex_sites"];
@@ -119,7 +119,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             js = np.array(range(len(y_js)));
             # delocalized spins
             axes[obsi].plot(js,y_js,color=mycolors[0],
-                            label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(E_ci,C_ci),linewidth=mylinewidth);
+                            label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
             if(draw_arrow and obs_strs[obsi] != "occ"):
                 for di in range(len(central_sites)):
@@ -130,7 +130,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
                 
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.compute_obs(psi_mps,
-                    tddmrg.get_concurrence(len(eris_inst.h1e[0]), driver_inst, concur_sites, True),
+                    tddmrg.get_concurrence(driver_inst.n_sites*2, driver_inst, concur_sites, True),
                     driver_inst);
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi]);
@@ -139,7 +139,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             js = np.array(range(len(y_js)));
             # delocalized spins
             axes[obsi].scatter(js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
-                               s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(E_dmrg,C_dmrg));
+                               s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
             # localized spins
             axes[obsi].scatter(central_sites, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
@@ -213,7 +213,7 @@ else:
 if(do_dmrg): # dmrg gd state
     
     # init ExprBuilder object with terms that are there for all times
-    H_driver, H_builder = tddmrg.Hsys_builder(params, True, verbose=verbose); # returns DMRGDriver, ExprBuilder
+    H_driver, H_builder = tddmrg.Hsys_builder(params, True, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
     # add in t<0 terms
     H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=0);
@@ -270,7 +270,7 @@ else:
     
 if(do_dmrg): # DMRG dynamics
     bdims = None;
-    H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, verbose=verbose);
+    H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
                     bond_dims=bdims, hermitian=True, normalize_mps=True, cutoff=0.0, iprint=0);

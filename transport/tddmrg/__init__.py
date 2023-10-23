@@ -237,7 +237,7 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False
 ##########################################################################################################
 #### hamiltonian constructors
 
-def Hsys_builder(params_dict, block, verbose=0):
+def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
     Builds the parts of the Hamiltonian which apply at all t
     NB this contains one-body terms, which are spin-independent, and
@@ -276,7 +276,7 @@ def Hsys_builder(params_dict, block, verbose=0):
     # return objects
     if(block): # construct ExprBuilder
         if(params_dict["symmetry"] == "Sz"):
-            driver = core.DMRGDriver(scratch="./tmp", symm_type=core.SymmetryTypes.SZ, n_threads=4);
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4);
             driver.initialize_system(n_sites=Ndofs, n_elec=Ne+NFM, spin=TwoSz);
         else:
             raise NotImplementedError;
