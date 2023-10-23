@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-#from pyblock2.driver import core
+from pyblock2.driver import core
 import numpy as np
 
     
@@ -101,7 +101,7 @@ def compute_obs(psi, mpo_inst, driver):
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
-    ret = driver.expectation(psi, mpo_inst, psi);
+    return driver.expectation(psi, mpo_inst, psi);
 
 def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -504,15 +504,15 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2 + BFM/2;
             h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM_first/2 - BFM/2; 
-    if("B_sd" in params_dict.keys()):
-        B_sd = params_dict["B_sd"];
+    if("Bsd" in params_dict.keys()):
+        Bsd = params_dict["Bsd"];
         s = central_sites[0];
         if(block):
-            builder.add_term(spin_strs[0],[s,s],-B_sd/2);
-            builder.add_term(spin_strs[1],[s,s], B_sd/2);
+            builder.add_term(spin_strs[0],[s,s],-Bsd/2);
+            builder.add_term(spin_strs[1],[s,s], Bsd/2);
         else:
-            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -B_sd/2;
-            h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  B_sd/2;
+            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
+            h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
             
     # return
     if(block):

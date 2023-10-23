@@ -56,7 +56,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
         print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
+        sdot_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
         gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
         print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
 
@@ -184,7 +184,7 @@ assert(params["Jz"]==params["Jx"]);
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
-if("BFM_first" not in params.keys()): assert(espin+locspin == myTwoSz);
+if("BFM_first" not in params.keys() and "Bsd" not in params.keys()): assert(espin+locspin == myTwoSz);
 
 #### Initialization
 ####
