@@ -106,8 +106,11 @@ def dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC, delta):
     ns = np.arange(-nmax, nmax+1);
     mymu0 = 0.0; # grounded
     ret = np.zeros_like(Vb);
-    for ECval in make_EC_list(EC, delta):
-        ret += tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, ECval, 0.0, ns);
+    if(delta is not None): # multiple islands
+        for ECval in make_EC_list(EC, delta):
+            ret += tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, ECval, 0.0, ns);
+    else: # only one island
+        ret += tau0*dI_of_Vb_zero(Vb-V0, mymu0, Gamma, EC, 0.0, ns);
     return ret;
 
 def dIdV_lorentz_fine(Vb, V0, EC1, EC2, EC3):
@@ -142,7 +145,10 @@ def dIdV_all_fine(Vb, V0, Vslope, eps0, epsc, G1, G2, G3, EC1, EC2, EC3):
 def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lorentz_params, which_error = "rmse", num_trials = 100, verbose=0):
     '''
     '''
-    V0, tau0, Gamma, EC_mu, delta = lorentz_params
+    V0, tau0, Gamma, EC_mu = lorentz_params;
+    delta = None; # this prevents dIdV_lorentz_zero from making a list of
+        # EC values, since we are already looping over 3 random EC values from
+        # the make_EC_dist function
 
     # trials
     trial_errors = np.zeros((num_trials,),dtype=float);
@@ -155,13 +161,13 @@ def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lor
         dI_osc = np.zeros_like(dI_exp);
         trial_ECs[trial] = make_EC_dist(EC_mu);
         for EC in trial_ECs[trial]:
-            dI_osc += dIdV_lorentz_zero(V_exp, V0, tau0, Gamma, EC);
+            dI_osc += dIdV_lorentz_zero(V_exp, V0, tau0, Gamma, EC, delta);
         if(trial % (num_trials//10) == 0): print("Trial #",trial, " ECs = ",trial_ECs[trial]);
 
         # fit the background
         to_fit_back = dI_exp - dI_osc;
         back_params, _ = fit_wrapper(dIdV_back, V_exp, to_fit_back,
-                            params_back_guess, bounds_back, ["V0", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
+                            params_back_guess, bounds_back, ["V0", "Vslope", "eps_0", "eps_c", "G1", "G2", "G3", "T_surf", "Gamma"],
                             stop_bounds = False, verbose=0);
         
         # get fit and cost function
@@ -175,9 +181,12 @@ def search_space_lorentz_zero(V_exp, dI_exp, params_back_guess, bounds_back, lor
     return trial_errors[besti], trial_fits[besti], trial_backs[besti], np.array([V0, tau0, Gamma, *trial_ECs[besti]]);
 
 def dIdV_lorentz_trial(Vb, V0, tau0, Gamma, EC1, EC2, EC3):
+    delta = None; # this prevents dIdV_lorentz_zero from making a list of
+        # EC values, since we are already looping over 3 random EC values from
+        # the make_EC_dist function
     dI_osc = np.zeros_like(Vb);
     for EC in [EC1, EC2, EC3]:
-        dI_osc += dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC);
+        dI_osc += dIdV_lorentz_zero(Vb, V0, tau0, Gamma, EC, delta);
     return dI_osc;
 
 ####################################################################
@@ -295,9 +304,8 @@ def fit_dIdV(metal, nots, percents, stop_at, num_dev=3, verbose=0):
 
     #### try a bunch of different combinations ####
     if(stop_at == "trial/"):
-        raise NotImplementedError; # still have to add Vslope
         rmse_trial, fit_trial, back_trial, params_trial = search_space_lorentz_zero(V_exp, dI_exp, params_fine_back, bounds_zero[:,back_mask_zero>0],
-                            (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-num_EC_kwarg:])) );
+                            (params_fine[0], tau0_kwarg, Gamma_kwarg, np.average(params_fine[-num_EC_kwarg:])));
         if(verbose > 4): plot_fit(V_exp, dI_exp, fit_trial, derivative = False,
                                   mytitle="Best fit from search (T= {:.1f} K, B = {:.1f} T, N = {:.0f})".format(temp_kwarg, bfield_kwarg, num_EC_kwarg)+"\nEC = "+str(np.round(params_trial[-num_EC_kwarg:]*1000, decimals=2))+" meV",
                                   myylabel="$dI/dV_b$ (nA/V)");
@@ -462,7 +470,7 @@ if(__name__ == "__main__"):
 
     metal = "MnTrilayer/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "trial/"];
-    stop_at = stop_ats[2];
+    stop_at = stop_ats[3];
     verbose=10;
 
     # this one executes the fitting and stores results
