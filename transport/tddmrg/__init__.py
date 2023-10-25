@@ -179,7 +179,7 @@ def get_sx(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     # construct
     if(block):
         builder.add_term("cD",[whichsite,whichsite], 0.5);
-        builder.add_term("Cd",[whichsite,whichsite],0.5);
+        #builder.add_term("Cd",[whichsite,whichsite],0.5);
     else:
         h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += 0.5;
         h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += 0.5;
