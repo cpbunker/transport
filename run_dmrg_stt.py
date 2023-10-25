@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import time
 import json
 import sys
+import os
+print(">>> PWD: ",os.getcwd());
 
 ##################################################################################
 #### wrappers
@@ -31,13 +33,10 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
 
 def get_energy_dmrg(driver, mpo, verbose=0):
     bond_dims = [250] * 4 + [500] * 4
-    noises = [1e-4] * 4 + [1e-5] * 4 + [0]
+    noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
     threads = [1e-10] * 8
     if(driver is None and mpo is None): return bond_dims, noises, threads;
     ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
-    bond_dims = [250] * 4 + [500] * 4
-    noises = [1e-4] * 4 + [1e-5] * 4 + [0]
-    thrds = [1e-10] * 8
     ret = driver.dmrg(mpo, ket, n_sweeps=20, bond_dims=bond_dims, noises=noises,
         thrds=threads, cutoff=0, iprint=verbose);
     return ket, ret;
@@ -154,6 +153,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne));
     plt.tight_layout();
+    #plt.show();
     plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
 ##################################################################################
@@ -269,7 +269,7 @@ else:
     t1_ci_inst, H_eris_dyn = None, None;
     
 if(do_dmrg): # DMRG dynamics
-    bdims = None;
+    bdims = [600];
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step, target_t=time_update,
@@ -283,7 +283,6 @@ print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
 if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
-
 snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 # time evol 2nd time
