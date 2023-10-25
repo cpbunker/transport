@@ -112,10 +112,8 @@ def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
     nloc = len(spin_strs);
 
     # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-      h1e, g2e = np.zeros((N,N),dtype=float), np.zeros((N,N,N,N),dtype=float);
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((N,N),dtype=float), np.zeros((N,N,N,N),dtype=float);
 
     # construct
     for spin in spin_inds:
@@ -125,12 +123,8 @@ def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
             h1e[nloc*whichsite+spin,nloc*whichsite+spin] += 1.0;
 
     # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -141,10 +135,8 @@ def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     nloc = len(spin_strs);
 
     # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     if(block):
@@ -155,14 +147,10 @@ def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[1]] +=-0.5;
 
     # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_sx(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+def get_sx01(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
     '''
@@ -171,26 +159,40 @@ def get_sx(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     nloc = len(spin_strs);
 
     # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     if(block):
         builder.add_term("cD",[whichsite,whichsite], 0.5);
-        #builder.add_term("Cd",[whichsite,whichsite],0.5);
     else:
         h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += 0.5;
+        
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
+
+def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("Cd",[whichsite,whichsite],0.5);
+    else:
         h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += 0.5;
         
     # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
 
 def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False, verbose=0):
     '''
@@ -513,6 +515,13 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
             h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
+    if("Bsd_x" in params_dict.keys()):
+        Bsd_x = params_dict["Bsd_x"];
+        s = central_sites[0];
+        if block:
+            builder.add_term("cD",[s,s],-Bsd_x/2);
+        else:
+            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[1]] += -Bsd_x/2;
             
     # return
     if(block):

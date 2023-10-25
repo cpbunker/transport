@@ -153,15 +153,15 @@ def compute_obs(ci_inst, op_eris):
     e += 0.25 * lib.einsum('PQRS,RSPQ',g2e_bb,d2bb)
     e +=        lib.einsum('pQrS,rSpQ',g2e_ab,d2ab)
 
-    if(np.imag(e) > 1e-12): print(e); raise ValueError;
+    if(np.imag(e) > op_eris.imag_cutoff): print(e); raise ValueError;
     return np.real(e);
 
 class ERIs():
-    def __init__(self, h1e, g2e, mo_coeff):
+    def __init__(self, h1e, g2e, mo_coeff, imag_cutoff = 1e-12):
         '''
         h1e: 1-elec Hamiltonian in site basis
         g2e: 2-elec Hamiltonian in site basis
-              chemists notation (pr|qs)=<pq|rs>
+              chemists notation (pq|rs)=<pr|qs>
         mo_coeff: moa, mob
         '''
         moa, mob = mo_coeff
@@ -178,6 +178,7 @@ class ERIs():
         self.mo_coeff = mo_coeff
         self.h1e = h1e_a, h1e_b
         self.g2e = g2e_aa, g2e_ab, g2e_bb
+        self.imag_cutoff = imag_cutoff
 
 class CIObject():
     def __init__(self, fcivec, norb, nelec):

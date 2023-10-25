@@ -41,6 +41,17 @@ def get_energy_dmrg(driver, mpo, verbose=0):
         thrds=threads, cutoff=0, iprint=verbose);
     return ket, ret;
 
+def concurrence_wrapper(psi, Nspinorbs, eris_or_driver, whichsites, block):
+    '''
+    Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
+    to get concurrence
+    '''
+
+    op_p2 = 0
+    op_0 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block);
+    term_0 = tdfci.compute_obs(psi, op_0);
+    op_m2 = 0
+
 def check_observables(the_sites,psi,eris_or_driver,block):
     if(not block):
         # site 0 spin
@@ -60,7 +71,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
 
 def vs_site(psi,eris_or_driver,block,which_obs):
-    obs_funcs = {"occ":tddmrg.get_occ, "sz":tddmrg.get_sz, "sx":tddmrg.get_sx}
+    obs_funcs = {"occ":tddmrg.get_occ, "sz":tddmrg.get_sz, "sx01":tddmrg.get_sx01, "sx10":tddmrg.get_sx10}
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
@@ -109,8 +120,7 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
-        C_ci = tdfci.compute_obs(psi_ci,
-                    tddmrg.get_concurrence(len(eris_inst.h1e[0]), eris_inst, concur_sites, False));
+        C_ci = concurrence_wrapper(psi_ci, len(eris_inst.h1e[0]), eris_inst, concur_sites, False);
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_ci,H_eris,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
@@ -126,7 +136,13 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
                                      width=0.01*mylinewidth,length_includes_head=True);
             else:
                 axes[obsi].scatter(central_sites, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
-                
+
+        # get sx
+        x, sx01 = vs_site(psi_ci,H_eris,False,"sx01");
+        x, sx10 = vs_site(psi_ci,H_eris,False,"sx10");
+        sx = sx01+sx10;
+        sx_js = sx[np.isin(x,loc_spins,invert=True)];# on chain sites
+        axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.compute_obs(psi_mps,
                     tddmrg.get_concurrence(driver_inst.n_sites*2, driver_inst, concur_sites, True),
@@ -153,8 +169,8 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne));
     plt.tight_layout();
-    #plt.show();
-    plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
+    plt.show();
+    #plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
 ##################################################################################
 #### run code
@@ -167,7 +183,8 @@ params = json.load(open(json_name));
 do_fci = bool(int(sys.argv[2]));
 do_dmrg = bool(int(sys.argv[3]));
 assert(do_fci or do_dmrg);
-print(do_fci, do_dmrg)
+print(">>> Do FCI  = ",do_fci);
+print(">>> Do DMRG = ",do_dmrg);
 
 from transport import tdfci, tddmrg
 from transport.tdfci import utils
@@ -182,7 +199,11 @@ assert(params["Jz"]==params["Jx"]);
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
-if("BFM_first" not in params.keys() and "Bsd" not in params.keys()): assert(espin+locspin == myTwoSz);
+special_cases = ["BFM_first", "Bsd", "Bsd_x"];
+special_cases_flag = False;
+for case in special_cases:
+    if(case in params.keys()):print(case,"!!!"); special_cases_flag = True;
+if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 
 #### Initialization
 ####
@@ -249,7 +270,7 @@ mytime=0;
 # plot observables
 if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
-snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime);
+#snapshot(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, time = mytime);
 
 #### Time evolution
 ####
@@ -283,7 +304,7 @@ print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
 if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
-snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
+#snapshot(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 # time evol 2nd time
 evol2_start = time.time();
@@ -308,7 +329,7 @@ print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
-snapshot(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
+#snapshot(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 # time evol 3rd time
 evol3_start = time.time();
@@ -333,7 +354,7 @@ print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
-snapshot(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
+#snapshot(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, params, time=mytime);
 
 
 
