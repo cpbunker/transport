@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-from pyblock2.driver import core
+#from pyblock2.driver import core
 import numpy as np
 
     
@@ -101,7 +101,8 @@ def compute_obs(psi, mpo_inst, driver):
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
-    return driver.expectation(psi, mpo_inst, psi);
+    impo = driver.get_identity_mpo();
+    return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
 
 def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -194,7 +195,7 @@ def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
 
-def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False, verbose=0):
+def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
     '''
     '''
     spin_inds=[0,1];
@@ -208,25 +209,32 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, g2e_only=False
         h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
-    print("Concurrence("+str(whichsites)+")");
     which1, which2 = whichsites;
     if(block):
-        #builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
-        builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
-        builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
-        #builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
+        if(symm_block == 2):
+            builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
+        elif(symm_block == 0):
+            builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
+            builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
+        elif(symm_block ==-2):
+            builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
+        else: raise NotImplementedError;
     else:
-        #g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
-        g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
-        g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
-        #g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
-        # switch particle labels
-        #g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
-        g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
-        g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
-        #g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
-
-    if(g2e_only): return g2e;
+        if(symm_block == 2):
+            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
+            #
+            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
+        elif(symm_block == 0):
+            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
+            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
+            #
+            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
+            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
+        elif(symm_block ==-2):
+            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
+            #
+            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
+        else: raise NotImplementedError;
 
     # return
     if(block):

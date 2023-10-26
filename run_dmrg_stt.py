@@ -31,26 +31,43 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def get_energy_dmrg(driver, mpo, verbose=0):
+def get_energy_dmrg(driver, mpo):
     bond_dims = [250] * 4 + [500] * 4
     noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
     threads = [1e-10] * 8
-    if(driver is None and mpo is None): return bond_dims, noises, threads;
     ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
     ret = driver.dmrg(mpo, ket, n_sweeps=20, bond_dims=bond_dims, noises=noises,
-        thrds=threads, cutoff=-1.0, iprint=verbose);
+        thrds=threads, cutoff=-1.0, iprint=2); # set to 2 to see Mmps
     return ket, ret;
 
-def concurrence_wrapper(psi, Nspinorbs, eris_or_driver, whichsites, block):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     '''
     Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
     to get concurrence
     '''
-    return 0.0;
-    op_p2 = 0
-    op_0 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block);
-    term_0 = tdfci.compute_obs(psi, op_0);
-    op_m2 = 0
+
+    # unpack
+    if(block): Nspinorbs = eris_or_driver.n_sites*2;
+    else: Nspinorbs = len(eris_or_driver.h1e[0]);
+
+    # calculate term for each symmetry block
+
+    # Sz = 2
+    op_p2 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, 2);
+    if(block): term_p2 = tddmrg.compute_obs(psi, op_p2, eris_or_driver);
+    else: term_p2 = tdfci.compute_obs(psi, op_p2);
+    
+    # Sz = 0
+    op_0 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, 0);
+    if(block): term_0 = tddmrg.compute_obs(psi, op_0, eris_or_driver);
+    else: term_0 = tdfci.compute_obs(psi, op_0);
+
+    # Sz =-2
+    op_m2 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, -2);
+    if(block): term_m2 = tddmrg.compute_obs(psi, op_m2, eris_or_driver);
+    else: term_m2 = tdfci.compute_obs(psi, op_m2);
+
+    return term_p2 + term_0 + term_m2;
 
 def check_observables(the_sites,psi,eris_or_driver,block):
     if(not block):
@@ -75,17 +92,14 @@ def vs_site(psi,eris_or_driver,block,which_obs):
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
-    if(block):
-        Nspinorbs = eris_or_driver.n_sites*2;
-        impo = eris_or_driver.get_identity_mpo();
-    else:
-        Nspinorbs = len(eris_or_driver.h1e[0]);
+    if(block): Nspinorbs = eris_or_driver.n_sites*2;
+    else: Nspinorbs = len(eris_or_driver.h1e[0]);
     js = np.arange(Nspinorbs//2);
     vals = np.empty_like(js,dtype=float)
     for j in js:
         op = obs_funcs[which_obs](Nspinorbs,eris_or_driver,j,block);
         if(block):
-            vals[j] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver)/eris_or_driver.expectation(psi, impo, psi));
+            vals[j] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
         else:
             vals[j] = np.real(tdfci.compute_obs(psi, op));
 
@@ -120,29 +134,30 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
-        C_ci = concurrence_wrapper(psi_ci, len(eris_inst.h1e[0]), eris_inst, concur_sites, False);
+        C_ci = concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
         for obsi in range(len(obs_strs)):
-            x, y = vs_site(psi_ci,H_eris,False,obs_strs[obsi]);
+            x, y = vs_site(psi_ci,eris_inst,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
             js = np.array(range(len(y_js)));
+            ds_j = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
             # delocalized spins
             axes[obsi].plot(js,y_js,color=mycolors[0],marker='o',
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
             if(draw_arrow and obs_strs[obsi] != "occ"):
                 for di in range(len(central_sites)):
-                    axes[obsi].arrow(central_sites[di],0,0,y_ds[di],color=mycolors[1],
+                    axes[obsi].arrow(ds_j[di],0,0,y_ds[di],color=mycolors[1],
                                      width=0.01*mylinewidth,length_includes_head=True);
             else:
-                axes[obsi].scatter(central_sites, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+                axes[obsi].scatter(ds_j, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
 
         # get sx
-        x, sx01 = vs_site(psi_ci,H_eris,False,"sx01");
-        x, sx10 = vs_site(psi_ci,H_eris,False,"sx10");
+        x, sx01 = vs_site(psi_ci,eris_inst,False,"sx01");
+        x, sx10 = vs_site(psi_ci,eris_inst,False,"sx10");
         sx = sx01+sx10;
         sx_js = sx[np.isin(x,loc_spins,invert=True)];# on chain sites
-        #axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
+        axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
     if(psi_mps is not None): # with dmrg
         C_dmrg = concurrence_wrapper(psi_mps,driver_inst.n_sites*2, driver_inst, concur_sites, True);
         for obsi in range(len(obs_strs)):
@@ -150,11 +165,12 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
             js = np.array(range(len(y_js)));
+            ds_j = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
             # delocalized spins
             axes[obsi].scatter(js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
             # localized spins
-            axes[obsi].scatter(central_sites, y_ds, marker="^", edgecolors=accentcolors[1],
+            axes[obsi].scatter(ds_j, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
                 
     #format
@@ -167,8 +183,8 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne));
     plt.tight_layout();
-    #plt.show();
-    plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
+    plt.show();
+    #plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
 ##################################################################################
 #### run code
@@ -200,7 +216,7 @@ myTwoSz = params["TwoSz"];
 special_cases = ["BFM_first", "Bsd", "Bsd_x"];
 special_cases_flag = False;
 for case in special_cases:
-    if(case in params.keys()):print(case,"!!!"); special_cases_flag = True;
+    if(case in params.keys()):print(">>> special case: ",case); special_cases_flag = True;
 if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 
 #### Initialization
