@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-#from pyblock2.driver import core
+from pyblock2.driver import core
 import numpy as np
 
     
@@ -95,13 +95,14 @@ def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
 ################################################################################
 #### observables
 
-def compute_obs(psi, mpo_inst, driver):
+def compute_obs(psi, mpo_inst, driver, conj=False):
     '''
     Compute expectation value of observable repped by given operator from the wf
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
     impo = driver.get_identity_mpo();
+    if(conj): psi_bra = None;
     return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
 
 def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
@@ -195,6 +196,28 @@ def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
 
+def get_concur_coef(letter,Nspinorbs, eris_or_driver, whichsites, block):
+    '''
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    which1, which2 = whichsites;
+    if(block):
+        if(letter=="b"): builder.add_term("cdCD", [which1,which1,which2,which2],1.0);
+        elif(letter=="c"): builder.add_term("CDcd",[which1,which1,which2,which2],1.0);
+        else: raise NotImplementedError;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize());
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
 def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
     '''
     '''
@@ -203,10 +226,8 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, ve
     nloc = len(spin_strs);
 
     # return objects
-    if(block): # construct ExprBuilder
-        builder = eris_or_driver.expr_builder()
-    else:
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     which1, which2 = whichsites;

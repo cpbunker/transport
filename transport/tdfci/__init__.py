@@ -153,7 +153,7 @@ def compute_obs(ci_inst, op_eris):
     e += 0.25 * lib.einsum('PQRS,RSPQ',g2e_bb,d2bb)
     e +=        lib.einsum('pQrS,rSpQ',g2e_ab,d2ab)
 
-    if(np.imag(e) > op_eris.imag_cutoff): print(e); raise ValueError;
+    if(abs(np.imag(e)) > op_eris.imag_cutoff): print(e); raise ValueError;
     return np.real(e);
 
 class ERIs():
