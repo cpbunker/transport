@@ -210,60 +210,17 @@ def get_concur_coef(letter,Nspinorbs, eris_or_driver, whichsites, block):
     # construct
     which1, which2 = whichsites;
     if(block):
-        if(letter=="b"): builder.add_term("cdCD", [which1,which1,which2,which2],1.0);
+        if(letter=="a"): builder.add_term("cdcd", [which1,which1,which2,which2],1.0);
+        elif(letter=="b"): builder.add_term("cdCD", [which1,which1,which2,which2],1.0);
         elif(letter=="c"): builder.add_term("CDcd",[which1,which1,which2,which2],1.0);
+        elif(letter=="d"): builder.add_term("CDCD", [which1,which1,which2,which2],1.0);
         else: raise NotImplementedError;
+    else:
+        raise NotImplementedError;
 
     # return
     if(block): return eris_or_driver.get_mpo(builder.finalize());
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-
-def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
-    '''
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    which1, which2 = whichsites;
-    if(block):
-        if(symm_block == 2):
-            builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
-        elif(symm_block == 0):
-            builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
-            builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
-        elif(symm_block ==-2):
-            builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
-        else: raise NotImplementedError;
-    else:
-        if(symm_block == 2):
-            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
-            #
-            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
-        elif(symm_block == 0):
-            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
-            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
-            #
-            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
-            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
-        elif(symm_block ==-2):
-            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
-            #
-            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
-        else: raise NotImplementedError;
-
-    # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
 
 ##########################################################################################################
 #### hamiltonian constructors

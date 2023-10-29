@@ -31,16 +31,7 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def get_energy_dmrg(driver, mpo):
-    bond_dims = [250] * 4 + [500] * 4
-    noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
-    threads = [1e-10] * 8
-    ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
-    ret = driver.dmrg(mpo, ket, n_sweeps=20, bond_dims=bond_dims, noises=noises,
-        thrds=threads, cutoff=-1.0, iprint=2); # set to 2 to see Mmps
-    return ket, ret;
-
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=True):
     '''
     Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
     to get concurrence
@@ -53,65 +44,49 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     else: Nspinorbs = len(eris_or_driver.h1e[0]);
     which1, which2 = whichsites;
 
-    # test code !!!!
+    # not implemented for FCI
     if(not block): return -999;
 
-    # new gd state MPS bras
-    b_builder = eris_or_driver.expr_builder();
-    b_builder.add_term("cd",[which1, which1],-1);# up 1
-    b_builder.add_term("CD",[which2,which2],-1);# down 2
-    c_builder = eris_or_driver.expr_builder();
-    c_builder.add_term("CD",[which1,which1],-1);# down 1
-    c_builder.add_term("cd",[which2,which2],-1);# up 2
-    for b in [b_builder,c_builder]: # add hopping noise
+    #### isolate a, b, c, d coefs (see WK Wouters 2001)
+    #### by constructing |up up>,|up do>,|do up>,|do do>
+    keys =  "abcd";
+    abcd_builders = {"a":eris_or_driver.expr_builder(), "b":eris_or_driver.expr_builder(),
+                     "c":eris_or_driver.expr_builder(), "d":eris_or_driver.expr_builder()};
+    abcd_terms = {"a":["cd","cd"], "b":["cd","CD"],"c":["CD","cd"],"d",["CD","CD"]};
+    for k in keys:
+        # diagonal terms
+        terms = abcd_terms[k];
+        for termi in range(len(terms)):
+            abcd_builders[k].add_term(terms[termi],whichsites[termi],-1.0);
+        # hopping noise
         for j in range(Nspinorbs//2-1):
             for spin in spin_strs:
-                b.add_term(spin,[j,j+1],-1e-4);
-                b.add_term(spin,[j+1,j],-1e-4);
-    noises = [1e-3,1e-4,1e-5,0.0];
-    b_mpo = eris_or_driver.get_mpo(b_builder.finalize());
-    c_mpo = eris_or_driver.get_mpo(c_builder.finalize());
-    b_mps = eris_or_driver.get_random_mps(tag="b_mps");
-    c_mps = eris_or_driver.get_random_mps(tag="c_mps");
-    eris_or_driver.dmrg(b_mpo, b_mps, noises=noises);
-    eris_or_driver.dmrg(c_mpo, c_mps, noises=noises);
-    #snapshot(None, b_mps, None, eris_or_driver, params, time=40)
-    #snapshot(None, c_mps, None, eris_or_driver, params, time=50)
-    #assert False
+                abcd_builders[k].add_term(spin,[j,j+1],-1e-4);
+                abcd_builders[k].add_term(spin,[j+1,j],-1e-4);
+                    
+    # construct mps gd state
+    noises = [1e-3,1e-4,1e-5,0];
+    abcd_mps = [];
+    for k in keys:
+        k_mpo = eris_or_driver.get_mpo(abcd_builders[k].finalize());
+        k_mps = eris_or_driver.get_random_mps(tag=k);
+        eris_or_driver.dmrg(k_mpo, k_mps, noises=noises);
+        abcd_mps.append(k_mps);
+        if plot: snapshot(None, k_mps, None, eris_or_driver, params, concurrence=False, time=float(k));
+    if(plot): assert False;
 
-    # expectation values
-    op_for_b = tddmrg.get_concur_coef("b",Nspinorbs,eris_or_driver, whichsites, block);
-    b_coef = eris_or_driver.expectation(b_mps,op_for_b,psi);
-    print("b_coef",b_coef);
-    op_for_c = tddmrg.get_concur_coef("c",Nspinorbs,eris_or_driver, whichsites, block);
-    c_coef = eris_or_driver.expectation(c_mps,op_for_c,psi);
-    print("c_coef = ",c_coef);
-    concur_norm = 2*np.conj(b_coef)*np.conj(c_coef)
-    return np.sqrt( np.conj(concur_norm)*concur_norm);
-
-    # calculate term for each symmetry block
-
-    # Sz = 2
-    op_p2 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, 2);
-    if(block): term_p2 = tddmrg.compute_obs(psi, op_p2, eris_or_driver);
-    else: term_p2 = tdfci.compute_obs(psi, op_p2);
+    # coefs from expectation values
+    abcd_coefs = [];
+    for ki in range(len(keys)):
+        k_op = tddmrg.get_concur_coef(keys[ki],Nspinorbs,eris_or_driver, whichsites, block);
+        abcd_coefs.append(eris_or_driver.expectation(abcd_mps[ki],k_op,psi));
+    if(plot):
+        for ki in range(len(keys)):
+            print(keys[ki]+" coef = ",abcd_coefs[ki]);
+    if(plot): assert False;           
     
-    # Sz = 0
-    op_0 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, 0);
-    if(block): term_0 = tddmrg.compute_obs(psi, op_0, eris_or_driver);
-    else: term_0 = tdfci.compute_obs(psi, op_0);
-
-    # Sz =-2
-    op_m2 = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, -2);
-    if(block): term_m2 = tddmrg.compute_obs(psi, op_m2, eris_or_driver);
-    else: term_m2 = tdfci.compute_obs(psi, op_m2);
-    print("block = ",block)
-    print("term_p2 = ",term_p2);
-    print("term_0 = ",term_0)
-    print("term_m2 = ",term_m2)
-    return term_0
-
-    return term_p2 + term_0 + term_m2;
+    concur_norm = 2*(abcd_coefs[0]*abcd_coefs[3] - abcd_coefs[1]*abcd_coefs[2]);
+    return np.sqrt( np.conj(concur_norm)*concur_norm);
 
 def check_observables(the_sites,psi,eris_or_driver,block):
     if(not block):
@@ -164,7 +139,7 @@ mylinewidth = 3.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, draw_arrow=False):
+def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, concurrence=False, draw_arrow=False):
     '''
     '''
     #return;
@@ -185,7 +160,8 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
-        C_ci =-9999 # concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
+        if(concurrence): C_ci = concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
+        else: C_ci = -9999;
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_ci,eris_inst,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
@@ -210,7 +186,8 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, d
         sx_js = sx[np.isin(x,loc_spins,invert=True)];# on chain sites
         axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
     if(psi_mps is not None): # with dmrg
-        C_dmrg =-9999 #concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
+        if(concurrence): C_dmrg = concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
+        else: C_dmrg = -9999;
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
@@ -275,6 +252,14 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 ####
 init_start = time.time();
 
+def get_energy_dmrg(driver, mpo):
+    bond_dims = [250] * 4 + [500] * 4
+    noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
+    threads = [1e-10] * 8
+    ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
+
+    return ket, ret;
+
 if(do_fci): # fci gd state
 
     # construct arrays with terms there for all times
@@ -314,7 +299,11 @@ if(do_dmrg): # dmrg gd state
         #print(np.shape(H_driver.h1e))
     
     # gd state
-    gdstate_mps_inst, gdstate_E_dmrg = get_energy_dmrg(H_driver, H_mpo_initial);
+    gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
+                             bond_dim=params["dim_0"] )
+    gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,
+        bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
+        iprint=2); # set to 2 to see Mmps
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 
     # check gd state
@@ -355,12 +344,11 @@ else:
     t1_ci_inst, H_eris_dyn = None, None;
     
 if(do_dmrg): # DMRG dynamics
-    bdims = [600];
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
     if(fci_from_block): H_mpo_dyn = H_driver_dyn.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=1)
-    t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=time_step*1j, target_t=time_update*1j,
-                    bond_dims=bdims, hermitian=False, normalize_mps=False, iprint=verbose-1);
+    t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                    bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
     t1_mps_inst, H_driver_dyn = None, None;
 
@@ -379,8 +367,8 @@ time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discre
 mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
-    t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=time_step*1j, target_t=time_update*1j,
-                bond_dims=bdims, hermitian=False, normalize_mps=False, cutoff=0.0, iprint=verbose-1);
+    t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
     t2_mps_inst = None;
     
@@ -405,7 +393,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=time_step*1j, target_t=time_update*1j,
-                bond_dims=bdims, hermitian=False, normalize_mps=False, cutoff=0.0, iprint=verbose-1);
+                bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
     t3_mps_inst = None;
     
