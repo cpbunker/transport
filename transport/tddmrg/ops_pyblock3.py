@@ -34,7 +34,7 @@ def compute_obs(op,psi):
     The wf psi must be a matrix product state, and the operator an MPO
     '''
 
-    return driver.expectation(psi, mpo_obj, psi);
+    return np.dot(psi.conj(), op @ psi)/np.dot(psi.conj(),psi);
 
 def charge_vs_site(psi, norbs, h_obj):
     '''

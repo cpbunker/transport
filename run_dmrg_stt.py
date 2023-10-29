@@ -51,13 +51,23 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=False):
     import pyblock3
     from pyblock3.block2 import io
     psi_b3 = io.MPSTools.from_block2(psi); #  block 3 mps
-    psi_star = np.conj(psi_b3); # so now we can do this operation
-    concur_mpo = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block)
+    psi_star = psi_b3.conj(); # so now we can do this operation
+
+    # exp vals across symmetry blocks
+    sblocks = [-2,0,2];
+    sterms = [];
+    for sblock in sblocks:
+        concur_mpo = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, sblock);
+        concur_mpo_b3 = io.MPOTools.from_block2(concur_mpo);
+        sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     print("psi:",type(psi))
     print("psi_b3:",type(psi_b3))
     print("psi_star:", type(psi_star))
-    print("concur_mpo", type(concur_mpo))
+    print("concur_mpo:", type(concur_mpo))
+    print("concur_mpo_b3", type(concur_mpo_b3))
+    print("sterms:",sterms);
     assert False
+    
     #### isolate a, b, c, d coefs (see WK Wouters 2001)
     #### by constructing |up up>,|up do>,|do up>,|do do>
     keys =  "abcd";
