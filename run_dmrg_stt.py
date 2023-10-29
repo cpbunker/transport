@@ -31,7 +31,7 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=True):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=False):
     '''
     Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
     to get concurrence
@@ -47,17 +47,28 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=True):
     # not implemented for FCI
     if(not block): return -999;
 
+    # test code
+    import pyblock3
+    from pyblock3.block2 import io
+    psi_b3 = io.MPSTools.from_block2(psi); #  block 3 mps
+    psi_star = np.conj(psi_b3); # so now we can do this operation
+    concur_mpo = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block)
+    print("psi:",type(psi))
+    print("psi_b3:",type(psi_b3))
+    print("psi_star:", type(psi_star))
+    print("concur_mpo", type(concur_mpo))
+    assert False
     #### isolate a, b, c, d coefs (see WK Wouters 2001)
     #### by constructing |up up>,|up do>,|do up>,|do do>
     keys =  "abcd";
+    keys = "bc"
     abcd_builders = {"a":eris_or_driver.expr_builder(), "b":eris_or_driver.expr_builder(),
                      "c":eris_or_driver.expr_builder(), "d":eris_or_driver.expr_builder()};
-    abcd_terms = {"a":["cd","cd"], "b":["cd","CD"],"c":["CD","cd"],"d",["CD","CD"]};
+    abcd_terms = {"a":["cd","cd"], "b":["cd","CD"],"c":["CD","cd"],"d":["CD","CD"]};
     for k in keys:
         # diagonal terms
-        terms = abcd_terms[k];
-        for termi in range(len(terms)):
-            abcd_builders[k].add_term(terms[termi],whichsites[termi],-1.0);
+        for termi in range(len(whichsites)):
+            abcd_builders[k].add_term(abcd_terms[k][termi],[whichsites[termi],whichsites[termi]],-1.0);
         # hopping noise
         for j in range(Nspinorbs//2-1):
             for spin in spin_strs:
@@ -72,8 +83,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=True):
         k_mps = eris_or_driver.get_random_mps(tag=k);
         eris_or_driver.dmrg(k_mpo, k_mps, noises=noises);
         abcd_mps.append(k_mps);
-        if plot: snapshot(None, k_mps, None, eris_or_driver, params, concurrence=False, time=float(k));
-    if(plot): assert False;
+        if plot: snapshot(None, k_mps, None, eris_or_driver, params, concurrence=False, time=ord(k));
 
     # coefs from expectation values
     abcd_coefs = [];
@@ -85,7 +95,8 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=True):
             print(keys[ki]+" coef = ",abcd_coefs[ki]);
     if(plot): assert False;           
     
-    concur_norm = 2*(abcd_coefs[0]*abcd_coefs[3] - abcd_coefs[1]*abcd_coefs[2]);
+    if(keys=="abcd"): concur_norm = 2*(abcd_coefs[0]*abcd_coefs[3] - abcd_coefs[1]*abcd_coefs[2]);
+    elif(keys=="bc"): concur_norm = 2*abcd_coefs[0]*abcd_coefs[1];
     return np.sqrt( np.conj(concur_norm)*concur_norm);
 
 def check_observables(the_sites,psi,eris_or_driver,block):
@@ -101,7 +112,6 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         # concurrence between
         C_ci = concurrence_wrapper(psi, eris_or_driver, the_sites, False);
         print("C"+str(the_sites)+" = ",C_ci);
-        print((psi.r+complex(0,1)*psi.i).T)
     else:
         s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
@@ -300,7 +310,7 @@ if(do_dmrg): # dmrg gd state
     
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
-                             bond_dim=params["dim_0"] )
+                             bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,
         bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
         iprint=2); # set to 2 to see Mmps
