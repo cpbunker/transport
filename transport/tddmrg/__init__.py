@@ -196,7 +196,7 @@ def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
 
-def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block):
+def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
     '''
     '''
     spin_inds = [0,1];
@@ -237,11 +237,18 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block):
 
     # return
     if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(),add_ident=False, iprint=verbose);
         return mpo_from_builder;
     else:
         occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
         return occ_eri;
+
+def yield_sz(Nspinorbs,whichsite):
+
+    def yield_func(N, adag, a):
+        yield (1/2)*adag[whichsite,0]*a[whichsite,0];
+        yield (1/2)*adag[whichsite,1]*a[whichsite,1];
+    return yield_func;
 
 def get_concur_coef(letter,Nspinorbs, eris_or_driver, whichsites, block):
     '''

@@ -31,7 +31,7 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=False):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     '''
     Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
     to get concurrence
@@ -45,12 +45,11 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=False):
     which1, which2 = whichsites;
 
     # not implemented for FCI
-    if(not block): return -999;
+    if(not block): return np.nan;
 
-    # test code
-    import pyblock3
-    from pyblock3.block2 import io
-    psi_b3 = io.MPSTools.from_block2(psi); #  block 3 mps
+    # block3 MPS
+    from pyblock3.block2.io import MPSTools, MPOTools
+    psi_b3 = MPSTools.from_block2(psi); #  block 3 mps
     psi_star = psi_b3.conj(); # so now we can do this operation
 
     # exp vals across symmetry blocks
@@ -58,15 +57,12 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, plot=False):
     sterms = [];
     for sblock in sblocks:
         concur_mpo = tddmrg.get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, sblock);
-        concur_mpo_b3 = io.MPOTools.from_block2(concur_mpo);
+        concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
-    print("psi:",type(psi))
-    print("psi_b3:",type(psi_b3))
-    print("psi_star:", type(psi_star))
-    print("concur_mpo:", type(concur_mpo))
-    print("concur_mpo_b3", type(concur_mpo_b3))
-    print("sterms:",sterms);
-    assert False
+    concur_norm = np.sum(sterms);
+    ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    return np.real(ret);
     
     #### isolate a, b, c, d coefs (see WK Wouters 2001)
     #### by constructing |up up>,|up do>,|do up>,|do do>
@@ -134,7 +130,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         print("C"+str(the_sites)+" = ",C_dmrg);
 
 def vs_site(psi,eris_or_driver,block,which_obs):
-    obs_funcs = {"occ":tddmrg.get_occ, "sz":tddmrg.get_sz, "sx01":tddmrg.get_sx01, "sx10":tddmrg.get_sx10}
+    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz, "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
@@ -159,7 +155,7 @@ mylinewidth = 3.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, concurrence=False, draw_arrow=False):
+def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, draw_arrow=False):
     '''
     '''
     #return;
@@ -174,51 +170,56 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, c
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
 
     # plot charge and spin vs site
-    obs_strs = ["occ","sz"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{\mu} \\rangle $"];
+    obs_strs = ["occ_","sz_"];
+    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $"];
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
-        if(concurrence): C_ci = concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
-        else: C_ci = -9999;
+        C_ci = concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_ci,eris_inst,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
-            js = np.array(range(len(y_js)));
-            ds_j = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
+            x_js = np.array(range(len(y_js)));
+            x_ds = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
             # delocalized spins
-            axes[obsi].plot(js,y_js,color=mycolors[0],marker='o',
+            axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
-            if(draw_arrow and obs_strs[obsi] != "occ"):
+            if(draw_arrow and obs_strs[obsi] != "occ_"):
                 for di in range(len(central_sites)):
-                    axes[obsi].arrow(ds_j[di],0,0,y_ds[di],color=mycolors[1],
+                    axes[obsi].arrow(x_ds[di],0,0,y_ds[di],color=mycolors[1],
                                      width=0.01*mylinewidth,length_includes_head=True);
             else:
-                axes[obsi].scatter(ds_j, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+                axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+
+            # save arrays
+            arrs = [x_js, y_js, x_ds, y_ds];
+            arr_names = ["xjs","yjs","xds","yds"];
+            for arri in range(len(arr_names)):
+                np.save(json_name[:-4]+"_arrays/"+obs_strs[obsi]+arr_names[arri]+"_time{:.2f}".format(time), arrs[arri]);
 
         # get sx
-        x, sx01 = vs_site(psi_ci,eris_inst,False,"sx01");
-        x, sx10 = vs_site(psi_ci,eris_inst,False,"sx10");
+        x, sx01 = vs_site(psi_ci,eris_inst,False,"sx01_");
+        x, sx10 = vs_site(psi_ci,eris_inst,False,"sx10_");
         sx = sx01+sx10;
         sx_js = sx[np.isin(x,loc_spins,invert=True)];# on chain sites
-        axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
+        #axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
+
     if(psi_mps is not None): # with dmrg
-        if(concurrence): C_dmrg = concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
-        else: C_dmrg = -9999;
+        C_dmrg = concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
         for obsi in range(len(obs_strs)):
             x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
-            js = np.array(range(len(y_js)));
-            ds_j = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
+            x_js = np.array(range(len(y_js)));
+            x_ds = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
             # delocalized spins
-            axes[obsi].scatter(js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
+            axes[obsi].scatter(x_js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
             # localized spins
-            axes[obsi].scatter(ds_j, y_ds, marker="^", edgecolors=accentcolors[1],
+            axes[obsi].scatter(x_ds, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
                 
     #format
@@ -227,12 +228,12 @@ def snapshot(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, time = 0.0, c
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j$");
-    axes[-1].set_xlim(np.min(js), np.max(js));
+    axes[-1].set_xlim(np.min(x_js), np.max(x_js));
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title("$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne));
     plt.tight_layout();
-    plt.show();
-    #plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
+    #plt.show();
+    plt.savefig(json_name[:-4]+"_time{:.2f}.pdf".format(time));
 
 ##################################################################################
 #### run code
