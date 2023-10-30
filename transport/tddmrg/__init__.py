@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-from pyblock2.driver import core
+#from pyblock2.driver import core
 import numpy as np
 
     
@@ -243,38 +243,38 @@ def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, ve
         occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
         return occ_eri;
 
-def yield_sz(Nspinorbs,whichsite):
-
-    def yield_func(N, adag, a):
-        yield (1/2)*adag[whichsite,0]*a[whichsite,0];
-        yield (1/2)*adag[whichsite,1]*a[whichsite,1];
-    return yield_func;
-
-def get_concur_coef(letter,Nspinorbs, eris_or_driver, whichsites, block):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     '''
+    Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
+    to get concurrence
     '''
-    spin_inds=[0,1];
+    # unpack
+    spin_inds = [0,1];
     spin_strs = ["cd","CD"];
     nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
+    if(block): Nspinorbs = eris_or_driver.n_sites*2;
+    else: Nspinorbs = len(eris_or_driver.h1e[0]);
     which1, which2 = whichsites;
-    if(block):
-        if(letter=="a"): builder.add_term("cdcd", [which1,which1,which2,which2],1.0);
-        elif(letter=="b"): builder.add_term("cdCD", [which1,which1,which2,which2],1.0);
-        elif(letter=="c"): builder.add_term("CDcd",[which1,which1,which2,which2],1.0);
-        elif(letter=="d"): builder.add_term("CDCD", [which1,which1,which2,which2],1.0);
-        else: raise NotImplementedError;
-    else:
-        raise NotImplementedError;
 
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize());
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+    # not implemented for FCI
+    if(not block): return np.nan;
+
+    # block3 MPS
+    from pyblock3.block2.io import MPSTools, MPOTools
+    psi_b3 = MPSTools.from_block2(psi); #  block 3 mps
+    psi_star = psi_b3.conj(); # so now we can do this operation
+
+    # exp vals across symmetry blocks
+    sblocks = [-2,0,2];
+    sterms = [];
+    for sblock in sblocks:
+        concur_mpo = get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, sblock);
+        concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
+        sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
+    concur_norm = np.sum(sterms);
+    ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    return np.real(ret);
 
 ##########################################################################################################
 #### hamiltonian constructors

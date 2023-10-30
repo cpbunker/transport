@@ -3,5 +3,5 @@
 "NL":35, "NFM":1, "NR":1, "Nconf":10, "Ne":8, "TwoSz":7,
 "symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[35,36],
 "bdim_0":[400,500],"bdim_t":[600], "noises":[1e-4,1e-5], "dmrg_sweeps":20,"cutoff":1e-20,
-"t1":1.0,"t2":1.0,"t3":1.0
+"time_step":0.01, "t1":1.0,"t2":1.0,"t3":1.0
 }
