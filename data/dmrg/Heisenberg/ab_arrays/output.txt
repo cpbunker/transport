@@ -1,0 +1,137 @@
+#### SLURM ####
+pwd: 
+/blue/m2qm-efrc/cpbunker/GitHub/transport
+host: 
+c0704a-s4.ufhpc
+# conda environments:
+#
+base                     /apps/conda/23.3.1
+block                 *  /blue/m2qm-efrc/cpbunker/condaenvs/block
+
+
+#### PYTHON ####
+start time: 
+Sun Oct 29 21:13:25 EDT 2023
+
+Overwritten attributes  get_ovlp get_hcore  of <class 'pyscf.scf.uhf.UHF'>
+>>> PWD:  /blue/m2qm-efrc/cpbunker/GitHub/transport
+>>> Do FCI  =  True
+>>> Do DMRG =  True
+>>> special case:  BFM_first
+j - d site pairs =  [(2, 3), (4, 5)]
+H_1e = 
+[[  0.       0.      -0.0001   0.       0.       0.       0.       0.    ]
+ [  0.       0.       0.      -0.0001   0.       0.       0.       0.    ]
+ [ -0.0001   0.       0.       0.      -0.0001   0.       0.       0.    ]
+ [  0.      -0.0001   0.       0.       0.      -0.0001   0.       0.    ]
+ [  0.       0.      -0.0001   0.       0.       0.       0.       0.    ]
+ [  0.       0.       0.      -0.0001   0.       0.       0.       0.    ]
+ [  0.       0.       0.       0.       0.       0.     -50.       0.    ]
+ [  0.       0.       0.       0.       0.       0.       0.      50.    ]]
+[[  0.       0.       0.       0.      -0.0001   0.       0.       0.    ]
+ [  0.       0.       0.       0.       0.      -0.0001   0.       0.    ]
+ [  0.       0.      50.       0.       0.       0.       0.       0.    ]
+ [  0.       0.       0.     -50.       0.       0.       0.       0.    ]
+ [ -0.0001   0.       0.       0.       0.       0.      -0.0001   0.    ]
+ [  0.      -0.0001   0.       0.       0.       0.       0.      -0.0001]
+ [  0.       0.       0.       0.      -0.0001   0.       0.       0.    ]
+ [  0.       0.       0.       0.       0.      -0.0001   0.       0.    ]]
+
+UHF energy calculation
+converged SCF energy = -99.875  <S^2> = 2  2S+1 = 3
+Ground state energy (FCI) = -99.875312
+Manually computed energy (FCI) = -99.875312
+Environment initialization | Nsites =     8 | Center =     0
+ INIT-R <-- Site =    5 ..  Bmem =   256 B Rmem =   256 B T = 0.12
+ INIT-R <-- Site =    4 ..  Bmem = 3.19 KB Rmem = 3.19 KB T = 0.01
+ INIT-R <-- Site =    3 ..  Bmem = 57.0 KB Rmem = 57.0 KB T = 0.01
+ INIT-R <-- Site =    2 ..  Bmem =  726 KB Rmem =  726 KB T = 0.10
+ INIT-R <-- Site =    1 ..  Bmem = 6.14 MB Rmem = 0.98 MB T = 0.32
+ INIT-R <-- Site =    0 ..  Bmem = 13.4 MB Rmem =  853 KB T = 0.11
+Time init sweep =        0.659 | MaxBmem = 13.4 MB | MaxRmem =  853 KB
+ | Tread = 0.000 | Twrite = 0.433 | Tfpread = 0.000 | Tfpwrite = 0.428 | data = 2.58 MB | cpsd = 1.42 MB | Tasync = 0.000
+
+
+Sweep =    0 | Direction =  forward | Bond dimension =  400 | Noise =  1.00e-04 | Dav threshold =  1.00e-06
+ --> Site =    0-   1 .. Mmps =    4 Ndav =   7 E =    -10.1327798190 Error = 0.00e+00 FLOPS = 1.07e+04 Tdav = 0.10 T = 0.27
+ --> Site =    1-   2 .. Mmps =    9 Ndav =  12 E =    -45.3055217575 Error = 0.00e+00 FLOPS = 2.40e+05 Tdav = 0.05 T = 0.10
+ --> Site =    2-   3 .. Mmps =   16 Ndav =  11 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.25e+07 Tdav = 0.00 T = 0.04
+ --> Site =    3-   4 .. Mmps =   25 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 9.51e+06 Tdav = 0.00 T = 0.02
+ --> Site =    4-   5 .. Mmps =   36 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.16e+07 Tdav = 0.00 T = 0.02
+ --> Site =    5-   6 .. Mmps =   49 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.34e+07 Tdav = 0.00 T = 0.02
+ --> Site =    6-   7 .. Mmps =   64 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.28e+07 Tdav = 0.00 T = 0.02
+Time elapsed =      0.492 | E =     -99.8753124995 | DW = 0.00e+00
+Time sweep =        0.492 | 71.5 KFLOP/SWP
+ | Dmem = 0.98 MB (0%) | Imem = 35.9 KB (88%) | Hmem = 13.4 MB | Pmem = 8.28 KB
+ | Tread = 0.014 | Twrite = 0.009 | Tfpread = 0.008 | Tfpwrite = 0.005 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 176 KB | cpsd = 43.8 KB
+ | Trot = 0.003 | Tctr = 0.005 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.006 | Tdiag = 0.032 | Tinfo = 0.011
+ | Teff = 0.085 | Tprt = 0.039 | Teig = 0.163 | Tblk = 0.447 | Tmve = 0.043 | Tdm = 0.001 | Tsplt = 0.082 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    1 | Direction = backward | Bond dimension =  500 | Noise =  1.00e-05 | Dav threshold =  1.00e-06
+ <-- Site =    6-   7 .. Mmps =    4 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 8.70e+06 Tdav = 0.00 T = 0.01
+ <-- Site =    5-   6 .. Mmps =    9 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.57e+07 Tdav = 0.00 T = 0.04
+ <-- Site =    4-   5 .. Mmps =   16 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.63e+07 Tdav = 0.00 T = 0.02
+ <-- Site =    3-   4 .. Mmps =   25 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.45e+07 Tdav = 0.00 T = 0.02
+ <-- Site =    2-   3 .. Mmps =   36 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.13e+07 Tdav = 0.00 T = 0.02
+ <-- Site =    1-   2 .. Mmps =   49 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.59e+07 Tdav = 0.00 T = 0.02
+ <-- Site =    0-   1 .. Mmps =   64 Ndav =   1 E =    -99.8753124995 Error = 0.00e+00 FLOPS = 1.11e+07 Tdav = 0.00 T = 0.02
+Time elapsed =      0.638 | E =     -99.8753124995 | DE = -2.84e-14 | DW = 0.00e+00
+Time sweep =        0.146 | 31.3 KFLOP/SWP
+ | Dmem = 80.0 KB (2%) | Imem = 6.13 KB (95%) | Hmem = 495 KB | Pmem = 7.44 KB
+ | Tread = 0.003 | Twrite = 0.006 | Tfpread = 0.001 | Tfpwrite = 0.002 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 157 KB | cpsd = 41.7 KB
+ | Trot = 0.002 | Tctr = 0.001 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.001 | Tdiag = 0.001 | Tinfo = 0.010
+ | Teff = 0.018 | Tprt = 0.037 | Teig = 0.002 | Tblk = 0.120 | Tmve = 0.024 | Tdm = 0.000 | Tsplt = 0.006 | Tsvd = 0.000 | Torth = 0.000
+
+Ground state energy (DMRG) = -99.875312
+Manually computed energy (DMRG) = -99.875312+0.000000j
+>>> Init compute time (FCI = True, DMRG=True) = 17.156287908554077
+Site 3 <Sz> (FCI) = 0.499998
+Site 5 <Sz> (FCI) = -0.499998
+C[3, 5] =  nan
+Site 3 <Sz> (DMRG) = 0.499998-0.000000j
+Site 5 <Sz> (DMRG) = -0.499998+0.000000j
+C[3, 5] =  0.0025001464998213084
+j - d site pairs =  [(2, 3), (4, 5)]
+H_1e_dyn = 
+[[ 0.      0.     -0.0001  0.      0.      0.      0.      0.    ]
+ [ 0.      0.      0.     -0.0001  0.      0.      0.      0.    ]
+ [-0.0001  0.      0.      0.     -0.0001  0.      0.      0.    ]
+ [ 0.     -0.0001  0.      0.      0.     -0.0001  0.      0.    ]
+ [ 0.      0.     -0.0001  0.      0.      0.      0.      0.    ]
+ [ 0.      0.      0.     -0.0001  0.      0.      0.      0.    ]
+ [ 0.      0.      0.      0.      0.      0.      0.      0.    ]
+ [ 0.      0.      0.      0.      0.      0.      0.      0.    ]]
+[[ 0.      0.      0.      0.     -0.0001  0.      0.      0.    ]
+ [ 0.      0.      0.      0.      0.     -0.0001  0.      0.    ]
+ [ 0.      0.      0.      0.      0.      0.      0.      0.    ]
+ [ 0.      0.      0.      0.      0.      0.      0.      0.    ]
+ [-0.0001  0.      0.      0.      0.      0.     -0.0001  0.    ]
+ [ 0.     -0.0001  0.      0.      0.      0.      0.     -0.0001]
+ [ 0.      0.      0.      0.     -0.0001  0.      0.      0.    ]
+ [ 0.      0.      0.      0.      0.     -0.0001  0.      0.    ]]
+j - d site pairs =  [(2, 3), (4, 5)]
+>>> Evol1 compute time (FCI = True, DMRG=True) = 49.960166692733765
+Site 3 <Sz> (FCI) = 0.404012
+Site 5 <Sz> (FCI) = -0.404012
+C[3, 5] =  nan
+Site 3 <Sz> (DMRG) = 0.405480+0.000000j
+Site 5 <Sz> (DMRG) = -0.405480+0.000000j
+C[3, 5] =  0.5851007710036554
+>>> Evol2 compute time (FCI = True, DMRG=True) = 72.28261709213257
+Site 3 <Sz> (FCI) = -0.002102
+Site 5 <Sz> (FCI) = 0.002102
+C[3, 5] =  nan
+Site 3 <Sz> (DMRG) = 0.002898+0.000000j
+Site 5 <Sz> (DMRG) = -0.002898-0.000000j
+C[3, 5] =  0.999983201342883
+>>> Evol3 compute time (FCI = True, DMRG=True) = 123.68924283981323
+Site 3 <Sz> (FCI) = -0.499981
+Site 5 <Sz> (FCI) = 0.499981
+C[3, 5] =  nan
+Site 3 <Sz> (DMRG) = -0.499988-0.000000j
+Site 5 <Sz> (DMRG) = 0.499988-0.000000j
+C[3, 5] =  0.007050755618593444
+stop time: 
+Sun Oct 29 21:18:26 EDT 2023

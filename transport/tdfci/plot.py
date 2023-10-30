@@ -113,6 +113,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     axes[0].set_title(title_str);
     np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
     plt.tight_layout();
+    #plt.show();
     plt.savefig(savename[:-4]+"_time{:.2f}.pdf".format(time));
 
 def snapshot_fromdata(loadname, time):

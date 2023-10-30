@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-#from pyblock2.driver import core
+from pyblock2.driver import core
 import numpy as np
 
     
