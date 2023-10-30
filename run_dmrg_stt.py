@@ -148,7 +148,7 @@ mytime=0;
 if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
 plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver,
-                    params, json_name, time = mytime, plot_fig=True);
+        params, json_name, time = mytime, plot_fig=params["plot"]);
 
 #### Time evolution
 ####
@@ -183,7 +183,7 @@ print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
 if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
 plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=True);
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
 
 # time evol 2nd time
 evol2_start = time.time();
@@ -209,7 +209,7 @@ print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
 plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=True);
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
 
 # time evol 3rd time
 evol3_start = time.time();
@@ -235,7 +235,7 @@ print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
 plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=True);
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
 
 
 

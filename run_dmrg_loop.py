@@ -127,8 +127,7 @@ if(do_fci): # fci gd state
     # add in t<0 terms
     H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
     print("H_1e = ");print(H_1e[2*myNL:2*(myNL+2*myNFM+2),2*myNL:2*(myNL+2*myNFM+2)]);
-
-    H_eris, gdstate_ci_inst = None, None;
+H_eris, gdstate_ci_inst = None, None;
 
 if(do_dmrg): # dmrg gd state
     
@@ -165,7 +164,7 @@ plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params,
 if(do_fci):
     H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
     print("H_1e_dyn = ");print(H_1e_dyn[2*myNL:2*(myNL+2*myNFM+2),2*myNL:2*(myNL+2*myNFM+2)]);
-    H_eris_dyn, tevol_ci_inst = None, None;
+H_eris_dyn, tevol_ci_inst = None, None;
 if(do_dmrg): 
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
