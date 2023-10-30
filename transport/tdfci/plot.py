@@ -35,9 +35,10 @@ def vs_site(psi,eris_or_driver,block,which_obs):
     return js, vals;
 
 def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savename,
-                   time = 0.0, plot_sx = False, draw_arrow=False):
+                   time = 0.0, plot_fig=False, plot_sx=False, draw_arrow=False):
     '''
     '''
+    if(psi_ci is None and psi_mps is None): return;
 
     # unpack
     concur_sites = params_dict["ex_sites"];
@@ -88,10 +89,11 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
                                s=(3*mylinewidth)**2, facecolors='none');
 
             # save DMRG data
-            arrs = [x_js, y_js, x_ds, y_ds];
-            arr_names = ["xjs","yjs","xds","yds"];
-            for arri in range(len(arr_names)):
-                np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+arr_names[arri]+"_time{:.2f}".format(time), arrs[arri]);
+            if(not plot_fig):
+                arrs = [x_js, y_js, x_ds, y_ds];
+                arr_names = ["xjs","yjs","xds","yds"];
+                for arri in range(len(arr_names)):
+                    np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+arr_names[arri]+"_time{:.2f}".format(time), arrs[arri]);
 
         # plot <sx> from DMRG
         if(plot_sx):
@@ -111,10 +113,11 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
     axes[0].set_title(title_str);
-    np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
     plt.tight_layout();
-    #plt.show();
-    plt.savefig(savename[:-4]+"_time{:.2f}.pdf".format(time));
+    if(plot_fig): plt.show();
+    else:
+        np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
+        plt.savefig(savename[:-4]+"_time{:.2f}.pdf".format(time));
 
 def snapshot_fromdata(loadname, time):
     '''

@@ -95,7 +95,6 @@ do_dmrg = bool(int(sys.argv[3]));
 assert(do_fci or do_dmrg);
 print(">>> Do FCI  = ",do_fci);
 print(">>> Do DMRG = ",do_dmrg);
-fci_from_block = False; # skip g2e
 from transport import tdfci, tddmrg
 from transport.tdfci import utils, plot
 
@@ -120,14 +119,6 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 ####
 init_start = time.time();
 
-def get_energy_dmrg(driver, mpo):
-    bond_dims = [250] * 4 + [500] * 4
-    noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
-    threads = [1e-10] * 8
-    ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
-
-    return ket, ret;
-
 if(do_fci): # fci gd state
 
     # construct arrays with terms there for all times
@@ -135,18 +126,8 @@ if(do_fci): # fci gd state
 
     # add in t<0 terms
     H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
-    print("H_1e = ");print(H_1e[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e[2*(myNL+myNFM):,2*(myNL+myNFM):]);
+    print("H_1e = ");print(H_1e[2*myNL:2*(myNL+2*myNFM+2),2*myNL:2*(myNL+2*myNFM+2)]);
 
-    # gd state
-    gdstate_ci_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, mynelec, nroots=1, verbose=verbose);
-    H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
-    print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
-
-    # check gd state
-    check_E = tdfci.compute_obs(gdstate_ci_inst, H_eris)
-    print("Manually computed energy (FCI) = {:.6f}".format(check_E));
-
-else:
     H_eris, gdstate_ci_inst = None, None;
 
 if(do_dmrg): # dmrg gd state
@@ -157,15 +138,6 @@ if(do_dmrg): # dmrg gd state
     # add in t<0 terms
     H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=0);
 
-    if fci_from_block: # from fcidump
-        #H_driver.write_fcidump(H_1e, H_2e, 0.0, n_sites=H_driver.n_sites, n_elec=myNe, spin=myTwoSz, filename="from_driver.fd")
-        #H_driver.read_fcidump(filename="from_driver.fd")
-        #H_driver.initialize_system(n_sites=H_driver.n_sites, n_elec=myNe,spin=myTwoSz)
-        print(H_driver.n_sites, H_driver.n_elec, H_driver.spin)
-        H_mpo_initial = H_driver.get_qc_mpo(h1e=H_1e, g2e=H_2e, ecore=0, iprint=verbose-1)
-        print(np.shape(H_1e))
-        #print(np.shape(H_driver.h1e))
-    
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                              bond_dim=params["bdim_0"][0] )
@@ -185,13 +157,15 @@ init_end = time.time();
 print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
 
 # plot observables
-if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
 plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, json_name, time = 0.0);
 
 #### Time evolution
 ####
-####    
+if(do_fci):
+    H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
+    print("H_1e_dyn = ");print(H_1e_dyn[2*myNL:2*(myNL+2*myNFM+2),2*myNL:2*(myNL+2*myNFM+2)]);
+    H_eris_dyn, tevol_ci_inst = None, None;
 if(do_dmrg): 
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);

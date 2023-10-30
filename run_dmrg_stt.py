@@ -55,33 +55,6 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
         print("C"+str(the_sites)+" = ",C_dmrg);
 
-def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name):
-    '''
-    '''
-    evol_start = time.time();
-    time_step = params_dict["time_step"];
-    time_update = params_dict["tupdate"];
-    time_update = time_step*int(abs(time_update/time_step)+0.1); # discrete number
-    total_time = 0.0;
-    Nupdates = params_dict["Nupdates"];
-
-    # time evolve with repeated snapshots
-    tevol_mps_inst = psi;
-    for _ in range(Nupdates):
-        total_time += time_update;
-
-        # time evol
-        tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
-                delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], iprint=0);
-
-        # observables
-        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,True);
-        plot.snapshot_bench(None, tevol_mps_inst, None, driver_inst, params_dict, save_name, time=total_time);
-
-    evol_end = time.time();
-    print(">>> Time evol compute time (DMRG only) = {:.2f}".format(evol_end-evol_start));
-
 ##################################################################################
 #### run code
 
@@ -95,7 +68,6 @@ do_dmrg = bool(int(sys.argv[3]));
 assert(do_fci or do_dmrg);
 print(">>> Do FCI  = ",do_fci);
 print(">>> Do DMRG = ",do_dmrg);
-fci_from_block = False; # skip g2e
 from transport import tdfci, tddmrg
 from transport.tdfci import utils, plot
 
@@ -119,14 +91,6 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 ####
 ####
 init_start = time.time();
-
-def get_energy_dmrg(driver, mpo):
-    bond_dims = [250] * 4 + [500] * 4
-    noises = [1e-2] * 2 + [1e-3] * 2 + [1e-4]*4 + [0]
-    threads = [1e-10] * 8
-    ket = driver.get_random_mps(tag="KET", bond_dim=bond_dims[0], nroots=1)
-
-    return ket, ret;
 
 if(do_fci): # fci gd state
 
@@ -156,15 +120,6 @@ if(do_dmrg): # dmrg gd state
 
     # add in t<0 terms
     H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=0);
-
-    if fci_from_block: # from fcidump
-        #H_driver.write_fcidump(H_1e, H_2e, 0.0, n_sites=H_driver.n_sites, n_elec=myNe, spin=myTwoSz, filename="from_driver.fd")
-        #H_driver.read_fcidump(filename="from_driver.fd")
-        #H_driver.initialize_system(n_sites=H_driver.n_sites, n_elec=myNe,spin=myTwoSz)
-        print(H_driver.n_sites, H_driver.n_elec, H_driver.spin)
-        H_mpo_initial = H_driver.get_qc_mpo(h1e=H_1e, g2e=H_2e, ecore=0, iprint=verbose-1)
-        print(np.shape(H_1e))
-        #print(np.shape(H_driver.h1e))
     
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
@@ -192,7 +147,8 @@ mytime=0;
 # plot observables
 if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
-plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, json_name, time = mytime);
+plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver,
+                    params, json_name, time = mytime, plot_fig=True);
 
 #### Time evolution
 ####
@@ -226,7 +182,8 @@ print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
 if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
-plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn, params, json_name, time=mytime);
+plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=True);
 
 # time evol 2nd time
 evol2_start = time.time();
@@ -251,7 +208,8 @@ print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
-plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn, params, json_name, time=mytime);
+plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=True);
 
 # time evol 3rd time
 evol3_start = time.time();
@@ -276,7 +234,8 @@ print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 # observables
 if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
-plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn, params, json_name, time=mytime);
+plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=True);
 
 
 
