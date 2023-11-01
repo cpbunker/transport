@@ -170,7 +170,6 @@ else:
 if(do_dmrg): # DMRG dynamics
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
-    if(fci_from_block): H_mpo_dyn = H_driver_dyn.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=1)
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
                     bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
