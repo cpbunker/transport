@@ -217,7 +217,7 @@ time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discre
 mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
-    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=time_step*1j, target_t=time_update*1j,
+    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
                 bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
     t3_mps_inst = None;
@@ -234,6 +234,72 @@ print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "
 if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
 if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
 plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
+
+# time evol 4th time
+time_update = params["t4"];
+time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
+mytime += time_update;
+
+if(do_dmrg): # DMRG dynamics
+    t4_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t3_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                bond_dims=params["bdim_t"], iprint=verbose-1);
+else:
+    t4_mps_inst = None;
+    
+if(do_fci): # FCI dynamics
+    t4_ci_inst = tdfci.kernel(t3_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t4_ci_inst = None;
+    
+# observables
+if(do_fci): check_observables(my_sites, t4_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver, True);
+plot.snapshot_bench(t4_ci_inst, t4_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
+
+# time evol 5th time
+time_update = params["t5"];
+time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
+mytime += time_update;
+
+if(do_dmrg): # DMRG dynamics
+    t5_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t4_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                bond_dims=params["bdim_t"], iprint=verbose-1);
+else:
+    t5_mps_inst = None;
+    
+if(do_fci): # FCI dynamics
+    t5_ci_inst = tdfci.kernel(t4_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t5_ci_inst = None;
+    
+# observables
+if(do_fci): check_observables(my_sites, t5_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver, True);
+plot.snapshot_bench(t5_ci_inst, t5_mps_inst, H_eris_dyn, H_driver_dyn,
+                    params, json_name, time=mytime, plot_fig=params["plot"]);
+
+# time evol 6th time
+time_update = params["t6"];
+time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
+mytime += time_update;
+
+if(do_dmrg): # DMRG dynamics
+    t6_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t5_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                bond_dims=params["bdim_t"], iprint=verbose-1);
+else:
+    t6_mps_inst = None;
+    
+if(do_fci): # FCI dynamics
+    t6_ci_inst = tdfci.kernel(t5_ci_inst, H_eris_dyn, time_update, time_step);
+else:
+    t6_ci_inst = None;
+    
+# observables
+if(do_fci): check_observables(my_sites, t6_ci_inst, H_eris, False);
+if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver, True);
+plot.snapshot_bench(t6_ci_inst, t6_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
 
