@@ -81,7 +81,7 @@ assert(params["Jz"]==params["Jx"]);
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
-special_cases = ["BFM_first", "Bsd", "Bsd_x"];
+special_cases = ["BFM_first", "Bsd", "Bcentral", "Bsd_x","lead_penalty"];
 special_cases_flag = False;
 for case in special_cases:
     if(case in params.keys()):print(">>> special case: ",case); special_cases_flag = True;

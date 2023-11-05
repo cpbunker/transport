@@ -45,8 +45,8 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
     NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
     Ndofs = NL+2*NFM+NR;
-    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
 
     # plot charge and spin vs site
     obs_strs = ["occ_","sz_"];

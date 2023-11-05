@@ -347,7 +347,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                 h1e[nloc*(j+1)+spin,nloc*j+spin] += -tl;
 
     # hopping skips a site in central region
-    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
+    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
     # hopping within the central region
     for central_listi in range(len(central_sites[:-1])):
@@ -384,7 +384,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # sd exchange between loc spins and adjacent central sites
     # central sites are indexed j, loc spin sites are indexed d
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
     sdpairs = [(central_sites[index], loc_spins[index]) for index in range(len(loc_spins))];
     if(verbose): print("j - d site pairs = ",sdpairs);
     # form of this interaction is
@@ -421,7 +421,6 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
 
     # XXZ for loc spins
-    JXXZ_pauli = None;
     for loci in range(len(loc_spins)-1): # nearest neighbor only
         d, dp1 = loc_spins[loci], loc_spins[loci+1];
         if(block):
@@ -450,6 +449,16 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[1]] += -Jx/2;
             g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[0]] += -Jx/2;
 
+    # special cases
+    if("lead_penalty" in params_dict.keys()):
+        lead_penalty = params_dict["lead_penalty"];
+        for j in range(Ndofs):
+            if((j not in central_sites) and (j not in loc_spins)): # j in lead
+                for spin in spin_inds:
+                    if(block):
+                        builder.add_term(spin_strs[spin],[j,j],lead_penalty);
+                    else:
+                        h1e[nloc*j+spin,nloc*j+spin] += lead_penalty;
     # return
     if(block):
         return driver, builder;
@@ -518,8 +527,8 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             h1e[nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=  Be/2;
 
     # confining potential on loc spins
-    central_sites = [j for j in range(NL,Ndofs-NR)  if j%2==0];
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
+    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
+    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
     for d in loc_spins:
         for spin in spin_inds:
             if(block):
@@ -555,6 +564,17 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
             h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
+    
+    if("Bcentral" in params_dict.keys()):
+        Bcentral = params_dict["Bcentral"];
+        for s in central_sites:
+            if(block):
+                builder.add_term(spin_strs[0],[s,s],-Bcentral/2);
+                builder.add_term(spin_strs[1],[s,s], Bcentral/2);
+            else:
+                h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bcentral/2;
+                h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bcentral/2;
+
     if("Bsd_x" in params_dict.keys()):
         Bsd_x = params_dict["Bsd_x"];
         s = central_sites[0];
