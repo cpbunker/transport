@@ -77,7 +77,6 @@ mynelec = (myNFM+myNe,0);
 my_sites = params["ex_sites"];
 
 # checks
-assert(params["Jz"]==params["Jx"]);
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
