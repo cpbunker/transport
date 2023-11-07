@@ -272,6 +272,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
         concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
+    print("sterms = ",sterms)
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
@@ -313,7 +314,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
-    assert(NL>0 and NR>0); # leads must exist
+    #assert(NL>0 and NR>0); # leads must exist
 
     # return objects
     if(block): # construct ExprBuilder
@@ -361,7 +362,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                 h1e[nloc*central_sitei+spin, nloc*central_nexti+spin] += -tl;
                 h1e[nloc*central_nexti+spin, nloc*central_sitei+spin] += -tl;
 
-    if(central_sites): # couple first(last) to left (right) lead
+    if(central_sites and NL>0 and NR>0): # couple first(last) to left (right) lead
         for spin in spin_inds:
             if(block):
                 builder.add_term(spin_strs[spin],[NL-1, central_sites[0]],-tl);
@@ -373,7 +374,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                 h1e[nloc*central_sites[0]+spin,nloc*(NL-1)+spin] += -tl;
                 h1e[nloc*central_sites[-1]+spin,nloc*(Ndofs-NR)+spin] += -tl;
                 h1e[nloc*(Ndofs-NR)+spin,nloc*central_sites[-1]+spin] += -tl;
-    else: # special case there are no central region sites
+    elif(central_sites==[]): # special case there are no central region sites
         for spin in spin_inds:
             if(block):
                 builder.add_term(spin_strs[spin],[NL-1,Ndofs-NR],-tl);
@@ -498,7 +499,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(Nconf <= NL); # must be able to confine within left lead
-    assert(Nconf >= Ne); # must be enough room for all deloc es
+    #assert(Nconf >= Ne); # must be enough room for all deloc es
 
     # return objects
     if(block): # construct ExprBuilder
