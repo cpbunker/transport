@@ -67,6 +67,8 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
             axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+            print("FCI sum "+obs_strs[obsi]+" = "+str(sum(y)));
+            print("FCI combined "+obs_strs[obsi]+" = "+str( sum(y_js) + sum(y_ds)))
 
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
@@ -87,7 +89,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             else:
                 axes[obsi].scatter(x_ds, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
-
+            
             # save DMRG data
             if(not plot_fig):
                 arrs = [x_js, y_js, x_ds, y_ds];

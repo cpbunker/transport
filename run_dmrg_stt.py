@@ -55,6 +55,33 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
         print("C"+str(the_sites)+" = ",C_dmrg);
 
+def check_ham(H):
+    size=len(np.shape(H));
+    ndofs=np.shape(H)[0];
+    if(size==2): # 1 body ham
+        for crei in range(ndofs):
+            for dei in range(ndofs):
+                elem = H[crei,dei];
+                deltasz=0;
+                modify_deltasz = [1,-1];
+                deltasz += modify_deltasz[crei%2];
+                deltasz += -modify_deltasz[dei%2];
+                if( abs(elem)>1e-12 and deltasz!=0): # nonzero spin flip
+                    print("WARNING: nonzero h1e"+str([crei,dei])+" = "+str(elem));
+    elif(size==4): # 2 body ham
+        for crei in range(ndofs):
+            for dei in range(ndofs):
+                for crej in range(ndofs):
+                    for dej in range(ndofs):
+                        elem = H[crei,dei,crej,dej];
+                        deltasz = 0;
+                        modify_deltasz = [1,-1];
+                        deltasz += modify_deltasz[crei%2];
+                        deltasz += modify_deltasz[crej%2];
+                        deltasz += -modify_deltasz[dei%2];
+                        deltasz += -modify_deltasz[dej%2];
+                        if( abs(elem)>1e-12 and deltasz!=0): # nonzero spin flip
+                            print("WARNING: nonzero h2e"+str([crei,dei,crej,dej])+str(elem));
 ##################################################################################
 #### run code
 

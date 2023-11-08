@@ -272,7 +272,6 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
         concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
-    print("sterms = ",sterms)
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
@@ -314,7 +313,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
-    #assert(NL>0 and NR>0); # leads must exist
+    assert(NL>0 and NR>0); # leads must exist
 
     # return objects
     if(block): # construct ExprBuilder
@@ -450,16 +449,6 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[1]] += -Jx/2;
             g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[0]] += -Jx/2;
 
-    # special cases
-    if("lead_penalty" in params_dict.keys()):
-        lead_penalty = params_dict["lead_penalty"];
-        for j in range(Ndofs):
-            if((j not in central_sites) and (j not in loc_spins)): # j in lead
-                for spin in spin_inds:
-                    if(block):
-                        builder.add_term(spin_strs[spin],[j,j],lead_penalty);
-                    else:
-                        h1e[nloc*j+spin,nloc*j+spin] += lead_penalty;
     # return
     if(block):
         return driver, builder;
@@ -499,7 +488,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(Nconf <= NL); # must be able to confine within left lead
-    #assert(Nconf >= Ne); # must be enough room for all deloc es
+    assert(Nconf >= Ne); # must be enough room for all deloc es
 
     # return objects
     if(block): # construct ExprBuilder
@@ -547,7 +536,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM/2; # typically BFM<0, spin down should be favored
 
     # special case initialization
-    if("BFM_first" in params_dict.keys()):
+    if("BFM_first" in params_dict.keys()): # B field that targets 1st loc spin only
         BFM_first = params_dict["BFM_first"];
         d = loc_spins[0];
         if(block):
@@ -556,7 +545,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2 + BFM/2;
             h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM_first/2 - BFM/2; 
-    if("Bsd" in params_dict.keys()):
+    if("Bsd" in params_dict.keys()): # B field on the j that couples to the first loc spin
         Bsd = params_dict["Bsd"];
         s = central_sites[0];
         if(block):
@@ -565,8 +554,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
             h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
-    
-    if("Bcentral" in params_dict.keys()):
+    if("Bcentral" in params_dict.keys()): # B field on all js coupled to loc spins
         Bcentral = params_dict["Bcentral"];
         for s in central_sites:
             if(block):
@@ -575,8 +563,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             else:
                 h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bcentral/2;
                 h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bcentral/2;
-
-    if("Bsd_x" in params_dict.keys()):
+    if("Bsd_x" in params_dict.keys()): # B in the x on the j that couples to 1st loc spin
         Bsd_x = params_dict["Bsd_x"];
         s = central_sites[0];
         if block:
