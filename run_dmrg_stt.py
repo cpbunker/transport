@@ -97,6 +97,7 @@ print(">>> Do FCI  = ",do_fci);
 print(">>> Do DMRG = ",do_dmrg);
 from transport import tdfci, tddmrg
 from transport.tdfci import utils, plot
+block_from_fci = True;
 
 # some unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
@@ -146,7 +147,17 @@ if(do_dmrg): # dmrg gd state
 
     # add in t<0 terms
     H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=0);
-    
+    if(block_from_fci):
+        H_mpo_initial = H_driver.get_qc_mpo(h1e=H_1e, g2e=H_2e, ecore=0, iprint=5);
+        print(H_driver.bw)
+        print(H_driver.bw.bs)
+        print(type(H_driver.bw.bs.GeneralMPO()))
+        print(np.shape(H_1e));
+        print(type(H_mpo))
+        print(vars(H_mpo))
+        assert False
+        
+    # add in t<0 terms
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                              bond_dim=params["bdim_0"][0] )
@@ -196,6 +207,9 @@ else:
 if(do_dmrg): # DMRG dynamics
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
+    if(block_from_fci):
+        H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=5);
+        assert False
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
                     bond_dims=params["bdim_t"], iprint=verbose-1);
 else:
