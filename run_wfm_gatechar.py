@@ -115,7 +115,7 @@ np.set_printoptions(precision = 4, suppress = True);
 verbose = 1;
 
 # fig standardizing
-myxvals = 29;
+myxvals = 99;
 myfontsize = 14;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
@@ -278,7 +278,7 @@ if(case in [3,4]): # at fixed Ki, as a function of NB,
         U_gate = get_U_gate(gates[gatevali]);
 
         # iter over barrier distance (colors)
-        NBvals = np.array([60,65,70,80,90,94]);
+        NBvals = np.array([50,75,94,100]);
         #NBvals = np.array([80,85,90,95,100]);
         Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); # fidelity min'd over chi states
         which_chi_min = np.empty((myxvals, len(NBvals)),dtype=int); # index of chi states which min'd the fidelity
