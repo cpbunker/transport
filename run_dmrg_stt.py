@@ -97,7 +97,7 @@ print(">>> Do FCI  = ",do_fci);
 print(">>> Do DMRG = ",do_dmrg);
 from transport import tdfci, tddmrg
 from transport.tdfci import utils, plot
-block_from_fci = True;
+block_from_fci = False;
 
 # some unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
