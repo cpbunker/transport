@@ -4,6 +4,6 @@
 "NL":4, "NFM":2, "NR":4, "Nconf":2, "Ne":1, "TwoSz":-1,
 "symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[5,7],"plot":1,
 "bdim_0":[400,450,450,450,500],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
-"time_step":0.02, "t1":6.28, "tupdate":0.5,"Nupdates":12
+"time_step":0.01, "t1":6.28, "tupdate":0.5,"Nupdates":20
 }
 
