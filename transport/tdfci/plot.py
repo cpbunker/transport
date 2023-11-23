@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from transport import tdfci, tddmrg
 
 # fig standardizing
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
 mymarkers = ["o","+","^","s","d","*","X"];
 mylinewidth = 3.0;
