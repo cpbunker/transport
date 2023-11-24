@@ -55,7 +55,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
         print("C"+str(the_sites)+" = ",C_dmrg);
 
-def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name):
+def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose=0):
     '''
     '''
     evol_start = time.time();
@@ -73,7 +73,7 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name):
         # time evol
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], iprint=0);
+                bond_dims=params_dict["bdim_t"], iprint=verbose);
 
         # observables
         check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,True);
@@ -86,7 +86,7 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name):
 #### run code
 
 # top level
-verbose = 1; assert verbose in [1,2,3];
+verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
 params = json.load(open(json_name));
@@ -131,17 +131,17 @@ H_eris, gdstate_ci_inst = None, None;
 if(do_dmrg): # dmrg gd state
     
     # init ExprBuilder object with terms that are there for all times
-    H_driver, H_builder = tddmrg.Hsys_builder(params, True, scratch_dir=json_name, verbose=0); # returns DMRGDriver, ExprBuilder
+    H_driver, H_builder = tddmrg.Hsys_builder(params, True, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
     # add in t<0 terms
-    H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=0);
+    H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=verbose);
 
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                              bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,
         bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
-        iprint=2); # set to 2 to see Mmps
+        iprint=verbose); # set to 2 to see Mmps
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 
     # check gd state
@@ -166,8 +166,8 @@ if(do_fci):
 H_eris_dyn, tevol_ci_inst = None, None;
 if(do_dmrg): 
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
-    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=0);
-    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name)
+    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=1); #can't set too high or prints at every step
+    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name,verbose=verbose)
 
 
 
