@@ -1,0 +1,6 @@
+{"tl":1.0, "Vconf":10.0, "Be":100.0, "BFM":-100.0, "Jz":0.1, "Jx":0.1, "Jsd":0.0,
+"NL":15, "NFM":5, "NR":5, "Nconf":10, "Ne":5, "TwoSz":0,
+"symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[16,18],
+"bdim_0":[300,400,500,500,500],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
+"time_step":0.01,"tupdate":1.0,"Nupdates":15
+}
