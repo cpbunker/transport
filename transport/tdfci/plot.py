@@ -120,6 +120,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         plt.savefig(savename[:-4]+"_time{:.2f}.pdf".format(time));
+    plt.close(); # keeps figure from being stored in memory
 
 def snapshot_fromdata(loadname, time):
     '''

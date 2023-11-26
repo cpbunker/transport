@@ -167,7 +167,7 @@ H_eris_dyn, tevol_ci_inst = None, None;
 if(do_dmrg): 
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=1); #can't set too high or prints at every step
-    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name,verbose=verbose)
+    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name,verbose=0)
 
 
 

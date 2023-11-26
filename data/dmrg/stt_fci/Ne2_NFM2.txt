@@ -2,6 +2,6 @@
 "tl":1.0,"Vconf":10.0, "Be":100.0, "BFM":-100.0, "Jz":0.0, "Jx":0.0, "Jsd":0.5,
 "NL":4, "NFM":2, "NR":8, "Nconf":2, "Ne":2, "TwoSz":0,
 "symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[5,7],"plot":0,
-"bdim_0":[600,700,700,700,800],"bdim_t":[1000], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
+"bdim_0":[400,450,450,450,500],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
 "time_step":0.01,"t1":1.0,"t2":1.0, "t3":0.02, "t4":0.02, "t5":0.02, "t6":0.02, "tupdate":0.5,"Nupdates":20
- } # NB was noisier shorter
+}
