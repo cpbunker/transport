@@ -2,5 +2,5 @@
 "NL":15, "NFM":5, "NR":5, "Nconf":10, "Ne":5, "TwoSz":0,
 "symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[16,18],
 "bdim_0":[300,400,400,400,400,500],"bdim_t":[600], "noises":[2e-1,2e-2,2e-3,2e-4,2e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
-"time_step":0.04,"tupdate":1.0,"Nupdates":15
+"time_step":0.04,"tupdate":1.0,"Nupdates":8
 }
