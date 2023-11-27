@@ -58,6 +58,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
 def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose=0):
     '''
     '''
+    print("\n\nSTART TIME EVOLUTION\n\n","*"*50,"\n\n")
     evol_start = time.time();
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
@@ -67,13 +68,16 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose
 
     # time evolve with repeated snapshots
     tevol_mps_inst = psi;
-    for _ in range(Nupdates):
+    for timei in range(Nupdates):
+        if(timei in [0,1,2]): the_verbose=verbose;
+        else: the_verbose=0; # ensures verbosity only on 1st couple of time steps
         total_time += time_update;
 
         # time evol
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], iprint=verbose);
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"],
+                iprint=the_verbose);
 
         # observables
         check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,True);
@@ -166,8 +170,8 @@ if(do_fci):
 H_eris_dyn, tevol_ci_inst = None, None;
 if(do_dmrg): 
     H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
-    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=1); #can't set too high or prints at every step
-    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name,verbose=0)
+    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
+    time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn, gdstate_mps_inst,json_name,verbose=2) # set to 2 to see mmps
 
 
 
