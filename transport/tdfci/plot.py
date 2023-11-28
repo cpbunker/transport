@@ -13,29 +13,32 @@ mylinewidth = 3.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def vs_site(psi,eris_or_driver,block,which_obs):
+def vs_site(js,psi,eris_or_driver,block,which_obs):
     '''
     '''
     
-    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz, "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
+    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz, "conc_":tddmrg.concurrence_wrapper, "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
     if(block): Nspinorbs = eris_or_driver.n_sites*2;
     else: Nspinorbs = len(eris_or_driver.h1e[0]);
-    js = np.arange(Nspinorbs//2);
-    vals = np.empty_like(js,dtype=float)
-    for j in js:
-        op = obs_funcs[which_obs](Nspinorbs,eris_or_driver,j,block);
-        if(block):
-            vals[j] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
+    vals = np.zeros_like(js,dtype=float)
+    for ji in range(len(js)):
+        if(which_obs=="conc_"):
+            if(ji!=len(js)-1):
+                vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
         else:
-            vals[j] = np.real(tdfci.compute_obs(psi, op));
+            op = obs_funcs[which_obs](Nspinorbs,eris_or_driver,js[ji],block);
+            if(block):
+                vals[ji] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
+            else:
+                vals[ji] = np.real(tdfci.compute_obs(psi, op));
 
     return js, vals;
 
 def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savename,
-                   time = 0.0, plot_fig=False, plot_sx=False, draw_arrow=False):
+                   time = 0.0, plot_fig=False):
     '''
     '''
     if(psi_ci is None and psi_mps is None): return;
@@ -45,19 +48,22 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
     NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
     Ndofs = NL+2*NFM+NR;
+    js_all = np.arange(Ndofs);
     central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
 
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
+    obs_strs = ["occ_","sz_","conc_"];
+    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{j,j+1}$"];
+    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
         C_ci = tddmrg.concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
         for obsi in range(len(obs_strs)):
-            x, y = vs_site(psi_ci,eris_inst,False,obs_strs[obsi]);
+            if(obs_strs[obsi] != "conc_"): js_pass = js_all;
+            else: js_pass = loc_spins;
+            x, y = vs_site(js_pass,psi_ci,eris_inst,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
             x_js = np.array(range(len(y_js)));
@@ -73,7 +79,9 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
         for obsi in range(len(obs_strs)):
-            x, y = vs_site(psi_mps,driver_inst,True,obs_strs[obsi]);
+            if(obs_strs[obsi] != "conc_"): js_pass = js_all;
+            else: js_pass = loc_spins;
+            x, y = vs_site(js_pass,psi_mps,driver_inst,True,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
             y_ds = y[np.isin(x,loc_spins)];# off chain impurities
             x_js = np.array(range(len(y_js)));
@@ -82,12 +90,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             axes[obsi].scatter(x_js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
             # localized spins
-            if(draw_arrow and obs_strs[obsi] != "occ_"):
-                for di in range(len(central_sites)):
-                    axes[obsi].arrow(x_ds[di],0,0,y_ds[di],color=mycolors[1],
-                                     width=0.01*mylinewidth,length_includes_head=True);
-            else:
-                axes[obsi].scatter(x_ds, y_ds, marker="^", edgecolors=accentcolors[1],
+            axes[obsi].scatter(x_ds, y_ds, marker="^", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
             
             # save DMRG data
@@ -98,7 +101,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
                     np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+arr_names[arri]+"_time{:.2f}".format(time), arrs[arri]);
 
         # plot <sx> from DMRG
-        if(plot_sx):
+        if(False):
             x, sx01 = vs_site(psi_mps,driver_inst,False,"sx01_");
             x, sx10 = vs_site(psi_mps,driver_inst,False,"sx10_");
             sx = sx01+sx10;
@@ -111,7 +114,6 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j$");
-    axes[-1].set_xlim(np.min(x_js), np.max(x_js));
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
     axes[0].set_title(title_str);
