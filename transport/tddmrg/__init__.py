@@ -196,6 +196,50 @@ def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
 
+def get_sy01(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or matrix) representing <Sy> of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cD",[whichsite,whichsite], complex(0,-0.5));
+    else:
+        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += complex(0,-0.5);
+        
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
+
+def get_sy10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or matrix) representing <Sy> of site whichsite
+    '''
+    spin_inds=[0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+
+    # return objects
+    if(block): builder = eris_or_driver.expr_builder()
+    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("Cd",[whichsite,whichsite],complex(0,0.5));
+    else:
+        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += complex(0,0.5);
+        
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
+
 def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
     '''
     '''
@@ -273,6 +317,31 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    return np.real(ret);
+
+def purity_wrapper(psi,eris_or_driver, whichsites, block):
+    '''
+    Need to combine ops for Sx, Sy, Sz to get purity
+    '''
+    # unpack
+    spin_inds = [0,1];
+    spin_strs = ["cd","CD"];
+    nloc = len(spin_strs);
+    if(block): Nspinorbs = eris_or_driver.n_sites*2;
+    else: Nspinorbs = len(eris_or_driver.h1e[0]);
+    whichsite = whichsites[0];
+
+    # not implemented for FCI
+    if(not block): return np.nan;
+
+    # exp vals across symmetry blocks
+    sblocks = [get_sx01, get_sx10, get_sy01, get_sy10, get_sz];
+    sterms = [];
+    for sblock in sblocks:
+        op = sblock(Nspinorbs, eris_or_driver, whichsite, block);
+        sterms.append( compute_obs(psi, op, eris_or_driver));
+    purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
 

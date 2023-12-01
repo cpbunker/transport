@@ -18,6 +18,7 @@ case = int(sys.argv[2]);
 obs1, color1, ticks1, linewidth1, fontsize1 = "sz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
 obs2, color2 = "occ_", "cornflowerblue";
 obs3, color3 = "sz_", "darkblue";
+ob4, color4 = "pur_", "gray";
 num_xticks = 4;
 
 if(case in [1,2]): # observable as a function of time
@@ -37,6 +38,7 @@ if(case in [1,2]): # observable as a function of time
         times[ti] = ti*tupdate;
     time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
     ax.set_xticks(time_ticks);
+    ax.set_xlim((times[0], times[-1]));
 
     # impurity spin vs time
     NFM = params["NFM"]; # number impurities
@@ -46,7 +48,13 @@ if(case in [1,2]): # observable as a function of time
     for ti in range(len(times)):
         yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
-    ax.set_ylabel("$2 \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+    ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+
+    # impurity purity vs time
+    purds_vs_time = np.zeros((len(times),NFM),dtype=float);
+    for ti in range(len(times)):
+        purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{::.2f}.npy".format(times[ti]));
+    ax.fill_between(times, purds_vs_time[:,which_imp],color=color4);
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
@@ -60,13 +68,60 @@ if(case in [1,2]): # observable as a function of time
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
-    ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
+    ax3.set_ylabel("$2 \overline{ s_j^z } /\hbar$", color=color3, fontsize=fontsize1);
     
     # show
     plt.tight_layout();
     plt.show();
 
-if(case in [3,4]): # animate time evol
+if(case in [3,4]): # observable as a function of time
+
+    # axes
+    fig, ax = plt.subplots();
+    ax.set_xlabel("Time $(\hbar/t_l)$");
+    ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+
+    # time evolution params
+    tupdate = params["tupdate"];
+    Nupdates = params["Nupdates"];
+    times = np.zeros((Nupdates+1,),dtype=float);
+    for ti in range(len(times)):
+        times[ti] = ti*tupdate;
+    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
+    ax.set_xticks(time_ticks);
+    ax.set_xlim((times[0], times[-1]));
+
+    # SUMMED impurity spins vs time
+    NFM = params["NFM"]; # number impurities
+    yds_vs_time = np.zeros((len(times),NFM),dtype=float);
+    for ti in range(len(times)):
+        yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
+    yds_summed = np.sum(yds_vs_time, axis=1);
+    ax.plot(times,yds_summed,color=color1);
+    ax.set_ylabel("$ \Sigma_d \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+
+    # SUMMED electron spin vs time
+    Ne = params["Ne"]; # number deloc electrons
+    yjs_vs_time = np.zeros((len(times),params["NL"]+NFM+params["NR"]),dtype=float);
+    for ti in range(len(times)):
+        yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
+    yjs_summed = np.sum(yjs_vs_time, axis=1);
+    ax.plot(times, yjs_summed,color=color3);
+    ax3 = ax.twinx();
+    ax3.yaxis.set_label_position("left");
+    ax3.spines.left.set_position(("axes", -0.15));
+    ax3.spines.left.set(alpha=0.0);
+    ax3.set_yticks([])
+    ax3.set_ylabel("$ \Sigma_j \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
+
+    # SUM of all spins
+    ax.plot(times, yds_summed+yjs_summed, color="black", linestyle="dashed");
+    
+    # show
+    plt.tight_layout();
+    plt.show();
+
+if(case in [10]): # animate time evol
 
     # axes
     fig, ax = plt.subplots();

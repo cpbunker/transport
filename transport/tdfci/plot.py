@@ -17,7 +17,9 @@ def vs_site(js,psi,eris_or_driver,block,which_obs):
     '''
     '''
     
-    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz, "conc_":tddmrg.concurrence_wrapper, "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
+    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz, 
+            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper,
+            "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
     if(which_obs not in obs_funcs.keys()): raise ValueError;
 
     # site array
@@ -25,7 +27,7 @@ def vs_site(js,psi,eris_or_driver,block,which_obs):
     else: Nspinorbs = len(eris_or_driver.h1e[0]);
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs=="conc_"):
+        if(which_obs in ["conc_","pur_"]):
             if(ji!=len(js)-1):
                 vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
         else:
@@ -53,15 +55,15 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
 
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_","conc_"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{j,j+1}$"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0]];
+    obs_strs = ["occ_","sz_","conc_","pur_"];
+    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{j,j+1}$","$|\textbf{S}|$"];
+    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci
         C_ci = tddmrg.concurrence_wrapper(psi_ci, eris_inst, concur_sites, False);
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] != "conc_"): js_pass = js_all;
+            if(obs_strs[obsi] not in ["conc_","pur_"]): js_pass = js_all;
             else: js_pass = loc_spins;
             x, y = vs_site(js_pass,psi_ci,eris_inst,False,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
@@ -79,7 +81,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] != "conc_"): js_pass = js_all;
+            if(obs_strs[obsi] not in ["conc_","pur_"]): js_pass = js_all;
             else: js_pass = loc_spins;
             x, y = vs_site(js_pass,psi_mps,driver_inst,True,obs_strs[obsi]);
             y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
