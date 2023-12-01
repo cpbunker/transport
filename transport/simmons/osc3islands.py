@@ -384,6 +384,7 @@ def fit_Mn_data(stop_at, metal, num_islands = 3, verbose=1):
     if(verbose>10):
         from utils import show_raw_data
         show_raw_data(metal, Ts);
+        assert False
 
     #### guesses ####
     # surface magnons
@@ -478,10 +479,10 @@ def plot_saved_fit(stop_at, metal, combined=[], offset = 1000, verbose = 1):
 
 if(__name__ == "__main__"):
 
-    metal = "Jumps/"; # tells which experimental data to load
+    metal = "Mnv2/"; # tells which experimental data to load
     stop_ats = ["back/", "lorentz_zero/", "lorentz_fine/", "trial/"];
     stop_at = stop_ats[2];
-    verbose=10;
+    verbose=11;
 
     # this one executes the fitting and stores results
     fit_Mn_data(stop_at, metal, verbose=verbose);

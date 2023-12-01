@@ -56,8 +56,8 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
 
     # plot charge and spin vs site
     obs_strs = ["occ_","sz_","conc_","pur_"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{j,j+1}$","$|\textbf{S}|$"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
+    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{d,d+1}$","$|\mathbf{S}_d|$"];
+    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[0.5,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_ci is not None): # with fci

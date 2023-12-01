@@ -252,19 +252,20 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if False: # plot at various EC
+    if True: # plot at various EC
         fig, ax = plt.subplots();
         Vbs = np.linspace(-Vb_max,Vb_max,int(1e4));
 
         # physical params, in eV
         my_mu0 = 0.0; # *relative* to the island chem potential
-        my_Gamma = 0.0001; 
+        my_Gamma = 0.0002; 
         my_temp = 0.0*kelvin2eV;
         nmax = 10;
         narr = np.arange(-nmax,nmax+1);
+        narr = np.array([-1,0,1,2]);
 
         # iter over EC
-        ECvals = np.array([0.01,0.04]);
+        ECvals = np.array([0.001,0.004]);
         to_save = np.empty((len(ECvals),len(Vbs)),dtype=float); to_savei=0;
         for ECval in ECvals:
             if(conductance): Is = dI_of_Vb_zero(Vbs, my_mu0, my_Gamma, ECval, my_temp, narr);
@@ -285,7 +286,7 @@ if(__name__ == "__main__"):
         plt.tight_layout();
         plt.show();
 
-    if True: # plot at various temperatures
+    if False: # plot at various temperatures
         fig, ax = plt.subplots();
         Vbs = np.linspace(0,Vb_max,int(1e4));
 

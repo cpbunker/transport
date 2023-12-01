@@ -18,7 +18,7 @@ case = int(sys.argv[2]);
 obs1, color1, ticks1, linewidth1, fontsize1 = "sz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
 obs2, color2 = "occ_", "cornflowerblue";
 obs3, color3 = "sz_", "darkblue";
-ob4, color4 = "pur_", "gray";
+obs4, color4 = "pur_", "gray";
 num_xticks = 4;
 
 if(case in [1,2]): # observable as a function of time
@@ -48,13 +48,13 @@ if(case in [1,2]): # observable as a function of time
     for ti in range(len(times)):
         yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
-    ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+    ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
     purds_vs_time = np.zeros((len(times),NFM),dtype=float);
     for ti in range(len(times)):
-        purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{::.2f}.npy".format(times[ti]));
-    ax.fill_between(times, purds_vs_time[:,which_imp],color=color4);
+        purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
+    ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
