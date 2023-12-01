@@ -588,12 +588,15 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     # confining potential on loc spins
     central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
     loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
+    if("noFM" in params_dict.keys()):
+        multiplier = -0.5; # special case, conf region is filled first
+    else: multiplier = -2; # NFM are filled, one each, first
     for d in loc_spins:
         for spin in spin_inds:
             if(block):
-                builder.add_term(spin_strs[spin],[d,d],-2*Vconf);
+                builder.add_term(spin_strs[spin],[d,d],multiplier*Vconf);
             else:
-                h1e[nloc*d+spin,nloc*d+spin] += -2*Vconf;
+                h1e[nloc*d+spin,nloc*d+spin] += multiplier*Vconf;
 
     # B field on the loc spins
     for d in loc_spins:
