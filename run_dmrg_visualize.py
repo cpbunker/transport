@@ -1,9 +1,11 @@
 '''
 '''
 
+from transport import tdfci
+from transport.tdfci import plot
+
 import matplotlib.pyplot as plt
 import numpy as np
-
 import matplotlib.animation as animation
 
 import sys
@@ -20,6 +22,9 @@ obs2, color2 = "occ_", "cornflowerblue";
 obs3, color3 = "sz_", "darkblue";
 obs4, color4 = "pur_", "gray";
 num_xticks = 4;
+
+if(case in [0]): # standard charge density vs site snapshot
+    tdfci.plot.snapshot_fromdata(datafile, float(sys.argv[3]))
 
 if(case in [1,2]): # observable as a function of time
 

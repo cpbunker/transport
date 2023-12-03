@@ -136,10 +136,10 @@ def snapshot_fromdata(loadname, time):
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
     for obsi in range(len(obs_strs)):
-        y_js = np.load(loadname[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}.npy".format(time));
-        y_ds = np.load(loadname[:-4]+"_arrays/"+obs_strs[obsi]+"yds_time{:.2f}.npy".format(time))
-        x_js = np.load(loadname[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}.npy".format(time))
-        x_ds = np.load(loadname[:-4]+"_arrays/"+obs_strs[obsi]+"xds_time{:.2f}.npy".format(time))
+        y_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}.npy".format(time));
+        y_ds = np.load(loadname+"_arrays/"+obs_strs[obsi]+"yds_time{:.2f}.npy".format(time))
+        x_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}.npy".format(time))
+        x_ds = np.load(loadname+"_arrays/"+obs_strs[obsi]+"xds_time{:.2f}.npy".format(time))
         # delocalized spins
         axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth);
         # localized spins
@@ -153,7 +153,7 @@ def snapshot_fromdata(loadname, time):
     axes[-1].set_xlabel("$j$");
     axes[-1].set_xlim(np.min(x_js), np.max(x_js));
     axes[-1].legend(title = "td-DMRG | Time = {:.2f}$\hbar/t_l$".format(time));
-    axes[0].set_title( open(loadname[:-4]+"_arrays/"+obs_strs[0]+"title.txt","r").read().splitlines()[0][1:]);
+    axes[0].set_title( open(loadname+"_arrays/"+obs_strs[0]+"title.txt","r").read().splitlines()[0][1:]);
     plt.tight_layout();
     plt.show();
 
