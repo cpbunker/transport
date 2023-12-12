@@ -162,7 +162,7 @@ elecspin = 0; # itinerant e is spin up
 # fig standardizing
 myxvals = 49;
 if(final_plots): myxvals = 99;
-myfontsize = 14;
+myfontsize = 18;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
 mymarkers = ["+","o","^","s","d","*","X","+"];
@@ -318,7 +318,7 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
     # axes
     gates = ["SQRT","SWAP","I"];
     gate_strs = ["$\mathbf{U} = \mathbf{U}_{SQRT}$","$\mathbf{U} = \mathbf{U}_{SWAP}$","$\mathbf{U} = \mathbf{I}$"];  
-    gates, gate_strs = gates[1:2], gate_strs[1:2]
+    #gates, gate_strs = gates[1:2], gate_strs[1:2]
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = np.array([axes]);
@@ -419,7 +419,7 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
     if(final_plots): suptitle = "$J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
+    plt.savefig("F_vs_K.pdf");
     if(final_plots): # save legend
         fig_leg = plt.figure()
         fig_leg.set_size_inches(3/2,3/2)
@@ -428,7 +428,7 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
         ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
         # hide the axes frame and the x/y labels
         ax_leg.axis('off')
-        fig_leg.savefig("K_legend.pdf")
+        plt.savefig("K_legend.pdf")
 
     # save data
     fname = "data/wfm_gatechar/Ki/";

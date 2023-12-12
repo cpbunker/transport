@@ -3,3 +3,4 @@ from_driver.fd
 from_driver_dyn.fd
 block_scratch/*
 slurm/*
+tex.py
