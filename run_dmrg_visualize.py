@@ -35,7 +35,7 @@ if(case in [1,2]): # observable as a function of time
 
     # time evolution params
     tupdate = params["tupdate"];
-    Nupdates = params["Nupdates"];
+    Nupdates = int(sys.argv[3]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = ti*tupdate;
@@ -54,10 +54,11 @@ if(case in [1,2]): # observable as a function of time
     ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
-    purds_vs_time = np.zeros((len(times),NFM),dtype=float);
-    for ti in range(len(times)):
-        purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
-    ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
+    if False:
+        purds_vs_time = np.zeros((len(times),NFM),dtype=float);
+        for ti in range(len(times)):
+            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
+        ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons

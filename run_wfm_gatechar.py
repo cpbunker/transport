@@ -153,7 +153,7 @@ def sample_chik_space(a_samples, b_samples, flat = True, a1_fix = None):
 #### top level
 np.set_printoptions(precision = 2, suppress = True);
 verbose = 5;
-final_plots = True;
+final_plots = False;
 if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 vlines = False;
 case = sys.argv[2];
@@ -195,9 +195,6 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     if(case=="NB"): NB_indep = True # whether to put NB, alternatively wavenumber*NB
     elif(case=="kNB"): NB_indep = False;
 
-    # minimization states
-    dummy, beta2_vals, chi_states = sample_chik_space(*n_chi_states);
-
     # iter over gates
     for gatevali in range(len(gates)):
         U_gate = get_U_gate(gates[gatevali]);
@@ -207,7 +204,6 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
         Kvals = np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)); # Kval > 0 always, what I call K_i in paper
         kvals = np.arccos((Kvals-2*tl)/(-2*tl)); # k corresponding to fixed energy
         Fvals_min = np.empty((len(Kvals), myxvals),dtype=float); # fidelity min'd over chi states
-        which_chi_min = np.empty((len(Kvals), myxvals),dtype=int); # index of chi states which min'd the fidelity
         for Kvali in range(len(Kvals)):
 
             # energy
@@ -249,13 +245,11 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
                 rhat = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, rhat = True, all_debug = False);
 
                 # fidelity minimized over chi states
-                Fvals_chi = np.zeros((len(chi_states),), dtype=float);
-                for chivali in range(len(chi_states)):
-                    F_element = np.dot( np.conj(np.matmul(U_gate, chi_states[chivali])), np.matmul(rhat, chi_states[chivali]));
-                    Fvals_chi[chivali] = np.sqrt( np.real( np.conj(F_element)*F_element ));
-                Fvals_min[Kvali, NBvali] = np.min(Fvals_chi);
-                which_chi_min[Kvali, NBvali] = np.argmin(Fvals_chi);
-                if(verbose>4): print(Kvali, NBvals[NBvali], kvals[Kvali]*NBvals[NBvali]/np.pi, Fvals_min[Kvali, NBvali], which_chi_min[Kvali, NBvali]);
+                M_matrix = np.matmul(np.conj(U_gate.T), rhat);
+                trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
+                if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
+                Fvals_min[Kvali, NBvali] = np.real(trace_fidelity);
+                if(verbose>4): print(Kvali, NBvals[NBvali], kvals[Kvali]*NBvals[NBvali]/np.pi, Fvals_min[Kvali, NBvali]);
                 
             #### end loop over NB
 
@@ -275,22 +269,18 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             else: axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
             axes[gatevali].annotate(gate_strs[gatevali], (xvals[0],1.01),fontsize=myfontsize);
             if(gates[gatevali] == "I"): axes[gatevali].set_title("$\mathbf{U} = \mathbf{I}$");
-            axes[gatevali].set_ylabel("$F_{min}(\mathbf{r}, \mathbf{U})$");
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$");
  
             # plot fidelity, starred SWAP locations, as a function of NB
             axes[gatevali].plot(xvals,Fvals_min[Kvali], label = "$K_i/t= 10^{"+str(Kpowers[Kvali])+"}$",color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(xstar, color=mycolors[Kvali], linestyle="dotted");           
-
-            # plot which chi_k is minimizing
-            Kindex_to_plot = len(Kpowers)-1;
-            if((not final_plots) and Kvali == Kindex_to_plot and (len(chi_states) == 4)): axes[gatevali].plot(xvals,(1+which_chi_min[Kvali])/4, color=mycolors[Kvali], linestyle="dashed");
 
         #### end loop over Ki
 
     #### end loop over gates
             
     # show
-    suptitle = "$N_k=${:.0f}, $s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(len(chi_states), myspinS, Jval/tl, V0/tl, VB/tl);
+    suptitle = "$s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(myspinS, Jval/tl, V0/tl, VB/tl);
     if(final_plots): suptitle = "$J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle);
     plt.tight_layout();
@@ -318,17 +308,14 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
     # axes
     gates = ["SQRT","SWAP","I"];
     gate_strs = ["$\mathbf{U} = \mathbf{U}_{SQRT}$","$\mathbf{U} = \mathbf{U}_{SWAP}$","$\mathbf{U} = \mathbf{I}$"];  
-    #gates, gate_strs = gates[1:2], gate_strs[1:2]
+    gates, gate_strs = gates[1:2], gate_strs[1:2]
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = np.array([axes]);
     fig.set_size_inches(ncols*8,nrows*4);
     if(case=="ki"): K_indep = False;
     elif(case=="K"): K_indep = True; # whether to put Ki/t on x axis, alternatively wavenumber
-
-    # minimization states
-    dummy, beta2_vals, chi_states = sample_chik_space(*n_chi_states);
-    
+   
     # iter over gates
     for gatevali in range(len(gates)):
         U_gate = get_U_gate(gates[gatevali]);
@@ -336,7 +323,6 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
         # iter over barrier distance (colors)
         NBvals = np.array([50,100,150]);
         Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); # fidelity min'd over chi states
-        which_chi_min = np.empty((myxvals, len(NBvals)),dtype=int); # index of chi states which min'd the fidelity
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
 
@@ -374,13 +360,11 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
                 rhat = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, rhat = True, all_debug = False);
 
                 # fidelity minimized over chi states
-                Fvals_chi = np.zeros((len(chi_states),), dtype=float);
-                for chivali in range(len(chi_states)):
-                    F_element = np.dot( np.conj(np.matmul(U_gate, chi_states[chivali])), np.matmul(rhat, chi_states[chivali]));
-                    Fvals_chi[chivali] = np.sqrt( np.real( np.conj(F_element)*F_element ));
-                Fvals_min[Kvali, NBvali] = np.min(Fvals_chi);
-                which_chi_min[Kvali, NBvali] = np.argmin(Fvals_chi);
-                if(verbose>4): print(Kvali, NBvals[NBvali], kvals[Kvali]*NBvals[NBvali]/np.pi, Fvals_min[Kvali, NBvali], which_chi_min[Kvali, NBvali]);
+                M_matrix = np.matmul(np.conj(U_gate.T), rhat);
+                trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
+                if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
+                Fvals_min[Kvali, NBvali] = np.real(trace_fidelity);
+                if(verbose>4): print(Kvali, NBvals[NBvali], kvals[Kvali]*NBvals[NBvali]/np.pi, Fvals_min[Kvali, NBvali]);
                 
             #### end loop over Ki
 
@@ -400,26 +384,22 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
             else:
                 axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
             axes[gatevali].annotate(gate_strs[gatevali], (xvals[-1],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{min}(\mathbf{r},\mathbf{U})$",fontsize=myfontsize);
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations, as a function of NB
             axes[gatevali].plot(xvals,Fvals_min[:,NBvali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(xstar, color=mycolors[NBvali], linestyle="dotted");
-
-            # plot which chi_k is minimizing
-            NBindex_to_plot = 1#len(NBvals)-1;
-            if((not final_plots) and NBvali == NBindex_to_plot and (len(chi_states) == 4)): axes[gatevali].plot(xvals,(1+which_chi_min[:,NBvali])/4, color=mycolors[NBvali], linestyle="dashed");
 
         #### end loop over NB
 
     #### end loop over gates
             
     # show
-    suptitle = "$N_k=${:.0f}, $s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(len(chi_states),myspinS, Jval/tl, V0/tl, VB/tl);
+    suptitle = "$s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(myspinS, Jval/tl, V0/tl, VB/tl);
     if(final_plots): suptitle = "$J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    plt.savefig("F_vs_K.pdf");
+    plt.savefig("F_vs_K_SWAP.pdf");
     if(final_plots): # save legend
         fig_leg = plt.figure()
         fig_leg.set_size_inches(3/2,3/2)
