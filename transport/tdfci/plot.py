@@ -47,16 +47,19 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
 
     # unpack
     concur_sites = params_dict["ex_sites"];
+    concur_dj = [concur_sites[0]//2, concur_sites[1]//2];
+    concur_strs = [["j","d"][concur_sites[0]%2],["j","d"][concur_sites[1]%2]];
     Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
     NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
-    Ndofs = NL+2*NFM+NR;
-    js_all = np.arange(Ndofs);
-    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    js_all = np.arange(2*Nsites);
+    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
+    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    j_sites = np.array([j for j in range(2*Nsites) if j%2==0]); # on chain only!
 
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_","conc_","pur_"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $","$C_{d,d+1}$","$|\mathbf{S}_d|$"];
+    obs_strs = ["occ_","sz_"] #,"conc_","pur_"];
+    ylabels = ["$\langle n_{j(d)} \\rangle $","$ \langle s_{j(d)}^{z} \\rangle $","$C_{d,d+1}$","$|\mathbf{S}_d|$"];
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[0.5,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
@@ -66,10 +69,10 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             if(obs_strs[obsi] not in ["conc_","pur_"]): js_pass = js_all;
             else: js_pass = loc_spins;
             x, y = vs_site(js_pass,psi_ci,eris_inst,False,obs_strs[obsi]);
-            y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
-            y_ds = y[np.isin(x,loc_spins)];# off chain impurities
-            x_js = np.array(range(len(y_js)));
-            x_ds = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
+            y_js = y[np.isin(x,j_sites)];# on chain sites
+            y_ds = y[np.isin(x,j_sites,invert=True)];# off chain impurities
+            x_js = x[np.isin(x,j_sites)]//2;
+            x_ds = x[np.isin(x,j_sites,invert=True)]//2;
             # delocalized spins
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
@@ -84,10 +87,10 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             if(obs_strs[obsi] not in ["conc_","pur_"]): js_pass = js_all;
             else: js_pass = loc_spins;
             x, y = vs_site(js_pass,psi_mps,driver_inst,True,obs_strs[obsi]);
-            y_js = y[np.isin(x,loc_spins,invert=True)];# on chain sites
-            y_ds = y[np.isin(x,loc_spins)];# off chain impurities
+            y_js = y[np.isin(x,j_sites)];# on chain sites
+            y_ds = y[np.isin(x,j_sites,invert=True)];# off chain impurities
             x_js = np.array(range(len(y_js)));
-            x_ds = np.array(range(central_sites[0],central_sites[0]+len(central_sites)));
+            x_ds = np.copy(x_js);
             # delocalized spins
             axes[obsi].scatter(x_js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
@@ -115,7 +118,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
         axes[obsi].set_ylabel(ylabels[obsi]);
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
-    axes[-1].set_xlabel("$j$");
+    axes[-1].set_xlabel("$j (d)$");
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
     axes[0].set_title(title_str);

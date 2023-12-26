@@ -8,7 +8,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 '''
 
 from transport import tdfci
-from pyblock2.driver import core
+#from pyblock2.driver import core
 import numpy as np
 
     
@@ -376,84 +376,45 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
     NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
-    # unpack data
-    Nsites = NL+NFM+NR; # number of sites in 1D chain
-    Ndofs = Nsites + NFM; # includes off-chain sites for loc'd spins
-    Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
+    # sites and spin
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    Nspinorbs = 2*2*Nsites; # number of fermionic states w/ occupancy 0 or 1
+                # factor of 2 for spin and 2 for off-chain loc spin (d sites)
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(NL>0 and NR>0); # leads must exist
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(2*NL) if j%2==0]);
+    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
+    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    rlead_sites = np.array([j for j in range(2*(NL+NFM), 2*Nsites) if j%2==0]);
+    j_sites = np.array([j for j in range(2*Nsites) if j%2==0]);
 
     # return objects
     if(block): # construct ExprBuilder
         if(params_dict["symmetry"] == "Sz"):
             driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
-            driver.initialize_system(n_sites=Ndofs, n_elec=Ne+NFM, spin=TwoSz);
+            driver.initialize_system(n_sites=2*Nsites, n_elec=Ne+NFM, spin=TwoSz);
         else:
             raise NotImplementedError;
         builder = driver.expr_builder()
-    else:
+    else:       # <---------- change dtype to complex ?
       h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
-    # hopping everywhere in left lead
-    for j in range(0,NL-1):
+    # j-j hopping everywhere
+    for jindex in range(len(j_sites)-1):
         for spin in spin_inds:
             if(block):
-                builder.add_term(spin_strs[spin],[j,j+1],-tl);
-                builder.add_term(spin_strs[spin],[j+1,j],-tl);
+                builder.add_term(spin_strs[spin],[j_sites[jindex],j_sites[jindex+1]],-tl);
+                builder.add_term(spin_strs[spin],[j_sites[jindex+1],j_sites[jindex]],-tl);
             else:
-                h1e[nloc*j+spin,nloc*(j+1)+spin] += -tl;
-                h1e[nloc*(j+1)+spin,nloc*j+spin] += -tl;
+                h1e[nloc*j_sites[jindex]+spin,nloc*j_sites[jindex+1]+spin] += -tl;
+                h1e[nloc*j_sites[jindex+1]+spin,nloc*j_sites[jindex]+spin] += -tl;
 
-    # hopping in right lead
-    for j in range(Ndofs-NR,Ndofs-1):
-        for spin in spin_inds:
-            if(block):
-                builder.add_term(spin_strs[spin],[j,j+1],-tl);
-                builder.add_term(spin_strs[spin],[j+1,j],-tl);
-            else:
-                h1e[nloc*j+spin,nloc*(j+1)+spin] += -tl;
-                h1e[nloc*(j+1)+spin,nloc*j+spin] += -tl;
-
-    # hopping skips a site in central region
-    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if sitei%2==1];
-    # hopping within the central region
-    for central_listi in range(len(central_sites[:-1])):
-        central_sitei = central_sites[central_listi];
-        central_nexti = central_sites[central_listi+1];
-        for spin in spin_inds:
-            if(block):
-                builder.add_term(spin_strs[spin],[central_sitei, central_nexti],-tl);
-                builder.add_term(spin_strs[spin],[central_nexti, central_sitei],-tl);
-            else:
-                h1e[nloc*central_sitei+spin, nloc*central_nexti+spin] += -tl;
-                h1e[nloc*central_nexti+spin, nloc*central_sitei+spin] += -tl;
-
-    if(central_sites and NL>0 and NR>0): # couple first(last) to left (right) lead
-        for spin in spin_inds:
-            if(block):
-                builder.add_term(spin_strs[spin],[NL-1, central_sites[0]],-tl);
-                builder.add_term(spin_strs[spin],[central_sites[0], NL-1],-tl);
-                builder.add_term(spin_strs[spin],[central_sites[-1],Ndofs-NR],-tl);
-                builder.add_term(spin_strs[spin],[Ndofs-NR,central_sites[-1]],-tl);
-            else:
-                h1e[nloc*(NL-1)+spin,nloc*central_sites[0]+spin] += -tl;
-                h1e[nloc*central_sites[0]+spin,nloc*(NL-1)+spin] += -tl;
-                h1e[nloc*central_sites[-1]+spin,nloc*(Ndofs-NR)+spin] += -tl;
-                h1e[nloc*(Ndofs-NR)+spin,nloc*central_sites[-1]+spin] += -tl;
-    elif(central_sites==[]): # special case there are no central region sites
-        for spin in spin_inds:
-            if(block):
-                builder.add_term(spin_strs[spin],[NL-1,Ndofs-NR],-tl);
-                builder.add_term(spin_strs[spin],[Ndofs-NR,NL-1],-tl);
-            else:
-                h1e[nloc*(NL-1)+spin,nloc*(Ndofs-NR)+spin] += -tl;
-                h1e[nloc*(Ndofs-NR)+spin,nloc*(NL-1)+spin] += -tl;
 
     # sd exchange between loc spins and adjacent central sites
     # central sites are indexed j, loc spin sites are indexed d
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
     sdpairs = [(central_sites[index], loc_spins[index]) for index in range(len(loc_spins))];
     if(verbose): print("j - d site pairs = ",sdpairs);
     # form of this interaction is
@@ -550,34 +511,42 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
     NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
-    # unpack data
-    Nsites = NL+NFM+NR; # number of sites in 1D chain
-    Ndofs = Nsites + NFM; # includes off-chain sites for loc'd spins
-    Nspinorbs = 2*Ndofs; # number of fermionic states w/ occupancy 0 or 1
+    # sites and spin
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    Nspinorbs = 2*2*Nsites; # number of fermionic states w/ occupancy 0 or 1
+                # factor of 2 for spin and 2 for off-chain loc spin (d sites)
     spin_strs = np.array(params_dict["spin_strs"]); # operator strings for each spin
     spin_inds, nloc = np.array(range(len(spin_strs))), len(spin_strs);  # for summing over spin
     assert(Nconf <= NL); # must be able to confine within left lead
     assert(Nconf >= Ne); # must be enough room for all deloc es
 
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(2*NL) if j%2==0]);
+    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
+    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    rlead_sites = np.array([j for j in range(2*(NL+NFM), 2*Nsites) if j%2==0]);
+    j_sites = np.array([j for j in range(2*Nsites) if j%2==0]);
+    conf_sites = np.array([j for j in range(2*Nconf) if j%2==0]);
+
     # return objects
     if(block): # construct ExprBuilder
         driver, builder = to_add_to;
-        if(driver.n_sites != Ndofs): raise ValueError;
+        if(driver.n_sites != 2*Nsites): raise ValueError;
     else:
         h1e, g2e = to_add_to;
         if(len(h1e) != Nspinorbs): raise ValueError;
 
     # confining potential in left lead
-    for j in range(Nconf):
+    for j in conf_sites:
         for spin in spin_inds:
             if(block):
                 builder.add_term(spin_strs[spin],[j,j],-Vconf); 
             else:
                 h1e[nloc*j+spin,nloc*j+spin] += -Vconf;
 
-    # B field in the confined region ---------- ASSUMED IN THE Z
+    # B field in the confined region ----------> ASSUMED IN THE Z
     # only within the region of confining potential
-    for j in range(Nconf):
+    for j in conf_sites:
         if(block):
             builder.add_term(spin_strs[0],[j,j],-Be/2);
             builder.add_term(spin_strs[1],[j,j], Be/2);
@@ -586,11 +555,9 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             h1e[nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=  Be/2;
 
     # confining potential on loc spins
-    central_sites = [j for j in range(NL,Ndofs-NR)  if (j-NL)%2==0];
-    loc_spins = [sitei for sitei in range(NL,Ndofs-NR)  if (sitei-NL)%2==1];
     if("noFM" in params_dict.keys()):
-        multiplier = -0.5; # special case, conf region is filled first
-    else: multiplier = -2; # NFM are filled, one each, first
+        multiplier = -0.5; # special case: conf region is filled before loc spins
+    else: multiplier = -2; # default: loc spins are filled, one each, first
     for d in loc_spins:
         for spin in spin_inds:
             if(block):
@@ -626,6 +593,13 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
         else:
             h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
             h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
+    if("Bsd_x" in params_dict.keys()): # B in the x on the j that couples to 1st loc spin
+        Bsd_x = params_dict["Bsd_x"];
+        s = central_sites[0];
+        if block:
+            builder.add_term("cD",[s,s],-Bsd_x/2);
+        else:
+            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[1]] += -Bsd_x/2;
     if("Bcentral" in params_dict.keys()): # B field on all js coupled to loc spins
         Bcentral = params_dict["Bcentral"];
         for s in central_sites:
@@ -635,69 +609,10 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             else:
                 h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bcentral/2;
                 h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bcentral/2;
-    if("Bsd_x" in params_dict.keys()): # B in the x on the j that couples to 1st loc spin
-        Bsd_x = params_dict["Bsd_x"];
-        s = central_sites[0];
-        if block:
-            builder.add_term("cD",[s,s],-Bsd_x/2);
-        else:
-            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[1]] += -Bsd_x/2;
-            
+           
     # return
     if(block):
         mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;
-
-    raise NotImplementedError;
-    # small perturbation favoring concurrence
-    perturb = 3.33e-4;
-    g2e += perturb*get_concurrence(params_dict, None, (loc_spins[0], loc_spins[1]), False, g2e_only=True);
-
-    # add in penalty*(\hat{N}_conf - N_e \hat{I})^2 so that occupation of conf
-    # region is favored to be Ne
-    penalty = 2*(abs(Be)+abs(Vconf)); # since it needs to overcome these effects
-    for j in range(Nconf):
-        for jprime in range(Nconf):
-            if(block):
-                builder.add_term("cdcd",[j,j,jprime,jprime],penalty);
-                builder.add_term("cdCD",[j,j,jprime,jprime],penalty);
-                builder.add_term("CDcd",[j,j,jprime,jprime],penalty);
-                builder.add_term("CDCD",[j,j,jprime,jprime],penalty);
-            else:
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += penalty;
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += penalty;
-    for j in range(Ndofs):
-        for jprime in range(Nconf):
-            if(block):
-                builder.add_term("cdcd",[j,j,jprime,jprime],-2*Ne*penalty);
-                builder.add_term("cdCD",[j,j,jprime,jprime],-2*Ne*penalty);
-                builder.add_term("CDcd",[j,j,jprime,jprime],-2*Ne*penalty);
-                builder.add_term("CDCD",[j,j,jprime,jprime],-2*Ne*penalty);
-            else:
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += -2*Ne*penalty;
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += -2*Ne*penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += -2*Ne*penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += -2*Ne*penalty;
-    for j in range(Nconf):
-        for jprime in range(Nconf):
-            if(block):
-                builder.add_term("cdcd",[j,j,jprime,jprime],Ne*Ne*penalty);
-                builder.add_term("cdCD",[j,j,jprime,jprime],Ne*Ne*penalty);
-                builder.add_term("CDcd",[j,j,jprime,jprime],Ne*Ne*penalty);
-                builder.add_term("CDCD",[j,j,jprime,jprime],Ne*Ne*penalty);
-            else:
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += Ne*Ne*penalty;
-                g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += Ne*Ne*penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[0],nloc*jprime+spin_inds[0]] += Ne*Ne*penalty;
-                g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*jprime+spin_inds[1],nloc*jprime+spin_inds[1]] += Ne*Ne*penalty;
-
-    if(block):
-        mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
-        return driver, mpo_from_builder;
-    else:
-        return h1e, g2e;
-

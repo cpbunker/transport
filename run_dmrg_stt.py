@@ -89,7 +89,7 @@ def check_ham(H):
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
-params = json.load(open(json_name));
+params = json.load(open(json_name)); print(">>> Params = ",params);
 do_fci = bool(int(sys.argv[2]));
 do_dmrg = bool(int(sys.argv[3]));
 assert(do_fci or do_dmrg);
@@ -126,7 +126,7 @@ if(do_fci): # fci gd state
 
     # add in t<0 terms
     H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
-    print("H_1e = ");print(H_1e[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e[2*(myNL+myNFM):,2*(myNL+myNFM):]);
+    print("H_1e = ");print(H_1e[:4*myNL,:4*myNL]);print(H_1e[4*myNL:4*(myNL+myNFM),4*myNL:4*(myNL+myNFM)]);print(H_1e[4*(myNL+myNFM):,4*(myNL+myNFM):]); 
 
     # gd state
     gdstate_ci_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, mynelec, nroots=1, verbose=verbose);
@@ -198,7 +198,8 @@ mytime += time_update;
         
 if(do_fci): # FCI dynamics 
     H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
-    print("H_1e_dyn = ");print(H_1e_dyn[:2*(myNL+myNFM),:2*(myNL+myNFM)]);print(H_1e_dyn[2*(myNL+myNFM):,2*(myNL+myNFM):]);
+    print("H_1e_dyn = ");print(H_1e_dyn[:4*myNL,:4*myNL]);print(H_1e_dyn[4*myNL:4*(myNL+myNFM),4*myNL:4*(myNL+myNFM)]);print(H_1e_dyn[4*(myNL+myNFM):,4*(myNL+myNFM):]); 
+    #assert False # stop here while constructing zigzag
     H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
     t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
 else:
