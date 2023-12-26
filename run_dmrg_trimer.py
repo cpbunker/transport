@@ -168,4 +168,20 @@ for a in range(n_mols):
             SaSigb_vals[a,b] = SaSigb_exp;
 print("-F = ",np.sum(np.ravel(SaSigb_vals)));
 
+# total spin
+Stot2_exp = 0.25; # elec spin magnitude
+# add in individual spin magnitudes
+for a in range(n_mols):
+    Stot2_exp += SaSb_vals[a,a];
+# add in unique spin-spin correlations
+for a in range(n_mols):
+    for b in range(n_mols):
+        if(a < b):
+            Stot2_exp += 2*SaSb_vals[a,b];
+# add in spin-fermion correlations
+for a in range(n_mols):
+    for b in range(n_sys_orbs):
+        Stot2_exp += 2*SaSigb_vals[a,b];
+print("- <S_tot^2> = ", Stot2_exp);
+
 

@@ -87,66 +87,7 @@ def get_U_gate(which_gate):
     U_gate[n_mol_dof:,n_mol_dof:] = U_q[:n_mol_dof,:n_mol_dof];
     print("U_gate =\n",U_gate);
     return U_gate;
-
-def sample_chik_space(a_samples, b_samples, flat = True, a1_fix = None):
-    for samples in [a_samples, b_samples]:
-        if( not isinstance(samples, int)): raise TypeError;
-
-    # mesh values
-    a1_vals = np.linspace(0,1,a_samples);
-    if(a1_fix != None): a1_vals = np.array([a1_fix]);
-    b2_vals = np.linspace(0,2*np.pi, 1+b_samples)[:-1];
-
-    # return var
-    chis = np.zeros((len(a1_vals),len(b2_vals), 8),dtype=complex);
-    chis_flat = []; # this is lazy
-
-    # iter over alpha1
-    for a1vali in range(len(a1_vals)):
-
-        # iter over beta2
-        for b2vali in range(len(b2_vals)):
-
-            # input state to measure fidelity for
-            a1val = np.sqrt(a1_vals[a1vali]);
-            a2val = np.sqrt(1-a1val*a1val);
-            # itinerant e is spin up
-            chi = np.array([a1val,a2val,a2val*np.exp(complex(0,b2_vals[b2vali])),a1val,0,0,0,0]);
-            chis[a1vali,b2vali] = chi/np.sqrt(np.dot(np.conj(chi), chi)); # normalize
-            chis_flat.append(chi/np.sqrt(np.dot(np.conj(chi), chi)));
-            # again with the other block of hilbert space(flat only)
-            chi = np.array([0,0,0,0,a1val,a2val,a2val*np.exp(complex(0,b2_vals[b2vali])),a1val]);
-            chis_flat.append(chi/np.sqrt(np.dot(np.conj(chi), chi)));
-
-    if(not flat): return a1_vals, b2_vals, chis;           
-    else: # add states
-
-        # add bell states
-        bells = (1/np.sqrt(2))*np.array([[ 1,0,0,1],
-                                         [1,0,0,-1],
-                                         [0,1,1,0],
-                                         [0,1,-1,0]]);
-        for bell in bells:
-            to_add = np.zeros((8,),dtype=complex);
-            to_add[:4] = bell;
-            chis_flat.append(np.copy(to_add));
-            to_add = np.zeros((8,),dtype=complex);
-            to_add[4:] = bell;
-            chis_flat.append(np.copy(to_add));
-
-        # add Coronado product states
-        psijs = np.array([[1,0], # single spin states
-                          [0,1],
-                          [1/np.sqrt(2),1/np.sqrt(2)],
-                          [1/np.sqrt(2),complex(0,1)/np.sqrt(2)]]);
-        for psii in psijs:
-            for psij in psijs:
-                chis_flat.append(np.array([psii[0]*psij[0],psii[0]*psij[1],psii[1]*psij[0],psii[1]*psij[1],0,0,0,0]));
-                chis_flat.append(np.array([0,0,0,0,psii[0]*psij[0],psii[0]*psij[1],psii[1]*psij[0],psii[1]*psij[1]]));
-
-        return a1_vals, b2_vals, np.array(chis_flat);
-    
-             
+          
 #########################################################
 #### barrier in right lead for total reflection
 
@@ -160,9 +101,8 @@ case = sys.argv[2];
 elecspin = 0; # itinerant e is spin up
 
 # fig standardizing
-myxvals = 49;
-if(final_plots): myxvals = 99;
-myfontsize = 18;
+myxvals = 29; myfigsize = (4,2); myfontsize = 14;
+if(final_plots): myxvals = 99; myfigsize = (8,4); myfontsize = 18;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
 mymarkers = ["+","o","^","s","d","*","X","+"];
@@ -191,7 +131,7 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     gate_strs = ["$\mathbf{U} = \mathbf{U}_{SQRT}$","$\mathbf{U} = \mathbf{U}_{SWAP}$","$\mathbf{U} = \mathbf{I}$"];
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-    fig.set_size_inches(ncols*8,nrows*4);
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     if(case=="NB"): NB_indep = True # whether to put NB, alternatively wavenumber*NB
     elif(case=="kNB"): NB_indep = False;
 
@@ -261,7 +201,7 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
 
             # plot formatting
             #axes[gatevali].set_yticks(the_ticks);
-            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            axes[gatevali].set_ylim(-0.2+the_ticks[0],0.2+the_ticks[-1]);
             for tick in the_ticks:
                 axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
             axes[gatevali].set_xlim(0,np.max(xvals));
@@ -284,8 +224,9 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     if(final_plots): suptitle = "$J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle);
     plt.tight_layout();
-    plt.show();
     if(final_plots): # save legend
+        fname = "figs/gate/F_vs_NB";
+        plt.savefig(fname+".pdf")
         fig_leg = plt.figure()
         fig_leg.set_size_inches(3/2,3/2)
         ax_leg = fig_leg.add_subplot(111)
@@ -293,10 +234,12 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
         ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
         # hide the axes frame and the x/y labels
         ax_leg.axis('off')
-        fig_leg.savefig("NB_legend.pdf")
+        plt.savefig(fname+"_legend.pdf");
+    else:
+        axes[-1].legend();
+        plt.show();
 
     # save data
-    fname = "data/wfm_gatechar/"+case+"/";
     #np.savetxt(fname+".txt", Kvals, header=suptitle)
     #np.save(fname+"_x", kNBvals/np.pi);
     #np.save(fname, yvals);
@@ -308,11 +251,10 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
     # axes
     gates = ["SQRT","SWAP","I"];
     gate_strs = ["$\mathbf{U} = \mathbf{U}_{SQRT}$","$\mathbf{U} = \mathbf{U}_{SWAP}$","$\mathbf{U} = \mathbf{I}$"];  
-    gates, gate_strs = gates[1:2], gate_strs[1:2]
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = np.array([axes]);
-    fig.set_size_inches(ncols*8,nrows*4);
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     if(case=="ki"): K_indep = False;
     elif(case=="K"): K_indep = True; # whether to put Ki/t on x axis, alternatively wavenumber
    
@@ -327,7 +269,7 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
             NBval = NBvals[NBvali];
 
             # iter over incident kinetic energy (x axis)
-            Kpowers = np.array([-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+            Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
             Kvals = np.logspace(Kpowers[0],Kpowers[-1],num=myxvals); # Kval > 0 always, what I call K_i in paper
             kvals = np.arccos((Kvals-2*tl)/(-2*tl)); # k corresponding to fixed energy
             for Kvali in range(len(Kvals)):
@@ -387,7 +329,7 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations, as a function of NB
-            axes[gatevali].plot(xvals,Fvals_min[:,NBvali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
+            axes[gatevali].plot(xvals,Fvals_min[:,NBvali], label = "$2N_B = ${:.0f}".format(2*NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(xstar, color=mycolors[NBvali], linestyle="dotted");
 
         #### end loop over NB
@@ -399,8 +341,9 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
     if(final_plots): suptitle = "$J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    plt.savefig("F_vs_K_SWAP.pdf");
     if(final_plots): # save legend
+        fname = "figs/gate/F_vs_K";
+        plt.savefig(fname+".pdf")
         fig_leg = plt.figure()
         fig_leg.set_size_inches(3/2,3/2)
         ax_leg = fig_leg.add_subplot(111)
@@ -408,10 +351,12 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
         ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
         # hide the axes frame and the x/y labels
         ax_leg.axis('off')
-        plt.savefig("K_legend.pdf")
+        plt.savefig(fname+"_legend.pdf");
+    else:
+        axes[-1].legend();
+        plt.show();
 
     # save data
-    fname = "data/wfm_gatechar/Ki/";
     #np.savetxt(fname+".txt", NBvals, header=suptitle)
     #np.save(fname+"_x", kNBvals/np.pi);
     #np.save(fname, yvals);
@@ -419,11 +364,32 @@ if(case in ["ki", "K"]): # at fixed NB, as a function of Ki,
 if(case in ["chik_alpha", "chik_beta"]): # at fixed NB and fixed Ki
                       # iter over all chi_k
 
+    def sample_chik_space(a_samples, b_samples):
+        for samples in [a_samples, b_samples]:
+            if( not isinstance(samples, int)): raise TypeError;
+        # mesh values
+        a1_vals = np.linspace(0,1,a_samples);
+        b2_vals = np.linspace(0,2*np.pi, 1+b_samples)[:-1];
+        # return var
+        chis = np.zeros((len(a1_vals),len(b2_vals), 8),dtype=complex);
+        # iter over alpha1
+        for a1vali in range(len(a1_vals)):
+            # iter over beta2
+            for b2vali in range(len(b2_vals)):
+                # input state to measure fidelity for
+                a1val = np.sqrt(a1_vals[a1vali]);
+                a2val = np.sqrt(1-a1val*a1val);
+                # itinerant e is spin up
+                chi = np.array([a1val,a2val,a2val*np.exp(complex(0,b2_vals[b2vali])),a1val,0,0,0,0]);
+                chis[a1vali,b2vali] = chi/np.sqrt(np.dot(np.conj(chi), chi)); # normalize
+        return a1_vals, b2_vals, chis;           
+ 
     # axes
     gates = ["SQRT","SWAP","I"];
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-    fig.set_size_inches(ncols*7/2,nrows*3/2);
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
+     
 
     # NB and Ki should be best for that gate, but not change within gate
     delta_NB = -0; # detuning
@@ -469,7 +435,7 @@ if(case in ["chik_alpha", "chik_beta"]): # at fixed NB and fixed Ki
         Fvals_alphabeta = np.zeros(n_chi_states, dtype=float);
 
         # iter over alpha1 values 
-        alpha1_vals, beta2_vals, chi_states = sample_chik_space(*n_chi_states, flat=False);
+        alpha1_vals, beta2_vals, chi_states = sample_chik_space(*n_chi_states);
         for alpha1_vali in range(len(alpha1_vals)):
 
             # iter over beta2 values 

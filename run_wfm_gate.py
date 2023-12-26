@@ -75,7 +75,7 @@ case = sys.argv[2];
 elecspin = 0; # itinerant e is spin up
 
 # fig standardizing
-myxvals = 49;
+myxvals = 29;
 if(final_plots): myxvals = 99;
 myfontsize = 14;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
@@ -201,7 +201,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
         else: indep_var = 2*kNBvals/np.pi;
         indep_star = indep_var[np.argmax(Fvals_Uchi[Kvali])];
         if(verbose): print("xstar, fidelity(xstar) = "+str(indep_star)+", {:.4f}".format(np.max(Fvals_Uchi[Kvali])));
-        if(False and Kvali==1):
+        if(True and Kvali==1):
             the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
             the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
             comp_phase = 2*np.arctan( the_y/(the_x+np.sqrt(the_x*the_x+the_y*the_y)));
