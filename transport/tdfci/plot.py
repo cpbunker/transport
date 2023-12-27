@@ -53,12 +53,12 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
     js_all = np.arange(2*Nsites);
-    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
-    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    central_sites = np.array([j for j in range(2*NL,2*(NL+NFM) ) if j%2==0]);
+    loc_spins = np.array([d for d in range(2*NL,2*(NL+NFM))  if d%2==1]);
     j_sites = np.array([j for j in range(2*Nsites) if j%2==0]); # on chain only!
 
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_"] #,"conc_","pur_"];
+    obs_strs = ["occ_","sz_","conc_","pur_"];
     ylabels = ["$\langle n_{j(d)} \\rangle $","$ \langle s_{j(d)}^{z} \\rangle $","$C_{d,d+1}$","$|\mathbf{S}_d|$"];
     axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[0.5,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
@@ -134,9 +134,9 @@ def snapshot_fromdata(loadname, time):
     '''
     
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_"];
-    ylabels = ["$\langle n_j \\rangle $","$ \langle s_j^{z} \\rangle $"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5]];
+    obs_strs = ["occ_","sz_","conc_","pur_"];
+    ylabels = ["$\langle n_{j(d)} \\rangle $","$ \langle s_{j(d)}^{z} \\rangle $","$C_{d,d+1}$","$|\mathbf{S}_d|$"];
+    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0],[0.5,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
     for obsi in range(len(obs_strs)):
         y_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}.npy".format(time));
@@ -153,7 +153,7 @@ def snapshot_fromdata(loadname, time):
         axes[obsi].set_ylabel(ylabels[obsi]);
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
-    axes[-1].set_xlabel("$j$");
+    axes[-1].set_xlabel("$j(d)$");
     axes[-1].set_xlim(np.min(x_js), np.max(x_js));
     axes[-1].legend(title = "td-DMRG | Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title( open(loadname+"_arrays/"+obs_strs[0]+"title.txt","r").read().splitlines()[0][1:]);

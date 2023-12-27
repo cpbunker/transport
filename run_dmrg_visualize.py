@@ -44,10 +44,9 @@ if(case in [1,2]): # observable as a function of time
     ax.set_xlim((times[0], times[-1]));
 
     # impurity spin vs time
-    NFM = params["NFM"]; # number impurities
-    which_imp = 0;
-    assert(which_imp in np.array(range(NFM)));
-    yds_vs_time = np.zeros((len(times),NFM),dtype=float);
+    Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
+    which_imp = 0+params["NL"];
+    yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
@@ -62,7 +61,7 @@ if(case in [1,2]): # observable as a function of time
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
-    yjs_vs_time = np.zeros((len(times),params["NL"]+NFM+params["NR"]),dtype=float);
+    yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
     yjavg_vs_time = np.sum(yjs_vs_time, axis=1)/Ne;
@@ -87,7 +86,7 @@ if(case in [3,4]): # observable as a function of time
 
     # time evolution params
     tupdate = params["tupdate"];
-    Nupdates = params["Nupdates"];
+    Nupdates = int(sys.argv[3]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = ti*tupdate;
@@ -96,8 +95,8 @@ if(case in [3,4]): # observable as a function of time
     ax.set_xlim((times[0], times[-1]));
 
     # SUMMED impurity spins vs time
-    NFM = params["NFM"]; # number impurities
-    yds_vs_time = np.zeros((len(times),NFM),dtype=float);
+    Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
+    yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
     yds_summed = np.sum(yds_vs_time, axis=1);
@@ -106,7 +105,7 @@ if(case in [3,4]): # observable as a function of time
 
     # SUMMED electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
-    yjs_vs_time = np.zeros((len(times),params["NL"]+NFM+params["NR"]),dtype=float);
+    yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
     yjs_summed = np.sum(yjs_vs_time, axis=1);

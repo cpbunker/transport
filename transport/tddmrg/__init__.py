@@ -372,7 +372,6 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
 
     # load data from json
-    #params_dict = json.load(open(json_file));
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
     NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
@@ -386,8 +385,8 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # classify site indices (spin not included)
     llead_sites = np.array([j for j in range(2*NL) if j%2==0]);
-    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
-    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    central_sites = np.array([j for j in range(2*NL,2*(NL+NFM) ) if j%2==0]);
+    loc_spins = np.array([d for d in range(2*NL,2*(NL+NFM))  if d%2==1]);
     rlead_sites = np.array([j for j in range(2*(NL+NFM), 2*Nsites) if j%2==0]);
     j_sites = np.array([j for j in range(2*Nsites) if j%2==0]);
 
@@ -507,7 +506,6 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     '''
 
     # load data from json
-    #params_dict = json.load(open(json_file));
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
     NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
 
@@ -522,8 +520,8 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
 
     # classify site indices (spin not included)
     llead_sites = np.array([j for j in range(2*NL) if j%2==0]);
-    central_sites = [j for j in range(2*NL,2*(NL+NFM) ) if j%2==0];
-    loc_spins = [d for d in range(2*NL,2*(NL+NFM))  if d%2==1];
+    central_sites = np.array([j for j in range(2*NL,2*(NL+NFM) ) if j%2==0]);
+    loc_spins = np.array([d for d in range(2*NL,2*(NL+NFM))  if d%2==1]);
     rlead_sites = np.array([j for j in range(2*(NL+NFM), 2*Nsites) if j%2==0]);
     j_sites = np.array([j for j in range(2*Nsites) if j%2==0]);
     conf_sites = np.array([j for j in range(2*Nconf) if j%2==0]);
