@@ -89,8 +89,8 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             x, y = vs_site(js_pass,psi_mps,driver_inst,True,obs_strs[obsi]);
             y_js = y[np.isin(x,j_sites)];# on chain sites
             y_ds = y[np.isin(x,j_sites,invert=True)];# off chain impurities
-            x_js = np.array(range(len(y_js)));
-            x_ds = np.copy(x_js);
+            x_js = x[np.isin(x,j_sites)]//2;
+            x_ds = x[np.isin(x,j_sites,invert=True)]//2;
             # delocalized spins
             axes[obsi].scatter(x_js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));

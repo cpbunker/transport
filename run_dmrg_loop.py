@@ -93,7 +93,7 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
-params = json.load(open(json_name));
+params = json.load(open(json_name)); print(">>> Params = ",params);
 do_fci = bool(int(sys.argv[2]));
 do_dmrg = bool(int(sys.argv[3]));
 assert(do_fci or do_dmrg);
