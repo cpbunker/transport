@@ -524,6 +524,7 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     loc_spins = np.array([d for d in range(2*NL,2*(NL+NFM))  if d%2==1]);
     rlead_sites = np.array([j for j in range(2*(NL+NFM), 2*Nsites) if j%2==0]);
     j_sites = np.array([j for j in range(2*Nsites) if j%2==0]);
+    d_sites = np.array([d for d in range(2*Nsites) if d%2==1]);
     conf_sites = np.array([j for j in range(2*Nconf) if j%2==0]);
 
     # return objects
@@ -607,7 +608,29 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
             else:
                 h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bcentral/2;
                 h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bcentral/2;
-           
+
+    #### noise terms
+                
+    # d-d hopping noise
+    dnoise = 1e-6;
+    for dindex in range(len(d_sites)-1):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[d_sites[dindex],d_sites[dindex+1]],-dnoise);
+                builder.add_term(spin_strs[spin],[d_sites[dindex+1],d_sites[dindex]],-dnoise);
+            else:
+                h1e[nloc*d_sites[dindex]+spin,nloc*d_sites[dindex+1]+spin] += -dnoise;
+                h1e[nloc*d_sites[dindex+1]+spin,nloc*d_sites[dindex]+spin] += -dnoise;
+    # mix j-d
+    for spin in spin_inds:
+        if(block):
+            builder.add_term(spin_strs[spin],[j_sites[0],d_sites[0]],-dnoise);
+            builder.add_term(spin_strs[spin],[d_sites[0],j_sites[0]],-dnoise);
+        else:
+            h1e[nloc*j_sites[0]+spin,nloc*d_sites[0]+spin] += -dnoise;
+            h1e[nloc*d_sites[0]+spin,nloc*j_sites[0]+spin] += -dnoise;
+        
+
     # return
     if(block):
         mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);

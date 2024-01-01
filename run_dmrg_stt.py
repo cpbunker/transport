@@ -126,7 +126,8 @@ if(do_fci): # fci gd state
 
     # add in t<0 terms
     H_1e, H_2e = tddmrg.Hsys_polarizer(params, False, (H_1e, H_2e), verbose=verbose);
-    print("H_1e = ");print(H_1e[:4*myNL,:4*myNL]);print(H_1e[4*myNL:4*(myNL+myNFM),4*myNL:4*(myNL+myNFM)]);print(H_1e[4*(myNL+myNFM):,4*(myNL+myNFM):]); 
+    print("H_1e = ");print(H_1e[:4*myNL,:4*myNL]);print(H_1e[4*myNL:4*(myNL+myNFM),4*myNL:4*(myNL+myNFM)]);print(H_1e[4*(myNL+myNFM):,4*(myNL+myNFM):]);
+    #np.savetxt("H_1e.txt",H_1e, fmt="%.6f"); assert False;
 
     # gd state
     gdstate_ci_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, mynelec, nroots=1, verbose=verbose);
