@@ -612,24 +612,26 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     #### noise terms
                 
     # d-d hopping noise
-    dnoise = 1e-6;
+    jdnoise = params_dict["jdnoise"];
     for dindex in range(len(d_sites)-1):
         for spin in spin_inds:
             if(block):
-                builder.add_term(spin_strs[spin],[d_sites[dindex],d_sites[dindex+1]],-dnoise);
-                builder.add_term(spin_strs[spin],[d_sites[dindex+1],d_sites[dindex]],-dnoise);
+                builder.add_term(spin_strs[spin],[d_sites[dindex],d_sites[dindex+1]],-jdnoise);
+                builder.add_term(spin_strs[spin],[d_sites[dindex+1],d_sites[dindex]],-jdnoise);
             else:
-                h1e[nloc*d_sites[dindex]+spin,nloc*d_sites[dindex+1]+spin] += -dnoise;
-                h1e[nloc*d_sites[dindex+1]+spin,nloc*d_sites[dindex]+spin] += -dnoise;
-    # mix j-d
-    for spin in spin_inds:
-        if(block):
-            builder.add_term(spin_strs[spin],[j_sites[0],d_sites[0]],-dnoise);
-            builder.add_term(spin_strs[spin],[d_sites[0],j_sites[0]],-dnoise);
-        else:
-            h1e[nloc*j_sites[0]+spin,nloc*d_sites[0]+spin] += -dnoise;
-            h1e[nloc*d_sites[0]+spin,nloc*j_sites[0]+spin] += -dnoise;
-        
+                h1e[nloc*d_sites[dindex]+spin,nloc*d_sites[dindex+1]+spin] += -jdnoise;
+                h1e[nloc*d_sites[dindex+1]+spin,nloc*d_sites[dindex]+spin] += -jdnoise;
+
+    # j-d mixing noise
+    jdnoise = params_dict["jdnoise"];
+    for jord in range(2*Nsites-1):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[jord,jord+1],-jdnoise);
+                builder.add_term(spin_strs[spin],[jord+1,jord],-jdnoise);
+            else:
+                h1e[nloc*jord+spin,nloc*(jord+1)+spin] += -jdnoise;
+                h1e[nloc*(jord+1)+spin,nloc*jord+spin] += -jdnoise;
 
     # return
     if(block):
