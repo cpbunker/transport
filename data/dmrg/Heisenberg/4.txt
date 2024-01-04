@@ -1,8 +1,7 @@
 {
 "tl":0.0, "Vconf":0.0, "Be":0.0, "BFM": 0.0, 
-"Jz":-0.5, "Jx":-0.5, "Jsd":0.0,
-"NL":2, "NFM":4, "NR":2, "Nconf":2, "Ne":0, "TwoSz":0,
-"symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[3,5],
-"bdim_0":[400,500],"bdim_t":[600], "noises":[1e-4,1e-5], "dmrg_sweeps":20,"cutoff":1e-20,
-"t1":1.256637,"t2":1.884955, "t3":3.14159
+"Jz":-0.5, "Jx":-0.5, "Jsd":0.0,"jdnoise":1e-4,
+"NL":2, "NFM":4, "NR":2, "Nconf":1, "Ne":0, "TwoSz":0,
+"symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[5,7], "plot":1,
+"bdim_0":[50,50,50,60,60],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0
 }
