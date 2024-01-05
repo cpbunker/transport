@@ -162,7 +162,7 @@ if(do_dmrg): # dmrg gd state
     # gd state
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                              bond_dim=params["bdim_0"][0] )
-    gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,
+    gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
         bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
         iprint=2); # set to 2 to see Mmps
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
