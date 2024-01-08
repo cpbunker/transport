@@ -36,7 +36,7 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         # site 0 spin
         s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
         gd_s0 = tdfci.compute_obs(psi, s0_eris);
-        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0));
+        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0)); # site indices, NOT j or d indices
         # site 5 (ie the impurity site) spin
         sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
         gd_sdot = tdfci.compute_obs(psi, sdot_eris);
@@ -102,7 +102,7 @@ block_from_fci = False;
 # some unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
 mynelec = (myNFM+myNe,0);
-my_sites = params["ex_sites"];
+my_sites = params["ex_sites"]; # site indices, NOT j or d indices
 
 # checks
 espin = myNe*np.sign(params["Be"]);
