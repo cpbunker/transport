@@ -228,6 +228,44 @@ class CIObject():
         d2bb = d2bb.transpose(1,0,3,2)
         return (d1a, d1b), (d2aa, d2ab, d2bb)
 
+def solver(ham):
+    '''
+    solve a hamiltonian in the many-body determinant basis, 
+    by exact diagonalization
+    '''
+    eigvals, eigvecs = np.linalg.eigh(ham);
+    eigvecs = eigvecs.T;
+    return eigvals, eigvecs;
+
+def propagator(init, dt, eigvals, eigvecs):
+    '''
+    time evolve a state in the many-body determinant basis,
+    by exact decomposition into the eigenbasis
+    '''
+
+    # in eigenbasis
+    dvecs = np.eye(len(init)); # original (diagonal) basis
+    init_eig = np.zeros_like(init,dtype=complex);
+    for nui in range(len(eigvals)):
+        d_sum = 0.0;
+        for di in range(len(init)):
+            d_sum += init[di]*np.dot(np.conj(eigvecs[nui]),dvecs[di]);
+        init_eig[nui] = d_sum;
+
+    # propagate
+    prop = np.exp(eigvals*complex(0,-dt)); # propagator operator in eigenbasis
+    final_eig = prop*init_eig;
+
+    # back to original basis
+    final = np.zeros_like(init,dtype=complex);
+    for di in range(len(init)):
+        nu_sum = 0.0;
+        for nui in range(len(eigvals)):
+            nu_sum += final_eig[nui]*np.dot(np.conj(dvecs[di]),eigvecs[nui]);
+        final[di] = nu_sum;
+
+    return final;
+
 
 #####################################################################################
 #### run code
