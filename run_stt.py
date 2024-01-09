@@ -170,6 +170,13 @@ if(do_dmrg): # dmrg gd state
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(gdstate_mps_inst, H_mpo_initial, H_driver);
     print("Manually computed energy (DMRG) = {:.6f}".format(check_E_dmrg));
+    if False: # orbital interactions and reordering
+        # have to change sym type to core.SymmetryTypes.SZ in driver constructor
+        int_matrix = H_driver.get_orbital_interaction_matrix(gdstate_mps_inst);
+        fig, ax = plt.subplots()
+        ax.matshow(int_matrix, cmap='ocean_r')
+        plt.show()
+        assert False
 
 else:
     H_driver, gdstate_mps_inst = None, None;

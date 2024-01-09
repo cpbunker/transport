@@ -394,6 +394,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     if(block): # construct ExprBuilder
         if(params_dict["symmetry"] == "Sz"):
             driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4);
             driver.initialize_system(n_sites=2*Nsites, n_elec=Ne+NFM, spin=TwoSz);
         else:
             raise NotImplementedError;

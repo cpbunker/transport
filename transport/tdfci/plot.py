@@ -27,8 +27,8 @@ def vs_site(js,psi,eris_or_driver,block,which_obs):
     else: Nspinorbs = len(eris_or_driver.h1e[0]);
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs in ["conc_","pur_"]):
-            if(ji!=len(js)-1):
+        if(which_obs in ["conc_","pur_"]): # since concur = C(d,d+1), we cannot compute C for the final d site. Just leave it as 0.0
+            if(ji!=len(js)-1): # for simplicity, also apply this to the purity. even though we could compute it, Feiguin never does so we don't need to
                 vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
         else:
             op = obs_funcs[which_obs](Nspinorbs,eris_or_driver,js[ji],block);
@@ -154,7 +154,7 @@ def snapshot_fromdata(loadname, time):
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j(d)$");
-    axes[-1].set_xlim(np.min(x_js), np.max(x_js));
+    #axes[-1].set_xlim(np.min(x_js), np.max(x_js));
     axes[-1].legend(title = "td-DMRG | Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title( open(loadname+"_arrays/"+obs_strs[0]+"title.txt","r").read().splitlines()[0][1:]);
     plt.tight_layout();
