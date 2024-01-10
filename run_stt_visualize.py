@@ -130,21 +130,21 @@ if(case in [10]): # animate time evol
     fig, ax = plt.subplots();
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     ax.set_yticks(ticks1);
-    ax.set_xlabel("$j$", fontsize=fontsize1);
+    ax.set_xlabel("$j(d)$", fontsize=fontsize1);
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
     
     # time evolution params
+    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[3]);
+    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
-        times[ti] = ti*tupdate;
+        times[ti] = time0 + ti*tupdate;
 
     # set up impurity spin animation
-    time0 = 0.0;
     xds = np.load(datafile+"_arrays/"+obs1+"xds_time{:.2f}.npy".format(time0));
     yds = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(time0));
-    impurity_sz, = ax.plot(xds, yds, marker="^", color=color1, markersize=linewidth1**2);
+    impurity_sz, = ax.plot(xds, yds, marker="s", color=color1, markersize=linewidth1**2);
     ax.set_ylabel("$2 \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
     time_annotation = ax.annotate("Time = {:.2f}".format(time0), (0.0,-0.96),fontsize=fontsize1);
 

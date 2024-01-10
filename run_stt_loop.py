@@ -21,39 +21,7 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
-    # convert from arrays to uhf instance
-    mol_inst, uhf_inst = utils.arr_to_uhf(h1e, g2e, len(h1e), nelec, verbose = verbose);
-    # fci solution
-    E_fci, v_fci = utils.scf_FCI(mol_inst, uhf_inst, nroots);
-    if(nroots>1): E_fci, v_fci = E_fci[0], v_fci[0];
-    # ci object
-    CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
-    return CI_inst, E_fci, uhf_inst;
-
-def check_observables(the_sites,psi,eris_or_driver,block):
-    if(not block):
-        # site 0 spin
-        s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
-        gd_s0 = tdfci.compute_obs(psi, s0_eris);
-        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0));
-        # site 5 (ie the impurity site) spin
-        sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
-        gd_sdot = tdfci.compute_obs(psi, sdot_eris);
-        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[1],gd_sdot));       
-        # concurrence between
-        C_ci = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, False);
-        print("C"+str(the_sites)+" = ",C_ci);
-    else:
-        s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
-        gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
-        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
-        gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
-        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
-        # concurrence between 
-        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
-        print("C"+str(the_sites)+" = ",C_dmrg);
+from run_stt import get_energy_fci, check_observables
 
 def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose=0):
     '''
@@ -80,7 +48,7 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose
                 iprint=the_verbose);
 
         # observables
-        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,True);
+        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,mpo_inst,True);
         plot.snapshot_bench(None, tevol_mps_inst, None, driver_inst, params_dict, save_name, time=total_time);
 
     evol_end = time.time();

@@ -77,9 +77,8 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',
                             label = ("FCI ($C"+str(concur_sites)+"=${:.2f})").format(C_ci),linewidth=mylinewidth);
             # localized spins
-            axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
-            print("FCI sum "+obs_strs[obsi]+" = "+str(sum(y)));
-            print("FCI combined "+obs_strs[obsi]+" = "+str( sum(y_js) + sum(y_ds)))
+            axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="s", s=(3*mylinewidth)**2);
+            if(obs_strs[obsi] == "sz_"): print("Total Sz (FCI) = {:.6f}".format(sum(y)));
 
     if(psi_mps is not None): # with dmrg
         C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
@@ -95,7 +94,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             axes[obsi].scatter(x_js,y_js,marker=mymarkers[0], edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none',label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
             # localized spins
-            axes[obsi].scatter(x_ds, y_ds, marker="^", edgecolors=accentcolors[1],
+            axes[obsi].scatter(x_ds, y_ds, marker="s", edgecolors=accentcolors[1],
                                s=(3*mylinewidth)**2, facecolors='none');
             
             # save DMRG data
@@ -111,7 +110,7 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
             x, sx10 = vs_site(psi_mps,driver_inst,False,"sx10_");
             sx = sx01+sx10;
             sx_js = sx[np.isin(x,loc_spins,invert=True)];# on chain sites
-            axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='s', linewidth=mylinewidth);
+            axes[-1].plot(np.array(range(len(sx_js))), sx_js, color="purple",marker='^', linewidth=mylinewidth);
 
     #format
     for obsi in range(len(obs_strs)):
@@ -146,7 +145,7 @@ def snapshot_fromdata(loadname, time):
         # delocalized spins
         axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth);
         # localized spins
-        axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="^", s=(3*mylinewidth)**2);
+        axes[obsi].scatter(x_ds, y_ds, color=mycolors[1], marker="s", s=(3*mylinewidth)**2);
 
     #format
     for obsi in range(len(obs_strs)):

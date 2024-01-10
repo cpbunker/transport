@@ -31,13 +31,16 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def check_observables(the_sites,psi,eris_or_driver,block):
+def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,block,the_time):
+    print("Time = {:.2f}".format(the_time));
     if(not block):
-        # site 0 spin
+        # check gd state energy
+        check_E = tdfci.compute_obs(psi, eris_or_driver)
+        print("Total energy (FCI) = {:.6f}".format(check_E));
+        # site spins
         s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
         gd_s0 = tdfci.compute_obs(psi, s0_eris);
         print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0)); # site indices, NOT j or d indices
-        # site 5 (ie the impurity site) spin
         sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
         gd_sdot = tdfci.compute_obs(psi, sdot_eris);
         print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[1],gd_sdot));       
@@ -45,6 +48,10 @@ def check_observables(the_sites,psi,eris_or_driver,block):
         C_ci = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, False);
         print("C"+str(the_sites)+" = ",C_ci);
     else:
+        # check gd state
+        check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
+        print("Total energy (DMRG) = {:.6f}".format(check_E_dmrg));
+        # site spins
         s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
         print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
@@ -134,10 +141,6 @@ if(do_fci): # fci gd state
     H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
     print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
 
-    # check gd state
-    check_E = tdfci.compute_obs(gdstate_ci_inst, H_eris)
-    print("Manually computed energy (FCI) = {:.6f}".format(check_E));
-
 else:
     H_eris, gdstate_ci_inst = None, None;
 
@@ -167,10 +170,8 @@ if(do_dmrg): # dmrg gd state
         iprint=2); # set to 2 to see Mmps
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 
-    # check gd state
-    check_E_dmrg = tddmrg.compute_obs(gdstate_mps_inst, H_mpo_initial, H_driver);
-    print("Manually computed energy (DMRG) = {:.6f}".format(check_E_dmrg));
-    if False: # orbital interactions and reordering
+    # orbital interactions and reordering
+    if False: 
         # have to change sym type to core.SymmetryTypes.SZ in driver constructor
         int_matrix = H_driver.get_orbital_interaction_matrix(gdstate_mps_inst);
         fig, ax = plt.subplots()
@@ -190,8 +191,8 @@ print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+
 mytime=0;
 
 # plot observables
-if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, H_mpo_initial, True,mytime);
 plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver,
         params, json_name, time = mytime, plot_fig=params["plot"]);
 
@@ -220,7 +221,7 @@ if(do_dmrg): # DMRG dynamics
         H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=5);
         assert False
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                    bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=2) # set to to for MMps verbose-1);
+                    bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=2) # set to two for MMps verbose-1);
     print("\n\n\n**********************\nTime dep mmps should be just above this\n**********************\n\n\n**********************\n\n\n***************************\n\n\n")
 
 else:
@@ -230,8 +231,8 @@ evol1_end = time.time();
 print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, False);
-if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, True);
+if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -256,8 +257,8 @@ evol2_end = time.time();
 print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -282,8 +283,8 @@ evol3_end = time.time();
 print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -304,8 +305,8 @@ else:
     t4_ci_inst = None;
     
 # observables
-if(do_fci): check_observables(my_sites, t4_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, t4_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t4_ci_inst, t4_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -326,8 +327,8 @@ else:
     t5_ci_inst = None;
     
 # observables
-if(do_fci): check_observables(my_sites, t5_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, t5_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t5_ci_inst, t5_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -348,8 +349,8 @@ else:
     t6_ci_inst = None;
     
 # observables
-if(do_fci): check_observables(my_sites, t6_ci_inst, H_eris, False);
-if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver, True);
+if(do_fci): check_observables(my_sites, t6_ci_inst, H_eris_dyn, None, False,mytime);
+if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
 plot.snapshot_bench(t6_ci_inst, t6_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
