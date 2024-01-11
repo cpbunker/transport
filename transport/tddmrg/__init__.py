@@ -467,7 +467,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += -Jz/4;
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=  Jz/4;
             g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] +=  Jz/4;
-            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=- Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] += -Jz/4;
             # x+y component -> +- terms
             g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0]] += -Jx/2;
             g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1]] += -Jx/2;

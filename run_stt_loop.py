@@ -21,12 +21,51 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-from run_stt import get_energy_fci, check_observables
+def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
+    # convert from arrays to uhf instance
+    mol_inst, uhf_inst = utils.arr_to_uhf(h1e, g2e, len(h1e), nelec, verbose = verbose);
+    # fci solution
+    E_fci, v_fci = utils.scf_FCI(mol_inst, uhf_inst, nroots);
+    if(nroots>1): E_fci, v_fci = E_fci[0], v_fci[0];
+    # ci object
+    CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
+    return CI_inst, E_fci, uhf_inst;
+
+def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,block,the_time):
+    print("Time = {:.2f}".format(the_time));
+    if(not block):
+        # check gd state energy
+        check_E = tdfci.compute_obs(psi, eris_or_driver)
+        print("Total energy (FCI) = {:.6f}".format(check_E));
+        # site spins
+        s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
+        gd_s0 = tdfci.compute_obs(psi, s0_eris);
+        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0)); # site indices, NOT j or d indices
+        sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
+        gd_sdot = tdfci.compute_obs(psi, sdot_eris);
+        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[1],gd_sdot));       
+        # concurrence between
+        C_ci = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, False);
+        print("C"+str(the_sites)+" = ",C_ci);
+    else:
+        # check gd state
+        check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
+        print("Total energy (DMRG) = {:.6f}".format(check_E_dmrg));
+        # site spins
+        s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
+        gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
+        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
+        sdot_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
+        gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
+        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
+        # concurrence between 
+        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
+        print("C"+str(the_sites)+" = ",C_dmrg);
 
 def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose=0):
     '''
     '''
-    print("\n\nSTART TIME EVOLUTION\n\n","*"*50,"\n\n")
+    print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     evol_start = time.time();
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
@@ -44,11 +83,11 @@ def time_evol_wrapper(params_dict,driver_inst, mpo_inst, psi, save_name, verbose
         # time evol
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"],
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params["te_type"],
                 iprint=the_verbose);
 
         # observables
-        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,mpo_inst,True);
+        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,mpo_inst,True,total_time);
         plot.snapshot_bench(None, tevol_mps_inst, None, driver_inst, params_dict, save_name, time=total_time);
 
     evol_end = time.time();
@@ -127,7 +166,7 @@ init_end = time.time();
 print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
 
 # plot observables
-if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, True);
+if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, H_mpo_initial, True, 0.0);
 plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver, params, json_name, time = 0.0);
 
 #### Time evolution

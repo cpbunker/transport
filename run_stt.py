@@ -221,7 +221,7 @@ if(do_dmrg): # DMRG dynamics
         H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=5);
         assert False
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                    bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=2) # set to two for MMps verbose-1);
+                    bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=2) # set to two for MMps verbose-1);
     print("\n\n\n**********************\nTime dep mmps should be just above this\n**********************\n\n\n**********************\n\n\n***************************\n\n\n")
 
 else:
@@ -244,7 +244,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=0);
+                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t2_mps_inst = None;
     
@@ -270,7 +270,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=0);
+                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t3_mps_inst = None;
     
@@ -295,7 +295,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t4_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t3_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=0);
+                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t4_mps_inst = None;
     
@@ -317,7 +317,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t5_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t4_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=0);
+                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t5_mps_inst = None;
     
@@ -339,7 +339,7 @@ mytime += time_update;
 
 if(do_dmrg): # DMRG dynamics
     t6_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t5_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], iprint=0);
+                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t6_mps_inst = None;
     

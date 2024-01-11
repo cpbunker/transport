@@ -3,7 +3,7 @@
 "Jz":1.5708, "Jx":1.5708, "Jsd":0.0, "jdnoise":1e-1, 
 "NL":2, "NFM":2, "NR":2, "Nconf":2, "Ne":0, "TwoSz":0,
 "symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[5,7],"plot":1,
-"bdim_0":[200,250,300,350,350],"bdim_t":[400], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
+"bdim_0":[200,250,300,350,350],"bdim_t":[400], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"rk4",
 "time_step":0.04, "t1":0.4,"t2":0.6, "t3":1.0,"t4":2.0,"t5":0.04,"t6":0.04,"tupdate":1.0
 }
 

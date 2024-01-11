@@ -3,6 +3,6 @@
 "Jz":0.0, "Jx":0.0, "Jsd":0.5,"jdnoise":-0.1,
 "NL":4, "NFM":2, "NR":4, "Nconf":2, "Ne":2, "TwoSz":0,
 "symmetry":"Sz","spin_strs":["cd","CD"],"ex_sites":[9,11],"plot":0,
-"bdim_0":[200,250,300,350,400],"bdim_t":[400], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,
+"bdim_0":[200,250,300,350,400],"bdim_t":[400], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"rk4",
 "time_step":0.04,"t1":1.0,"t2":1.0, "t3":1.0, "t4":1.0, "t5":1.0, "t6":1.0, "tupdate":1.0,"Nupdates":6
 }

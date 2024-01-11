@@ -135,7 +135,7 @@ elif(case=="Heisenberg_sd"): # 2 impurity SWAP
     print(">>> psii = ",psii);
     my_sites = [0,1]; # sites to print out
     my_interval = 0.4; # how often to plot/printout
-    my_updates = 5; # number of time interval repetitions
+    my_updates = 10; # number of time interval repetitions
     main(H,L,psii,my_interval,my_updates,my_sites);
 
 elif(case=="Ne1_NFM2"): # 2 impurity SWAP
