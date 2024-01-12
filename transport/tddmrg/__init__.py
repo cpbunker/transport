@@ -398,7 +398,7 @@ def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             driver.initialize_system(n_sites=2*Nsites, n_elec=Ne+NFM, spin=TwoSz);
         else:
             raise NotImplementedError;
-        builder = driver.expr_builder()
+        builder = driver.expr_builder();
     else:       # <---------- change dtype to complex ?
       h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
@@ -638,5 +638,157 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     if(block):
         mpo_from_builder = driver.get_mpo(builder.finalize(), iprint=verbose);
         return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
+
+def Hsys_super(params_dict, block, scratch_dir="tmp", verbose=0):
+    '''
+    Builds the parts of the Hamiltonian which apply at all t
+    ( see Hsys_builder above )
+
+    However, this builds in terms of supersited dofs, rather than fermionic dofs
+
+    Returns:
+        if block is True: a tuple of DMRGDriver, ExprBuilder objects
+        else: a tuple of 1-body, 2-body 2nd quantized Hamiltonian arrays
+    '''
+
+    # load data from json
+    tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
+    NL, NFM, NR, Nconf, Ne, TwoSz = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"], params_dict["TwoSz"];
+
+    # sites and spin
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    assert(NL>0 and NR>0); # leads must exist
+    TwoSd = params["TwoSd"]; # impurity spin magnitude, doubled to be an int
+    TwoSdz_ladder = 2*np.arange(TwoSd+1) -TwoSd;
+    assert(TwoSd == 1); # for now
+    assert (TwoSz == 0); # how to handle TwoSz with custom ham??
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(NL)]);
+    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+    all_sites = np.array([j for j in range(Nsites)]);
+
+    # return objects
+    if(block): # construct ExprBuilder
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+        else:
+            raise NotImplementedError;
+        builder = driver.expr_builder();
+    else:    
+        raise NotImplementedError;
+
+    # def custom states and operators
+    site_states, site_ops = [], [];
+    qnumber = driver.bw.SX # quantum number wrapper
+    # quantum numbers here: nelec, TwoSz, TwoSdz, point group irrep
+    # Sdz is z projection of impurity spin: ladder from +s to -s
+    # point group irrep, I always set=0 following Huanchen. Not sure what it does
+
+    for sitei in all_sites:
+        if(not (sitei in central_sites)): # just has fermionic dofs
+            states = [(qnumber(0, 0,0,0),1), # |> # <-- why is there a tuple of
+                      (qnumber(1, 1,0,0),1), # |up> #<-- (q, int) and what does the int do ???
+                      (qnumber(1,-1,0,0),1), # |down>
+                      (qnumber(2, 0,0,0),1)];# |up down>
+            ops = { "": np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]),   # identity
+                   "c": np.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0]]),  # c_up^\dagger
+                   "d": np.array([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0]]),  # c_up
+                   "C": np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0,-1, 0, 0]]), # c_down^\dagger
+                   "D": np.array([[0, 0, 1, 0], [0, 0, 0,-1], [0, 0, 0, 0], [0, 0, 0, 0]])} # c_down
+        else: # has fermion AND impurity dofs
+            states = [];
+            for TwoSdz in TwoSdz_ladder:
+                states.append((qnumber(0, 0,TwoSdz,0),1)); # | ,Sdz>
+                states.append((qnumber(1, 1,TwoSdz,0),1)); # |up,Sdz>
+                states.append((qnumber(1,-1,TwoSdz,0),1)); # |down,Sdz>
+                states.append((qnumber(2, 0,TwoSdz,0),1)); # |up down,Sdz>
+                print(TwoSdz);
+            assert False;
+
+    # j-j hopping everywhere
+    for jindex in range(len(j_sites)-1):
+        for spin in spin_inds:
+            if(block):
+                builder.add_term(spin_strs[spin],[j_sites[jindex],j_sites[jindex+1]],-tl);
+                builder.add_term(spin_strs[spin],[j_sites[jindex+1],j_sites[jindex]],-tl);
+            else:
+                h1e[nloc*j_sites[jindex]+spin,nloc*j_sites[jindex+1]+spin] += -tl;
+                h1e[nloc*j_sites[jindex+1]+spin,nloc*j_sites[jindex]+spin] += -tl;
+
+
+    # sd exchange between loc spins and adjacent central sites
+    # central sites are indexed j, loc spin sites are indexed d
+    sdpairs = [(central_sites[index], loc_spins[index]) for index in range(len(loc_spins))];
+    if(verbose): print("j - d site pairs = ",sdpairs);
+    # form of this interaction is
+    # \sum_{\mu=x,y,z} \sum_{\sigma \sigma' \tau \tau'}
+    #            c_j\sigma^\dagger c_j\sigma' c_d\tau^\dagger c_d\tau'
+    #            (J \sigma^\mu_{\sigma\sigma'} \sigma^\mu_{\tau\tau'}
+    # where \sigma^\mu denotes a single Pauli matrix, the mu^th compoent of the Pauli vector
+    for (j,d) in sdpairs:
+        if(block):
+            # z component terms
+            builder.add_term("cdcd",[j,j,d,d],-Jsd/4);
+            builder.add_term("cdCD",[j,j,d,d], Jsd/4);
+            builder.add_term("CDcd",[j,j,d,d], Jsd/4);
+            builder.add_term("CDCD",[j,j,d,d],-Jsd/4);
+            # x+y component -> +- terms
+            builder.add_term("cDCd",[j,j,d,d],-Jsd/2);
+            builder.add_term("CdcD",[j,j,d,d],-Jsd/2);
+        else:
+            # z component terms
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jsd/4;
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  Jsd/4;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] +=  Jsd/4;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jsd/4;
+            # x+y component -> +- terms
+            g2e[nloc*j+spin_inds[0],nloc*j+spin_inds[1],nloc*(d)+spin_inds[1],nloc*(d)+spin_inds[0]] += -Jsd/2;
+            g2e[nloc*j+spin_inds[1],nloc*j+spin_inds[0],nloc*(d)+spin_inds[0],nloc*(d)+spin_inds[1]] += -Jsd/2;
+            # repeat above with switched particle labels (pq|rs) = (rs|pq)
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] += -Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[0],nloc*j+spin_inds[0]] +=  Jsd/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] +=  Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[1]] += -Jsd/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*j+spin_inds[0],nloc*j+spin_inds[1]] += -Jsd/2;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*j+spin_inds[1],nloc*j+spin_inds[0]] += -Jsd/2;
+
+
+    # XXZ for loc spins
+    for loci in range(len(loc_spins)-1): # nearest neighbor only
+        d, dp1 = loc_spins[loci], loc_spins[loci+1];
+        if(block):
+            # z component termse
+            builder.add_term("cdcd",[d,d,dp1,dp1],-Jz/4);
+            builder.add_term("cdCD",[d,d,dp1,dp1], Jz/4);
+            builder.add_term("CDcd",[d,d,dp1,dp1], Jz/4);
+            builder.add_term("CDCD",[d,d,dp1,dp1],-Jz/4);
+            # x+y component -> +- terms
+            builder.add_term("cDCd",[d,d,dp1,dp1],-Jx/2);
+            builder.add_term("CdcD",[d,d,dp1,dp1],-Jx/2);
+        else:
+            # z component terms
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] += -Jz/4;
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] +=  Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0]] +=  Jz/4;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1]] += -Jz/4;
+            # x+y component -> +- terms
+            g2e[nloc*d+spin_inds[0],nloc*d+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0]] += -Jx/2;
+            g2e[nloc*d+spin_inds[1],nloc*d+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1]] += -Jx/2;
+            # repeat above with switched particle labels (pq|rs) = (rs|pq)
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[0],nloc*d+spin_inds[0]] +=  Jz/4;
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[1]] += -Jz/4;
+            g2e[nloc*(dp1)+spin_inds[1],nloc*(dp1)+spin_inds[0],nloc*d+spin_inds[0],nloc*d+spin_inds[1]] += -Jx/2;
+            g2e[nloc*(dp1)+spin_inds[0],nloc*(dp1)+spin_inds[1],nloc*d+spin_inds[1],nloc*d+spin_inds[0]] += -Jx/2;
+
+    # return
+    if(block):
+        return driver, builder;
     else:
         return h1e, g2e;

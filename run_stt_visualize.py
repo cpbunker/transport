@@ -34,11 +34,12 @@ if(case in [1,2]): # observable as a function of time
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
     # time evolution params
+    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[3]);
+    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
-        times[ti] = ti*tupdate;
+        times[ti] = time0 + ti*tupdate;
     time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
     ax.set_xticks(time_ticks);
     ax.set_xlim((times[0], times[-1]));
@@ -85,12 +86,13 @@ if(case in [3,4]): # observable as a function of time
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
     # time evolution params
+    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[3]);
+    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
-        times[ti] = ti*tupdate;
-    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
+        times[ti] = time0 + ti*tupdate;
+    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1));
     ax.set_xticks(time_ticks);
     ax.set_xlim((times[0], times[-1]));
 
