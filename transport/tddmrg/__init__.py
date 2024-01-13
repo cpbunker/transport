@@ -642,6 +642,21 @@ def Hsys_polarizer(params_dict, block, to_add_to, verbose=0):
     else:
         return h1e, g2e;
 
+def reblock(mat):
+    '''
+    reshape a 4d matrix which has shape (outer_dof,outer_dof,inner_dof,inner_dof)
+    into shape (inner_dof,inner_dof,outer_dof,outer_dof)
+    '''
+
+    outer_dof, inner_dof = np.shape(mat);
+    new_mat = np.zeros((inner_dof,inner_dof,outer_dof,outer_dof),dtype=mat.dtype);
+    for outi in range(outer_dof):
+        for outj in range(outer_dof):
+            for ini in range(inner_dof):
+                for inj in range(inner_dof):
+                    new_mat[ini,inj,outi,outj] = mat[outi,outj,ini,inj];
+    return utils.mat_4d_to_2d(new_mat);
+
 def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
     Builds the parts of the Hamiltonian which apply at all t
@@ -667,11 +682,10 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
-    TwoSdz_ladder = 2*np.arange(TwoSd+1) -TwoSd;
+    TwoSdz_ladder = (2*np.arange(TwoSd+1) -TwoSd);
     n_fer_dof = 4;
     n_imp_dof = len(TwoSdz_ladder);
-    assert(TwoSd == 1); # for now
-    #assert (TwoSz == 0); # how to handle TwoSz with custom ham??
+    #assert(TwoSd == 1); # for now
 
     # classify site indices (spin not included)
     llead_sites = np.array([j for j in range(NL)]);
@@ -706,10 +720,33 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     squar_C = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0,-1, 0, 0]]); # c_down^\dagger
     squar_D = np.array([[0, 0, 1, 0], [0, 0, 0,-1], [0, 0, 0, 0], [0, 0, 0, 0]]); # c_down
 
+    # construct 4d ops from blocks
+    # fermion ops 
+    fourd_base = np.zeros((n_imp_dof,n_imp_dof,n_fer_dof,n_fer_dof),dtype=float);
+    fourd_c = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_c[Sdz_index,Sdz_index] = np.copy(squar_c);
+    fourd_d = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_d[Sdz_index,Sdz_index] = np.copy(squar_d);
+    fourd_C = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_C[Sdz_index,Sdz_index] = np.copy(squar_C);
+    fourd_D = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_D[Sdz_index,Sdz_index] = np.copy(squar_D);
+    # Sd ops 
+    fourd_Sdz = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_Sdz[Sdz_index,Sdz_index] = (TwoSdz_ladder[Sdz_index]/2)*np.eye(n_fer_dof);
+    print("TwoSdz_ladder =\n",TwoSdz_ladder);
+    print("four_Sdz = \n",utils.mat_4d_to_2d(fourd_Sdz))
+    fourd_Sdminus = np.copy(fourd_base);
+    fourd_Sdplus = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof-1): 
+        fourd_Sdminus[Sdz_index,Sdz_index+1] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index+1]*(0.5*TwoSdz_ladder[Sdz_index+1]-1))*np.eye(n_fer_dof);
+        fourd_Sdplus[Sdz_index+1,Sdz_index] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index]*(0.5*TwoSdz_ladder[Sdz_index]+1))*np.eye(n_fer_dof);
+    print("four_Sdminus = \n",utils.mat_4d_to_2d(fourd_Sdminus))
+    print("four_Sdplus = \n",utils.mat_4d_to_2d(fourd_Sdplus))
     for sitei in all_sites:
         if(not (sitei in central_sites)): # just has fermionic dofs
-            states = [(qnumber(0, 0,0),1), # |> # <-- why is there a tuple of
-                      (qnumber(1, 1,0),1), # |up> #<-- (q, int) and what does the int do ???
+            states = [(qnumber(0, 0,0),1), # |> # <-- 2nd thing in tuple is degeneracy
+                      (qnumber(1, 1,0),1), # |up> #<-- 
                       (qnumber(1,-1,0),1), # |down>
                       (qnumber(2, 0,0),1)];# |up down>
             ops = { "":np.copy(squar_I), # identity
@@ -721,35 +758,22 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         else: # has fermion AND impurity dofs
             states = [];
             for TwoSdz in TwoSdz_ladder:
-                states.append((qnumber(0, 0,TwoSdz),1)); # | ,Sdz>
-                states.append((qnumber(1, 1,TwoSdz),1)); # |up,Sdz>
-                states.append((qnumber(1,-1,TwoSdz),1)); # |down,Sdz>
-                states.append((qnumber(2, 0,TwoSdz),1)); # |up down,Sdz>
+                point_ovld = 0;
+                states.append((qnumber(0, 0,point_ovld),1)); # | > x {|+Sd>...|-Sd>}
+                states.append((qnumber(1, 1,point_ovld),1)); # |up> x {|+Sd>...|-Sd>}
+                states.append((qnumber(1,-1,point_ovld),1)); # |down> x {|+Sd>...|-Sd>}
+                states.append((qnumber(2, 0,point_ovld),1)); # |up down> x {|+Sd>...|-Sd>}
             
-            # fermion ops as 4d arrays
-            fourd_base = np.zeros((n_imp_dof,n_imp_dof,n_fer_dof,n_fer_dof),dtype=float);
-            fourd_c = np.copy(fourd_base);
-            for Sdz_index in range(n_imp_dof): fourd_c[Sdz_index,Sdz_index] = np.copy(squar_c);
-            fourd_d = np.copy(fourd_base);
-            for Sdz_index in range(n_imp_dof): fourd_d[Sdz_index,Sdz_index] = np.copy(squar_d);
-            fourd_C = np.copy(fourd_base);
-            for Sdz_index in range(n_imp_dof): fourd_C[Sdz_index,Sdz_index] = np.copy(squar_C);
-            fourd_D = np.copy(fourd_base);
-            for Sdz_index in range(n_imp_dof): fourd_D[Sdz_index,Sdz_index] = np.copy(squar_D);
-
-            # Sd ops as 4d arrays
-            fourd_Sdz = np.copy(fourd_base);
-            for Sdz_index in range(n_imp_dof): fourd_Sdz[Sdz_index,Sdz_index] = (TwoSdz_ladder[Sdz_index]/2)*np.eye(n_fer_dof);
-
             # ops dictionary
             ops = { "":np.eye(n_fer_dof*n_imp_dof), # identity
                    "c":utils.mat_4d_to_2d(fourd_c), # c_up^\dagger
                    "d":utils.mat_4d_to_2d(fourd_d), # c_up
                    "C":utils.mat_4d_to_2d(fourd_C), # c_down^\dagger
                    "D":utils.mat_4d_to_2d(fourd_D), # c_down
-                   "Z":utils.mat_4d_to_2d(fourd_Sdz)# Sz of impurity
+                   "Z":utils.mat_4d_to_2d(fourd_Sdz),    # Sz of impurity
+                   "P":utils.mat_4d_to_2d(fourd_Sdplus), # S+ on impurity
+                   "M":utils.mat_4d_to_2d(fourd_Sdminus) # S- on impurity
                     }
-        print(utils.mat_4d_to_2d(fourd_Sdz))
         site_states.append(states);
         site_ops.append(ops);
 
@@ -766,8 +790,18 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             if(block):
                 builder.add_term(spin_strs[spin],[j,j+1],-tl);
                 builder.add_term(spin_strs[spin],[j+1,j],-tl);
-            else:
-                pass;
+
+    # XXZ exchange between neighboring impurities
+    for j in central_sites[:-1]:
+        if(block):
+            pass;
+            #builder.add_term("ZZ",[j,j+1],Jz);
+            #builder.add_term("PM",[j,j+1],Jx/2);
+            #builder.add_term("MP",[j,j+1],Jx/2);
+
+    # sd exchange between impurities and charge density on their site
+    for j in central_sites:
+        pass;
 
     # return
     if(block):
@@ -872,7 +906,7 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
-    TwoSdz_ladder = 2*np.arange(TwoSd+1) -TwoSd;
+    TwoSdz_ladder = (2*np.arange(TwoSd+1) -TwoSd);
     n_fer_dof = 4;
     n_imp_dof = len(TwoSdz_ladder);
 
@@ -911,6 +945,7 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
     # return
     if(block):
         from pyblock2.driver.core import MPOAlgorithmTypes
+        #mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True,fermionic_ops="cdCD"),  algo_type=MPOAlgorithmTypes.FastBipartite);
         mpo_from_builder = driver.get_mpo(builder.finalize(),  algo_type=MPOAlgorithmTypes.FastBipartite);
         # in Huanchen's example, he uses passes
         # adjust_order=True, fermionic_ops="cdCD" to finalize
