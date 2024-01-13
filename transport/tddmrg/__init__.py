@@ -648,7 +648,7 @@ def reblock(mat):
     into shape (inner_dof,inner_dof,outer_dof,outer_dof)
     '''
 
-    outer_dof, inner_dof = np.shape(mat);
+    outer_dof, _, inner_dof, _ = np.shape(mat);
     new_mat = np.zeros((inner_dof,inner_dof,outer_dof,outer_dof),dtype=mat.dtype);
     for outi in range(outer_dof):
         for outj in range(outer_dof):
@@ -743,6 +743,14 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         fourd_Sdplus[Sdz_index+1,Sdz_index] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index]*(0.5*TwoSdz_ladder[Sdz_index]+1))*np.eye(n_fer_dof);
     print("four_Sdminus = \n",utils.mat_4d_to_2d(fourd_Sdminus))
     print("four_Sdplus = \n",utils.mat_4d_to_2d(fourd_Sdplus))
+    A, B, C, D = 11,12,13,14
+    pre = np.array([ [[[1,0],[0,A]],[[0,0],[B,0]] ],
+                     [[[0,C],[0,0]],[[D,0],[0,1]]] ])
+    #print(utils.mat_4d_to_2d(pre))
+    #print(reblock(pre))
+    #assert False
+
+    # define site dependent basis
     for sitei in all_sites:
         if(not (sitei in central_sites)): # just has fermionic dofs
             states = [(qnumber(0, 0,0),1), # |> # <-- 2nd thing in tuple is degeneracy
@@ -757,23 +765,26 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                     
         else: # has fermion AND impurity dofs
             states = [];
-            for TwoSdz in TwoSdz_ladder:
+            for dummy in [1]: #TwoSdz in TwoSdz_ladder:
                 point_ovld = 0;
-                states.append((qnumber(0, 0,point_ovld),1)); # | > x {|+Sd>...|-Sd>}
-                states.append((qnumber(1, 1,point_ovld),1)); # |up> x {|+Sd>...|-Sd>}
-                states.append((qnumber(1,-1,point_ovld),1)); # |down> x {|+Sd>...|-Sd>}
-                states.append((qnumber(2, 0,point_ovld),1)); # |up down> x {|+Sd>...|-Sd>}
+                states.append((qnumber(0, 0,point_ovld),n_imp_dof)); # | > x {|+Sd>...|-Sd>}
+                states.append((qnumber(1, 1,point_ovld),n_imp_dof)); # |up> x {|+Sd>...|-Sd>}
+                states.append((qnumber(1,-1,point_ovld),n_imp_dof)); # |down> x {|+Sd>...|-Sd>}
+                states.append((qnumber(2, 0,point_ovld),n_imp_dof)); # |up down> x {|+Sd>...|-Sd>}
             
             # ops dictionary
             ops = { "":np.eye(n_fer_dof*n_imp_dof), # identity
-                   "c":utils.mat_4d_to_2d(fourd_c), # c_up^\dagger
-                   "d":utils.mat_4d_to_2d(fourd_d), # c_up
-                   "C":utils.mat_4d_to_2d(fourd_C), # c_down^\dagger
-                   "D":utils.mat_4d_to_2d(fourd_D), # c_down
-                   "Z":utils.mat_4d_to_2d(fourd_Sdz),    # Sz of impurity
-                   "P":utils.mat_4d_to_2d(fourd_Sdplus), # S+ on impurity
-                   "M":utils.mat_4d_to_2d(fourd_Sdminus) # S- on impurity
+                   "c":reblock(fourd_c), # c_up^\dagger
+                   "d":reblock(fourd_d), # c_up
+                   "C":reblock(fourd_C), # c_down^\dagger
+                   "D":reblock(fourd_D), # c_down
+                   "Z":reblock(fourd_Sdz),    # Sz of impurity
+                   "P":reblock(fourd_Sdplus), # S+ on impurity
+                   "M":reblock(fourd_Sdminus) # S- on impurity
                     }
+            print(len(states)*n_imp_dof)
+            print("old shape = ",np.shape(fourd_c))
+            print("new shape = ",np.shape(ops["c"]))
         site_states.append(states);
         site_ops.append(ops);
 
@@ -794,14 +805,20 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     # XXZ exchange between neighboring impurities
     for j in central_sites[:-1]:
         if(block):
-            pass;
-            #builder.add_term("ZZ",[j,j+1],Jz);
-            #builder.add_term("PM",[j,j+1],Jx/2);
-            #builder.add_term("MP",[j,j+1],Jx/2);
+            #pass;
+            builder.add_term("ZZ",[j,j+1],-Jz);
+            builder.add_term("PM",[j,j+1],-Jx/2);
+            builder.add_term("MP",[j,j+1],-Jx/2);
 
     # sd exchange between impurities and charge density on their site
     for j in central_sites:
-        pass;
+        if(block):
+            # z terms
+            builder.add_term("cdZ",[j,j,j],-Jsd);
+            builder.add_term("CDZ",[j,j,j], Jsd);
+            # plus minus terms
+            #builder.add_term("cDM",[j,j,j],-Jsd/2);
+            #builder.add_term("CdP",[j,j,j],-Jsd/2);
 
     # return
     if(block):
@@ -942,6 +959,19 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
         if(block):
             builder.add_term("Z",[j],BFM);
 
+    # special case initialization
+    if("BFM_first" in params_dict.keys()): # B field that targets 1st loc spin only
+        BFM_first = params_dict["BFM_first"];
+        j = central_sites[0];
+        if(block):
+            builder.add_term("Z",[j], BFM_first - BFM);
+    if("Bsd" in params_dict.keys()): # B field on the j that couples to the first loc spin
+        Bsd = params_dict["Bsd"];
+        j = central_sites[0];
+        if(block):
+            builder.add_term(spin_strs[0],[j,j],-Bsd/2);
+            builder.add_term(spin_strs[1],[j,j], Bsd/2);
+
     # return
     if(block):
         from pyblock2.driver.core import MPOAlgorithmTypes
@@ -955,24 +985,6 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
         return h1e, g2e;
  
     # special case initialization
-    if("BFM_first" in params_dict.keys()): # B field that targets 1st loc spin only
-        BFM_first = params_dict["BFM_first"];
-        d = loc_spins[0];
-        if(block):
-            builder.add_term(spin_strs[0],[d,d],-BFM_first/2 + BFM/2);
-            builder.add_term(spin_strs[1],[d,d], BFM_first/2 - BFM/2);
-        else:
-            h1e[nloc*d+spin_inds[0],nloc*d+spin_inds[0]] += -BFM_first/2 + BFM/2;
-            h1e[nloc*d+spin_inds[1],nloc*d+spin_inds[1]] +=  BFM_first/2 - BFM/2; 
-    if("Bsd" in params_dict.keys()): # B field on the j that couples to the first loc spin
-        Bsd = params_dict["Bsd"];
-        s = central_sites[0];
-        if(block):
-            builder.add_term(spin_strs[0],[s,s],-Bsd/2);
-            builder.add_term(spin_strs[1],[s,s], Bsd/2);
-        else:
-            h1e[nloc*s+spin_inds[0],nloc*s+spin_inds[0]] += -Bsd/2;
-            h1e[nloc*s+spin_inds[1],nloc*s+spin_inds[1]] +=  Bsd/2;
     if("Bsd_x" in params_dict.keys()): # B in the x on the j that couples to 1st loc spin
         Bsd_x = params_dict["Bsd_x"];
         s = central_sites[0];
