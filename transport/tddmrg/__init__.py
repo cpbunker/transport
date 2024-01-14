@@ -671,14 +671,14 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # load data from json
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
-    NL, NFM, NR, Nconf, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"];
+    NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
+    Ne, Njel = params_dict["Ne"], params_dict["Njel"];
 
     # fermionic sites and spin
-    assert(Ne>0);
+    #assert(Njel>0);
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
-    #TwoSz = params_dict["TwoSz"]; # total fermion spin in the z
-    TwoSz = Ne; # spin up jellium
-    #assert(NL>0 and NR>0); # leads must exist
+    Ne = Nconf;
+    TwoSz = Njel; # spin up jellium
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
@@ -688,13 +688,12 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     #assert(TwoSd == 1); # for now
 
     # classify site indices (spin not included)
-    jel_sites = np.array([j for j in range(Ne)])
-    llead_sites = np.array([j for j in range(Ne,Ne+NL)]);
-    central_sites = np.array([j for j in range(Ne+NL,Ne+NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(Ne+NL+NFM,Ne+Nsites)]);
-    all_sites = np.array([j for j in range(Ne+Nsites)]);
-    print(">>>")
-    print(jel_sites,llead_sites,central_sites,rlead_sites)
+    jel_sites = np.array([j for j in range(Njel)])
+    llead_sites = np.array([j for j in range(Njel,Njel+NL)]);
+    central_sites = np.array([j for j in range(Njel+NL,Njel+NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(Njel+NL+NFM,Njel+Nsites)]);
+    phys_sites = np.array([j for j in range(Njel,Njel+Nsites)]);
+    all_sites = np.array([j for j in range(Njel+Nsites)]);
 
     # return object
     if(block): # construct ExprBuilder
@@ -705,9 +704,9 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             # but only when TwoSz is input correctly
             # in latter case, we get a floating point exception even when complex sym is turned off!
             #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4)
-            driver.initialize_system(n_sites=Ne+Nsites, n_elec=Ne, spin=TwoSz);
+            driver.initialize_system(n_sites=Njel+Nsites, n_elec=Njel, spin=TwoSz);
         else:
-            raise NotImplementedError;
+            raise NotImplementedError
 
     # Szd blocks for fermion-impurity operators
     # squares are diagonal blocks and triangles are one off diagonal
@@ -758,7 +757,7 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     # Sdz is z projection of impurity spin: ladder from +s to -s
     for sitei in all_sites:
         if(sitei in jel_sites): # just has jellium dofs
-            states = [(qnumber(0, 0,0),1), # |> # <-- 4 jellium states are only ones that obey n_elec and TwoSz symmetry
+            states = [(qnumber(0, 0,0),1), # |> # <-- 4 jellium states (always obey n_elec and TwoSz symmetry)
                       (qnumber(1, 1,0),1), # |up> #<--
                       (qnumber(1,-1,0),1), # |down>
                       (qnumber(2, 0,0),1)];# |up down>
@@ -768,16 +767,14 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                    "C":np.copy(squar_C), # c_down^\dagger
                    "D":np.copy(squar_D)} # c_down
         elif(sitei in llead_sites or sitei in rlead_sites):
-            states = [(qnumber(0, 0,0),4)] # |> # <-- 4 fermion states, do not obey n_elec and TwoSz symmetry
+            states = [(qnumber(0, 0,0),4)] # |> # <-- 4 fermion states. None obey n_elec or TwoSz symmetry
             ops = { "":np.copy(squar_I), # identity
                    "e":np.copy(squar_c), # c_up^\dagger jellium ops
                    "f":np.copy(squar_d), # c_up
                    "E":np.copy(squar_C), # c_down^\dagger
                    "F":np.copy(squar_D)} # c_down
-            print("***********")
-            print(ops[""])
         elif(sitei in central_sites): # has fermion AND impurity dofs
-            assert False
+            #assert False
             states = [];
             for dummy in [1]: #TwoSdz in TwoSdz_ladder:
                 point_ovld = 0;
@@ -804,6 +801,7 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # return objects
     if(block): # input custom site basis states and ops to driver
+        print("nelec = {:.0f}, nsites = {:.0f}, TwoSz = {:.0f}".format(Njel+Ne,driver.n_sites,TwoSz))
         driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
         builder = driver.expr_builder();
         print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
@@ -811,9 +809,9 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         raise NotImplementedError;
 
     # j <-> j+1 hopping for fermions
-    for j in all_sites[:-1]:
+    for j in phys_sites[:-1]:
         if(block):
-            pass;
+            pass # need to intro e,f to central sites first
             #builder.add_term("ef",[j,j+1],-tl); 
             #builder.add_term("EF",[j,j+1],-tl);
             #builder.add_term("ef",[j+1,j],-tl);
@@ -842,8 +840,8 @@ def Hsuper_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     for j in jel_sites:
         if(block):
             jellium_offset = -1000;
-            builder.add_term("cd",[j,j], jellium_offset/Ne);
-            builder.add_term("CD",[j,j],-jellium_offset/Ne);
+            builder.add_term("cd",[j,j], jellium_offset/Njel);
+            builder.add_term("CD",[j,j],-jellium_offset/Njel);
 
     # j <-> j+1 hopping for jellium
     for j in jel_sites[:-1]:
@@ -875,12 +873,13 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
 
     # load data from json
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
-    NL, NFM, NR, Nconf, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"], params_dict["Ne"];
+    NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
+    Ne, Njel = params_dict["Ne"], params_dict["Njel"];
 
     # fermionic sites and spin
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
-    #TwoSz = params_dict["TwoSz"]; # total fermion spin in the z
-    TwoSz = Ne; # spin up jellium
+    Ne = Nconf;
+    TwoSz = Njel; # spin up jellium
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
@@ -889,19 +888,28 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
     n_imp_dof = len(TwoSdz_ladder);
 
     # classify site indices (spin not included)
-    jel_sites = np.array([j for j in range(Ne)])
-    llead_sites = np.array([j for j in range(Ne,Ne+NL)]);
-    central_sites = np.array([j for j in range(Ne+NL,Ne+NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(Ne+NL+NFM,Ne+Nsites)]);
-    all_sites = np.array([j for j in range(Ne+Nsites)]);
-    conf_sites = np.array([j for j in range(Ne,Ne+Nconf)]);
+    jel_sites = np.array([j for j in range(Njel)])
+    llead_sites = np.array([j for j in range(Njel,Njel+NL)]);
+    central_sites = np.array([j for j in range(Njel+NL,Njel+NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(Njel+NL+NFM,Njel+Nsites)]);
+    phys_sites = np.array([j for j in range(Njel,Njel+Nsites)]);
+    all_sites = np.array([j for j in range(Njel+Nsites)]);
+    conf_sites = np.array([j for j in range(Njel,Njel+Nconf)]);
+    print(jel_sites,llead_sites,central_sites,rlead_sites)
+    print(conf_sites,phys_sites,all_sites)
 
     # return objects
     if(block): # construct ExprBuilder
         driver, builder = to_add_to;
-        if(driver.n_sites != Ne+Nsites): raise ValueError;
+        if(driver.n_sites != Njel+Nsites): raise ValueError;
     else:
         raise NotImplementedError;
+    
+    # chem potential everywhere
+    for j in phys_sites: #np.append(llead_sites, rlead_sites):
+        if(block):
+            builder.add_term("ef",[j,j],0.9*(Vconf+Be/2));
+            builder.add_term("EF",[j,j],0.9*(Vconf+Be/2));
 
     # confining potential in left lead
     for j in conf_sites:

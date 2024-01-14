@@ -135,6 +135,7 @@ if(do_dmrg): # dmrg gd state
         
     # gd state
     mynroots = 10
+    myNjel = params["Njel"]
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=mynroots,
                              bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
@@ -145,7 +146,7 @@ if(do_dmrg): # dmrg gd state
     else:
         split_gdstates = [H_driver.split_mps(gdstate_mps_inst, ir, tag="KET-{:.0f}".format(ir)) for ir in range(mynroots)]
         nbuilder = H_driver.expr_builder();
-        for j in range(myNe,myNL+myNFM+myNR):
+        for j in range(myNjel,myNjel+myNL+myNFM+myNR):
             nbuilder.add_term("ef",[j,j],1);
             nbuilder.add_term("EF",[j,j],1);
         nmpo = H_driver.get_mpo(nbuilder.finalize());
