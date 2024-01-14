@@ -134,12 +134,25 @@ if(do_dmrg): # dmrg gd state
         assert False
         
     # gd state
-    gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
+    mynroots = 10
+    gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=mynroots,
                              bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
         bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
         iprint=2); # set to 2 to see Mmps
-    print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
+    if(mynroots == 1):
+        print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
+    else:
+        split_gdstates = [H_driver.split_mps(gdstate_mps_inst, ir, tag="KET-{:.0f}".format(ir)) for ir in range(mynroots)]
+        nbuilder = H_driver.expr_builder();
+        for j in range(myNe,myNL+myNFM+myNR):
+            nbuilder.add_term("ef",[j,j],1);
+            nbuilder.add_term("EF",[j,j],1);
+        nmpo = H_driver.get_mpo(nbuilder.finalize());
+        for ir in range(mynroots):
+            n_expt = H_driver.expectation(split_gdstates[ir], nmpo, split_gdstates[ir])
+            print("Root = {:.0f} <E> = {:.15f} <N> = {:.3f}".format(ir, gdstate_E_dmrg[ir], n_expt));
+
 
     # orbital interactions and reordering
     if False: 
