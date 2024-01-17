@@ -31,36 +31,25 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,block,the_time):
+def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,the_time):
     print("Time = {:.2f}".format(the_time));
-    if(not block):
-        # check gd state energy
-        check_E = tdfci.compute_obs(psi, eris_or_driver)
-        print("Total energy (FCI) = {:.6f}".format(check_E));
-        # site spins
-        s0_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[0], block);
-        gd_s0 = tdfci.compute_obs(psi, s0_eris);
-        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[0],gd_s0)); # site indices, NOT j or d indices
-        sdot_eris = tddmrg.get_sz(len(eris_or_driver.h1e[0]), eris_or_driver, the_sites[1], block);
-        gd_sdot = tdfci.compute_obs(psi, sdot_eris);
-        print("Site {:.0f} <Sz> (FCI) = {:.6f}".format(the_sites[1],gd_sdot));       
-        # concurrence between
-        C_ci = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, False);
-        print("C"+str(the_sites)+" = ",C_ci);
-    else:
+    if(True):
         # check gd state
         check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
-        print("Total energy (DMRG) = {:.6f}".format(check_E_dmrg));
+        print("Total energy = {:.6f}".format(check_E_dmrg));
+        impo = eris_or_driver.get_identity_mpo()
+        check_norm = eris_or_driver.expectation(psi, impo, psi)
+        print("WF norm = {:.6f}".format(check_norm));
         # site spins
-        s0_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[0], block);
+        s0_mpo = tddmrg.get_Sdz(eris_or_driver.n_sites, eris_or_driver, the_sites[0]);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
-        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = tddmrg.get_sz(eris_or_driver.n_sites*2, eris_or_driver, the_sites[1], block);
+        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
+        sdot_mpo = tddmrg.get_Sdz(eris_or_driver.n_sites, eris_or_driver, the_sites[1]);
         gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
-        print("Site {:.0f} <Sz> (DMRG) = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
+        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
         # concurrence between 
-        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, True);
-        print("C"+str(the_sites)+" = ",C_dmrg);
+        #C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites);
+        #print("C"+str(the_sites)+" = ",C_dmrg);
 
 def check_ham(H):
     size=len(np.shape(H));
@@ -108,7 +97,7 @@ block_from_fci = False;
 
 # some unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
-mynelec = (myNFM+myNe,0);
+mynelec = (myNe,0);
 my_sites = params["ex_sites"]; # site indices, NOT j or d indices
 
 #### Initialization
@@ -116,6 +105,7 @@ my_sites = params["ex_sites"]; # site indices, NOT j or d indices
 ####
 init_start = time.time();
 
+gdstate_ci_inst, H_eris = None, None; # never do fci
 if(do_dmrg): # dmrg gd state
     
     # init ExprBuilder object with terms that are there for all times
@@ -123,19 +113,9 @@ if(do_dmrg): # dmrg gd state
 
     # add in t<0 terms
     H_driver, H_mpo_initial = tddmrg.Hsuper_polarizer(params, True, (H_driver,H_builder), verbose=verbose);
-    if(block_from_fci):
-        H_mpo_initial = H_driver.get_qc_mpo(h1e=H_1e, g2e=H_2e, ecore=0, iprint=5);
-        print(H_driver.bw)
-        print(H_driver.bw.bs)
-        print(type(H_driver.bw.bs.GeneralMPO()))
-        print(np.shape(H_1e));
-        print(type(H_mpo))
-        print(vars(H_mpo))
-        assert False
         
     # gd state
-    mynroots = 10
-    myNjel = params["Njel"]
+    mynroots = 1
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=mynroots,
                              bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
@@ -169,7 +149,6 @@ else:
 
 init_end = time.time();
 print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
-raise Exception("Stop here!")
 
 #### Observables
 ####
@@ -177,10 +156,9 @@ raise Exception("Stop here!")
 mytime=0;
 
 # plot observables
-if(do_fci): check_observables(my_sites, gdstate_ci_inst, H_eris, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, H_mpo_initial, True,mytime);
+if(do_dmrg): check_observables(my_sites, gdstate_mps_inst, H_driver, H_mpo_initial, mytime);
 plot.snapshot_bench(gdstate_ci_inst, gdstate_mps_inst, H_eris, H_driver,
-        params, json_name, time = mytime, plot_fig=params["plot"]);
+        params, json_name, time = mytime, plot_fig=True);
 
 #### Time evolution
 ####
@@ -191,25 +169,13 @@ time_update = params["t1"];
 time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
 mytime += time_update;
         
-if(do_fci): # FCI dynamics 
-    H_1e_dyn, H_2e_dyn = tddmrg.Hsys_builder(params, False, verbose=verbose);
-    print("H_1e_dyn = ");print(H_1e_dyn[:4*myNL,:4*myNL]);print(H_1e_dyn[4*myNL:4*(myNL+myNFM),4*myNL:4*(myNL+myNFM)]);print(H_1e_dyn[4*(myNL+myNFM):,4*(myNL+myNFM):]); 
-    #assert False # stop here while constructing zigzag
-    H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
-    t1_ci_inst = tdfci.kernel(gdstate_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t1_ci_inst, H_eris_dyn = None, None;
-    
+t1_ci_inst, H_eris_dyn = None, None;    
 if(do_dmrg): # DMRG dynamics
-    H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, True, scratch_dir = json_name, verbose=verbose);
+    H_driver_dyn, H_builder_dyn = tddmrg.Hsuper_builder(params, True, scratch_dir = json_name, verbose=verbose);
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
-    if(block_from_fci):
-        H_mpo_dyn = H_driver.get_qc_mpo(h1e=H_1e_dyn, g2e=H_2e_dyn, ecore=0, iprint=5);
-        assert False
     t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
                     bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=2) # set to two for MMps verbose-1);
     print("\n\n\n**********************\nTime dep mmps should be just above this\n**********************\n\n\n**********************\n\n\n***************************\n\n\n")
-
 else:
     t1_mps_inst, H_driver_dyn = None, None;
 
@@ -217,8 +183,7 @@ evol1_end = time.time();
 print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t1_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -234,17 +199,12 @@ if(do_dmrg): # DMRG dynamics
 else:
     t2_mps_inst = None;
     
-if(do_fci): # FCI dynamics
-    t2_ci_inst = tdfci.kernel(t1_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t2_ci_inst = None;
-
+t2_ci_inst = None;
 evol2_end = time.time();
 print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t2_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -260,17 +220,12 @@ if(do_dmrg): # DMRG dynamics
 else:
     t3_mps_inst = None;
     
-if(do_fci): # FCI dynamics
-    t3_ci_inst = tdfci.kernel(t2_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t3_ci_inst = None;
-    
+t3_ci_inst = None;    
 evol3_end = time.time();
 print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
 
 # observables
-if(do_fci): check_observables(my_sites, t3_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -284,15 +239,10 @@ if(do_dmrg): # DMRG dynamics
                 bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t4_mps_inst = None;
-    
-if(do_fci): # FCI dynamics
-    t4_ci_inst = tdfci.kernel(t3_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t4_ci_inst = None;
-    
+
+t4_ci_inst = None;    
 # observables
-if(do_fci): check_observables(my_sites, t4_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t4_ci_inst, t4_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -307,14 +257,9 @@ if(do_dmrg): # DMRG dynamics
 else:
     t5_mps_inst = None;
     
-if(do_fci): # FCI dynamics
-    t5_ci_inst = tdfci.kernel(t4_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t5_ci_inst = None;
-    
+t5_ci_inst = None;    
 # observables
-if(do_fci): check_observables(my_sites, t5_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t5_ci_inst, t5_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
 
@@ -328,23 +273,12 @@ if(do_dmrg): # DMRG dynamics
                 bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
 else:
     t6_mps_inst = None;
-    
-if(do_fci): # FCI dynamics
-    t6_ci_inst = tdfci.kernel(t5_ci_inst, H_eris_dyn, time_update, time_step);
-else:
-    t6_ci_inst = None;
-    
+
+t6_ci_inst = None;    
 # observables
-if(do_fci): check_observables(my_sites, t6_ci_inst, H_eris_dyn, None, False,mytime);
-if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver_dyn, H_mpo_dyn, True,mytime);
+if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
 plot.snapshot_bench(t6_ci_inst, t6_mps_inst, H_eris_dyn, H_driver_dyn,
                     params, json_name, time=mytime, plot_fig=params["plot"]);
-
-
-
-
-
-
 
 
 
