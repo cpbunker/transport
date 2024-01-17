@@ -13,15 +13,15 @@ params = json.load(open(datafile+".txt"));
 case = int(sys.argv[2]);
 
 # plotting
-obs1, color1, ticks1, linewidth1, fontsize1 = "sz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
+obs1, color1, ticks1, linewidth1, fontsize1 = "Sdz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
 obs2, color2 = "occ_", "cornflowerblue";
 obs3, color3 = "sz_", "darkblue";
 obs4, color4 = "pur_", "gray";
 num_xticks = 4;
 
 if(case in [0]): # standard charge density vs site snapshot
-    from transport import tdfci
-    from transport.tdfci import plot
+    from transport import tddmrg
+    from transport.tddmrg import plot
     tdfci.plot.snapshot_fromdata(datafile, float(sys.argv[3]))
 
 if(case in [1,2]): # observable as a function of time
@@ -49,16 +49,25 @@ if(case in [1,2]): # observable as a function of time
     which_imp = 0+params["NL"];
     yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
-        yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
+        yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
     ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
-    if False:
-        purds_vs_time = np.zeros((len(times),NFM),dtype=float);
+    if False: # plot purity
+        purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
-        ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
+        ax.fill_between(times, (-2)*purds_vs_time[:,which_imp-params["NL"]],color=color4);
+    else: # plot concurrence
+        obs4, color4 = "conc_", "black";
+        dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
+        print(np.shape(dfile))
+        purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        for ti in range(len(times)):
+            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
+        ax.plot(times, purds_vs_time[:,which_imp-params["NL"]],color=color4);
+        print(purds_vs_time[:,which_imp-params["NL"]])
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
@@ -100,7 +109,7 @@ if(case in [3,4]): # observable as a function of time
     Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
     yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
-        yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(times[ti]));
+        yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     yds_summed = np.sum(yds_vs_time, axis=1);
     ax.plot(times,yds_summed,color=color1);
     ax.set_ylabel("$ \Sigma_d \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
@@ -144,8 +153,8 @@ if(case in [10]): # animate time evol
         times[ti] = time0 + ti*tupdate;
 
     # set up impurity spin animation
-    xds = np.load(datafile+"_arrays/"+obs1+"xds_time{:.2f}.npy".format(time0));
-    yds = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(time0));
+    xds = np.load(datafile+"_arrays/"+obs1+"xjs_time{:.2f}.npy".format(time0));
+    yds = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time0));
     impurity_sz, = ax.plot(xds, yds, marker="s", color=color1, markersize=linewidth1**2);
     ax.set_ylabel("$2 \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
     time_annotation = ax.annotate("Time = {:.2f}".format(time0), (0.0,-0.96),fontsize=fontsize1);
@@ -171,7 +180,7 @@ if(case in [10]): # animate time evol
     # time evolve observables
     def time_evolution(time):
         # impurity spin
-        yds_t = 2*np.load(datafile+"_arrays/"+obs1+"yds_time{:.2f}.npy".format(time));
+        yds_t = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time));
         impurity_sz.set_ydata(yds_t);
         time_annotation.set_text("Time = {:.2f}".format(time));
         # charge density
