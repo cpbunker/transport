@@ -41,10 +41,10 @@ def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,the_time):
         check_norm = eris_or_driver.expectation(psi, impo, psi)
         print("WF norm = {:.6f}".format(check_norm));
         # site spins
-        s0_mpo = tddmrg.get_Sdz(eris_or_driver.n_sites, eris_or_driver, the_sites[0]);
+        s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0]);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
         print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = tddmrg.get_Sdz(eris_or_driver.n_sites, eris_or_driver, the_sites[1]);
+        sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1]);
         gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
         print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
         # concurrence between 

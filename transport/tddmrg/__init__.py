@@ -105,12 +105,14 @@ def compute_obs(psi, mpo_inst, driver, conj=False):
     impo = driver.get_identity_mpo();
     return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
 
-def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
+def get_occ(eris_or_driver, whichsite, block=True, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing the occupancy of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((N,N),dtype=float), np.zeros((N,N,N,N),dtype=float);
+    else:
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     if(block):
@@ -124,12 +126,14 @@ def get_occ(N, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+def get_sz(eris_or_driver, whichsite, block=True, verbose=0):
     '''
     Constructs an operator (either MPO or matrix) representing <Sz> of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    else: 
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     if(block):
@@ -143,167 +147,65 @@ def get_sz(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_Sdz(Nspinorbs, eris_or_driver, whichsite, verbose=0):
+def get_Sd_mu(eris_or_driver, whichsite, component="z", verbose=0):
     '''
     Constructs an MPO representing <Sz> of site impurity at site whichsite
     '''
     builder = eris_or_driver.expr_builder()
 
     # construct
-    builder.add_term("Z",[whichsite], 1.0);
+    if(component=="z"):
+        builder.add_term("Z",[whichsite], 1.0);
+    elif(component=="x01"):
+        builder.add_term("P",[whichsite], 1.0);
+    elif(component=="x10"):
+        builder.add_term("M",[whichsite], 1.0);
+    elif(component=="y01"):
+        builder.add_term("M",[whichsite], complex(0,-1));
+    elif(component=="y10"):
+        builder.add_term("M",[whichsite], complex(0,1));
+    else: raise NotImplementedError;
 
     return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
 
-def get_sx01(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
+def purity_wrapper(psi,eris_or_driver, whichsite):
     '''
-    Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
+    Need to combine ops for x,y,z components of Sd to get purity
     '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
+    components = ["x01","x10","y01","y10","z"];
+    sterms = [];
+    for comp in components:
+        op = get_Sd_mu(eris_or_driver, whichsite, component=comp);
+        sterms.append( compute_obs(psi, op, eris_or_driver));
+    purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
+    ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    return np.real(ret);
 
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cD",[whichsite,whichsite], 0.5);
-    else:
-        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += 0.5;
-        
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
-
-def get_sx10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or matrix) representing <Sx> of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("Cd",[whichsite,whichsite],0.5);
-    else:
-        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += 0.5;
-        
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
-
-def get_sy01(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or matrix) representing <Sy> of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cD",[whichsite,whichsite], complex(0,-0.5));
-    else:
-        h1e[nloc*whichsite+spin_inds[0],nloc*whichsite+spin_inds[1]] += complex(0,-0.5);
-        
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
-
-def get_sy10(Nspinorbs, eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or matrix) representing <Sy> of site whichsite
-    '''
-    spin_inds=[0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("Cd",[whichsite,whichsite],complex(0,0.5));
-    else:
-        h1e[nloc*whichsite+spin_inds[1],nloc*whichsite+spin_inds[0]] += complex(0,0.5);
-        
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e3);
-
-def get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, symm_block, verbose=0):
+def get_concurrence(eris_or_driver, whichsites, symm_block, verbose=0):
     '''
     '''
-    spin_inds = [0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-
-    # return objects
-    if(block): builder = eris_or_driver.expr_builder()
-    else: h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    builder = eris_or_driver.expr_builder()
 
     # construct
     which1, which2 = whichsites;
-    if(block):
-        if(symm_block == 2):
-            builder.add_term("cDcD",[which1,which1,which2,which2],-1.0);
-        elif(symm_block == 0):
-            builder.add_term("cDCd",[which1,which1,which2,which2], 1.0);
-            builder.add_term("CdcD",[which1,which1,which2,which2], 1.0);
-        elif(symm_block ==-2):
-            builder.add_term("CdCd",[which1,which1,which2,which2],-1.0);
-        else: raise NotImplementedError;
-    else:
-        if(symm_block == 2):
-            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += -1.0;
-            #
-            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += -1.0;
-        elif(symm_block == 0):
-            g2e[nloc*which1+spin_inds[0],nloc*which1+spin_inds[1],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += 1.0;
-            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[0],nloc*which2+spin_inds[1]] += 1.0;
-            #
-            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[0],nloc*which1+spin_inds[1]] += 1.0;
-            g2e[nloc*which2+spin_inds[0],nloc*which2+spin_inds[1],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += 1.0;
-        elif(symm_block ==-2):
-            g2e[nloc*which1+spin_inds[1],nloc*which1+spin_inds[0],nloc*which2+spin_inds[1],nloc*which2+spin_inds[0]] += -1.0;
-            #
-            g2e[nloc*which2+spin_inds[1],nloc*which2+spin_inds[0],nloc*which1+spin_inds[1],nloc*which1+spin_inds[0]] += -1.0;
-        else: raise NotImplementedError;
+    if(symm_block == 2):
+        builder.add_term("PP",[which1,which2],-1.0);
+    elif(symm_block == 0):
+        builder.add_term("PM",[which1,which2], 1.0);
+        builder.add_term("MP",[which1,which2], 1.0);
+    elif(symm_block ==-2):
+        builder.add_term("MM",[which1,which2],-1.0);
+    else: raise NotImplementedError;
 
     # return
-    if(block):
-        mpo_from_builder = eris_or_driver.get_mpo(builder.finalize(),add_ident=False, iprint=verbose);
-        return mpo_from_builder;
-    else:
-        occ_eri = tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-        return occ_eri;
+    return eris_or_driver.get_mpo(builder.finalize(),add_ident=False, iprint=verbose);
 
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
+def concurrence_wrapper(psi,eris_or_driver, whichsites):
     '''
     Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
     to get concurrence
     '''
-    # unpack
-    spin_inds = [0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-    if(block): Nspinorbs = eris_or_driver.n_sites*2;
-    else: Nspinorbs = len(eris_or_driver.h1e[0]);
-    which1, which2 = whichsites;
-
-    # not implemented for FCI
-    if(not block): return np.nan;
 
     # block3 MPS
     from pyblock3.block2.io import MPSTools, MPOTools
@@ -314,36 +216,11 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     sblocks = [-2,0,2];
     sterms = [];
     for sblock in sblocks:
-        concur_mpo = get_concurrence(Nspinorbs, eris_or_driver, whichsites, block, sblock);
+        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock);
         concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
-    return np.real(ret);
-
-def purity_wrapper(psi,eris_or_driver, whichsites, block):
-    '''
-    Need to combine ops for Sx, Sy, Sz to get purity
-    '''
-    # unpack
-    spin_inds = [0,1];
-    spin_strs = ["cd","CD"];
-    nloc = len(spin_strs);
-    if(block): Nspinorbs = eris_or_driver.n_sites*2;
-    else: Nspinorbs = len(eris_or_driver.h1e[0]);
-    whichsite = whichsites[0];
-
-    # not implemented for FCI
-    if(not block): return np.nan;
-
-    # exp vals across symmetry blocks
-    sblocks = [get_sx01, get_sx10, get_sy01, get_sy10, get_sz];
-    sterms = [];
-    for sblock in sblocks:
-        op = sblock(Nspinorbs, eris_or_driver, whichsite, block);
-        sterms.append( compute_obs(psi, op, eris_or_driver));
-    purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
 
@@ -905,12 +782,7 @@ def Hsuper_polarizer(params_dict, block, to_add_to, verbose=0):
 
     # return
     if(block):
-        from pyblock2.driver.core import MPOAlgorithmTypes
-        #mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True,fermionic_ops="cdCD"),  algo_type=MPOAlgorithmTypes.FastBipartite);
-        mpo_from_builder = driver.get_mpo(builder.finalize(),  algo_type=MPOAlgorithmTypes.FastBipartite);
-        # in Huanchen's example, he uses passes
-        # adjust_order=True, fermionic_ops="cdCD" to finalize
-        # but I need to update block2 before I can do this
+        mpo_from_builder = driver.get_mpo(builder.finalize());
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;

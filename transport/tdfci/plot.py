@@ -16,26 +16,21 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 def vs_site(js,psi,eris_or_driver,block,which_obs):
     '''
     '''
-    
-    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sdz, 
-            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper,
-            "sx01_":tddmrg.get_sx01, "sx10_":tddmrg.get_sx10}
-    if(which_obs not in obs_funcs.keys()): raise ValueError;
-
+    obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sd_mu, 
+            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper};
     # site array
     if(block): Nspinorbs = eris_or_driver.n_sites;
     else: Nspinorbs = len(eris_or_driver.h1e[0]);
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs in ["conc_","pur_"]): # since concur = C(d,d+1), we cannot compute C for the final d site. Just leave it as 0.0
-            if(ji!=len(js)-1): # for simplicity, also apply this to the purity. even though we could compute it, Feiguin never does so we don't need to
-                vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
+        if(which_obs in ["conc_"]): 
+            if(ji!=len(js)-1): vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]]);
+            else: vals[ji] = np.nan; # since concur = C(d,d+1), we cannot compute C for the final d site.
+        elif(which_obs in ["pur_"]):
+            vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji]);
         else:
-            op = obs_funcs[which_obs](Nspinorbs,eris_or_driver,js[ji],block);
-            if(block):
-                vals[ji] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
-            else:
-                vals[ji] = np.real(tdfci.compute_obs(psi, op));
+            op = obs_funcs[which_obs](eris_or_driver,js[ji]);
+            vals[ji] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
 
     return js, vals;
 
@@ -54,13 +49,13 @@ def snapshot_bench(psi_ci, psi_mps, eris_inst, driver_inst, params_dict, savenam
     all_sites = np.array([j for j in range(Nsites)]);
 
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_","Sdz_"]#,"conc_","pur_"];
-    ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$C_{j,j+1}$","$|\mathbf{S}_j|$"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[1.0,0.0],[0.5,0.0]];
+    obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
+    ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$|\mathbf{S}_j|$","$C_{j,j+1}$"];
+    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_mps is not None): # with dmrg
-        C_dmrg =np.nan# tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites, True);
+        C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites);
         for obsi in range(len(obs_strs)):
             if(obs_strs[obsi] not in ["Sdz_","conc_","pur_"]): js_pass = all_sites;
             else: js_pass = central_sites;
