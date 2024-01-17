@@ -22,7 +22,7 @@ num_xticks = 4;
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
     from transport.tddmrg import plot
-    tdfci.plot.snapshot_fromdata(datafile, float(sys.argv[3]))
+    tddmrg.plot.snapshot_fromdata(datafile, float(sys.argv[3]))
 
 if(case in [1,2]): # observable as a function of time
 
@@ -46,28 +46,28 @@ if(case in [1,2]): # observable as a function of time
 
     # impurity spin vs time
     Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
-    which_imp = 0+params["NL"];
-    yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
+    which_imp = 0;
+    yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
     ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
-    if False: # plot purity
+    if True: # plot purity
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
-            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
-        ax.fill_between(times, (-2)*purds_vs_time[:,which_imp-params["NL"]],color=color4);
+            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+        ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
     else: # plot concurrence
         obs4, color4 = "conc_", "black";
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
         print(np.shape(dfile))
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
-            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yds_time{:.2f}.npy".format(times[ti]));
-        ax.plot(times, purds_vs_time[:,which_imp-params["NL"]],color=color4);
-        print(purds_vs_time[:,which_imp-params["NL"]])
+            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+        ax.plot(times, purds_vs_time[:,which_imp],color=color4);
+        print(purds_vs_time[:,which_imp])
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
@@ -107,7 +107,7 @@ if(case in [3,4]): # observable as a function of time
 
     # SUMMED impurity spins vs time
     Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
-    yds_vs_time = np.zeros((len(times),Nsites),dtype=float);
+    yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     yds_summed = np.sum(yds_vs_time, axis=1);

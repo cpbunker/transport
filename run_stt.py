@@ -38,7 +38,7 @@ def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,the_time):
     '''
     Print update on selected observables
     '''
-    print("Time = {:.2f}".format(the_time));
+    print("\nTime = {:.2f}".format(the_time));
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
     print("Total energy = {:.6f}".format(check_E_dmrg));
@@ -104,7 +104,7 @@ myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"
 
 # checks
 my_sites = params["ex_sites"]; # j indices
-for j in mysites: assert(j in np.arange(NL,NL+NFM)); # must be FM sites or conc will fail
+for j in my_sites: assert(j in np.arange(myNL,myNL+myNFM)); # must be FM sites or conc will fail
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
 myTwoSz = params["TwoSz"];
@@ -120,10 +120,10 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.Hsys_builder(params, True, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+H_driver, H_builder = tddmrg.Hsys_builder(params, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, True, (H_driver,H_builder), verbose=verbose);
+H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, (H_driver,H_builder), verbose=verbose);
     
 # gd state
 gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
@@ -143,7 +143,7 @@ if False:
     assert False
 
 init_end = time.time();
-print(">>> Init compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(init_end-init_start));
+print(">>> Init compute time = "+str(init_end-init_start));
 
 #### Observables
 ####
@@ -162,131 +162,5 @@ H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, scratch_dir=json_name,
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
 time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn,
                   gdstate_mps_inst,json_name,verbose=2) # set to 2 to see mmps
-assert False
-
-
-
-
-
-
-
-
-evol1_start = time.time();
-time_step = params["time_step"];
-time_update = params["t1"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-        
-t1_ci_inst, H_eris_dyn = None, None;    
-if(do_dmrg): # DMRG dynamics
-    H_driver_dyn, H_builder_dyn = tddmrg.Hsuper_builder(params, True, scratch_dir = json_name, verbose=verbose);
-    H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
-    t1_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, gdstate_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                    bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=2) # set to two for MMps verbose-1);
-    print("\n\n\n**********************\nTime dep mmps should be just above this\n**********************\n\n\n**********************\n\n\n***************************\n\n\n")
-else:
-    t1_mps_inst, H_driver_dyn = None, None;
-
-evol1_end = time.time();
-print(">>> Evol1 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol1_end-evol1_start));
-
-# observables
-if(do_dmrg): check_observables(my_sites, t1_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t1_ci_inst, t1_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
-# time evol 2nd time
-evol2_start = time.time();
-time_update = params["t2"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-
-if(do_dmrg): # DMRG dynamics
-    t2_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t1_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
-else:
-    t2_mps_inst = None;
-    
-t2_ci_inst = None;
-evol2_end = time.time();
-print(">>> Evol2 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol2_end-evol2_start));
-
-# observables
-if(do_dmrg): check_observables(my_sites, t2_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t2_ci_inst, t2_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
-# time evol 3rd time
-evol3_start = time.time();
-time_update = params["t3"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-
-if(do_dmrg): # DMRG dynamics
-    t3_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t2_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
-else:
-    t3_mps_inst = None;
-    
-t3_ci_inst = None;    
-evol3_end = time.time();
-print(">>> Evol3 compute time (FCI = "+str(do_fci)+", DMRG="+str(do_dmrg)+") = "+str(evol3_end-evol3_start));
-
-# observables
-if(do_dmrg): check_observables(my_sites, t3_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t3_ci_inst, t3_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
-# time evol 4th time
-time_update = params["t4"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-
-if(do_dmrg): # DMRG dynamics
-    t4_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t3_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
-else:
-    t4_mps_inst = None;
-
-t4_ci_inst = None;    
-# observables
-if(do_dmrg): check_observables(my_sites, t4_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t4_ci_inst, t4_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
-# time evol 5th time
-time_update = params["t5"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-
-if(do_dmrg): # DMRG dynamics
-    t5_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t4_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
-else:
-    t5_mps_inst = None;
-    
-t5_ci_inst = None;    
-# observables
-if(do_dmrg): check_observables(my_sites, t5_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t5_ci_inst, t5_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
-# time evol 6th time
-time_update = params["t6"];
-time_update = time_step*int(abs(time_update/time_step) + 0.1); # round to discrete # time steps
-mytime += time_update;
-
-if(do_dmrg): # DMRG dynamics
-    t6_mps_inst = H_driver_dyn.td_dmrg(H_mpo_dyn, t5_mps_inst, delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params["bdim_t"], cutoff=params["cutoff"], te_type=params["te_type"], iprint=0);
-else:
-    t6_mps_inst = None;
-
-t6_ci_inst = None;    
-# observables
-if(do_dmrg): check_observables(my_sites, t6_mps_inst, H_driver_dyn, H_mpo_dyn, mytime);
-plot.snapshot_bench(t6_ci_inst, t6_mps_inst, H_eris_dyn, H_driver_dyn,
-                    params, json_name, time=mytime, plot_fig=params["plot"]);
-
 
 

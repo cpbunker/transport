@@ -203,9 +203,14 @@ def get_concurrence(eris_or_driver, whichsites, symm_block, verbose=0):
 
 def concurrence_wrapper(psi,eris_or_driver, whichsites):
     '''
-    Need to combine operators from TwoSz=+2, 0, -2 symmetry blocks
-    to get concurrence
+    Sums ops made by get_concurrence from TwoSz=+2, 0, -2 symmetry blocks to find concurrence
+
+    NB since get_concurrence ops are def'd in terms of P,M,Z operators, cannot get
+    concurrence between two fermionic spins or between fermionic spin and imp spin
+
+    NB also for s>1/2 we will need to define which levels are the qubits
     '''
+    if(whichsites[0] == whichsites[1]): return np.nan;
 
     # block3 MPS
     from pyblock3.block2.io import MPSTools, MPOTools
@@ -242,7 +247,7 @@ def reblock(mat):
                     new_mat[ini,inj,outi,outj] = mat[outi,outj,ini,inj];
     return utils.mat_4d_to_2d(new_mat);
 
-def Hsys_builder(params_dict, block, scratch_dir="tmp", verbose=0):
+def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
     '''
     Builds the parts of the Hamiltonian which apply at all t
     The physical params are contained in a .json file. They are all in eV.

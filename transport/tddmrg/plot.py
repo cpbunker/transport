@@ -35,7 +35,6 @@ def vs_site(js,psi,eris_or_driver,which_obs):
 def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
     '''
     '''
-    if(psi_ci is None and psi_mps is None): return;
 
     # unpack
     concur_sites = params_dict["ex_sites"];
@@ -79,7 +78,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
     if(plot_fig): plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
-        plt.savefig(savename[:-4]+"_time{:.2f}.pdf".format(time));
+        plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
     plt.close(); # keeps figure from being stored in memory
 
 def snapshot_fromdata(loadname, time):
