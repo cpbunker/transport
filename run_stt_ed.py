@@ -83,10 +83,11 @@ np.set_printoptions(precision = 2, suppress = True);
 verbose = 1;
 case = sys.argv[1];
 
-if(case == "Ne1"): # 5 site TB problem
+if(case == "Ne1"): # 1 electron, 1D TB problem
 
     # physical parameters
-    L = 5; # num sites
+    L = 20; # num sites
+    Nconf = 2; # initial sites
     tl = 1.0;
 
     # hamiltonian
@@ -96,21 +97,26 @@ if(case == "Ne1"): # 5 site TB problem
         H[i+1,i] += -tl;
 
     # occ op
-    occ_op_kwarg = np.array([np.diagflat([1,0,0,0,0]),
-                             np.diagflat([0,1,0,0,0]),
-                             np.diagflat([0,0,1,0,0]),
-                             np.diagflat([0,0,0,1,0]),
-                             np.diagflat([0,0,0,0,1])]);
+    occ_op_kwarg = [];
+    for sitei in range(L):
+        nj = np.zeros_like(H);
+        nj[sitei,sitei] = 1.0;
+        occ_op_kwarg.append(nj);
+    occ_op_kwarg = np.array(occ_op_kwarg);
 
+    # sz op
     sz_op_kwarg = 0.5*np.copy(occ_op_kwarg) # wrong but I am lazy and doing spinless
 
     # run
-    psii = np.array([1.0,0,0,0,0]);
+    psii = np.zeros((L,),dtype=float);
+    for sitei in range(Nconf):
+        psii[sitei] = 1;
+    psii = psii/np.sqrt(np.dot(np.conj(psii),psii)); # normalize
     print(">>> H =\n",H);
     print(">>> psii = ",psii);
-    my_sites = [0,1]; # sites to print out
+    my_sites = np.arange(L); # sites to print out
     my_interval = 1.0; # how often to plot/printout
-    my_updates = 2; # number of time interval repetitions
+    my_updates = 20; # number of time interval repetitions
     main(H,L,psii,my_interval,my_updates,my_sites);
 
 elif(case=="Heisenberg_sd"): # 2 impurity SWAP
@@ -171,16 +177,19 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
                         [0, 0, 0, 0, 0, 0, 0,1]]);
 
     # Hamiltonian (4d)
-    H_4d =    np.array([[squar_H,trian_H,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [trian_H,squar_H,trian_H,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,trian_H,squar_H,trian_H,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,trian_H,squar_H,trian_H,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,trian_H,star_j1,trian_H,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,trian_H,star_j2,trian_H,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,trian_H,squar_H,trian_H,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,trian_H,squar_H,trian_H,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,trian_H,squar_H,trian_H],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,trian_H,squar_H]]);
+    H_4d = np.zeros((L,L,n_loc_dof,n_loc_dof),dtype=float);
+    for sitei in range(L):
+        # off diagonal
+        if(sitei < L-1):
+            H_4d[sitei,sitei+1] = np.copy(trian_H);
+            H_4d[sitei+1,sitei] = np.copy(trian_H);
+        # diagonal
+        if(sitei==jds[0]):
+            H_4d[sitei,sitei] += np.copy(star_j1);
+        if(sitei==jds[1]):
+            H_4d[sitei,sitei] += np.copy(star_j2);
+        if(sitei not in jds): # ie overall else
+            H_4d[sitei,sitei] += np.copy(squar_H);
 
     # impurity spin operators (4d)
     star_z1 = (1/2)*np.array([[1, 0, 0, 0, 0, 0, 0, 0],
@@ -191,16 +200,9 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
                         [0, 0, 0, 0, 0, 1, 0, 0],
                         [0, 0, 0, 0, 0, 0,-1, 0],
                         [0, 0, 0, 0, 0, 0, 0,-1]]);
-    Sz1_4d =  np.array([[star_z1,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,star_z1,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,star_z1,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,star_z1,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,star_z1,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,star_z1,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z1,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z1,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z1,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z1]]);
+    Sz1_4d = np.zeros_like(H_4d);
+    for sitei in range(L):
+        Sz1_4d[sitei,sitei] = np.copy(star_z1);
     star_z2 = (1/2)*np.array([[1, 0, 0, 0, 0, 0, 0, 0],
                         [0,-1, 0, 0, 0, 0, 0, 0],
                         [0, 0, 1, 0, 0, 0, 0, 0],
@@ -209,57 +211,37 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
                         [0, 0, 0, 0, 0,-1, 0, 0],
                         [0, 0, 0, 0, 0, 0, 1, 0],
                         [0, 0, 0, 0, 0, 0, 0,-1]]);
-    Sz2_4d =  np.array([[star_z2,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,star_z2,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,star_z2,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,star_z2,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,star_z2,shape_0,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,star_z2,shape_0,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z2,shape_0,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z2,shape_0,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z2,shape_0],
-                        [shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,shape_0,star_z2]]);
+    Sz2_4d = np.zeros_like(H_4d);
+    for sitei in range(L):
+        Sz2_4d[sitei,sitei] = np.copy(star_z2);
 
-    # site occ operators (4d)
-    nj0_4d = np.zeros_like(Sz1_4d);
-    nj0_4d[0,0] = np.eye(n_loc_dof);
-    nj1_4d = np.zeros_like(Sz1_4d);
-    nj1_4d[1,1] = np.eye(n_loc_dof);
-    nj7_4d = np.zeros_like(Sz1_4d);
-    nj7_4d[7,7] = np.eye(n_loc_dof);
-    nj8_4d = np.zeros_like(Sz1_4d);
-    nj8_4d[8,8] = np.eye(n_loc_dof);
-    
-    # convert all to 2d
-    H = utils.mat_4d_to_2d(H_4d);
-    # we need sites 0,1,4,5,7,8
-    zero_filler = utils.mat_4d_to_2d(np.zeros_like(Sz1_4d));
-    sz_op_kwarg = np.array([zero_filler,zero_filler,utils.mat_4d_to_2d(Sz1_4d),utils.mat_4d_to_2d(Sz2_4d),zero_filler,zero_filler]);
-    occ_op_kwarg = np.array([utils.mat_4d_to_2d(nj0_4d),utils.mat_4d_to_2d(nj1_4d),zero_filler,zero_filler,utils.mat_4d_to_2d(nj7_4d),utils.mat_4d_to_2d(nj8_4d)]);
-
-    # treat j/d as same
+    # site occ operators, listed
     occ_op_kwarg = [];
-    sz_op_kwarg = [];
-    for jdindex in range(L):
-        nj_4d = np.zeros_like(Sz1_4d);
-        nj_4d[jdindex,jdindex] = np.eye(n_loc_dof);
+    for sitei in range(L):
+        nj_4d = np.zeros_like(H_4d);
+        nj_4d[sitei,sitei] = np.eye(n_loc_dof);
         occ_op_kwarg.append(utils.mat_4d_to_2d(nj_4d));
-        szd_4d = np.zeros_like(Sz1_4d);
-        if(jdindex == 4):
-            szd_4d = np.copy(Sz1_4d);
-        elif(jdindex == 5):
-            szd_4d = np.copy(Sz2_4d);
-        sz_op_kwarg.append(utils.mat_4d_to_2d(szd_4d));
+    occ_op_kwarg = np.array(occ_op_kwarg);
     
-
+    # Sd spin operators, listed
+    sz_op_kwarg = [];
+    for sitei in range(L):
+        if(sitei==jds[0]):
+            sz_op_kwarg.append(utils.mat_4d_to_2d(Sz1_4d));
+        elif(sitei==jds[1]): # this elif will NOT execute if jds[0]==jds[1] eg Eric
+            sz_op_kwarg.append(utils.mat_4d_to_2d(Sz2_4d));
+        else:
+            sz_op_kwarg.append(utils.mat_4d_to_2d(np.zeros_like(Sz1_4d)));
+    
     # run
     psii = np.zeros((L*n_loc_dof,),dtype=float);
-    psii[3] = 1.0 #4.95864938e-01 # j=0, Sze=up, Sz1=Sz2=down
-    psii[3+n_loc_dof] = 1.0 #5.03992770e-01  # j=1, Sze=up, Sz1=Sz2=down
-    psii = psii/np.sqrt(np.dot(np.conj(psii),psii));
-    print(">>> H =\n",H);
+    psii[3] = 0.495835 # j=0, Sze=up, Sz1=Sz2=down
+    psii[3+n_loc_dof] = 0.504030  # j=1, Sze=up, Sz1=Sz2=down
+    psii[3+2*n_loc_dof] = 0.000135 # j=2, Sze=up, Sz1=Sz2=down
+    psii = psii/np.sqrt(np.dot(np.conj(psii),psii)); # normalize
+    print(">>> H =\n",H_4d);
     print(">>> psii = ",psii);
     my_sites = np.arange(0,len(sz_op_kwarg));
     my_interval = 3.0; # how often to plot/printout
     my_updates = 2; # number of time interval repetitions
-    main(H,len(sz_op_kwarg),psii,my_interval,my_updates,my_sites);
+    main(utils.mat_4d_to_2d(H_4d),len(sz_op_kwarg),psii,my_interval,my_updates,my_sites);

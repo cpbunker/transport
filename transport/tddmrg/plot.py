@@ -52,14 +52,13 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
 
     if(psi_mps is not None): # with dmrg
-        C_dmrg = tddmrg.concurrence_wrapper(psi_mps, driver_inst, concur_sites);
         for obsi in range(len(obs_strs)):
             if(obs_strs[obsi] not in ["Sdz_","conc_","pur_"]): js_pass = all_sites;
             else: js_pass = central_sites;
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi]);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
-                               label = ("DMRG ($C"+str(concur_sites)+"=${:.2f})").format(C_dmrg));
-            
+                               label = ("DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])));
+            print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
             # save DMRG data
             if(not plot_fig):
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
@@ -78,7 +77,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
     if(plot_fig): plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
-        plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
+        #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
     plt.close(); # keeps figure from being stored in memory
 
 def snapshot_fromdata(loadname, time):

@@ -10,6 +10,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 from transport import tdfci
 from transport.tdfci import utils
 from pyblock2.driver import core
+from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
 
     
@@ -213,7 +214,6 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites):
     if(whichsites[0] == whichsites[1]): return np.nan;
 
     # block3 MPS
-    from pyblock3.block2.io import MPSTools, MPOTools
     psi_b3 = MPSTools.from_block2(psi); #  block 3 mps
     psi_star = psi_b3.conj(); # so now we can do this operation
 
@@ -351,7 +351,6 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
                    "C":np.copy(squar_C), # c_down^\dagger
                    "D":np.copy(squar_D)} # c_down
         elif(sitei in central_sites): # has fermion AND impurity dofs
-            #assert False
             states = [];
             nelec_dofs, spin_dofs = [0,1,1,2], [0,1,-1,0];
             qnumber_degens = {};
@@ -409,8 +408,8 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
     # sd exchange between impurities and charge density on their site
     for j in central_sites:
         # z terms
-        builder.add_term("cdZ",[j,j,j],-Jsd);
-        builder.add_term("CDZ",[j,j,j], Jsd);
+        builder.add_term("cdZ",[j,j,j],-Jsd/2);
+        builder.add_term("CDZ",[j,j,j], Jsd/2);
         # plus minus terms
         builder.add_term("cDM",[j,j,j],-Jsd/2);
         builder.add_term("CdP",[j,j,j],-Jsd/2);

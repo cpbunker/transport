@@ -45,16 +45,17 @@ def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,the_time):
     impo = eris_or_driver.get_identity_mpo()
     check_norm = eris_or_driver.expectation(psi, impo, psi)
     print("WF norm = {:.6f}".format(check_norm));
-    # site spins
-    s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0]);
-    gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
-    print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-    sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1]);
-    gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
-    print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
-    # concurrence between 
-    C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites);
-    print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
+    if(the_sites):
+        # site spins
+        s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0]);
+        gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
+        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
+        sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1]);
+        gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
+        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
+        # concurrence between 
+        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites);
+        print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
 
 def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbose=0):
     '''

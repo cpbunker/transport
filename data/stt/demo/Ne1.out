@@ -1,0 +1,613 @@
+#### SLURM ####
+pwd: 
+/blue/m2qm-efrc/cpbunker/GitHub/transport
+host: 
+c0703a-s1.ufhpc
+# conda environments:
+#
+base                     /apps/conda/23.3.1
+block2                *  /blue/m2qm-efrc/cpbunker/condaenvs/block2
+plot                     /blue/m2qm-efrc/cpbunker/condaenvs/plot
+
+#### PYTHON ####
+start time: 
+Fri Jan 19 16:04:50 EST 2024
+
+>>> PWD:  /blue/m2qm-efrc/cpbunker/GitHub/transport
+>>> Params =  {'tl': 1.0, 'Vconf': 10.0, 'Be': 100.0, 'BFM': -100.0, 'Jz': 0.0, 'Jx': 0.0, 'Jsd': 0.0, 'NL': 4, 'NFM': 2, 'NR': 4, 'Nconf': 2, 'Ne': 1, 'TwoSz': -1, 'TwoSd': 1, 'symmetry': 'Sz', 'ex_sites': [4, 5], 'plot': 0, 'bdim_0': [60, 70, 80, 90, 90], 'bdim_t': [100], 'noises': [0.01, 0.001, 0.0001, 1e-05, 0.0], 'dmrg_sweeps': 20, 'cutoff': -1.0, 'te_type': 'rk4', 'time_step': 0.1, 'tupdate': 1.0, 'Nupdates': 6}
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+Environment initialization | Nsites =    10 | Center =     0
+ INIT-R <-- Site =    7 ..  Bmem =   256 B Rmem =   256 B T = 1.08
+ INIT-R <-- Site =    6 ..  Bmem = 3.19 KB Rmem = 3.19 KB T = 0.82
+ INIT-R <-- Site =    5 ..  Bmem = 37.5 KB Rmem = 37.5 KB T = 0.00
+ INIT-R <-- Site =    4 ..  Bmem =  475 KB Rmem = 30.9 KB T = 0.73
+ INIT-R <-- Site =    3 ..  Bmem = 1.41 MB Rmem = 26.4 KB T = 0.01
+ INIT-R <-- Site =    2 ..  Bmem = 1.38 MB Rmem = 25.5 KB T = 0.27
+ INIT-R <-- Site =    1 ..  Bmem =  378 KB Rmem = 25.0 KB T = 0.01
+ INIT-R <-- Site =    0 ..  Bmem =  372 KB Rmem = 27.4 KB T = 0.00
+Time init sweep =        2.934 | MaxBmem = 1.41 MB | MaxRmem = 26.4 KB
+ | Tread = 0.000 | Twrite = 0.956 | Tfpread = 0.000 | Tfpwrite = 0.056 | data = 176 KB | cpsd = 117 KB | Tasync = 0.000
+
+
+Sweep =    0 | Direction =  forward | Bond dimension =   60 | Noise =  1.00e-02 | Dav threshold =  1.00e-06
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   5 E =   -161.0002245664 Error = 0.00e+00 FLOPS = 3.51e+02 Tdav = 0.74 T = 2.13
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   4 E =   -161.0082295577 Error = 0.00e+00 FLOPS = 4.17e+03 Tdav = 0.08 T = 0.38
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   2 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.24e+04 Tdav = 0.02 T = 0.16
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.24e+06 Tdav = 0.00 T = 0.09
+ --> Site =    4-   5 .. Mmps =   17 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 3.66e+06 Tdav = 0.00 T = 0.01
+ --> Site =    5-   6 .. Mmps =   21 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.05e+06 Tdav = 0.00 T = 0.61
+ --> Site =    6-   7 .. Mmps =   24 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 8.89e+04 Tdav = 0.02 T = 1.21
+ --> Site =    7-   8 .. Mmps =   27 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.94e+06 Tdav = 0.00 T = 0.68
+ --> Site =    8-   9 .. Mmps =   30 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.79e+06 Tdav = 0.00 T = 0.93
+Time elapsed =      6.228 | E =    -161.0082314190 | DW = 0.00e+00
+Time sweep =        6.228 | 6.70 KFLOP/SWP
+ | Dmem = 38.4 KB (2%) | Imem = 84.0 KB (87%) | Hmem = 1.45 MB | Wmem = 480 B | Pmem = 5.83 KB
+ | Tread = 0.178 | Twrite = 0.301 | Tfpread = 0.013 | Tfpwrite = 0.009 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 79.8 KB | cpsd = 20.9 KB
+ | Trot = 0.009 | Tctr = 0.030 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.246 | Tdiag = 0.297 | Tinfo = 0.163
+ | Teff = 0.872 | Tprt = 1.363 | Teig = 0.889 | Tblk = 5.698 | Tmve = 0.508 | Tdm = 0.061 | Tsplt = 0.452 | Tsvd = 0.000 | Torth = 0.001
+
+Sweep =    1 | Direction = backward | Bond dimension =   70 | Noise =  1.00e-03 | Dav threshold =  1.00e-06
+ <-- Site =    8-   9 .. Mmps =    3 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.65e+04 Tdav = 0.01 T = 0.64
+ <-- Site =    7-   8 .. Mmps =    5 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.12e+07 Tdav = 0.00 T = 0.26
+ <-- Site =    6-   7 .. Mmps =    7 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 8.99e+06 Tdav = 0.00 T = 0.57
+ <-- Site =    5-   6 .. Mmps =    9 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 8.31e+06 Tdav = 0.00 T = 0.11
+ <-- Site =    4-   5 .. Mmps =   17 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.82e+06 Tdav = 0.00 T = 0.51
+ <-- Site =    3-   4 .. Mmps =   21 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 7.33e+06 Tdav = 0.00 T = 0.20
+ <-- Site =    2-   3 .. Mmps =   24 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.03e+07 Tdav = 0.00 T = 1.48
+ <-- Site =    1-   2 .. Mmps =   27 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 3.12e+06 Tdav = 0.00 T = 0.27
+ <-- Site =    0-   1 .. Mmps =   30 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.21e+07 Tdav = 0.00 T = 0.50
+Time elapsed =     10.786 | E =    -161.0082314190 | DE = -2.84e-14 | DW = 0.00e+00
+Time sweep =        4.558 | 11.9 KFLOP/SWP
+ | Dmem = 30.4 KB (3%) | Imem = 7.18 KB (97%) | Hmem = 209 KB | Wmem = 480 B | Pmem = 5.77 KB
+ | Tread = 0.211 | Twrite = 0.206 | Tfpread = 0.016 | Tfpwrite = 0.017 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 79.8 KB | cpsd = 20.6 KB
+ | Trot = 0.033 | Tctr = 0.017 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.008 | Tdiag = 0.015 | Tinfo = 0.170
+ | Teff = 0.654 | Tprt = 0.778 | Teig = 0.016 | Tblk = 3.987 | Tmve = 0.545 | Tdm = 0.000 | Tsplt = 0.005 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    2 | Direction =  forward | Bond dimension =   80 | Noise =  1.00e-04 | Dav threshold =  1.00e-06
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.06e+05 Tdav = 0.02 T = 0.20
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.81e+06 Tdav = 0.00 T = 0.12
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.54e+06 Tdav = 0.00 T = 0.22
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 8.26e+06 Tdav = 0.00 T = 0.07
+ --> Site =    4-   5 .. Mmps =   17 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.87e+06 Tdav = 0.00 T = 0.33
+ --> Site =    5-   6 .. Mmps =   21 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.37e+06 Tdav = 0.00 T = 0.67
+ --> Site =    6-   7 .. Mmps =   24 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 9.32e+04 Tdav = 0.01 T = 0.48
+ --> Site =    7-   8 .. Mmps =   27 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.12e+07 Tdav = 0.00 T = 0.01
+ --> Site =    8-   9 .. Mmps =   30 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.16e+06 Tdav = 0.00 T = 0.11
+Time elapsed =     13.000 | E =    -161.0082314190 | DE = 5.68e-14 | DW = 0.00e+00
+Time sweep =        2.215 | 11.9 KFLOP/SWP
+ | Dmem = 30.4 KB (3%) | Imem = 7.18 KB (97%) | Hmem = 209 KB | Wmem = 480 B | Pmem = 5.77 KB
+ | Tread = 0.154 | Twrite = 0.180 | Tfpread = 0.017 | Tfpwrite = 0.009 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 79.8 KB | cpsd = 20.8 KB
+ | Trot = 0.016 | Tctr = 0.011 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.007 | Tdiag = 0.078 | Tinfo = 0.231
+ | Teff = 0.437 | Tprt = 0.413 | Teig = 0.034 | Tblk = 1.666 | Tmve = 0.548 | Tdm = 0.000 | Tsplt = 0.004 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    3 | Direction = backward | Bond dimension =   90 | Noise =  1.00e-05 | Dav threshold =  1.00e-06
+ <-- Site =    8-   9 .. Mmps =    3 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.25e+06 Tdav = 0.00 T = 0.13
+ <-- Site =    7-   8 .. Mmps =    5 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 9.63e+06 Tdav = 0.00 T = 0.13
+ <-- Site =    6-   7 .. Mmps =    7 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 7.97e+06 Tdav = 0.00 T = 0.08
+ <-- Site =    5-   6 .. Mmps =    9 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.38e+06 Tdav = 0.00 T = 0.97
+ <-- Site =    4-   5 .. Mmps =   17 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.13e+06 Tdav = 0.00 T = 1.51
+ <-- Site =    3-   4 .. Mmps =   21 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.57e+06 Tdav = 0.00 T = 0.44
+ <-- Site =    2-   3 .. Mmps =   24 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.05e+06 Tdav = 0.00 T = 0.28
+ <-- Site =    1-   2 .. Mmps =   27 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.37e+06 Tdav = 0.00 T = 0.29
+ <-- Site =    0-   1 .. Mmps =   30 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.94e+06 Tdav = 0.00 T = 0.90
+Time elapsed =     17.724 | E =    -161.0082314190 | DE = 0.00e+00 | DW = 0.00e+00
+Time sweep =        4.724 | 11.9 KFLOP/SWP
+ | Dmem = 30.4 KB (3%) | Imem = 7.18 KB (97%) | Hmem = 209 KB | Wmem = 480 B | Pmem = 5.77 KB
+ | Tread = 0.204 | Twrite = 0.006 | Tfpread = 0.008 | Tfpwrite = 0.001 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 79.8 KB | cpsd = 20.4 KB
+ | Trot = 0.001 | Tctr = 0.038 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.008 | Tdiag = 0.105 | Tinfo = 0.068
+ | Teff = 0.512 | Tprt = 0.873 | Teig = 0.004 | Tblk = 4.604 | Tmve = 0.119 | Tdm = 0.000 | Tsplt = 0.004 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    4 | Direction =  forward | Bond dimension =   90 | Noise =  0.00e+00 | Dav threshold =  1.00e-07
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.01e+06 Tdav = 0.00 T = 0.17
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 8.87e+06 Tdav = 0.00 T = 0.01
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 2.05e+06 Tdav = 0.00 T = 0.14
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 6.95e+04 Tdav = 0.02 T = 0.05
+ --> Site =    4-   5 .. Mmps =   17 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 7.06e+06 Tdav = 0.00 T = 0.09
+ --> Site =    5-   6 .. Mmps =   21 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.84e+06 Tdav = 0.00 T = 0.28
+ --> Site =    6-   7 .. Mmps =   24 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 7.67e+04 Tdav = 0.02 T = 0.20
+ --> Site =    7-   8 .. Mmps =   27 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 9.73e+04 Tdav = 0.02 T = 0.32
+ --> Site =    8-   9 .. Mmps =   30 Ndav =   1 E =   -161.0082314190 Error = 0.00e+00 FLOPS = 1.62e+06 Tdav = 0.00 T = 0.08
+Time elapsed =     19.069 | E =    -161.0082314190 | DE = -5.68e-14 | DW = 0.00e+00
+Time sweep =        1.345 | 11.9 KFLOP/SWP
+ | Dmem = 30.4 KB (3%) | Imem = 7.18 KB (97%) | Hmem = 209 KB | Wmem = 480 B | Pmem = 0 B
+ | Tread = 0.051 | Twrite = 0.026 | Tfpread = 0.008 | Tfpwrite = 0.006 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 79.8 KB | cpsd = 21.1 KB
+ | Trot = 0.001 | Tctr = 0.016 | Tint = 0.000 | Tmid = 0.000 | Tdctr = 0.049 | Tdiag = 0.079 | Tinfo = 0.010
+ | Teff = 0.291 | Tprt = 0.000 | Teig = 0.055 | Tblk = 1.285 | Tmve = 0.059 | Tdm = 0.000 | Tsplt = 0.005 | Tsvd = 0.000 | Torth = 0.000
+
+Ground state energy (DMRG) = -161.008231
+>>> Init compute time = 25.897834539413452
+
+Time = 0.00
+Total energy = -161.008231+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=4> = -0.500000-0.000000j
+<Sz d=5> = -0.500000+0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+
+Build MPO | Nsites =    10 | Nterms =         36 | Algorithm = FastBIP | Cutoff = 1.00e-14
+ Site =     0 /    10 .. Mmpo =     5 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+ Site =     1 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =     2 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     3 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     4 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     5 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     6 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     7 /    10 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     8 /    10 .. Mmpo =     5 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =     9 /    10 .. Mmpo =     1 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+Ttotal =      0.003 Tmvc-total = 0.000 MPO bond dimension =     6 MaxDW = 0.00e+00
+NNZ =           88 SIZE =          286 SPT = 0.6923
+
+Rank =     0 Ttotal =      0.004 MPO method = FastBipartite bond dimension =       6 NNZ =           88 SIZE =          286 SPT = 0.6923
+
+
+START TIME EVOLUTION (te_type = rk4)
+
+ ************************************************** 
+
+
+Time Evolution  DELTA T = RE      0.00000000 + IM      0.10000000
+Time Evolution TARGET T = RE      0.00000000 + IM      1.00000000
+Time Evolution   NSTEPS =         10
+Environment initialization | Nsites =    10 | Center =     8
+ INIT-L --> Site =    1 ..  Bmem =   256 B Rmem =   160 B T = 0.01
+ INIT-L --> Site =    2 ..  Bmem = 1.91 KB Rmem =   560 B T = 0.00
+ INIT-L --> Site =    3 ..  Bmem = 5.19 KB Rmem = 1.08 KB T = 0.00
+ INIT-L --> Site =    4 ..  Bmem = 10.2 KB Rmem = 1.80 KB T = 0.00
+ INIT-L --> Site =    5 ..  Bmem = 54.1 KB Rmem = 6.73 KB T = 0.01
+ INIT-L --> Site =    6 ..  Bmem =  192 KB Rmem = 17.1 KB T = 0.01
+ INIT-L --> Site =    7 ..  Bmem =  124 KB Rmem = 22.9 KB T = 0.01
+ INIT-L --> Site =    8 ..  Bmem =  163 KB Rmem = 29.5 KB T = 0.01
+Time init sweep =        0.058 | MaxBmem =  192 KB | MaxRmem = 17.1 KB
+ | Tread = 0.000 | Twrite = 0.014 | Tfpread = 0.000 | Tfpwrite = 0.004 | data = 79.8 KB | cpsd = 21.0 KB | Tasync = 0.000
+
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.43e+04 Texpo = 0.28 T = 1.77
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 4.32e+05 Texpo = 0.01 T = 0.18
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.39e+05 Texpo = 0.02 T = 0.04
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.44e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.50e+05 Texpo = 0.03 T = 1.69
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.93e+05 Texpo = 0.02 T = 0.03
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.50e+05 Texpo = 0.03 T = 0.21
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 2.50e+04 Texpo = 0.43 T = 1.06
+Time elapsed =      5.014 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        5.014 | 51.2 KFLOP/SWP
+ | Tread = 0.004 | Twrite = 0.007 | Tfpread = 0.001 | Tfpwrite = 0.001 | data = 79.8 KB | cpsd = 30.0 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 8.44e+06 Texpo = 0.00 T = 0.03
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.87e+07 Texpo = 0.00 T = 0.02
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.32e+07 Texpo = 0.00 T = 0.02
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.30e+07 Texpo = 0.00 T = 0.48
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.58e+05 Texpo = 0.02 T = 0.04
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.38e+07 Texpo = 0.00 T = 0.02
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.00 T = 0.02
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.27e+07 Texpo = 0.00 T = 0.21
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 1.19e+07 Texpo = 0.00 T = 0.01
+Time elapsed =      5.855 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.841 | 51.2 KFLOP/SWP
+ | Tread = 0.007 | Twrite = 0.009 | Tfpread = 0.002 | Tfpwrite = 0.003 | data = 79.8 KB | cpsd = 29.5 KB | Tasync = 0.000
+T =    0.00000 +    0.10000i <E> =   -1.016359439477927 +   -0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.38e+05 Texpo = 0.03 T = 0.13
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.28e+07 Texpo = 0.00 T = 0.09
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.03e+05 Texpo = 0.03 T = 0.14
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.01e+07 Texpo = 0.00 T = 0.04
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.28e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.36e+07 Texpo = 0.00 T = 0.06
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.77e+05 Texpo = 0.02 T = 0.12
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.43e+05 Texpo = 0.04 T = 0.06
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 1.12e+07 Texpo = 0.00 T = 0.13
+Time elapsed =      0.779 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.779 | 51.2 KFLOP/SWP
+ | Tread = 0.003 | Twrite = 0.006 | Tfpread = 0.001 | Tfpwrite = 0.001 | data = 79.8 KB | cpsd = 29.4 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 7.70e+06 Texpo = 0.00 T = 0.09
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 4.22e+05 Texpo = 0.01 T = 0.38
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.14e+07 Texpo = 0.00 T = 0.22
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.05e+07 Texpo = 0.00 T = 0.03
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.52e+05 Texpo = 0.03 T = 0.05
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.00e+05 Texpo = 0.05 T = 0.10
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.21e+07 Texpo = 0.00 T = 0.03
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.76e+07 Texpo = 0.00 T = 0.02
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 4.25e+05 Texpo = 0.03 T = 0.08
+Time elapsed =      1.783 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        1.004 | 51.2 KFLOP/SWP
+ | Tread = 0.269 | Twrite = 0.007 | Tfpread = 0.001 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.3 KB | Tasync = 0.000
+T =    0.00000 +    0.20000i <E> =   -1.016359439477927 +   -0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.01e+05 Texpo = 0.01 T = 0.03
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.26e+07 Texpo = 0.00 T = 0.14
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.08e+05 Texpo = 0.03 T = 0.15
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.02e+07 Texpo = 0.00 T = 0.04
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.75e+05 Texpo = 0.03 T = 0.09
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.22e+07 Texpo = 0.00 T = 0.17
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.52e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.26e+07 Texpo = 0.00 T = 0.01
+Time elapsed =      0.679 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.679 | 51.2 KFLOP/SWP
+ | Tread = 0.003 | Twrite = 0.066 | Tfpread = 0.001 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.2 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.50e+05 Texpo = 0.03 T = 0.08
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.02e+05 Texpo = 0.02 T = 0.04
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.00 T = 0.02
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.50e+04 Texpo = 0.05 T = 0.15
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.19e+05 Texpo = 0.02 T = 0.03
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.86e+05 Texpo = 0.03 T = 0.09
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.26e+05 Texpo = 0.02 T = 0.16
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.12e+07 Texpo = 0.00 T = 0.04
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 4.05e+05 Texpo = 0.03 T = 0.11
+Time elapsed =      1.394 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.715 | 51.2 KFLOP/SWP
+ | Tread = 0.006 | Twrite = 0.007 | Tfpread = 0.001 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 28.7 KB | Tasync = 0.000
+T =    0.00000 +    0.30000i <E> =   -1.016359439477927 +   -0.00000i <Norm^2> =    1.000000000000001 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.38e+05 Texpo = 0.02 T = 0.03
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.98e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.79e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.44e+07 Texpo = 0.00 T = 0.07
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 7.88e+06 Texpo = 0.00 T = 0.05
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.42e+07 Texpo = 0.00 T = 0.33
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.32e+07 Texpo = 0.00 T = 0.16
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.16e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 1.35e+07 Texpo = 0.00 T = 0.09
+Time elapsed =      0.776 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.776 | 51.2 KFLOP/SWP
+ | Tread = 0.005 | Twrite = 0.133 | Tfpread = 0.001 | Tfpwrite = 0.010 | data = 79.8 KB | cpsd = 29.0 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.00 T = 0.03
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.91e+07 Texpo = 0.00 T = 0.02
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.90e+07 Texpo = 0.00 T = 0.01
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.93e+05 Texpo = 0.02 T = 0.21
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.18e+07 Texpo = 0.00 T = 0.02
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.54e+07 Texpo = 0.00 T = 0.07
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.22e+05 Texpo = 0.05 T = 0.06
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.52e+07 Texpo = 0.00 T = 0.17
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.35e+07 Texpo = 0.00 T = 0.01
+Time elapsed =      1.376 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.600 | 51.2 KFLOP/SWP
+ | Tread = 0.063 | Twrite = 0.255 | Tfpread = 0.009 | Tfpwrite = 0.007 | data = 79.8 KB | cpsd = 29.1 KB | Tasync = 0.000
+T =    0.00000 +    0.40000i <E> =   -1.016359439477927 +    0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.52e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.47e+07 Texpo = 0.00 T = 0.10
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.78e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.70e+07 Texpo = 0.00 T = 0.09
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.76e+05 Texpo = 0.01 T = 0.04
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.57e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.95e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.43e+07 Texpo = 0.00 T = 0.09
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.99e+05 Texpo = 0.05 T = 0.21
+Time elapsed =      0.592 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.592 | 51.2 KFLOP/SWP
+ | Tread = 0.003 | Twrite = 0.006 | Tfpread = 0.001 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 28.9 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.75e+05 Texpo = 0.01 T = 0.03
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.09e+07 Texpo = 0.00 T = 0.01
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.00e+05 Texpo = 0.03 T = 0.13
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.99e+06 Texpo = 0.00 T = 0.03
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.12e+07 Texpo = 0.00 T = 0.02
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.44e+07 Texpo = 0.00 T = 0.08
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.98e+05 Texpo = 0.03 T = 0.09
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.48e+05 Texpo = 0.02 T = 0.04
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 1.10e+07 Texpo = 0.00 T = 0.05
+Time elapsed =      1.082 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.490 | 51.2 KFLOP/SWP
+ | Tread = 0.006 | Twrite = 0.007 | Tfpread = 0.002 | Tfpwrite = 0.001 | data = 79.8 KB | cpsd = 29.0 KB | Tasync = 0.000
+T =    0.00000 +    0.50000i <E> =   -1.016359439477928 +   -0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.66e+06 Texpo = 0.00 T = 0.05
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 4.17e+05 Texpo = 0.01 T = 0.21
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.56e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.66e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.03e+07 Texpo = 0.00 T = 0.14
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.59e+05 Texpo = 0.02 T = 0.04
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.40e+07 Texpo = 0.00 T = 0.05
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.71e+07 Texpo = 0.00 T = 0.14
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.91e+05 Texpo = 0.06 T = 0.17
+Time elapsed =      0.839 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.839 | 51.2 KFLOP/SWP
+ | Tread = 0.070 | Twrite = 0.005 | Tfpread = 0.008 | Tfpwrite = 0.001 | data = 79.8 KB | cpsd = 28.6 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.08e+06 Texpo = 0.00 T = 0.03
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.05e+07 Texpo = 0.00 T = 0.01
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.72e+07 Texpo = 0.00 T = 0.01
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.08e+07 Texpo = 0.00 T = 0.16
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 7.20e+04 Texpo = 0.06 T = 0.07
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.43e+07 Texpo = 0.00 T = 0.02
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.00 T = 0.12
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.39e+07 Texpo = 0.00 T = 0.04
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 4.19e+05 Texpo = 0.03 T = 0.04
+Time elapsed =      1.344 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.505 | 51.2 KFLOP/SWP
+ | Tread = 0.053 | Twrite = 0.006 | Tfpread = 0.009 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.1 KB | Tasync = 0.000
+T =    0.00000 +    0.60000i <E> =   -1.016359439477929 +   -0.00000i <Norm^2> =    0.999999999999999 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+05 Texpo = 0.02 T = 0.15
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.33e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.59e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.01e+05 Texpo = 0.02 T = 0.15
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.48e+05 Texpo = 0.03 T = 0.20
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.19e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.94e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.22e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.34e+07 Texpo = 0.00 T = 0.08
+Time elapsed =      0.703 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.703 | 51.2 KFLOP/SWP
+ | Tread = 0.085 | Twrite = 0.007 | Tfpread = 0.009 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 28.6 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.02e+07 Texpo = 0.00 T = 0.03
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.81e+07 Texpo = 0.00 T = 0.02
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.95e+05 Texpo = 0.03 T = 0.08
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.09e+07 Texpo = 0.00 T = 0.03
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.50e+05 Texpo = 0.03 T = 0.07
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.09e+07 Texpo = 0.00 T = 0.03
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.84e+07 Texpo = 0.00 T = 0.02
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.79e+07 Texpo = 0.00 T = 0.02
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 6.44e+05 Texpo = 0.02 T = 0.06
+Time elapsed =      1.063 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.360 | 51.2 KFLOP/SWP
+ | Tread = 0.007 | Twrite = 0.007 | Tfpread = 0.002 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.3 KB | Tasync = 0.000
+T =    0.00000 +    0.70000i <E> =   -1.016359439477927 +   -0.00000i <Norm^2> =    0.999999999999999 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.39e+05 Texpo = 0.03 T = 0.13
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.42e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.71e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+07 Texpo = 0.00 T = 0.01
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.87e+06 Texpo = 0.00 T = 0.18
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.09e+07 Texpo = 0.00 T = 0.03
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.22e+05 Texpo = 0.03 T = 0.06
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 9.68e+06 Texpo = 0.00 T = 0.03
+Time elapsed =      0.515 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.515 | 51.2 KFLOP/SWP
+ | Tread = 0.003 | Twrite = 0.007 | Tfpread = 0.001 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 28.3 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 6.62e+06 Texpo = 0.00 T = 0.46
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.76e+05 Texpo = 0.02 T = 0.03
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.00 T = 0.03
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.28e+06 Texpo = 0.00 T = 0.34
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.72e+05 Texpo = 0.01 T = 0.21
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.20e+07 Texpo = 0.00 T = 0.02
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.43e+07 Texpo = 0.00 T = 0.02
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.92e+05 Texpo = 0.02 T = 0.09
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 8.62e+06 Texpo = 0.00 T = 0.08
+Time elapsed =      1.794 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        1.280 | 51.2 KFLOP/SWP
+ | Tread = 0.069 | Twrite = 0.008 | Tfpread = 0.010 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.6 KB | Tasync = 0.000
+T =    0.00000 +    0.80000i <E> =   -1.016359439477928 +    0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 8.03e+06 Texpo = 0.00 T = 0.03
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.49e+07 Texpo = 0.00 T = 0.02
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.70e+05 Texpo = 0.02 T = 0.27
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.52e+04 Texpo = 0.04 T = 0.11
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 8.70e+06 Texpo = 0.00 T = 0.12
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.98e+05 Texpo = 0.03 T = 0.22
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.36e+05 Texpo = 0.03 T = 0.07
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 2.53e+05 Texpo = 0.04 T = 0.10
+Time elapsed =      0.958 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.958 | 51.2 KFLOP/SWP
+ | Tread = 0.003 | Twrite = 0.010 | Tfpread = 0.001 | Tfpwrite = 0.001 | data = 79.8 KB | cpsd = 28.2 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.18e+07 Texpo = 0.00 T = 0.07
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.39e+05 Texpo = 0.02 T = 0.08
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.25e+05 Texpo = 0.04 T = 0.09
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.44e+07 Texpo = 0.00 T = 0.09
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.74e+05 Texpo = 0.02 T = 0.11
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 6.10e+06 Texpo = 0.00 T = 0.09
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.00 T = 0.09
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.48e+07 Texpo = 0.00 T = 0.02
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,-0.0000000000) Error = 0.00e+00 FLOPS = 1.10e+07 Texpo = 0.00 T = 0.02
+Time elapsed =      1.613 | E = (-1.0163594395,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.656 | 51.2 KFLOP/SWP
+ | Tread = 0.085 | Twrite = 0.007 | Tfpread = 0.009 | Tfpwrite = 0.002 | data = 79.8 KB | cpsd = 29.2 KB | Tasync = 0.000
+T =    0.00000 +    0.90000i <E> =   -1.016359439477927 +   -0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 ( 0/ 2) | Direction = backward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ <-- Site =    8-   9 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 8.55e+06 Texpo = 0.00 T = 0.09
+ <-- Site =    7-   8 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.45e+05 Texpo = 0.03 T = 0.10
+ <-- Site =    6-   7 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.78e+05 Texpo = 0.01 T = 0.03
+ <-- Site =    5-   6 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.10e+04 Texpo = 0.05 T = 0.16
+ <-- Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.31e+05 Texpo = 0.02 T = 0.03
+ <-- Site =    3-   4 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.01e+06 Texpo = 0.00 T = 0.02
+ <-- Site =    2-   3 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.32e+05 Texpo = 0.04 T = 0.16
+ <-- Site =    1-   2 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 3.28e+05 Texpo = 0.02 T = 0.04
+ <-- Site =    0-   1 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.14e+07 Texpo = 0.00 T = 0.04
+Time elapsed =      0.665 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        0.665 | 51.2 KFLOP/SWP
+ | Tread = 0.004 | Twrite = 0.008 | Tfpread = 0.001 | Tfpwrite = 0.003 | data = 79.8 KB | cpsd = 28.0 KB | Tasync = 0.000
+Sweep =    0 ( 1/ 2) | Direction =  forward | Beta = (0.00000,0.10000) | Bond dimension =  100 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.47e+05 Texpo = 0.03 T = 0.07
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.00 T = 0.04
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.20e+07 Texpo = 0.00 T = 0.02
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 9.71e+06 Texpo = 0.00 T = 0.29
+ --> Site =    4-   5 .. Mmps =   17 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 2.36e+05 Texpo = 0.02 T = 0.23
+ --> Site =    5-   6 .. Mmps =   21 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.03e+07 Texpo = 0.00 T = 0.21
+ --> Site =    6-   7 .. Mmps =   24 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.08e+07 Texpo = 0.00 T = 0.03
+ --> Site =    7-   8 .. Mmps =   27 Nexpo =    4/   0 E = (0.0000000000,0.0000000000) Error = 0.00e+00 FLOPS = 1.82e+07 Texpo = 0.00 T = 0.02
+ --> Site =    8-   9 .. Mmps =   30 Nexpo =   11/   0 E = (-1.0163594395,0.0000000000) Error = 0.00e+00 FLOPS = 1.92e+05 Texpo = 0.06 T = 0.10
+Time elapsed =      1.670 | E = (-1.0163594395,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        1.005 | 51.2 KFLOP/SWP
+ | Tread = 0.007 | Twrite = 0.119 | Tfpread = 0.001 | Tfpwrite = 0.010 | data = 79.8 KB | cpsd = 29.5 KB | Tasync = 0.000
+T =    0.00000 +    1.00000i <E> =   -1.016359439477929 +    0.00000i <Norm^2> =    1.000000000000001 +    0.00000i
+
+Time = 1.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=4> = -0.500000-0.000000j
+<Sz d=5> = -0.500000-0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 2.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=4> = -0.500000-0.000000j
+<Sz d=5> = -0.500000-0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 3.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=4> = -0.500000+0.000000j
+<Sz d=5> = -0.500000+0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 4.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=4> = -0.500000-0.000000j
+<Sz d=5> = -0.500000+0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 5.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=4> = -0.500000-0.000000j
+<Sz d=5> = -0.500000-0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 6.00
+Total energy = -1.016359+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=4> = -0.500000+0.000000j
+<Sz d=5> = -0.500000+0.000000j
+<C[4, 5]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+>>> Time evol compute time = 507.89
+stop time: 
+Fri Jan 19 16:16:39 EST 2024
