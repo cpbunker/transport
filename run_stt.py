@@ -81,7 +81,7 @@ def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbos
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
                 bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params["te_type"],krylov_subspace_size=krylov_subspace,
-                iprint=the_verbose);
+                final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables
         check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,mpo_inst,total_time);
