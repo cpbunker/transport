@@ -116,7 +116,7 @@ if(case == "Ne1"): # 1 electron, 1D TB problem
     print(">>> psii = ",psii);
     my_sites = np.arange(L); # sites to print out
     my_interval = 1.0; # how often to plot/printout
-    my_updates = 20; # number of time interval repetitions
+    my_updates = 12; # number of time interval repetitions
     main(H,L,psii,my_interval,my_updates,my_sites);
 
 elif(case=="Heisenberg_sd"): # 2 impurity SWAP
