@@ -1,0 +1,1792 @@
+#### SLURM ####
+pwd: 
+/blue/m2qm-efrc/cpbunker/GitHub/transport
+host: 
+c0703a-s1.ufhpc
+# conda environments:
+#
+base                     /apps/conda/23.3.1
+block2                *  /blue/m2qm-efrc/cpbunker/condaenvs/block2
+plot                     /blue/m2qm-efrc/cpbunker/condaenvs/plot
+
+#### PYTHON ####
+start time: 
+Wed Jan 24 16:54:28 EST 2024
+
+>>> PWD:  /blue/m2qm-efrc/cpbunker/GitHub/transport
+>>> Params =  {'tl': 1.0, 'Vconf': 10.0, 'Be': 100.0, 'BFM': -100.0, 'Jz': 0.0, 'Jx': 0.0, 'Jsd': 0.5, 'Nbuffer': 5, 'NL': 10, 'NFM': 2, 'NR': 30, 'Nconf': 5, 'Ne': 1, 'TwoSz': -1, 'TwoSd': 1, 'symmetry': 'Sz', 'ex_sites': [15, 16], 'plot': 0, 'bdim_0': [150, 150, 150, 200, 200], 'bdim_t': [250], 'noises': [0.01, 0.001, 0.0001, 1e-05, 0.0], 'dmrg_sweeps': 20, 'cutoff': -1.0, 'te_type': 'tdvp', 'time_step': 0.1, 'tupdate': 0.5, 'Nupdates': 60}
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+Environment initialization | Nsites =    47 | Center =     0
+ INIT-R <-- Site =   44 ..  Bmem =   256 B Rmem =   256 B T = 0.29
+ INIT-R <-- Site =   43 ..  Bmem = 3.19 KB Rmem = 3.19 KB T = 0.09
+ INIT-R <-- Site =   42 ..  Bmem = 37.5 KB Rmem = 37.5 KB T = 0.00
+ INIT-R <-- Site =   41 ..  Bmem =  475 KB Rmem =  188 KB T = 0.10
+ INIT-R <-- Site =   40 ..  Bmem = 2.45 MB Rmem =  152 KB T = 0.02
+ INIT-R <-- Site =   39 ..  Bmem = 2.05 MB Rmem =  132 KB T = 0.03
+ INIT-R <-- Site =   38 ..  Bmem = 1.84 MB Rmem =  124 KB T = 0.02
+ INIT-R <-- Site =   37 ..  Bmem = 1.75 MB Rmem =  110 KB T = 0.04
+ INIT-R <-- Site =   36 ..  Bmem = 1.57 MB Rmem =  110 KB T = 0.05
+ INIT-R <-- Site =   35 ..  Bmem = 1.58 MB Rmem = 98.8 KB T = 0.05
+ INIT-R <-- Site =   34 ..  Bmem = 1.44 MB Rmem = 85.9 KB T = 0.07
+ INIT-R <-- Site =   33 ..  Bmem = 1.25 MB Rmem = 88.9 KB T = 0.05
+ INIT-R <-- Site =   32 ..  Bmem = 1.30 MB Rmem = 84.7 KB T = 0.07
+ INIT-R <-- Site =   31 ..  Bmem = 1.26 MB Rmem = 87.0 KB T = 0.04
+ INIT-R <-- Site =   30 ..  Bmem = 1.29 MB Rmem = 85.8 KB T = 0.01
+ INIT-R <-- Site =   29 ..  Bmem = 1.28 MB Rmem = 88.0 KB T = 0.06
+ INIT-R <-- Site =   28 ..  Bmem = 1.31 MB Rmem = 96.0 KB T = 0.05
+ INIT-R <-- Site =   27 ..  Bmem = 1.44 MB Rmem = 91.2 KB T = 0.07
+ INIT-R <-- Site =   26 ..  Bmem = 1.36 MB Rmem = 76.2 KB T = 0.11
+ INIT-R <-- Site =   25 ..  Bmem = 1.15 MB Rmem = 72.8 KB T = 0.10
+ INIT-R <-- Site =   24 ..  Bmem = 1.10 MB Rmem = 90.2 KB T = 0.05
+ INIT-R <-- Site =   23 ..  Bmem = 1.37 MB Rmem = 56.4 KB T = 0.05
+ INIT-R <-- Site =   22 ..  Bmem =  875 KB Rmem = 61.5 KB T = 0.05
+ INIT-R <-- Site =   21 ..  Bmem =  955 KB Rmem = 66.8 KB T = 0.06
+ INIT-R <-- Site =   20 ..  Bmem = 1.01 MB Rmem = 72.3 KB T = 0.06
+ INIT-R <-- Site =   19 ..  Bmem = 1.10 MB Rmem = 78.0 KB T = 0.04
+ INIT-R <-- Site =   18 ..  Bmem = 1.19 MB Rmem = 84.0 KB T = 0.05
+ INIT-R <-- Site =   17 ..  Bmem = 1.28 MB Rmem = 90.2 KB T = 0.05
+ INIT-R <-- Site =   16 ..  Bmem = 1.37 MB Rmem = 96.6 KB T = 0.06
+ INIT-R <-- Site =   15 ..  Bmem = 1.47 MB Rmem =  103 KB T = 0.05
+ INIT-R <-- Site =   14 ..  Bmem = 6.21 MB Rmem =  117 KB T = 0.09
+ INIT-R <-- Site =   13 ..  Bmem = 7.05 MB Rmem =  131 KB T = 0.10
+ INIT-R <-- Site =   12 ..  Bmem = 2.01 MB Rmem =  139 KB T = 0.09
+ INIT-R <-- Site =   11 ..  Bmem = 2.13 MB Rmem =  147 KB T = 0.10
+ INIT-R <-- Site =   10 ..  Bmem = 2.25 MB Rmem =  155 KB T = 0.08
+ INIT-R <-- Site =    9 ..  Bmem = 2.38 MB Rmem =  163 KB T = 0.09
+ INIT-R <-- Site =    8 ..  Bmem = 2.51 MB Rmem =  172 KB T = 0.09
+ INIT-R <-- Site =    7 ..  Bmem = 2.64 MB Rmem =  181 KB T = 0.09
+ INIT-R <-- Site =    6 ..  Bmem = 2.77 MB Rmem =  190 KB T = 0.09
+ INIT-R <-- Site =    5 ..  Bmem = 2.91 MB Rmem =  199 KB T = 0.09
+ INIT-R <-- Site =    4 ..  Bmem = 3.06 MB Rmem =  208 KB T = 0.09
+ INIT-R <-- Site =    3 ..  Bmem = 3.20 MB Rmem =  218 KB T = 0.10
+ INIT-R <-- Site =    2 ..  Bmem = 3.35 MB Rmem =  228 KB T = 0.10
+ INIT-R <-- Site =    1 ..  Bmem = 3.51 MB Rmem =  238 KB T = 0.08
+ INIT-R <-- Site =    0 ..  Bmem = 3.66 MB Rmem =  248 KB T = 0.08
+Time init sweep =        3.173 | MaxBmem = 7.05 MB | MaxRmem =  131 KB
+ | Tread = 0.000 | Twrite = 0.951 | Tfpread = 0.000 | Tfpwrite = 0.847 | data = 5.22 MB | cpsd = 3.65 MB | Tasync = 0.000
+
+
+Sweep =    0 | Direction =  forward | Bond dimension =  150 | Noise =  1.00e-02 | Dav threshold =  1.00e-06
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   5 E =   -101.0040167621 Error = 0.00e+00 FLOPS = 2.25e+02 Tdav = 0.80 T = 1.36
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   5 E =   -101.4175500163 Error = 0.00e+00 FLOPS = 3.32e+05 Tdav = 0.00 T = 0.12
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   5 E =   -101.6204419606 Error = 0.00e+00 FLOPS = 2.06e+04 Tdav = 0.03 T = 0.13
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   6 E =   -101.7323804914 Error = 0.00e+00 FLOPS = 3.83e+04 Tdav = 0.03 T = 0.16
+ --> Site =    4-   5 .. Mmps =   11 Ndav =   5 E =   -160.0258953632 Error = 0.00e+00 FLOPS = 9.67e+05 Tdav = 0.00 T = 0.17
+ --> Site =    5-   6 .. Mmps =   13 Ndav =   4 E =   -161.0103463206 Error = 0.00e+00 FLOPS = 4.23e+04 Tdav = 0.03 T = 0.12
+ --> Site =    6-   7 .. Mmps =   15 Ndav =   4 E =   -161.4187138959 Error = 0.00e+00 FLOPS = 2.58e+04 Tdav = 0.05 T = 0.15
+ --> Site =    7-   8 .. Mmps =   17 Ndav =   5 E =   -161.6210359664 Error = 0.00e+00 FLOPS = 2.05e+06 Tdav = 0.00 T = 0.10
+ --> Site =    8-   9 .. Mmps =   19 Ndav =   7 E =   -161.7335443433 Error = 0.00e+00 FLOPS = 2.35e+06 Tdav = 0.00 T = 0.07
+ --> Site =    9-  10 .. Mmps =   21 Ndav =   6 E =   -161.7347699424 Error = 0.00e+00 FLOPS = 1.25e+05 Tdav = 0.03 T = 0.11
+ --> Site =   10-  11 .. Mmps =   23 Ndav =   2 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.97e+06 Tdav = 0.00 T = 0.09
+ --> Site =   11-  12 .. Mmps =   25 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.92e+06 Tdav = 0.00 T = 0.08
+ --> Site =   12-  13 .. Mmps =   27 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.33e+06 Tdav = 0.00 T = 0.08
+ --> Site =   13-  14 .. Mmps =   29 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.73e+06 Tdav = 0.00 T = 0.07
+ --> Site =   14-  15 .. Mmps =   31 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.00e+06 Tdav = 0.00 T = 0.10
+ --> Site =   15-  16 .. Mmps =   50 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.88e+06 Tdav = 0.00 T = 0.45
+ --> Site =   16-  17 .. Mmps =   54 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.34e+07 Tdav = 0.00 T = 0.41
+ --> Site =   17-  18 .. Mmps =   57 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.57e+07 Tdav = 0.00 T = 0.05
+ --> Site =   18-  19 .. Mmps =   60 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.68e+07 Tdav = 0.00 T = 0.05
+ --> Site =   19-  20 .. Mmps =   63 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.93e+07 Tdav = 0.00 T = 0.06
+ --> Site =   20-  21 .. Mmps =   66 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.96e+07 Tdav = 0.00 T = 0.06
+ --> Site =   21-  22 .. Mmps =   69 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.20e+07 Tdav = 0.00 T = 0.06
+ --> Site =   22-  23 .. Mmps =   72 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.28e+07 Tdav = 0.00 T = 0.06
+ --> Site =   23-  24 .. Mmps =   75 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.31e+07 Tdav = 0.00 T = 0.06
+ --> Site =   24-  25 .. Mmps =   78 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.76e+07 Tdav = 0.00 T = 0.06
+ --> Site =   25-  26 .. Mmps =   81 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.41e+07 Tdav = 0.00 T = 0.06
+ --> Site =   26-  27 .. Mmps =   84 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.70e+07 Tdav = 0.00 T = 0.07
+ --> Site =   27-  28 .. Mmps =   87 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.02e+07 Tdav = 0.00 T = 0.07
+ --> Site =   28-  29 .. Mmps =   90 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.66e+07 Tdav = 0.00 T = 0.07
+ --> Site =   29-  30 .. Mmps =   93 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.06e+07 Tdav = 0.00 T = 0.10
+ --> Site =   30-  31 .. Mmps =   96 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.43e+07 Tdav = 0.00 T = 0.07
+ --> Site =   31-  32 .. Mmps =   99 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.22e+07 Tdav = 0.00 T = 0.07
+ --> Site =   32-  33 .. Mmps =  102 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.90e+07 Tdav = 0.00 T = 0.06
+ --> Site =   33-  34 .. Mmps =  105 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.29e+07 Tdav = 0.00 T = 0.08
+ --> Site =   34-  35 .. Mmps =  108 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.52e+07 Tdav = 0.00 T = 0.06
+ --> Site =   35-  36 .. Mmps =  111 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.45e+07 Tdav = 0.00 T = 0.06
+ --> Site =   36-  37 .. Mmps =  114 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.84e+07 Tdav = 0.00 T = 0.06
+ --> Site =   37-  38 .. Mmps =  117 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.45e+07 Tdav = 0.00 T = 0.07
+ --> Site =   38-  39 .. Mmps =  120 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.91e+07 Tdav = 0.00 T = 0.07
+ --> Site =   39-  40 .. Mmps =  123 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.51e+07 Tdav = 0.00 T = 0.07
+ --> Site =   40-  41 .. Mmps =  126 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.56e+07 Tdav = 0.00 T = 0.10
+ --> Site =   41-  42 .. Mmps =  129 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.33e+07 Tdav = 0.00 T = 0.08
+ --> Site =   42-  43 .. Mmps =  132 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.21e+08 Tdav = 0.00 T = 0.12
+ --> Site =   43-  44 .. Mmps =  135 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.53e+07 Tdav = 0.00 T = 0.07
+ --> Site =   44-  45 .. Mmps =  138 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 8.45e+07 Tdav = 0.00 T = 0.07
+ --> Site =   45-  46 .. Mmps =  141 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.92e+05 Tdav = 0.03 T = 0.10
+Time elapsed =      5.851 | E =    -161.7347702777 | DW = 0.00e+00
+Time sweep =        5.851 | 614 KFLOP/SWP
+ | Dmem = 872 KB (0%) | Imem = 1.66 MB (87%) | Hmem = 7.19 MB | Wmem = 2.20 KB | Pmem = 23.6 KB
+ | Tread = 0.246 | Twrite = 0.371 | Tfpread = 0.073 | Tfpwrite = 0.331 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 12.8 MB | cpsd = 3.22 MB
+ | Trot = 0.254 | Tctr = 0.040 | Tint = 0.005 | Tmid = 0.000 | Tdctr = 0.202 | Tdiag = 0.192 | Tinfo = 0.105
+ | Teff = 1.855 | Tprt = 0.241 | Teig = 1.018 | Tblk = 5.001 | Tmve = 0.809 | Tdm = 0.019 | Tsplt = 1.169 | Tsvd = 0.000 | Torth = 0.023
+
+Sweep =    1 | Direction = backward | Bond dimension =  150 | Noise =  1.00e-03 | Dav threshold =  1.00e-06
+ <-- Site =   45-  46 .. Mmps =    3 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.64e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   44-  45 .. Mmps =    5 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.37e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   43-  44 .. Mmps =    7 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.68e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   42-  43 .. Mmps =    9 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.51e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   41-  42 .. Mmps =   11 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.72e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   40-  41 .. Mmps =   13 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.33e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   39-  40 .. Mmps =   15 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.02e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   38-  39 .. Mmps =   17 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.98e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   37-  38 .. Mmps =   19 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.14e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   36-  37 .. Mmps =   21 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.77e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   35-  36 .. Mmps =   23 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.42e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   34-  35 .. Mmps =   25 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.37e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   33-  34 .. Mmps =   27 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.58e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   32-  33 .. Mmps =   29 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.13e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   31-  32 .. Mmps =   31 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.62e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   30-  31 .. Mmps =   33 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.04e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   29-  30 .. Mmps =   35 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.22e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   28-  29 .. Mmps =   37 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.56e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   27-  28 .. Mmps =   39 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.27e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   26-  27 .. Mmps =   41 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.76e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   25-  26 .. Mmps =   43 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.38e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   24-  25 .. Mmps =   45 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.00e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   23-  24 .. Mmps =   47 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.80e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   22-  23 .. Mmps =   49 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.54e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   21-  22 .. Mmps =   51 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.54e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   20-  21 .. Mmps =   53 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.62e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   19-  20 .. Mmps =   55 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.61e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   18-  19 .. Mmps =   57 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.51e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   17-  18 .. Mmps =   59 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.04e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   16-  17 .. Mmps =   61 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.30e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   15-  16 .. Mmps =   95 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.27e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   14-  15 .. Mmps =   99 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.96e+07 Tdav = 0.00 T = 0.04
+ <-- Site =   13-  14 .. Mmps =  102 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.29e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   12-  13 .. Mmps =  105 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.81e+07 Tdav = 0.00 T = 0.07
+ <-- Site =   11-  12 .. Mmps =  108 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.21e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   10-  11 .. Mmps =  111 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.39e+07 Tdav = 0.00 T = 0.05
+ <-- Site =    9-  10 .. Mmps =  114 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.64e+07 Tdav = 0.00 T = 0.06
+ <-- Site =    8-   9 .. Mmps =  117 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.60e+07 Tdav = 0.00 T = 0.05
+ <-- Site =    7-   8 .. Mmps =  120 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.96e+07 Tdav = 0.00 T = 0.06
+ <-- Site =    6-   7 .. Mmps =  123 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.91e+07 Tdav = 0.00 T = 0.06
+ <-- Site =    5-   6 .. Mmps =  126 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.88e+07 Tdav = 0.00 T = 0.06
+ <-- Site =    4-   5 .. Mmps =  129 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.18e+07 Tdav = 0.00 T = 0.07
+ <-- Site =    3-   4 .. Mmps =  132 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.08e+07 Tdav = 0.00 T = 0.07
+ <-- Site =    2-   3 .. Mmps =  135 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 8.12e+07 Tdav = 0.00 T = 0.07
+ <-- Site =    1-   2 .. Mmps =  138 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.65e+07 Tdav = 0.00 T = 0.07
+ <-- Site =    0-   1 .. Mmps =  141 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.98e+07 Tdav = 0.00 T = 0.07
+Time elapsed =      7.546 | E =    -161.7347702777 | DE = -1.14e-13 | DW = 0.00e+00
+Time sweep =        1.694 | 1.26 MFLOP/SWP
+ | Dmem = 872 KB (0%) | Imem = 7.18 KB (97%) | Hmem = 6.28 MB | Wmem = 2.20 KB | Pmem = 86.9 KB
+ | Tread = 0.047 | Twrite = 0.126 | Tfpread = 0.025 | Tfpwrite = 0.095 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 9.91 MB | cpsd = 2.44 MB
+ | Trot = 0.199 | Tctr = 0.015 | Tint = 0.004 | Tmid = 0.000 | Tdctr = 0.006 | Tdiag = 0.053 | Tinfo = 0.097
+ | Teff = 0.339 | Tprt = 0.076 | Teig = 0.023 | Tblk = 1.219 | Tmve = 0.465 | Tdm = 0.005 | Tsplt = 0.267 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    2 | Direction =  forward | Bond dimension =  150 | Noise =  1.00e-04 | Dav threshold =  1.00e-06
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.18e+07 Tdav = 0.00 T = 0.01
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.91e+07 Tdav = 0.00 T = 0.03
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.21e+07 Tdav = 0.00 T = 0.03
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.17e+07 Tdav = 0.00 T = 0.03
+ --> Site =    4-   5 .. Mmps =   11 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.97e+07 Tdav = 0.00 T = 0.03
+ --> Site =    5-   6 .. Mmps =   13 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.96e+07 Tdav = 0.00 T = 0.03
+ --> Site =    6-   7 .. Mmps =   15 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.68e+07 Tdav = 0.00 T = 0.03
+ --> Site =    7-   8 .. Mmps =   17 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.75e+07 Tdav = 0.00 T = 0.03
+ --> Site =    8-   9 .. Mmps =   19 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.77e+07 Tdav = 0.00 T = 0.03
+ --> Site =    9-  10 .. Mmps =   21 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.78e+07 Tdav = 0.00 T = 0.03
+ --> Site =   10-  11 .. Mmps =   23 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.92e+07 Tdav = 0.00 T = 0.02
+ --> Site =   11-  12 .. Mmps =   25 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.08e+07 Tdav = 0.00 T = 0.02
+ --> Site =   12-  13 .. Mmps =   27 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.52e+07 Tdav = 0.00 T = 0.02
+ --> Site =   13-  14 .. Mmps =   29 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.69e+07 Tdav = 0.00 T = 0.02
+ --> Site =   14-  15 .. Mmps =   31 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.87e+07 Tdav = 0.00 T = 0.03
+ --> Site =   15-  16 .. Mmps =   50 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.40e+07 Tdav = 0.00 T = 0.02
+ --> Site =   16-  17 .. Mmps =   54 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.03e+07 Tdav = 0.00 T = 0.03
+ --> Site =   17-  18 .. Mmps =   57 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.58e+07 Tdav = 0.00 T = 0.02
+ --> Site =   18-  19 .. Mmps =   60 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.72e+07 Tdav = 0.00 T = 0.02
+ --> Site =   19-  20 .. Mmps =   63 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.76e+07 Tdav = 0.00 T = 0.03
+ --> Site =   20-  21 .. Mmps =   66 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.74e+07 Tdav = 0.00 T = 0.03
+ --> Site =   21-  22 .. Mmps =   69 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.00e+07 Tdav = 0.00 T = 0.03
+ --> Site =   22-  23 .. Mmps =   72 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.15e+07 Tdav = 0.00 T = 0.03
+ --> Site =   23-  24 .. Mmps =   75 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.18e+07 Tdav = 0.00 T = 0.03
+ --> Site =   24-  25 .. Mmps =   78 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.82e+07 Tdav = 0.00 T = 0.03
+ --> Site =   25-  26 .. Mmps =   81 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.73e+07 Tdav = 0.00 T = 0.03
+ --> Site =   26-  27 .. Mmps =   84 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.98e+07 Tdav = 0.00 T = 0.07
+ --> Site =   27-  28 .. Mmps =   87 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.88e+07 Tdav = 0.00 T = 0.04
+ --> Site =   28-  29 .. Mmps =   90 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.81e+07 Tdav = 0.00 T = 0.11
+ --> Site =   29-  30 .. Mmps =   93 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.03e+07 Tdav = 0.00 T = 0.04
+ --> Site =   30-  31 .. Mmps =   96 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.32e+07 Tdav = 0.00 T = 0.12
+ --> Site =   31-  32 .. Mmps =   99 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.41e+07 Tdav = 0.00 T = 0.04
+ --> Site =   32-  33 .. Mmps =  102 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.48e+07 Tdav = 0.00 T = 0.05
+ --> Site =   33-  34 .. Mmps =  105 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.17e+07 Tdav = 0.00 T = 0.05
+ --> Site =   34-  35 .. Mmps =  108 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.45e+07 Tdav = 0.00 T = 0.09
+ --> Site =   35-  36 .. Mmps =  111 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.13e+07 Tdav = 0.00 T = 0.05
+ --> Site =   36-  37 .. Mmps =  114 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.91e+07 Tdav = 0.00 T = 0.10
+ --> Site =   37-  38 .. Mmps =  117 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.09e+07 Tdav = 0.00 T = 0.12
+ --> Site =   38-  39 .. Mmps =  120 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.45e+07 Tdav = 0.00 T = 0.06
+ --> Site =   39-  40 .. Mmps =  123 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.98e+07 Tdav = 0.00 T = 0.06
+ --> Site =   40-  41 .. Mmps =  126 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.81e+07 Tdav = 0.00 T = 0.06
+ --> Site =   41-  42 .. Mmps =  129 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.57e+07 Tdav = 0.00 T = 0.15
+ --> Site =   42-  43 .. Mmps =  132 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.10e+08 Tdav = 0.00 T = 0.38
+ --> Site =   43-  44 .. Mmps =  135 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.03e+07 Tdav = 0.00 T = 0.18
+ --> Site =   44-  45 .. Mmps =  138 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 8.08e+07 Tdav = 0.00 T = 0.07
+ --> Site =   45-  46 .. Mmps =  141 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.52e+07 Tdav = 0.00 T = 0.07
+Time elapsed =     10.157 | E =    -161.7347702777 | DE = -1.42e-13 | DW = 0.00e+00
+Time sweep =        2.611 | 1.26 MFLOP/SWP
+ | Dmem = 872 KB (0%) | Imem = 7.18 KB (97%) | Hmem = 6.28 MB | Wmem = 2.20 KB | Pmem = 86.9 KB
+ | Tread = 0.099 | Twrite = 0.532 | Tfpread = 0.054 | Tfpwrite = 0.500 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 12.8 MB | cpsd = 3.22 MB
+ | Trot = 0.252 | Tctr = 0.034 | Tint = 0.004 | Tmid = 0.000 | Tdctr = 0.059 | Tdiag = 0.174 | Tinfo = 0.097
+ | Teff = 0.489 | Tprt = 0.087 | Teig = 0.025 | Tblk = 1.658 | Tmve = 0.945 | Tdm = 0.007 | Tsplt = 0.314 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    3 | Direction = backward | Bond dimension =  200 | Noise =  1.00e-05 | Dav threshold =  1.00e-06
+ <-- Site =   45-  46 .. Mmps =    3 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.46e+07 Tdav = 0.00 T = 0.01
+ <-- Site =   44-  45 .. Mmps =    5 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.55e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   43-  44 .. Mmps =    7 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.86e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   42-  43 .. Mmps =    9 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.06e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   41-  42 .. Mmps =   11 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.86e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   40-  41 .. Mmps =   13 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.78e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   39-  40 .. Mmps =   15 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.85e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   38-  39 .. Mmps =   17 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.08e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   37-  38 .. Mmps =   19 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.13e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   36-  37 .. Mmps =   21 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.05e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   35-  36 .. Mmps =   23 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.73e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   34-  35 .. Mmps =   25 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.03e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   33-  34 .. Mmps =   27 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.44e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   32-  33 .. Mmps =   29 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.53e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   31-  32 .. Mmps =   31 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.22e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   30-  31 .. Mmps =   33 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 9.44e+05 Tdav = 0.03 T = 0.05
+ <-- Site =   29-  30 .. Mmps =   35 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 9.93e+05 Tdav = 0.03 T = 0.05
+ <-- Site =   28-  29 .. Mmps =   37 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.92e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   27-  28 .. Mmps =   39 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.81e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   26-  27 .. Mmps =   41 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.11e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   25-  26 .. Mmps =   43 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.24e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   24-  25 .. Mmps =   45 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.17e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   23-  24 .. Mmps =   47 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.83e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   22-  23 .. Mmps =   49 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.09e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   21-  22 .. Mmps =   51 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.84e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   20-  21 .. Mmps =   53 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.83e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   19-  20 .. Mmps =   55 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.21e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   18-  19 .. Mmps =   57 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.44e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   17-  18 .. Mmps =   59 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.28e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   16-  17 .. Mmps =   61 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.95e+07 Tdav = 0.00 T = 0.02
+ <-- Site =   15-  16 .. Mmps =   95 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.53e+07 Tdav = 0.00 T = 0.03
+ <-- Site =   14-  15 .. Mmps =   99 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.10e+07 Tdav = 0.00 T = 0.04
+ <-- Site =   13-  14 .. Mmps =  102 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.86e+07 Tdav = 0.00 T = 0.09
+ <-- Site =   12-  13 .. Mmps =  105 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.34e+07 Tdav = 0.00 T = 0.05
+ <-- Site =   11-  12 .. Mmps =  108 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.43e+07 Tdav = 0.00 T = 0.11
+ <-- Site =   10-  11 .. Mmps =  111 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.47e+07 Tdav = 0.00 T = 0.05
+ <-- Site =    9-  10 .. Mmps =  114 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.47e+07 Tdav = 0.00 T = 0.13
+ <-- Site =    8-   9 .. Mmps =  117 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.48e+07 Tdav = 0.00 T = 0.07
+ <-- Site =    7-   8 .. Mmps =  120 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.11e+08 Tdav = 0.00 T = 0.10
+ <-- Site =    6-   7 .. Mmps =  123 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.22e+08 Tdav = 0.00 T = 0.07
+ <-- Site =    5-   6 .. Mmps =  126 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.46e+07 Tdav = 0.00 T = 0.11
+ <-- Site =    4-   5 .. Mmps =  129 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.14e+08 Tdav = 0.00 T = 0.11
+ <-- Site =    3-   4 .. Mmps =  132 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.31e+08 Tdav = 0.00 T = 0.14
+ <-- Site =    2-   3 .. Mmps =  135 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.08e+07 Tdav = 0.00 T = 0.18
+ <-- Site =    1-   2 .. Mmps =  138 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 9.49e+07 Tdav = 0.00 T = 0.14
+ <-- Site =    0-   1 .. Mmps =  141 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.86e+07 Tdav = 0.00 T = 0.10
+Time elapsed =     12.441 | E =    -161.7347702777 | DE = 0.00e+00 | DW = 0.00e+00
+Time sweep =        2.284 | 1.26 MFLOP/SWP
+ | Dmem = 872 KB (0%) | Imem = 7.18 KB (97%) | Hmem = 6.28 MB | Wmem = 2.20 KB | Pmem = 86.9 KB
+ | Tread = 0.046 | Twrite = 0.663 | Tfpread = 0.024 | Tfpwrite = 0.625 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 9.91 MB | cpsd = 2.44 MB
+ | Trot = 0.191 | Tctr = 0.011 | Tint = 0.013 | Tmid = 0.000 | Tdctr = 0.005 | Tdiag = 0.116 | Tinfo = 0.096
+ | Teff = 0.344 | Tprt = 0.122 | Teig = 0.078 | Tblk = 1.274 | Tmve = 1.000 | Tdm = 0.006 | Tsplt = 0.245 | Tsvd = 0.000 | Torth = 0.000
+
+Sweep =    4 | Direction =  forward | Bond dimension =  200 | Noise =  0.00e+00 | Dav threshold =  1.00e-07
+ --> Site =    0-   1 .. Mmps =    3 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.66e+07 Tdav = 0.00 T = 0.01
+ --> Site =    1-   2 .. Mmps =    5 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.78e+07 Tdav = 0.00 T = 0.03
+ --> Site =    2-   3 .. Mmps =    7 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.59e+07 Tdav = 0.00 T = 0.03
+ --> Site =    3-   4 .. Mmps =    9 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.43e+07 Tdav = 0.00 T = 0.03
+ --> Site =    4-   5 .. Mmps =   11 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.29e+07 Tdav = 0.00 T = 0.03
+ --> Site =    5-   6 .. Mmps =   13 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.95e+07 Tdav = 0.00 T = 0.03
+ --> Site =    6-   7 .. Mmps =   15 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.65e+07 Tdav = 0.00 T = 0.04
+ --> Site =    7-   8 .. Mmps =   17 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 1.10e+08 Tdav = 0.00 T = 0.02
+ --> Site =    8-   9 .. Mmps =   19 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.78e+07 Tdav = 0.00 T = 0.03
+ --> Site =    9-  10 .. Mmps =   21 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.90e+07 Tdav = 0.00 T = 0.02
+ --> Site =   10-  11 .. Mmps =   23 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.68e+07 Tdav = 0.00 T = 0.02
+ --> Site =   11-  12 .. Mmps =   25 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.59e+07 Tdav = 0.00 T = 0.02
+ --> Site =   12-  13 .. Mmps =   27 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.69e+07 Tdav = 0.00 T = 0.05
+ --> Site =   13-  14 .. Mmps =   29 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.78e+07 Tdav = 0.00 T = 0.02
+ --> Site =   14-  15 .. Mmps =   31 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.39e+07 Tdav = 0.00 T = 0.03
+ --> Site =   15-  16 .. Mmps =   50 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.18e+07 Tdav = 0.00 T = 0.02
+ --> Site =   16-  17 .. Mmps =   54 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.19e+07 Tdav = 0.00 T = 0.02
+ --> Site =   17-  18 .. Mmps =   57 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.89e+07 Tdav = 0.00 T = 0.02
+ --> Site =   18-  19 .. Mmps =   60 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.73e+07 Tdav = 0.00 T = 0.03
+ --> Site =   19-  20 .. Mmps =   63 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 2.72e+07 Tdav = 0.00 T = 0.03
+ --> Site =   20-  21 .. Mmps =   66 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.65e+07 Tdav = 0.00 T = 0.03
+ --> Site =   21-  22 .. Mmps =   69 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.67e+07 Tdav = 0.00 T = 0.03
+ --> Site =   22-  23 .. Mmps =   72 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.04e+07 Tdav = 0.00 T = 0.03
+ --> Site =   23-  24 .. Mmps =   75 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.67e+07 Tdav = 0.00 T = 0.03
+ --> Site =   24-  25 .. Mmps =   78 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.62e+07 Tdav = 0.00 T = 0.09
+ --> Site =   25-  26 .. Mmps =   81 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.22e+07 Tdav = 0.00 T = 0.10
+ --> Site =   26-  27 .. Mmps =   84 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.94e+07 Tdav = 0.00 T = 0.08
+ --> Site =   27-  28 .. Mmps =   87 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.13e+07 Tdav = 0.00 T = 0.77
+ --> Site =   28-  29 .. Mmps =   90 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 9.30e+07 Tdav = 0.00 T = 0.12
+ --> Site =   29-  30 .. Mmps =   93 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.31e+07 Tdav = 0.00 T = 0.90
+ --> Site =   30-  31 .. Mmps =   96 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.50e+07 Tdav = 0.00 T = 0.07
+ --> Site =   31-  32 .. Mmps =   99 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.95e+07 Tdav = 0.00 T = 0.04
+ --> Site =   32-  33 .. Mmps =  102 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.44e+07 Tdav = 0.00 T = 0.14
+ --> Site =   33-  34 .. Mmps =  105 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.90e+07 Tdav = 0.00 T = 0.03
+ --> Site =   34-  35 .. Mmps =  108 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.27e+07 Tdav = 0.00 T = 0.05
+ --> Site =   35-  36 .. Mmps =  111 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.08e+07 Tdav = 0.00 T = 0.05
+ --> Site =   36-  37 .. Mmps =  114 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.99e+07 Tdav = 0.00 T = 0.05
+ --> Site =   37-  38 .. Mmps =  117 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 4.89e+07 Tdav = 0.00 T = 0.06
+ --> Site =   38-  39 .. Mmps =  120 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 5.98e+07 Tdav = 0.00 T = 0.06
+ --> Site =   39-  40 .. Mmps =  123 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 6.24e+07 Tdav = 0.00 T = 0.06
+ --> Site =   40-  41 .. Mmps =  126 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.24e+07 Tdav = 0.00 T = 0.06
+ --> Site =   41-  42 .. Mmps =  129 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.77e+07 Tdav = 0.00 T = 0.06
+ --> Site =   42-  43 .. Mmps =  132 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 7.76e+07 Tdav = 0.00 T = 0.07
+ --> Site =   43-  44 .. Mmps =  135 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 8.35e+07 Tdav = 0.00 T = 0.07
+ --> Site =   44-  45 .. Mmps =  138 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 8.48e+07 Tdav = 0.00 T = 0.07
+ --> Site =   45-  46 .. Mmps =  141 Ndav =   1 E =   -161.7347702777 Error = 0.00e+00 FLOPS = 3.68e+07 Tdav = 0.00 T = 0.07
+Time elapsed =     16.161 | E =    -161.7347702777 | DE = -5.68e-14 | DW = 0.00e+00
+Time sweep =        3.721 | 1.26 MFLOP/SWP
+ | Dmem = 872 KB (0%) | Imem = 7.18 KB (97%) | Hmem = 6.28 MB | Wmem = 2.20 KB | Pmem = 0 B
+ | Tread = 0.336 | Twrite = 1.105 | Tfpread = 0.070 | Tfpwrite = 0.389 | Tmporead = 0.000 | Tasync = 0.000
+ | data = 12.8 MB | cpsd = 3.25 MB
+ | Trot = 0.242 | Tctr = 0.032 | Tint = 0.007 | Tmid = 0.000 | Tdctr = 0.118 | Tdiag = 0.133 | Tinfo = 0.762
+ | Teff = 0.706 | Tprt = 0.000 | Teig = 0.026 | Tblk = 1.533 | Tmve = 2.179 | Tdm = 0.001 | Tsplt = 0.292 | Tsvd = 0.000 | Torth = 0.000
+
+Ground state energy (DMRG) = -161.734770
+>>> Init compute time = 22.832404375076294
+
+Time = 0.00
+Total energy = -161.734770+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.500000-0.000000j
+<Sz d=16> = -0.500000-0.000000j
+<C[15, 16]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+
+Build MPO | Nsites =    47 | Nterms =        192 | Algorithm = FastBIP | Cutoff = 1.00e-14
+ Site =     0 /    47 .. Mmpo =     5 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+ Site =     1 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =     2 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     3 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     4 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     5 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     6 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     7 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     8 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     9 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    10 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    11 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    12 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    13 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    14 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    15 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.001
+ Site =    16 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.001
+ Site =    17 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    18 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    19 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    20 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    21 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    22 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    23 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    24 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    25 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    26 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    27 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    28 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    29 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    30 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    31 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    32 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    33 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    34 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    35 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    36 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    37 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    38 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    39 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    40 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    41 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    42 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    43 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    44 /    47 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    45 /    47 .. Mmpo =     5 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =    46 /    47 .. Mmpo =     1 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+Ttotal =      0.019 Tmvc-total = 0.000 MPO bond dimension =     6 MaxDW = 0.00e+00
+NNZ =          460 SIZE =         1618 SPT = 0.7157
+
+Rank =     0 Ttotal =      0.025 MPO method = FastBipartite bond dimension =       6 NNZ =          460 SIZE =         1618 SPT = 0.7157
+
+
+START TIME EVOLUTION (te_type = tdvp)
+
+ ************************************************** 
+
+
+Time Evolution  DELTA T = RE      0.00000000 + IM      0.10000000
+Time Evolution TARGET T = RE      0.00000000 + IM      0.50000000
+Time Evolution   NSTEPS =          5
+Environment initialization | Nsites =    47 | Center =    45
+ INIT-L --> Site =    1 ..  Bmem =   256 B Rmem =   160 B T = 0.04
+ INIT-L --> Site =    2 ..  Bmem = 1.91 KB Rmem =   560 B T = 0.01
+ INIT-L --> Site =    3 ..  Bmem = 5.19 KB Rmem = 1.08 KB T = 0.00
+ INIT-L --> Site =    4 ..  Bmem = 10.2 KB Rmem = 1.80 KB T = 0.00
+ INIT-L --> Site =    5 ..  Bmem = 16.8 KB Rmem = 2.70 KB T = 0.00
+ INIT-L --> Site =    6 ..  Bmem = 25.2 KB Rmem = 3.80 KB T = 0.00
+ INIT-L --> Site =    7 ..  Bmem = 35.2 KB Rmem = 5.08 KB T = 0.00
+ INIT-L --> Site =    8 ..  Bmem = 46.9 KB Rmem = 6.55 KB T = 0.00
+ INIT-L --> Site =    9 ..  Bmem = 60.3 KB Rmem = 8.20 KB T = 0.00
+ INIT-L --> Site =   10 ..  Bmem = 75.4 KB Rmem = 10.0 KB T = 0.00
+ INIT-L --> Site =   11 ..  Bmem = 92.2 KB Rmem = 12.1 KB T = 0.00
+ INIT-L --> Site =   12 ..  Bmem =  111 KB Rmem = 14.3 KB T = 0.00
+ INIT-L --> Site =   13 ..  Bmem =  131 KB Rmem = 16.7 KB T = 0.00
+ INIT-L --> Site =   14 ..  Bmem =  153 KB Rmem = 19.3 KB T = 0.00
+ INIT-L --> Site =   15 ..  Bmem =  176 KB Rmem = 22.1 KB T = 0.00
+ INIT-L --> Site =   16 ..  Bmem =  654 KB Rmem = 62.6 KB T = 0.01
+ INIT-L --> Site =   17 ..  Bmem = 1.69 MB Rmem =  127 KB T = 0.01
+ INIT-L --> Site =   18 ..  Bmem =  872 KB Rmem =  142 KB T = 0.01
+ INIT-L --> Site =   19 ..  Bmem =  974 KB Rmem =  158 KB T = 0.01
+ INIT-L --> Site =   20 ..  Bmem = 1.06 MB Rmem =  175 KB T = 0.01
+ INIT-L --> Site =   21 ..  Bmem = 1.17 MB Rmem =  192 KB T = 0.01
+ INIT-L --> Site =   22 ..  Bmem = 1.28 MB Rmem =  211 KB T = 0.01
+ INIT-L --> Site =   23 ..  Bmem = 1.40 MB Rmem =  230 KB T = 0.01
+ INIT-L --> Site =   24 ..  Bmem = 1.53 MB Rmem =  250 KB T = 0.01
+ INIT-L --> Site =   25 ..  Bmem = 1.66 MB Rmem =  271 KB T = 0.01
+ INIT-L --> Site =   26 ..  Bmem = 1.80 MB Rmem =  293 KB T = 0.01
+ INIT-L --> Site =   27 ..  Bmem = 1.94 MB Rmem =  315 KB T = 0.01
+ INIT-L --> Site =   28 ..  Bmem = 2.09 MB Rmem =  339 KB T = 0.01
+ INIT-L --> Site =   29 ..  Bmem = 2.25 MB Rmem =  363 KB T = 0.02
+ INIT-L --> Site =   30 ..  Bmem = 2.41 MB Rmem =  388 KB T = 0.02
+ INIT-L --> Site =   31 ..  Bmem = 2.57 MB Rmem =  414 KB T = 0.02
+ INIT-L --> Site =   32 ..  Bmem = 2.74 MB Rmem =  441 KB T = 0.02
+ INIT-L --> Site =   33 ..  Bmem = 2.92 MB Rmem =  469 KB T = 0.03
+ INIT-L --> Site =   34 ..  Bmem = 3.10 MB Rmem =  497 KB T = 0.02
+ INIT-L --> Site =   35 ..  Bmem = 3.29 MB Rmem =  527 KB T = 0.02
+ INIT-L --> Site =   36 ..  Bmem = 3.48 MB Rmem =  557 KB T = 0.02
+ INIT-L --> Site =   37 ..  Bmem = 3.68 MB Rmem =  588 KB T = 0.03
+ INIT-L --> Site =   38 ..  Bmem = 3.88 MB Rmem =  620 KB T = 0.03
+ INIT-L --> Site =   39 ..  Bmem = 4.09 MB Rmem =  653 KB T = 0.03
+ INIT-L --> Site =   40 ..  Bmem = 4.31 MB Rmem =  686 KB T = 0.03
+ INIT-L --> Site =   41 ..  Bmem = 4.53 MB Rmem =  721 KB T = 0.03
+ INIT-L --> Site =   42 ..  Bmem = 4.75 MB Rmem =  756 KB T = 0.03
+ INIT-L --> Site =   43 ..  Bmem = 4.99 MB Rmem =  792 KB T = 0.03
+ INIT-L --> Site =   44 ..  Bmem = 5.22 MB Rmem =  829 KB T = 0.03
+ INIT-L --> Site =   45 ..  Bmem = 5.46 MB Rmem =  867 KB T = 0.04
+Time init sweep =        0.669 | MaxBmem = 5.46 MB | MaxRmem =  867 KB
+ | Tread = 0.000 | Twrite = 0.144 | Tfpread = 0.000 | Tfpwrite = 0.061 | data = 12.8 MB | cpsd = 3.20 MB | Tasync = 0.000
+
+Sweep =    0 | Direction = backward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ <-- Site =   45-  46 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.73e+06 Texpo = 0.30 T = 0.35
+ <-- Site =   44-  45 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.97e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   43-  44 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.37e+07 Texpo = 0.09 T = 0.13
+ <-- Site =   42-  43 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.46e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   41-  42 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.48e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   40-  41 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.60e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   39-  40 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.29e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   38-  39 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.99e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   37-  38 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.93e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   36-  37 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.64e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   35-  36 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.81e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   34-  35 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.62e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   33-  34 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.57e+07 Texpo = 0.10 T = 0.12
+ <-- Site =   32-  33 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.57e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   31-  32 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.04e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   30-  31 .. Mmps =   33 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.45e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   29-  30 .. Mmps =   35 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.22e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   28-  29 .. Mmps =   37 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.35e+07 Texpo = 0.06 T = 0.09
+ <-- Site =   27-  28 .. Mmps =   39 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.01e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   26-  27 .. Mmps =   41 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.16e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   25-  26 .. Mmps =   43 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.13e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   24-  25 .. Mmps =   45 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.85e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   23-  24 .. Mmps =   47 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.85e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   22-  23 .. Mmps =   49 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.71e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   21-  22 .. Mmps =   51 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.50e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   20-  21 .. Mmps =   53 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.10 T = 0.18
+ <-- Site =   19-  20 .. Mmps =   55 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.09 T = 0.29
+ <-- Site =   18-  19 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.56e+07 Texpo = 0.06 T = 0.12
+ <-- Site =   17-  18 .. Mmps =   59 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.18e+07 Texpo = 0.14 T = 0.17
+ <-- Site =   16-  17 .. Mmps =   61 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.37e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   15-  16 .. Mmps =   95 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.88e+07 Texpo = 0.09 T = 0.14
+ <-- Site =   14-  15 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.77e+07 Texpo = 0.04 T = 0.11
+ <-- Site =   13-  14 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.72e+07 Texpo = 0.14 T = 0.21
+ <-- Site =   12-  13 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.64e+07 Texpo = 0.07 T = 0.13
+ <-- Site =   11-  12 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.98e+07 Texpo = 0.04 T = 0.10
+ <-- Site =   10-  11 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.16e+07 Texpo = 0.12 T = 0.20
+ <-- Site =    9-  10 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.22e+07 Texpo = 0.12 T = 0.22
+ <-- Site =    8-   9 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.35e+07 Texpo = 0.12 T = 0.41
+ <-- Site =    7-   8 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.99e+07 Texpo = 0.09 T = 1.06
+ <-- Site =    6-   7 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.24e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    5-   6 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.80e+07 Texpo = 0.08 T = 0.15
+ <-- Site =    4-   5 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.18e+08 Texpo = 0.01 T = 0.09
+ <-- Site =    3-   4 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.23e+08 Texpo = 0.01 T = 0.09
+ <-- Site =    2-   3 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.75e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    1-   2 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.16e+08 Texpo = 0.01 T = 0.11
+ <-- Site =    0-   1 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.01e+08 Texpo = 0.01 T = 0.05
+Time elapsed =      6.640 | E = (-1.7374334255,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        6.640 | 105 MFLOP/SWP
+ | Tread = 0.421 | Twrite = 0.237 | Tfpread = 0.103 | Tfpwrite = 0.064 | data = 9.91 MB | cpsd = 3.74 MB | Tasync = 0.000
+Sweep =    1 | Direction =  forward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.08e+07 Texpo = 0.16 T = 0.19
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 8.22e+07 Texpo = 0.04 T = 0.08
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.51e+07 Texpo = 0.13 T = 0.18
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.22e+08 Texpo = 0.01 T = 0.05
+ --> Site =    4-   5 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.68e+07 Texpo = 0.04 T = 0.08
+ --> Site =    5-   6 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.46e+07 Texpo = 0.04 T = 0.08
+ --> Site =    6-   7 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.40e+07 Texpo = 0.06 T = 0.10
+ --> Site =    7-   8 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.70e+07 Texpo = 0.04 T = 0.08
+ --> Site =    8-   9 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.59e+07 Texpo = 0.04 T = 0.08
+ --> Site =    9-  10 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.15 T = 0.19
+ --> Site =   10-  11 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.29e+07 Texpo = 0.04 T = 0.08
+ --> Site =   11-  12 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.32e+07 Texpo = 0.04 T = 0.07
+ --> Site =   12-  13 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.06e+07 Texpo = 0.12 T = 0.15
+ --> Site =   13-  14 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.72e+08 Texpo = 0.01 T = 0.05
+ --> Site =   14-  15 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.64e+07 Texpo = 0.04 T = 0.07
+ --> Site =   15-  16 .. Mmps =   50 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.87e+07 Texpo = 0.09 T = 0.13
+ --> Site =   16-  17 .. Mmps =   54 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.07e+07 Texpo = 0.04 T = 0.07
+ --> Site =   17-  18 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.39e+07 Texpo = 0.12 T = 0.16
+ --> Site =   18-  19 .. Mmps =   60 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.02e+07 Texpo = 0.04 T = 0.09
+ --> Site =   19-  20 .. Mmps =   63 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.87e+07 Texpo = 0.04 T = 0.10
+ --> Site =   20-  21 .. Mmps =   66 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.42e+07 Texpo = 0.12 T = 0.16
+ --> Site =   21-  22 .. Mmps =   69 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.33e+07 Texpo = 0.13 T = 0.17
+ --> Site =   22-  23 .. Mmps =   72 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.92e+07 Texpo = 0.05 T = 0.08
+ --> Site =   23-  24 .. Mmps =   75 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.57e+07 Texpo = 0.12 T = 0.16
+ --> Site =   24-  25 .. Mmps =   78 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.82e+07 Texpo = 0.04 T = 0.09
+ --> Site =   25-  26 .. Mmps =   81 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.68e+07 Texpo = 0.12 T = 0.17
+ --> Site =   26-  27 .. Mmps =   84 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.45e+08 Texpo = 0.01 T = 0.06
+ --> Site =   27-  28 .. Mmps =   87 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.97e+07 Texpo = 0.04 T = 0.08
+ --> Site =   28-  29 .. Mmps =   90 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.22e+07 Texpo = 0.07 T = 0.11
+ --> Site =   29-  30 .. Mmps =   93 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.33e+07 Texpo = 0.07 T = 0.11
+ --> Site =   30-  31 .. Mmps =   96 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.40e+07 Texpo = 0.07 T = 0.11
+ --> Site =   31-  32 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.55e+07 Texpo = 0.07 T = 0.12
+ --> Site =   32-  33 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.63e+07 Texpo = 0.07 T = 0.12
+ --> Site =   33-  34 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.53e+07 Texpo = 0.10 T = 0.15
+ --> Site =   34-  35 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.70e+08 Texpo = 0.01 T = 0.07
+ --> Site =   35-  36 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.84e+07 Texpo = 0.07 T = 0.13
+ --> Site =   36-  37 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.06e+07 Texpo = 0.07 T = 0.13
+ --> Site =   37-  38 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.01e+07 Texpo = 0.07 T = 0.28
+ --> Site =   38-  39 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.16e+08 Texpo = 0.01 T = 0.07
+ --> Site =   39-  40 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.32e+07 Texpo = 0.04 T = 0.11
+ --> Site =   40-  41 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.50e+07 Texpo = 0.04 T = 0.11
+ --> Site =   41-  42 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.29e+07 Texpo = 0.04 T = 0.12
+ --> Site =   42-  43 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.90e+07 Texpo = 0.06 T = 0.14
+ --> Site =   43-  44 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 8.18e+07 Texpo = 0.04 T = 0.12
+ --> Site =   44-  45 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.27e+08 Texpo = 0.01 T = 0.10
+ --> Site =   45-  46 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 8.93e+07 Texpo = 0.01 T = 0.05
+Time elapsed =     11.851 | E = (-1.7374334255,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        5.211 | 105 MFLOP/SWP
+ | Tread = 0.224 | Twrite = 0.154 | Tfpread = 0.132 | Tfpwrite = 0.074 | data = 12.8 MB | cpsd = 4.97 MB | Tasync = 0.000
+T =    0.00000 +    0.10000i <E> =   -1.737433425476959 +   -0.00000i <Norm^2> =    1.000000000000001 +    0.00000i
+Sweep =    0 | Direction = backward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ <-- Site =   45-  46 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.80e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   44-  45 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.95e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   43-  44 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 8.19e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   42-  43 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.35e+07 Texpo = 0.09 T = 0.13
+ <-- Site =   41-  42 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.15e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   40-  41 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.13e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   39-  40 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.87e+07 Texpo = 0.04 T = 0.10
+ <-- Site =   38-  39 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.08e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   37-  38 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.91e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   36-  37 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.21e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   35-  36 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.75e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   34-  35 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.07e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   33-  34 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.07e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   32-  33 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.58e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   31-  32 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.97e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   30-  31 .. Mmps =   33 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.63e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   29-  30 .. Mmps =   35 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.33e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   28-  29 .. Mmps =   37 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.29e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   27-  28 .. Mmps =   39 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.30e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   26-  27 .. Mmps =   41 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.05e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   25-  26 .. Mmps =   43 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.83e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   24-  25 .. Mmps =   45 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.78e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   23-  24 .. Mmps =   47 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.66e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   22-  23 .. Mmps =   49 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.28e+07 Texpo = 0.14 T = 0.17
+ <-- Site =   21-  22 .. Mmps =   51 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.31e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   20-  21 .. Mmps =   53 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.24e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   19-  20 .. Mmps =   55 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.51e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   18-  19 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.62e+07 Texpo = 0.06 T = 0.09
+ <-- Site =   17-  18 .. Mmps =   59 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.15 T = 0.17
+ <-- Site =   16-  17 .. Mmps =   61 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.31e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   15-  16 .. Mmps =   95 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.23e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   14-  15 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.43e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   13-  14 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.55e+07 Texpo = 0.09 T = 0.14
+ <-- Site =   12-  13 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.61e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   11-  12 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.83e+07 Texpo = 0.09 T = 0.15
+ <-- Site =   10-  11 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.52e+07 Texpo = 0.04 T = 0.10
+ <-- Site =    9-  10 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.15 T = 0.21
+ <-- Site =    8-   9 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.04e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    7-   8 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.02e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    6-   7 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.31e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    5-   6 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.45e+07 Texpo = 0.04 T = 0.75
+ <-- Site =    4-   5 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.25e+07 Texpo = 0.09 T = 0.16
+ <-- Site =    3-   4 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.86e+07 Texpo = 0.06 T = 0.14
+ <-- Site =    2-   3 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.63e+07 Texpo = 0.07 T = 0.15
+ <-- Site =    1-   2 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.74e+07 Texpo = 0.07 T = 0.15
+ <-- Site =    0-   1 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.60e+07 Texpo = 0.03 T = 0.07
+Time elapsed =      5.541 | E = (-1.7374334255,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        5.541 | 105 MFLOP/SWP
+ | Tread = 0.154 | Twrite = 0.123 | Tfpread = 0.093 | Tfpwrite = 0.062 | data = 9.91 MB | cpsd = 3.74 MB | Tasync = 0.000
+Sweep =    1 | Direction =  forward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.86e+07 Texpo = 0.09 T = 0.12
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.65e+07 Texpo = 0.04 T = 0.08
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.67e+07 Texpo = 0.04 T = 0.08
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.22e+08 Texpo = 0.01 T = 0.05
+ --> Site =    4-   5 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.43e+07 Texpo = 0.04 T = 0.08
+ --> Site =    5-   6 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.78e+07 Texpo = 0.04 T = 0.10
+ --> Site =    6-   7 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.92e+08 Texpo = 0.01 T = 0.07
+ --> Site =    7-   8 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.96e+08 Texpo = 0.01 T = 0.04
+ --> Site =    8-   9 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.67e+07 Texpo = 0.04 T = 0.07
+ --> Site =    9-  10 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.87e+07 Texpo = 0.07 T = 0.10
+ --> Site =   10-  11 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.93e+07 Texpo = 0.07 T = 0.10
+ --> Site =   11-  12 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.05e+07 Texpo = 0.04 T = 0.07
+ --> Site =   12-  13 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.81e+08 Texpo = 0.01 T = 0.04
+ --> Site =   13-  14 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.04e+07 Texpo = 0.12 T = 0.15
+ --> Site =   14-  15 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.54e+07 Texpo = 0.04 T = 0.08
+ --> Site =   15-  16 .. Mmps =   50 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.59e+07 Texpo = 0.07 T = 0.10
+ --> Site =   16-  17 .. Mmps =   54 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.86e+07 Texpo = 0.04 T = 0.07
+ --> Site =   17-  18 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.13e+07 Texpo = 0.04 T = 0.07
+ --> Site =   18-  19 .. Mmps =   60 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.14e+07 Texpo = 0.15 T = 0.18
+ --> Site =   19-  20 .. Mmps =   63 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.15e+07 Texpo = 0.08 T = 0.11
+ --> Site =   20-  21 .. Mmps =   66 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.54e+07 Texpo = 0.07 T = 0.10
+ --> Site =   21-  22 .. Mmps =   69 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.30e+08 Texpo = 0.01 T = 0.05
+ --> Site =   22-  23 .. Mmps =   72 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.01e+07 Texpo = 0.09 T = 0.13
+ --> Site =   23-  24 .. Mmps =   75 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.69e+07 Texpo = 0.07 T = 0.11
+ --> Site =   24-  25 .. Mmps =   78 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.04e+07 Texpo = 0.10 T = 0.20
+ --> Site =   25-  26 .. Mmps =   81 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.00e+08 Texpo = 0.01 T = 0.25
+ --> Site =   26-  27 .. Mmps =   84 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.05e+08 Texpo = 0.01 T = 0.27
+ --> Site =   27-  28 .. Mmps =   87 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.02e+07 Texpo = 0.07 T = 0.23
+ --> Site =   28-  29 .. Mmps =   90 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.29e+07 Texpo = 0.07 T = 1.44
+ --> Site =   29-  30 .. Mmps =   93 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.27e+07 Texpo = 0.07 T = 1.87
+ --> Site =   30-  31 .. Mmps =   96 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.50e+07 Texpo = 0.15 T = 0.22
+ --> Site =   31-  32 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.75e+07 Texpo = 0.04 T = 0.09
+ --> Site =   32-  33 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.93e+07 Texpo = 0.04 T = 0.09
+ --> Site =   33-  34 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.30e+07 Texpo = 0.04 T = 0.09
+ --> Site =   34-  35 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.05e+07 Texpo = 0.12 T = 0.18
+ --> Site =   35-  36 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.82e+07 Texpo = 0.07 T = 0.13
+ --> Site =   36-  37 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.89e+08 Texpo = 0.01 T = 0.08
+ --> Site =   37-  38 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.86e+08 Texpo = 0.01 T = 0.08
+ --> Site =   38-  39 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.44e+07 Texpo = 0.11 T = 0.18
+ --> Site =   39-  40 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.04e+08 Texpo = 0.01 T = 0.08
+ --> Site =   40-  41 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.10e+08 Texpo = 0.01 T = 0.08
+ --> Site =   41-  42 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.52e+07 Texpo = 0.04 T = 0.14
+ --> Site =   42-  43 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.52e+07 Texpo = 0.07 T = 0.15
+ --> Site =   43-  44 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.90e+07 Texpo = 0.04 T = 0.12
+ --> Site =   44-  45 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.20e+08 Texpo = 0.01 T = 0.10
+ --> Site =   45-  46 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.35e+07 Texpo = 0.06 T = 0.10
+Time elapsed =     13.879 | E = (-1.7374334255,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        8.338 | 105 MFLOP/SWP
+ | Tread = 0.430 | Twrite = 0.144 | Tfpread = 0.147 | Tfpwrite = 0.070 | data = 12.8 MB | cpsd = 4.96 MB | Tasync = 0.000
+T =    0.00000 +    0.20000i <E> =   -1.737433425476959 +   -0.00000i <Norm^2> =    0.999999999999999 +    0.00000i
+Sweep =    0 | Direction = backward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ <-- Site =   45-  46 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.38e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   44-  45 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.73e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   43-  44 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.97e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   42-  43 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.11e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   41-  42 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.57e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   40-  41 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.29e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   39-  40 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.13e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   38-  39 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.02e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   37-  38 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.00e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   36-  37 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.80e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   35-  36 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.85e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   34-  35 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.89e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   33-  34 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.66e+07 Texpo = 0.15 T = 0.20
+ <-- Site =   32-  33 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.88e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   31-  32 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.66e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   30-  31 .. Mmps =   33 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.54e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   29-  30 .. Mmps =   35 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   28-  29 .. Mmps =   37 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.17e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   27-  28 .. Mmps =   39 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.47e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   26-  27 .. Mmps =   41 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.91e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   25-  26 .. Mmps =   43 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.41e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   24-  25 .. Mmps =   45 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.32e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   23-  24 .. Mmps =   47 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.84e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   22-  23 .. Mmps =   49 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.33e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   21-  22 .. Mmps =   51 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.74e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   20-  21 .. Mmps =   53 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.86e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   19-  20 .. Mmps =   55 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.79e+07 Texpo = 0.10 T = 0.12
+ <-- Site =   18-  19 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   17-  18 .. Mmps =   59 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.76e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   16-  17 .. Mmps =   61 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.35e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   15-  16 .. Mmps =   95 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.25e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   14-  15 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.55e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   13-  14 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.57e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   12-  13 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.65e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   11-  12 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.71e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   10-  11 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.29e+07 Texpo = 0.20 T = 0.26
+ <-- Site =    9-  10 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.92e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    8-   9 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.02e+07 Texpo = 0.07 T = 0.14
+ <-- Site =    7-   8 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.19e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    6-   7 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.00e+07 Texpo = 0.10 T = 0.17
+ <-- Site =    5-   6 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.98e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    4-   5 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.23e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    3-   4 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.19e+08 Texpo = 0.01 T = 0.09
+ <-- Site =    2-   3 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.71e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    1-   2 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 8.16e+07 Texpo = 0.04 T = 0.12
+ <-- Site =    0-   1 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 9.65e+06 Texpo = 0.09 T = 0.13
+Time elapsed =      4.666 | E = (-1.7374334255,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        4.666 | 105 MFLOP/SWP
+ | Tread = 0.162 | Twrite = 0.129 | Tfpread = 0.094 | Tfpwrite = 0.063 | data = 9.91 MB | cpsd = 3.74 MB | Tasync = 0.000
+Sweep =    1 | Direction =  forward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.78e+07 Texpo = 0.10 T = 0.14
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 8.11e+07 Texpo = 0.04 T = 0.08
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.79e+07 Texpo = 0.07 T = 0.11
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.30e+07 Texpo = 0.09 T = 0.13
+ --> Site =    4-   5 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.59e+07 Texpo = 0.07 T = 0.11
+ --> Site =    5-   6 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.41e+07 Texpo = 0.04 T = 0.08
+ --> Site =    6-   7 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.43e+07 Texpo = 0.04 T = 0.07
+ --> Site =    7-   8 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.04e+07 Texpo = 0.09 T = 0.13
+ --> Site =    8-   9 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.51e+07 Texpo = 0.04 T = 0.22
+ --> Site =    9-  10 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.25e+07 Texpo = 0.06 T = 0.71
+ --> Site =   10-  11 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+08 Texpo = 0.01 T = 0.57
+ --> Site =   11-  12 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.69e+07 Texpo = 0.09 T = 0.13
+ --> Site =   12-  13 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.58e+07 Texpo = 0.07 T = 0.10
+ --> Site =   13-  14 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.52e+07 Texpo = 0.07 T = 0.10
+ --> Site =   14-  15 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.44e+07 Texpo = 0.07 T = 0.11
+ --> Site =   15-  16 .. Mmps =   50 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.39e+07 Texpo = 0.04 T = 0.07
+ --> Site =   16-  17 .. Mmps =   54 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.69e+07 Texpo = 0.09 T = 0.13
+ --> Site =   17-  18 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 9.54e+06 Texpo = 0.17 T = 0.62
+ --> Site =   18-  19 .. Mmps =   60 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.60e+07 Texpo = 0.10 T = 0.14
+ --> Site =   19-  20 .. Mmps =   63 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.44e+07 Texpo = 0.12 T = 0.15
+ --> Site =   20-  21 .. Mmps =   66 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.48e+07 Texpo = 0.04 T = 0.07
+ --> Site =   21-  22 .. Mmps =   69 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.42e+07 Texpo = 0.04 T = 0.08
+ --> Site =   22-  23 .. Mmps =   72 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.89e+07 Texpo = 0.06 T = 0.10
+ --> Site =   23-  24 .. Mmps =   75 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.58e+07 Texpo = 0.12 T = 0.16
+ --> Site =   24-  25 .. Mmps =   78 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.87e+07 Texpo = 0.07 T = 0.11
+ --> Site =   25-  26 .. Mmps =   81 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.01e+07 Texpo = 0.07 T = 0.11
+ --> Site =   26-  27 .. Mmps =   84 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.85e+07 Texpo = 0.04 T = 0.08
+ --> Site =   27-  28 .. Mmps =   87 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.21e+07 Texpo = 0.07 T = 0.11
+ --> Site =   28-  29 .. Mmps =   90 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.51e+08 Texpo = 0.01 T = 0.06
+ --> Site =   29-  30 .. Mmps =   93 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.34e+07 Texpo = 0.09 T = 0.14
+ --> Site =   30-  31 .. Mmps =   96 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.61e+08 Texpo = 0.01 T = 0.06
+ --> Site =   31-  32 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.63e+08 Texpo = 0.01 T = 0.06
+ --> Site =   32-  33 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.58e+07 Texpo = 0.09 T = 0.14
+ --> Site =   33-  34 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.61e+07 Texpo = 0.09 T = 0.15
+ --> Site =   34-  35 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.07e+07 Texpo = 0.04 T = 0.10
+ --> Site =   35-  36 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.87e+08 Texpo = 0.01 T = 0.07
+ --> Site =   36-  37 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.24e+07 Texpo = 0.12 T = 0.19
+ --> Site =   37-  38 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+08 Texpo = 0.02 T = 0.09
+ --> Site =   38-  39 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.99e+07 Texpo = 0.07 T = 0.13
+ --> Site =   39-  40 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.12e+07 Texpo = 0.04 T = 0.11
+ --> Site =   40-  41 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.45e+07 Texpo = 0.12 T = 0.21
+ --> Site =   41-  42 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.33e+07 Texpo = 0.04 T = 0.12
+ --> Site =   42-  43 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.72e+07 Texpo = 0.07 T = 0.14
+ --> Site =   43-  44 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.63e+07 Texpo = 0.07 T = 0.15
+ --> Site =   44-  45 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.52e+07 Texpo = 0.09 T = 0.19
+ --> Site =   45-  46 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.25e+07 Texpo = 0.04 T = 0.08
+Time elapsed =     11.564 | E = (-1.7374334255,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        6.898 | 105 MFLOP/SWP
+ | Tread = 0.513 | Twrite = 0.467 | Tfpread = 0.148 | Tfpwrite = 0.097 | data = 12.8 MB | cpsd = 4.97 MB | Tasync = 0.000
+T =    0.00000 +    0.30000i <E> =   -1.737433425476960 +    0.00000i <Norm^2> =    0.999999999999998 +    0.00000i
+Sweep =    0 | Direction = backward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ <-- Site =   45-  46 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.35e+07 Texpo = 0.13 T = 0.16
+ <-- Site =   44-  45 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.85e+07 Texpo = 0.04 T = 0.09
+ <-- Site =   43-  44 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.15e+08 Texpo = 0.01 T = 0.06
+ <-- Site =   42-  43 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.38e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   41-  42 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.68e+07 Texpo = 0.06 T = 0.10
+ <-- Site =   40-  41 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.09e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   39-  40 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.99e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   38-  39 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.06e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   37-  38 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.88e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   36-  37 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.79e+07 Texpo = 0.15 T = 0.22
+ <-- Site =   35-  36 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.17e+07 Texpo = 0.12 T = 0.16
+ <-- Site =   34-  35 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.66e+07 Texpo = 0.09 T = 0.13
+ <-- Site =   33-  34 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.27e+07 Texpo = 0.04 T = 0.14
+ <-- Site =   32-  33 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.64e+07 Texpo = 0.09 T = 0.15
+ <-- Site =   31-  32 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.70e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   30-  31 .. Mmps =   33 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.25e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   29-  30 .. Mmps =   35 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.29e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   28-  29 .. Mmps =   37 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.22e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   27-  28 .. Mmps =   39 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.10e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   26-  27 .. Mmps =   41 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.13e+07 Texpo = 0.10 T = 0.12
+ <-- Site =   25-  26 .. Mmps =   43 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.68e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   24-  25 .. Mmps =   45 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.93e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   23-  24 .. Mmps =   47 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.50e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   22-  23 .. Mmps =   49 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.95e+07 Texpo = 0.09 T = 0.14
+ <-- Site =   21-  22 .. Mmps =   51 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.64e+07 Texpo = 0.07 T = 0.11
+ <-- Site =   20-  21 .. Mmps =   53 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.44e+07 Texpo = 0.12 T = 0.21
+ <-- Site =   19-  20 .. Mmps =   55 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.09e+07 Texpo = 0.06 T = 0.35
+ <-- Site =   18-  19 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.11e+07 Texpo = 0.15 T = 0.34
+ <-- Site =   17-  18 .. Mmps =   59 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.87e+07 Texpo = 0.04 T = 0.22
+ <-- Site =   16-  17 .. Mmps =   61 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.72e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   15-  16 .. Mmps =   95 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.65e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   14-  15 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.66e+07 Texpo = 0.04 T = 0.09
+ <-- Site =   13-  14 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.51e+07 Texpo = 0.10 T = 0.14
+ <-- Site =   12-  13 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.60e+07 Texpo = 0.09 T = 0.15
+ <-- Site =   11-  12 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.75e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   10-  11 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.52e+07 Texpo = 0.04 T = 0.10
+ <-- Site =    9-  10 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.84e+07 Texpo = 0.14 T = 0.21
+ <-- Site =    8-   9 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.04e+07 Texpo = 0.07 T = 0.15
+ <-- Site =    7-   8 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.93e+07 Texpo = 0.04 T = 0.11
+ <-- Site =    6-   7 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.17e+07 Texpo = 0.04 T = 0.11
+ <-- Site =    5-   6 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.45e+07 Texpo = 0.04 T = 0.11
+ <-- Site =    4-   5 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.37e+07 Texpo = 0.04 T = 0.11
+ <-- Site =    3-   4 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.81e+07 Texpo = 0.06 T = 0.15
+ <-- Site =    2-   3 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.18e+07 Texpo = 0.14 T = 0.22
+ <-- Site =    1-   2 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.85e+07 Texpo = 0.11 T = 0.20
+ <-- Site =    0-   1 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.48e+07 Texpo = 0.06 T = 0.10
+Time elapsed =      6.075 | E = (-1.7374334255,-0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        6.075 | 105 MFLOP/SWP
+ | Tread = 0.440 | Twrite = 0.176 | Tfpread = 0.134 | Tfpwrite = 0.064 | data = 9.91 MB | cpsd = 3.74 MB | Tasync = 0.000
+Sweep =    1 | Direction =  forward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.84e+07 Texpo = 0.09 T = 0.12
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.95e+07 Texpo = 0.04 T = 0.08
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.57e+07 Texpo = 0.04 T = 0.08
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.02e+08 Texpo = 0.03 T = 0.07
+ --> Site =    4-   5 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.90e+07 Texpo = 0.04 T = 0.07
+ --> Site =    5-   6 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.19e+07 Texpo = 0.09 T = 0.13
+ --> Site =    6-   7 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.53e+07 Texpo = 0.06 T = 0.10
+ --> Site =    7-   8 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.70e+07 Texpo = 0.04 T = 0.09
+ --> Site =    8-   9 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.78e+07 Texpo = 0.10 T = 0.14
+ --> Site =    9-  10 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.90e+08 Texpo = 0.01 T = 0.05
+ --> Site =   10-  11 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.15 T = 0.18
+ --> Site =   11-  12 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.68e+07 Texpo = 0.07 T = 0.10
+ --> Site =   12-  13 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.64e+07 Texpo = 0.15 T = 0.18
+ --> Site =   13-  14 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.62e+07 Texpo = 0.15 T = 0.18
+ --> Site =   14-  15 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.66e+07 Texpo = 0.04 T = 0.08
+ --> Site =   15-  16 .. Mmps =   50 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.18e+07 Texpo = 0.15 T = 0.18
+ --> Site =   16-  17 .. Mmps =   54 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.17e+08 Texpo = 0.01 T = 0.04
+ --> Site =   17-  18 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.37e+07 Texpo = 0.12 T = 0.15
+ --> Site =   18-  19 .. Mmps =   60 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.09 T = 0.13
+ --> Site =   19-  20 .. Mmps =   63 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.45e+07 Texpo = 0.12 T = 0.15
+ --> Site =   20-  21 .. Mmps =   66 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.22e+07 Texpo = 0.04 T = 0.07
+ --> Site =   21-  22 .. Mmps =   69 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.59e+07 Texpo = 0.07 T = 0.11
+ --> Site =   22-  23 .. Mmps =   72 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.74e+07 Texpo = 0.07 T = 0.11
+ --> Site =   23-  24 .. Mmps =   75 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.80e+07 Texpo = 0.04 T = 0.08
+ --> Site =   24-  25 .. Mmps =   78 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.11e+07 Texpo = 0.09 T = 0.13
+ --> Site =   25-  26 .. Mmps =   81 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.41e+08 Texpo = 0.01 T = 0.05
+ --> Site =   26-  27 .. Mmps =   84 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.98e+07 Texpo = 0.07 T = 0.14
+ --> Site =   27-  28 .. Mmps =   87 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.76e+08 Texpo = 0.01 T = 0.09
+ --> Site =   28-  29 .. Mmps =   90 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.54e+08 Texpo = 0.01 T = 0.06
+ --> Site =   29-  30 .. Mmps =   93 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.60e+08 Texpo = 0.01 T = 0.06
+ --> Site =   30-  31 .. Mmps =   96 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.61e+08 Texpo = 0.01 T = 0.06
+ --> Site =   31-  32 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.68e+07 Texpo = 0.06 T = 0.11
+ --> Site =   32-  33 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.39e+07 Texpo = 0.07 T = 0.12
+ --> Site =   33-  34 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.05e+07 Texpo = 0.04 T = 0.09
+ --> Site =   34-  35 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.18e+07 Texpo = 0.04 T = 0.13
+ --> Site =   35-  36 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.65e+07 Texpo = 0.04 T = 0.10
+ --> Site =   36-  37 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.48e+07 Texpo = 0.04 T = 0.10
+ --> Site =   37-  38 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.88e+07 Texpo = 0.07 T = 0.13
+ --> Site =   38-  39 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.10e+07 Texpo = 0.07 T = 0.13
+ --> Site =   39-  40 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.38e+07 Texpo = 0.04 T = 0.14
+ --> Site =   40-  41 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.04e+08 Texpo = 0.01 T = 0.09
+ --> Site =   41-  42 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.63e+07 Texpo = 0.11 T = 0.19
+ --> Site =   42-  43 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.54e+07 Texpo = 0.04 T = 0.12
+ --> Site =   43-  44 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.84e+07 Texpo = 0.07 T = 0.14
+ --> Site =   44-  45 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.78e+07 Texpo = 0.07 T = 0.15
+ --> Site =   45-  46 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.41e+07 Texpo = 0.04 T = 0.07
+Time elapsed =     11.157 | E = (-1.7374334255,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        5.081 | 105 MFLOP/SWP
+ | Tread = 0.256 | Twrite = 0.148 | Tfpread = 0.122 | Tfpwrite = 0.072 | data = 12.8 MB | cpsd = 4.97 MB | Tasync = 0.000
+T =    0.00000 +    0.40000i <E> =   -1.737433425476958 +    0.00000i <Norm^2> =    1.000000000000000 +    0.00000i
+Sweep =    0 | Direction = backward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ <-- Site =   45-  46 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.59e+07 Texpo = 0.05 T = 0.07
+ <-- Site =   44-  45 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.97e+07 Texpo = 0.04 T = 0.08
+ <-- Site =   43-  44 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.24e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   42-  43 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.56e+07 Texpo = 0.07 T = 0.11
+ <-- Site =   41-  42 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.62e+07 Texpo = 0.06 T = 0.10
+ <-- Site =   40-  41 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.34e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   39-  40 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.00e+08 Texpo = 0.01 T = 0.05
+ <-- Site =   38-  39 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.64e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   37-  38 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.92e+07 Texpo = 0.14 T = 0.17
+ <-- Site =   36-  37 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.27e+07 Texpo = 0.12 T = 0.15
+ <-- Site =   35-  36 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.59e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   34-  35 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.92e+07 Texpo = 0.06 T = 0.09
+ <-- Site =   33-  34 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.71e+07 Texpo = 0.07 T = 0.10
+ <-- Site =   32-  33 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.50e+07 Texpo = 0.10 T = 0.13
+ <-- Site =   31-  32 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.60e+07 Texpo = 0.06 T = 0.10
+ <-- Site =   30-  31 .. Mmps =   33 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.45e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   29-  30 .. Mmps =   35 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.62e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   28-  29 .. Mmps =   37 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.33e+07 Texpo = 0.06 T = 0.09
+ <-- Site =   27-  28 .. Mmps =   39 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.50e+08 Texpo = 0.01 T = 0.07
+ <-- Site =   26-  27 .. Mmps =   41 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.42e+08 Texpo = 0.01 T = 0.04
+ <-- Site =   25-  26 .. Mmps =   43 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.97e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   24-  25 .. Mmps =   45 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.01e+07 Texpo = 0.10 T = 0.12
+ <-- Site =   23-  24 .. Mmps =   47 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.26e+07 Texpo = 0.15 T = 0.18
+ <-- Site =   22-  23 .. Mmps =   49 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.51e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   21-  22 .. Mmps =   51 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.76e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   20-  21 .. Mmps =   53 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.17e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   19-  20 .. Mmps =   55 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.66e+07 Texpo = 0.06 T = 0.09
+ <-- Site =   18-  19 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.80e+07 Texpo = 0.09 T = 0.12
+ <-- Site =   17-  18 .. Mmps =   59 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.49e+07 Texpo = 0.07 T = 0.09
+ <-- Site =   16-  17 .. Mmps =   61 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.45e+07 Texpo = 0.06 T = 0.10
+ <-- Site =   15-  16 .. Mmps =   95 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.53e+07 Texpo = 0.04 T = 0.07
+ <-- Site =   14-  15 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.50e+07 Texpo = 0.09 T = 0.14
+ <-- Site =   13-  14 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.41e+07 Texpo = 0.07 T = 0.12
+ <-- Site =   12-  13 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.01e+07 Texpo = 0.12 T = 0.18
+ <-- Site =   11-  12 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.12e+07 Texpo = 0.12 T = 0.18
+ <-- Site =   10-  11 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.82e+07 Texpo = 0.09 T = 0.18
+ <-- Site =    9-  10 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.93e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    8-   9 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.19e+07 Texpo = 0.06 T = 0.13
+ <-- Site =    7-   8 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.38e+07 Texpo = 0.12 T = 0.18
+ <-- Site =    6-   7 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.01e+07 Texpo = 0.09 T = 0.16
+ <-- Site =    5-   6 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.13e+07 Texpo = 0.09 T = 0.16
+ <-- Site =    4-   5 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.57e+07 Texpo = 0.07 T = 0.13
+ <-- Site =    3-   4 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.25e+08 Texpo = 0.01 T = 0.09
+ <-- Site =    2-   3 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.29e+08 Texpo = 0.01 T = 0.09
+ <-- Site =    1-   2 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.51e+07 Texpo = 0.09 T = 0.18
+ <-- Site =    0-   1 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.63e+07 Texpo = 0.03 T = 0.08
+Time elapsed =      4.969 | E = (-1.7374334255,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        4.969 | 105 MFLOP/SWP
+ | Tread = 0.150 | Twrite = 0.124 | Tfpread = 0.090 | Tfpwrite = 0.062 | data = 9.91 MB | cpsd = 3.74 MB | Tasync = 0.000
+Sweep =    1 | Direction =  forward | Beta = (0.00000,0.05000) | Bond dimension =  250 | Noise =  0.00e+00
+ --> Site =    0-   1 .. Mmps =    3 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.56e+07 Texpo = 0.07 T = 0.10
+ --> Site =    1-   2 .. Mmps =    5 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.45e+07 Texpo = 0.09 T = 0.16
+ --> Site =    2-   3 .. Mmps =    7 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 8.27e+07 Texpo = 0.04 T = 0.08
+ --> Site =    3-   4 .. Mmps =    9 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.13e+08 Texpo = 0.01 T = 0.05
+ --> Site =    4-   5 .. Mmps =   11 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 7.01e+07 Texpo = 0.04 T = 0.08
+ --> Site =    5-   6 .. Mmps =   13 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.14e+08 Texpo = 0.01 T = 0.06
+ --> Site =    6-   7 .. Mmps =   15 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.03e+07 Texpo = 0.04 T = 0.07
+ --> Site =    7-   8 .. Mmps =   17 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.19e+07 Texpo = 0.04 T = 0.07
+ --> Site =    8-   9 .. Mmps =   19 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.94e+07 Texpo = 0.04 T = 0.07
+ --> Site =    9-  10 .. Mmps =   21 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 6.80e+07 Texpo = 0.04 T = 0.07
+ --> Site =   10-  11 .. Mmps =   23 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.93e+07 Texpo = 0.07 T = 0.10
+ --> Site =   11-  12 .. Mmps =   25 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.96e+07 Texpo = 0.06 T = 0.10
+ --> Site =   12-  13 .. Mmps =   27 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.66e+07 Texpo = 0.07 T = 0.10
+ --> Site =   13-  14 .. Mmps =   29 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.50e+07 Texpo = 0.07 T = 0.10
+ --> Site =   14-  15 .. Mmps =   31 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.73e+07 Texpo = 0.04 T = 0.08
+ --> Site =   15-  16 .. Mmps =   50 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.40e+07 Texpo = 0.04 T = 0.07
+ --> Site =   16-  17 .. Mmps =   54 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.66e+07 Texpo = 0.10 T = 0.13
+ --> Site =   17-  18 .. Mmps =   57 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.43e+07 Texpo = 0.07 T = 0.10
+ --> Site =   18-  19 .. Mmps =   60 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.77e+07 Texpo = 0.09 T = 0.12
+ --> Site =   19-  20 .. Mmps =   63 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 1.17e+08 Texpo = 0.01 T = 0.05
+ --> Site =   20-  21 .. Mmps =   66 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.41e+07 Texpo = 0.04 T = 0.07
+ --> Site =   21-  22 .. Mmps =   69 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.28e+08 Texpo = 0.01 T = 0.05
+ --> Site =   22-  23 .. Mmps =   72 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 4.61e+07 Texpo = 0.04 T = 0.07
+ --> Site =   23-  24 .. Mmps =   75 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.05e+07 Texpo = 0.09 T = 0.13
+ --> Site =   24-  25 .. Mmps =   78 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.88e+07 Texpo = 0.07 T = 0.11
+ --> Site =   25-  26 .. Mmps =   81 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.64e+07 Texpo = 0.12 T = 0.16
+ --> Site =   26-  27 .. Mmps =   84 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.41e+08 Texpo = 0.01 T = 0.06
+ --> Site =   27-  28 .. Mmps =   87 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.11e+07 Texpo = 0.04 T = 0.10
+ --> Site =   28-  29 .. Mmps =   90 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 2.29e+07 Texpo = 0.09 T = 0.17
+ --> Site =   29-  30 .. Mmps =   93 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.39e+07 Texpo = 0.04 T = 0.09
+ --> Site =   30-  31 .. Mmps =   96 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.63e+07 Texpo = 0.04 T = 0.09
+ --> Site =   31-  32 .. Mmps =   99 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.65e+08 Texpo = 0.01 T = 0.06
+ --> Site =   32-  33 .. Mmps =  102 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 5.84e+07 Texpo = 0.04 T = 0.09
+ --> Site =   33-  34 .. Mmps =  105 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.82e+07 Texpo = 0.06 T = 0.12
+ --> Site =   34-  35 .. Mmps =  108 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.78e+07 Texpo = 0.07 T = 0.13
+ --> Site =   35-  36 .. Mmps =  111 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 6.26e+07 Texpo = 0.04 T = 0.10
+ --> Site =   36-  37 .. Mmps =  114 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 3.79e+07 Texpo = 0.07 T = 0.13
+ --> Site =   37-  38 .. Mmps =  117 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.92e+08 Texpo = 0.01 T = 0.08
+ --> Site =   38-  39 .. Mmps =  120 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 1.99e+08 Texpo = 0.01 T = 0.08
+ --> Site =   39-  40 .. Mmps =  123 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.07e+08 Texpo = 0.01 T = 0.08
+ --> Site =   40-  41 .. Mmps =  126 Nexpo =   42/  42 E = (-1.7374334255,-0.0000000000) Error = 0.00e+00 FLOPS = 2.47e+07 Texpo = 0.12 T = 0.19
+ --> Site =   41-  42 .. Mmps =  129 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 3.30e+07 Texpo = 0.09 T = 0.16
+ --> Site =   42-  43 .. Mmps =  132 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.48e+07 Texpo = 0.04 T = 0.12
+ --> Site =   43-  44 .. Mmps =  135 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 7.52e+07 Texpo = 0.04 T = 0.12
+ --> Site =   44-  45 .. Mmps =  138 Nexpo =   42/  42 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 4.89e+07 Texpo = 0.07 T = 0.17
+ --> Site =   45-  46 .. Mmps =  141 Nexpo =   42/   0 E = (-1.7374334255,0.0000000000) Error = 0.00e+00 FLOPS = 5.11e+06 Texpo = 0.17 T = 0.24
+Time elapsed =      9.684 | E = (-1.7374334255,0.0000000000) | Norm^2 =       1.0000000000 | DW = 0.00e+00
+Time sweep =        4.715 | 105 MFLOP/SWP
+ | Tread = 0.208 | Twrite = 0.159 | Tfpread = 0.122 | Tfpwrite = 0.078 | data = 12.8 MB | cpsd = 4.97 MB | Tasync = 0.000
+T =    0.00000 +    0.50000i <E> =   -1.737433425476958 +    0.00000i <Norm^2> =    1.000000000000002 +    0.00000i
+
+Time = 0.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.500000+0.000000j
+<Sz d=16> = -0.500000+0.000000j
+<C[15, 16]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 1.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.500000+0.000000j
+<Sz d=16> = -0.500000-0.000000j
+<C[15, 16]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 1.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.500000+0.000000j
+<Sz d=16> = -0.500000+0.000000j
+<C[15, 16]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.500000
+Total <Sdz_> = -1.000000
+Total <pur_> = 1.000000
+Total <conc_> = nan
+
+Time = 2.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.499999-0.000000j
+<Sz d=16> = -0.500000+0.000000j
+<C[15, 16]> = 0.000000
+Total <occ_> = 1.000000
+Total <sz_> = 0.499999
+Total <Sdz_> = -0.999999
+Total <pur_> = 0.999999
+Total <conc_> = nan
+
+Time = 2.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.499986+0.000000j
+<Sz d=16> = -0.499998-0.000000j
+<C[15, 16]> = 0.000005
+Total <occ_> = 1.000000
+Total <sz_> = 0.499985
+Total <Sdz_> = -0.999985
+Total <pur_> = 0.999985
+Total <conc_> = nan
+
+Time = 3.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.499919-0.000000j
+<Sz d=16> = -0.499985-0.000000j
+<C[15, 16]> = 0.000036
+Total <occ_> = 1.000000
+Total <sz_> = 0.499905
+Total <Sdz_> = -0.999905
+Total <pur_> = 0.999905
+Total <conc_> = nan
+
+Time = 3.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.499731+0.000000j
+<Sz d=16> = -0.499925-0.000000j
+<C[15, 16]> = 0.000143
+Total <occ_> = 1.000000
+Total <sz_> = 0.499656
+Total <Sdz_> = -0.999656
+Total <pur_> = 0.999656
+Total <conc_> = nan
+
+Time = 4.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.499432-0.000000j
+<Sz d=16> = -0.499770+0.000000j
+<C[15, 16]> = 0.000307
+Total <occ_> = 1.000000
+Total <sz_> = 0.499203
+Total <Sdz_> = -0.999203
+Total <pur_> = 0.999203
+Total <conc_> = nan
+
+Time = 4.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.499130+0.000000j
+<Sz d=16> = -0.499537-0.000000j
+<C[15, 16]> = 0.000411
+Total <occ_> = 1.000000
+Total <sz_> = 0.498666
+Total <Sdz_> = -0.998666
+Total <pur_> = 0.998666
+Total <conc_> = nan
+
+Time = 5.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.498747-0.000000j
+<Sz d=16> = -0.499316-0.000000j
+<C[15, 16]> = 0.000600
+Total <occ_> = 1.000000
+Total <sz_> = 0.498063
+Total <Sdz_> = -0.998063
+Total <pur_> = 0.998063
+Total <conc_> = nan
+
+Time = 5.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.497935+0.000000j
+<Sz d=16> = -0.499060+0.000000j
+<C[15, 16]> = 0.000984
+Total <occ_> = 1.000000
+Total <sz_> = 0.496995
+Total <Sdz_> = -0.996995
+Total <pur_> = 0.996995
+Total <conc_> = nan
+
+Time = 6.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.496593+0.000000j
+<Sz d=16> = -0.498484+0.000000j
+<C[15, 16]> = 0.001816
+Total <occ_> = 1.000000
+Total <sz_> = 0.495077
+Total <Sdz_> = -0.995077
+Total <pur_> = 0.995077
+Total <conc_> = nan
+
+Time = 6.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.495092-0.000000j
+<Sz d=16> = -0.497475-0.000000j
+<C[15, 16]> = 0.002538
+Total <occ_> = 1.000000
+Total <sz_> = 0.492567
+Total <Sdz_> = -0.992567
+Total <pur_> = 0.992567
+Total <conc_> = nan
+
+Time = 7.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.493650-0.000000j
+<Sz d=16> = -0.496340+0.000000j
+<C[15, 16]> = 0.003018
+Total <occ_> = 1.000000
+Total <sz_> = 0.489990
+Total <Sdz_> = -0.989990
+Total <pur_> = 0.989990
+Total <conc_> = nan
+
+Time = 7.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.492131-0.000000j
+<Sz d=16> = -0.495312-0.000000j
+<C[15, 16]> = 0.003515
+Total <occ_> = 1.000000
+Total <sz_> = 0.487443
+Total <Sdz_> = -0.987443
+Total <pur_> = 0.987443
+Total <conc_> = nan
+
+Time = 8.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.490535-0.000000j
+<Sz d=16> = -0.494253-0.000000j
+<C[15, 16]> = 0.004132
+Total <occ_> = 1.000000
+Total <sz_> = 0.484788
+Total <Sdz_> = -0.984788
+Total <pur_> = 0.984788
+Total <conc_> = nan
+
+Time = 8.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.488931-0.000000j
+<Sz d=16> = -0.493090+0.000000j
+<C[15, 16]> = 0.004720
+Total <occ_> = 1.000000
+Total <sz_> = 0.482020
+Total <Sdz_> = -0.982020
+Total <pur_> = 0.982020
+Total <conc_> = nan
+
+Time = 9.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.487213-0.000000j
+<Sz d=16> = -0.491925+0.000000j
+<C[15, 16]> = 0.005366
+Total <occ_> = 1.000000
+Total <sz_> = 0.479137
+Total <Sdz_> = -0.979137
+Total <pur_> = 0.979137
+Total <conc_> = nan
+
+Time = 9.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.485436-0.000000j
+<Sz d=16> = -0.490707-0.000000j
+<C[15, 16]> = 0.006007
+Total <occ_> = 1.000000
+Total <sz_> = 0.476144
+Total <Sdz_> = -0.976144
+Total <pur_> = 0.976144
+Total <conc_> = nan
+
+Time = 10.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.483710+0.000000j
+<Sz d=16> = -0.489402+0.000000j
+<C[15, 16]> = 0.006581
+Total <occ_> = 1.000000
+Total <sz_> = 0.473112
+Total <Sdz_> = -0.973112
+Total <pur_> = 0.973112
+Total <conc_> = nan
+
+Time = 10.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.481940+0.000000j
+<Sz d=16> = -0.488106-0.000000j
+<C[15, 16]> = 0.007148
+Total <occ_> = 1.000000
+Total <sz_> = 0.470046
+Total <Sdz_> = -0.970046
+Total <pur_> = 0.970046
+Total <conc_> = nan
+
+Time = 11.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.480366-0.000000j
+<Sz d=16> = -0.486798-0.000000j
+<C[15, 16]> = 0.007501
+Total <occ_> = 1.000000
+Total <sz_> = 0.467164
+Total <Sdz_> = -0.967164
+Total <pur_> = 0.967164
+Total <conc_> = nan
+
+Time = 11.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.479337-0.000000j
+<Sz d=16> = -0.485593-0.000000j
+<C[15, 16]> = 0.007359
+Total <occ_> = 1.000000
+Total <sz_> = 0.464930
+Total <Sdz_> = -0.964930
+Total <pur_> = 0.964930
+Total <conc_> = nan
+
+Time = 12.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.478385-0.000000j
+<Sz d=16> = -0.484801-0.000000j
+<C[15, 16]> = 0.007473
+Total <occ_> = 1.000000
+Total <sz_> = 0.463186
+Total <Sdz_> = -0.963186
+Total <pur_> = 0.963186
+Total <conc_> = nan
+
+Time = 12.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.477013-0.000000j
+<Sz d=16> = -0.484182-0.000000j
+<C[15, 16]> = 0.008114
+Total <occ_> = 1.000000
+Total <sz_> = 0.461195
+Total <Sdz_> = -0.961195
+Total <pur_> = 0.961195
+Total <conc_> = nan
+
+Time = 13.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.475597-0.000000j
+<Sz d=16> = -0.483245-0.000000j
+<C[15, 16]> = 0.009474
+Total <occ_> = 1.000000
+Total <sz_> = 0.458841
+Total <Sdz_> = -0.958841
+Total <pur_> = 0.958841
+Total <conc_> = nan
+
+Time = 13.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.474203-0.000000j
+<Sz d=16> = -0.482215-0.000000j
+<C[15, 16]> = 0.011202
+Total <occ_> = 1.000000
+Total <sz_> = 0.456418
+Total <Sdz_> = -0.956418
+Total <pur_> = 0.956418
+Total <conc_> = nan
+
+Time = 14.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.472177-0.000000j
+<Sz d=16> = -0.481316+0.000000j
+<C[15, 16]> = 0.012283
+Total <occ_> = 1.000000
+Total <sz_> = 0.453492
+Total <Sdz_> = -0.953492
+Total <pur_> = 0.953492
+Total <conc_> = nan
+
+Time = 14.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.469364-0.000000j
+<Sz d=16> = -0.479995-0.000000j
+<C[15, 16]> = 0.013536
+Total <occ_> = 1.000000
+Total <sz_> = 0.449359
+Total <Sdz_> = -0.949359
+Total <pur_> = 0.949359
+Total <conc_> = nan
+
+Time = 15.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.466097-0.000000j
+<Sz d=16> = -0.477940-0.000000j
+<C[15, 16]> = 0.014054
+Total <occ_> = 1.000000
+Total <sz_> = 0.444038
+Total <Sdz_> = -0.944038
+Total <pur_> = 0.944038
+Total <conc_> = nan
+
+Time = 15.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.462639-0.000000j
+<Sz d=16> = -0.475489-0.000000j
+<C[15, 16]> = 0.014348
+Total <occ_> = 1.000000
+Total <sz_> = 0.438128
+Total <Sdz_> = -0.938128
+Total <pur_> = 0.938128
+Total <conc_> = nan
+
+Time = 16.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.459485+0.000000j
+<Sz d=16> = -0.472886-0.000000j
+<C[15, 16]> = 0.014312
+Total <occ_> = 1.000000
+Total <sz_> = 0.432371
+Total <Sdz_> = -0.932371
+Total <pur_> = 0.932371
+Total <conc_> = nan
+
+Time = 16.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.456830-0.000000j
+<Sz d=16> = -0.470384-0.000000j
+<C[15, 16]> = 0.015262
+Total <occ_> = 1.000000
+Total <sz_> = 0.427213
+Total <Sdz_> = -0.927213
+Total <pur_> = 0.927213
+Total <conc_> = nan
+
+Time = 17.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.454223-0.000000j
+<Sz d=16> = -0.468230-0.000000j
+<C[15, 16]> = 0.017339
+Total <occ_> = 1.000000
+Total <sz_> = 0.422454
+Total <Sdz_> = -0.922454
+Total <pur_> = 0.922454
+Total <conc_> = nan
+
+Time = 17.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.451815-0.000000j
+<Sz d=16> = -0.466154+0.000000j
+<C[15, 16]> = 0.020463
+Total <occ_> = 1.000000
+Total <sz_> = 0.417968
+Total <Sdz_> = -0.917968
+Total <pur_> = 0.917968
+Total <conc_> = nan
+
+Time = 18.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.450224-0.000000j
+<Sz d=16> = -0.464084+0.000000j
+<C[15, 16]> = 0.021968
+Total <occ_> = 1.000000
+Total <sz_> = 0.414308
+Total <Sdz_> = -0.914308
+Total <pur_> = 0.914308
+Total <conc_> = nan
+
+Time = 18.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.449163+0.000000j
+<Sz d=16> = -0.462552+0.000000j
+<C[15, 16]> = 0.022229
+Total <occ_> = 1.000000
+Total <sz_> = 0.411715
+Total <Sdz_> = -0.911715
+Total <pur_> = 0.911715
+Total <conc_> = nan
+
+Time = 19.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.448160+0.000000j
+<Sz d=16> = -0.461521+0.000000j
+<C[15, 16]> = 0.020367
+Total <occ_> = 1.000000
+Total <sz_> = 0.409681
+Total <Sdz_> = -0.909681
+Total <pur_> = 0.909681
+Total <conc_> = nan
+
+Time = 19.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447497-0.000000j
+<Sz d=16> = -0.460503-0.000000j
+<C[15, 16]> = 0.016472
+Total <occ_> = 1.000000
+Total <sz_> = 0.407999
+Total <Sdz_> = -0.907999
+Total <pur_> = 0.907999
+Total <conc_> = nan
+
+Time = 20.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447236+0.000000j
+<Sz d=16> = -0.459699-0.000000j
+<C[15, 16]> = 0.013300
+Total <occ_> = 1.000000
+Total <sz_> = 0.406935
+Total <Sdz_> = -0.906935
+Total <pur_> = 0.906935
+Total <conc_> = nan
+
+Time = 20.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447059+0.000000j
+<Sz d=16> = -0.459371+0.000000j
+<C[15, 16]> = 0.011664
+Total <occ_> = 1.000000
+Total <sz_> = 0.406430
+Total <Sdz_> = -0.906430
+Total <pur_> = 0.906430
+Total <conc_> = nan
+
+Time = 21.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447000+0.000000j
+<Sz d=16> = -0.459202+0.000000j
+<C[15, 16]> = 0.012882
+Total <occ_> = 1.000000
+Total <sz_> = 0.406201
+Total <Sdz_> = -0.906201
+Total <pur_> = 0.906201
+Total <conc_> = nan
+
+Time = 21.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447100-0.000000j
+<Sz d=16> = -0.459077-0.000000j
+<C[15, 16]> = 0.012701
+Total <occ_> = 1.000000
+Total <sz_> = 0.406177
+Total <Sdz_> = -0.906177
+Total <pur_> = 0.906177
+Total <conc_> = nan
+
+Time = 22.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.447224+0.000000j
+<Sz d=16> = -0.459119-0.000000j
+<C[15, 16]> = 0.012036
+Total <occ_> = 1.000000
+Total <sz_> = 0.406343
+Total <Sdz_> = -0.906343
+Total <pur_> = 0.906343
+Total <conc_> = nan
+
+Time = 22.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.447373-0.000000j
+<Sz d=16> = -0.459208-0.000000j
+<C[15, 16]> = 0.008827
+Total <occ_> = 1.000000
+Total <sz_> = 0.406581
+Total <Sdz_> = -0.906581
+Total <pur_> = 0.906581
+Total <conc_> = nan
+
+Time = 23.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.447393+0.000000j
+<Sz d=16> = -0.459313+0.000000j
+<C[15, 16]> = 0.005401
+Total <occ_> = 1.000000
+Total <sz_> = 0.406706
+Total <Sdz_> = -0.906706
+Total <pur_> = 0.906706
+Total <conc_> = nan
+
+Time = 23.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.447157-0.000000j
+<Sz d=16> = -0.459457-0.000000j
+<C[15, 16]> = 0.005898
+Total <occ_> = 1.000000
+Total <sz_> = 0.406614
+Total <Sdz_> = -0.906614
+Total <pur_> = 0.906614
+Total <conc_> = nan
+
+Time = 24.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.446900-0.000000j
+<Sz d=16> = -0.459520-0.000000j
+<C[15, 16]> = 0.010992
+Total <occ_> = 1.000000
+Total <sz_> = 0.406420
+Total <Sdz_> = -0.906420
+Total <pur_> = 0.906420
+Total <conc_> = nan
+
+Time = 24.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.446568+0.000000j
+<Sz d=16> = -0.459586+0.000000j
+<C[15, 16]> = 0.016647
+Total <occ_> = 1.000000
+Total <sz_> = 0.406154
+Total <Sdz_> = -0.906154
+Total <pur_> = 0.906154
+Total <conc_> = nan
+
+Time = 25.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.445930+0.000000j
+<Sz d=16> = -0.459649-0.000000j
+<C[15, 16]> = 0.021303
+Total <occ_> = 1.000000
+Total <sz_> = 0.405579
+Total <Sdz_> = -0.905579
+Total <pur_> = 0.905579
+Total <conc_> = nan
+
+Time = 25.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.445257+0.000000j
+<Sz d=16> = -0.459424+0.000000j
+<C[15, 16]> = 0.025930
+Total <occ_> = 1.000000
+Total <sz_> = 0.404680
+Total <Sdz_> = -0.904680
+Total <pur_> = 0.904680
+Total <conc_> = nan
+
+Time = 26.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.444619-0.000000j
+<Sz d=16> = -0.459042-0.000000j
+<C[15, 16]> = 0.031081
+Total <occ_> = 1.000000
+Total <sz_> = 0.403661
+Total <Sdz_> = -0.903661
+Total <pur_> = 0.903661
+Total <conc_> = nan
+
+Time = 26.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.443730+0.000000j
+<Sz d=16> = -0.458717+0.000000j
+<C[15, 16]> = 0.036670
+Total <occ_> = 1.000000
+Total <sz_> = 0.402447
+Total <Sdz_> = -0.902447
+Total <pur_> = 0.902447
+Total <conc_> = nan
+
+Time = 27.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.442827-0.000000j
+<Sz d=16> = -0.458138-0.000000j
+<C[15, 16]> = 0.042638
+Total <occ_> = 1.000000
+Total <sz_> = 0.400965
+Total <Sdz_> = -0.900965
+Total <pur_> = 0.900965
+Total <conc_> = nan
+
+Time = 27.50
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.442075+0.000000j
+<Sz d=16> = -0.457327+0.000000j
+<C[15, 16]> = 0.045870
+Total <occ_> = 1.000000
+Total <sz_> = 0.399402
+Total <Sdz_> = -0.899402
+Total <pur_> = 0.899402
+Total <conc_> = nan
+
+Time = 28.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.441153-0.000000j
+<Sz d=16> = -0.456623-0.000000j
+<C[15, 16]> = 0.047439
+Total <occ_> = 1.000000
+Total <sz_> = 0.397775
+Total <Sdz_> = -0.897775
+Total <pur_> = 0.897775
+Total <conc_> = nan
+
+Time = 28.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=15> = -0.440266-0.000000j
+<Sz d=16> = -0.455761-0.000000j
+<C[15, 16]> = 0.045698
+Total <occ_> = 1.000000
+Total <sz_> = 0.396026
+Total <Sdz_> = -0.896026
+Total <pur_> = 0.896026
+Total <conc_> = nan
+
+Time = 29.00
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.439623+0.000000j
+<Sz d=16> = -0.454621+0.000000j
+<C[15, 16]> = 0.042853
+Total <occ_> = 1.000000
+Total <sz_> = 0.394244
+Total <Sdz_> = -0.894244
+Total <pur_> = 0.894244
+Total <conc_> = nan
+
+Time = 29.50
+Total energy = -1.737433+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.438703-0.000000j
+<Sz d=16> = -0.453595+0.000000j
+<C[15, 16]> = 0.038888
+Total <occ_> = 1.000000
+Total <sz_> = 0.392298
+Total <Sdz_> = -0.892298
+Total <pur_> = 0.892298
+Total <conc_> = nan
+
+Time = 30.00
+Total energy = -1.737433-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=15> = -0.437570-0.000000j
+<Sz d=16> = -0.452532-0.000000j
+<C[15, 16]> = 0.034497
+Total <occ_> = 1.000000
+Total <sz_> = 0.390101
+Total <Sdz_> = -0.890101
+Total <pur_> = 0.890101
+Total <conc_> = nan
+>>> Time evol compute time = 17498.82
+stop time: 
+Wed Jan 24 21:50:14 EST 2024

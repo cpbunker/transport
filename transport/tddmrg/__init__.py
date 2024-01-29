@@ -272,9 +272,11 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
     # load data from json
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
     NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
+    Nbuffer = 0;
+    if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
 
     # fermionic sites and spin
-    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
     Ne = params_dict["Ne"];
     TwoSz = params_dict["TwoSz"]; # fermion spin + impurity spin
 
@@ -286,9 +288,9 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
     assert(TwoSd == 1); # for now, to get degeneracies right
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+    llead_sites = np.array([j for j in range(Nbuffer,Nbuffer+NL)]);
+    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(Nbuffer+NL+NFM,Nbuffer+Nsites)]);
     all_sites = np.array([j for j in range(Nsites)]);
 
     # construct ExprBuilder
@@ -340,7 +342,7 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
     # quantum numbers here: nelec, TwoSz, TwoSdz
     # Sdz is z projection of impurity spin: ladder from +s to -s
     for sitei in all_sites:
-        if(sitei in llead_sites or sitei in rlead_sites): # regular fermion dofs
+        if(sitei not in central_sites): # regular fermion dofs
             states = [(qnumber(0, 0,0),1), # |> # (always obey n_elec and TwoSz symmetry)
                       (qnumber(1, 1,0),1), # |up> #<--
                       (qnumber(1,-1,0),1), # |down>
@@ -438,9 +440,11 @@ def Hsys_polarizer(params_dict, to_add_to, verbose=0):
     # load data from json
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
     NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
+    Nbuffer = 0;
+    if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
 
     # fermionic sites and spin
-    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
     Ne = params_dict["Ne"];
     TwoSz = params_dict["TwoSz"]; # fermion spin + impurity spin
 
@@ -451,11 +455,11 @@ def Hsys_polarizer(params_dict, to_add_to, verbose=0):
     n_imp_dof = len(TwoSdz_ladder);
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+    llead_sites = np.array([j for j in range(Nbuffer,Nbuffer+NL)]);
+    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(Nbuffer+NL+NFM,Nbuffer+Nsites)]);
     all_sites = np.array([j for j in range(Nsites)]);
-    conf_sites = np.array([j for j in range(Nconf)]);
+    conf_sites = np.array([j for j in range(Nbuffer,Nbuffer+Nconf)]);
 
     # construct ExprBuilder
     driver, builder = to_add_to;
