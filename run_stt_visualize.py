@@ -54,7 +54,7 @@ if(case in [1,2]): # observable as a function of time
     ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
-    if True: # plot purity
+    if False: # plot purity
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
