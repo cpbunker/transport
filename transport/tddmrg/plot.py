@@ -41,8 +41,10 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
     plot_fig = params_dict["plot"];
     Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
     NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
-    Nsites = NL+NFM+NR; # number of j sites in 1D chain
-    central_sites = np.array([j for j in range(NL,NL+NFM)]);
+    Nbuffer = 0;
+    if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
+    Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
+    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM)]);
     all_sites = np.array([j for j in range(Nsites)]);
 
     # plot charge and spin vs site

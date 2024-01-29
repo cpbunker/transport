@@ -102,13 +102,15 @@ params = json.load(open(json_name)); print(">>> Params = ",params);
 
 # unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
+myTwoSz = params["TwoSz"];
+myNbuffer = 0;
+if "Nbuffer" in params.keys(): myNbuffer = params["Nbuffer"];
 
 # checks
 my_sites = params["ex_sites"]; # j indices
-for j in my_sites: assert(j in np.arange(myNL,myNL+myNFM)); # must be FM sites or conc will fail
+for j in my_sites: assert(j in np.arange(myNbuffer+myNL,myNbuffer+myNL+myNFM)); # must be FM sites or conc will fail
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
-myTwoSz = params["TwoSz"];
 special_cases = ["BFM_first", "Bsd", "Bcentral", "Bsd_x","noFM"];
 special_cases_flag = False;
 for case in special_cases:
