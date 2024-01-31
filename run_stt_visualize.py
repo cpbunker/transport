@@ -29,7 +29,7 @@ if(case in [1,2]): # observable as a function of time
     # axes
     fig, ax = plt.subplots();
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-    ax.set_yticks(ticks1);
+    #ax.set_yticks(ticks1);
     ax.set_xlabel("Time $(\hbar/t_l)$");
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
@@ -45,13 +45,15 @@ if(case in [1,2]): # observable as a function of time
     ax.set_xlim((times[0], times[-1]));
 
     # impurity spin vs time
-    Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
+    Nbuffer = 0;
+    if("Nbuffer" in params.keys()): Nbuffer = params["Nbuffer"];
+    Nsites = Nbuffer + params["NL"]+params["NFM"]+params["NR"]; # number of d sites
     which_imp = 0;
     yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     ax.plot(times,yds_vs_time[:,which_imp],color=color1);
-    ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$, $-2|\mathbf{S}_{"+str(which_imp)+"}|$", color=color1, fontsize=fontsize1);
+    ax.set_ylabel("$2 \langle S_{"+str(which_imp)+"}^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
 
     # impurity purity vs time
     if False: # plot purity
@@ -62,12 +64,10 @@ if(case in [1,2]): # observable as a function of time
     else: # plot concurrence
         obs4, color4 = "conc_", "black";
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
-        print(np.shape(dfile))
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.plot(times, purds_vs_time[:,which_imp],color=color4);
-        print(purds_vs_time[:,which_imp])
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
@@ -106,7 +106,9 @@ if(case in [3,4]): # observable as a function of time
     ax.set_xlim((times[0], times[-1]));
 
     # SUMMED impurity spins vs time
-    Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of d sites
+    Nbuffer = 0;
+    if("Nbuffer" in params.keys()): Nbuffer = params["Nbuffer"];
+    Nsites = Nbuffer + params["NL"]+params["NFM"]+params["NR"]; # number of d sites
     yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
     for ti in range(len(times)):
         yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
@@ -172,10 +174,18 @@ if(case in [10]): # animate time evol
     yjs_3 = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time0));
     spin_density, = ax.plot(xjs_3, yjs_3, marker="o", color=color3);
     ax3 = ax.twinx();
-    ax3.spines.right.set_position(("axes", 1.06));
-    ax3.spines.right.set(alpha=0.0);
+    ax3.yaxis.set_label_position("left");
+    ax3.spines.left.set_position(("axes", -0.15));
+    ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
     ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
+
+    # plot concurrence
+    obs4, color4 = "conc_", "black";
+    xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
+    yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
+    conc, = ax.plot(xds_4,yds_4,marker="^",color=color4);
+    plt.tight_layout();
 
     # time evolve observables
     def time_evolution(time):
@@ -191,10 +201,17 @@ if(case in [10]): # animate time evol
         # spin density
         yjs_3_t = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time));
         spin_density.set_ydata(yjs_3_t);
+        # concurrence
+        yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
+        conc.set_ydata(10*yds_4_t);
 
     # animate
+    if(params["time_step"]==1.0): interval = 400;
+    elif(params["time_step"]==0.5): interval = 200;
+    else: interval = 500;
+    interval = 1000*(10/Nupdates); # so total animation time is 10 sec
     ani = animation.FuncAnimation(fig, time_evolution,
-                                  frames = times, interval=600,
+                                  frames = times, interval=interval,
                                   repeat=True, blit=False);
 
     plt.show()
