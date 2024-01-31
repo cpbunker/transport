@@ -208,7 +208,6 @@ def h_leads(V, N):
         
     return h; # end h_leads;
 
-
 def h_chem(mu,N):
     '''
     create 1e hamiltonian for chem potential of leads

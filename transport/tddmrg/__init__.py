@@ -17,82 +17,38 @@ import numpy as np
 ##########################################################################################################
 #### driver of time propagation
 
-def kernel(h1e, g2e, h1e_neq, nelecs, bdims, tf, dt, verbose = 0):
+def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbose=0):
     '''
-    Drive time prop for dmrg
-    Use real time time dependent dmrg method outlined here:
-    https://pyblock3.readthedocs.io/en/latest/Documentation/rttddmrg.html
-
-    Args:
-    -h1e, ndarray, 1body 2nd qu'd ham
-    -g2e, ndarray, 2body 2nd qu'd ham
-    -h1e_neq, ndarray, 1body ham that drives time evol, e.g. turns on hopping
-    -nelecs, tuple, number of up, down electrons
-    -bdims, ndarray, bond dimension of the DMRG solver
-    -tf, float, the time to end the time evolution at
-    -dt, float, the time step of the time evolution
     '''
-    if(not isinstance(h1e, np.ndarray)): raise TypeError;
-    if(not isinstance(g2e, np.ndarray)): raise TypeError;
-    if(not isinstance(nelecs, tuple)): raise TypeError;
-    if(not isinstance(bdims, list)): raise TypeError;
-    if(not bdims[0] <= bdims[-1]): raise ValueError; # bdims must have increasing behavior 
+    print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
+    evol_start = time.time();
+    time_step = params_dict["time_step"];
+    time_update = params_dict["tupdate"];
+    time_update = time_step*int(abs(time_update/time_step)+0.1); # discrete number
+    total_time = 0.0;
+    Nupdates = params_dict["Nupdates"];
 
-    # unpack
-    if(verbose): print("1. Hamiltonian\n-h1e = \n",h1e);
-    norbs = len(h1e); # n fermion orbs
-    nsteps = 1+int(tf/dt+1e-6); # n time steps
-    sites = np.array(range(norbs)).reshape(norbs//2,2); #sites[i] gives a list of fermion orb indices spanning spin space
-    
-    # convert everything to matrix product form
-    if(verbose): print("2. DMRG solution");
-    h_obj, h_mpo, psi_init = fci_mod.arr_to_mpo(h1e, g2e, nelecs, bdims[0]);
-    if verbose: print("- built H as compressed MPO: ", h_mpo.show_bond_dims() );
-    E_init = ops_dmrg.compute_obs(h_mpo, psi_init);
-    if verbose: print("- guessed gd energy = ", E_init);
+    # time evolve with repeated snapshots
+    tevol_mps_inst = psi;
+    for timei in range(Nupdates):
+        if(timei in [0]): the_verbose=verbose;
+        else: the_verbose=0; # ensures verbosity only on initial time steps
+        total_time += time_update;
 
-    # solve ham with DMRG
-    dmrg_mpe = MPE(psi_init, h_mpo, psi_init);
-    # MPE.dmrg method controls bdims,noises, n_sweeps,conv tol (tol),verbose (iprint)
-    # noises[0] = 1e-3 and tol = 1e-8 work best from trial and error
-    dmrg_obj = dmrg_mpe.dmrg(bdims=bdims, tol = 1e-8, iprint=0);
-    if verbose: print("- variational gd energy = ", dmrg_obj.energies[-1]);
+        # time evol
+        krylov_subspace = 20; # default
+        if(params["te_type"] == "tdvp"): krylov_subspace = 40;
+        tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
+                delta_t=complex(0,time_step), target_t=complex(0,time_update),
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params["te_type"],krylov_subspace_size=krylov_subspace,
+                final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
-    # return vals
-    obs_gen = 2; # time, E
-    obs_per_site = 2; # occ, Sz
-    observables = np.empty((nsteps,obs_gen+obs_per_site*len(sites)), dtype=complex); 
+        # observables
+        check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time);
+        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, time=total_time);
 
-    # mpos for observables
-    obs_mpos = [];
-    for site in sites: # site specific observables
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.occ(site, norbs) ) );
-        obs_mpos.append( h_obj.build_mpo(ops_dmrg.Sz(site, norbs) ) );
-
-    # time evol
-    _, h_mpo_neq, _ = fci_mod.arr_to_mpo(h1e_neq, g2e, nelecs, bdims[0]);
-    dmrg_mpe_neq = MPE(psi_init, h_mpo_neq, psi_init); # must be built with initial state!
-    if(verbose): print("3. Time evolution\n-h1e_neq = \n",h1e_neq);
-    for ti in range(nsteps):
-        if(verbose>2): print("-time: ", ti*dt);
-
-        # mpe.tddmrg method does time prop, outputs energies but also modifies mpe obj
-        E_t = dmrg_mpe_neq.tddmrg(bdims,-np.complex(0,dt), n_sweeps = 1, iprint=0, cutoff = 0).energies
-        psi_t = dmrg_mpe_neq.ket; # update wf
-
-        # compute observables
-        observables[ti,0] = ti*dt; # time
-        observables[ti,1] = E_t[-1]; # energy
-        for mi in range(len(obs_mpos)): # iter over mpos
-            observables[ti,obs_gen+mi] = ops_dmrg.compute_obs(obs_mpos[mi], psi_t);
-        
-
-    # site specific observables at t=0 in array where rows are sites
-    initobs = np.real(np.reshape(observables[0,obs_gen:],(len(sites), obs_per_site)));
-    print("-init observables:\n",initobs);
-    
-    # return observables as arrays vs time
-    return observables;
+    evol_end = time.time();
+    print(">>> Time evol compute time = {:.2f}".format(evol_end-evol_start));
 
 ################################################################################
 #### observables
@@ -129,7 +85,7 @@ def get_occ(eris_or_driver, whichsite, block=True, verbose=0):
 
 def get_sz(eris_or_driver, whichsite, block=True, verbose=0):
     '''
-    Constructs an operator (either MPO or matrix) representing <Sz> of site whichsite
+    Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else: 
@@ -150,9 +106,9 @@ def get_sz(eris_or_driver, whichsite, block=True, verbose=0):
 
 def get_Sd_mu(eris_or_driver, whichsite, component="z", verbose=0):
     '''
-    Constructs an MPO representing <Sz> of site impurity at site whichsite
+    MPO representing <Sz> of site impurity at site whichsite
     '''
-    builder = eris_or_driver.expr_builder()
+    builder = eris_or_driver.expr_builder();
 
     # construct
     if(component=="z"):
@@ -185,6 +141,7 @@ def purity_wrapper(psi,eris_or_driver, whichsite):
 
 def get_concurrence(eris_or_driver, whichsites, symm_block, verbose=0):
     '''
+    MPO for concurrence
     '''
     builder = eris_or_driver.expr_builder()
 
@@ -229,6 +186,50 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites):
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
 
+def get_pcurrent(eris_or_driver, whichsites, spin, verbose=0):
+    '''
+    MPO for particle current. Positive is rightward current
+    Args:
+    eris_or_driver, Block2 driver
+    whichsites, list of site indices. must be orered, so that
+    add_term( "cd", whichsites ) represents NEGATIVE current
+    spin, int 0 or 1, meaning up or down current
+    '''
+    if(whichsites[1]-whichsites[0]!=1): raise ValueError;
+    if(spin=0): spinstr = "cd";
+    elif(spin=1): spinstr = "CD";
+    else: raise ValueError;
+
+    # construct MPO
+    builder = eris_or_driver.expr_builder();
+    builder.add_term(spinstr, whichsites, -1); # c on left, d on right = negative current
+    builder.add_term(spinstr, whichsites[::-1], 1); # c on right, d on left = positive current
+    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+
+def pcurrent_wrapper(psi, eris_or_driver, whichsite, verbose=0):
+    '''
+    Consider site whichsite. This wrapper:
+    1) sums the spin currents from whichsite-1 to whcihsite (LEFT part)
+    2) sums the spin currents from whichsite to whichsite+1 (RIGHT part)
+    3) averages over the results of 1 and 2 to find the current "through" whichsite
+    '''
+
+    # left part
+    pcurrent_left = 0.0;
+    for spin in [0,1]:
+        left_mpo += get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, verbose=verbose);
+        pcurrent_left += compute_obs(psi, left_mpo, eris_or_driver);
+
+    # right part
+    pcurrent_right = 0.0;
+    for spin in [0,1]:
+        right_mpo += get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, verbose=verbose);
+        pcurrent_right += compute_obs(psi, right_mpo, eris_or_driver);
+
+    # average
+    return (pcurrent_left + pcurrent_right)/2;
+    
+
 ##########################################################################################################
 #### hamiltonian constructors
 
@@ -247,9 +248,154 @@ def reblock(mat):
                     new_mat[ini,inj,outi,outj] = mat[outi,outj,ini,inj];
     return utils.mat_4d_to_2d(new_mat);
 
-def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
+def H_wrapper(params_dict, sys_type, time, scratch_dir, verbose=0):
     '''
-    Builds the parts of the Hamiltonian which apply at all t
+    Wrapper that allows calling builder/polarizer Ham constructor for MULTIPLE system types,
+    eg, STT, SIAM, etc.
+
+    Args:
+    params_dict, a dictionary with all the physical params. Its correspondence with sys_type is
+        automatically checked
+    sys_type, a string telling what kind of 1D system we are choosing
+    time, int in 0 or 1, whether to include initial state prep Ham ("polarizing"
+    Ham at time<0) or not (time>0)
+    scratch_dir, path to where to save MPS info
+    '''
+
+    if(sys_type=="STT"):
+        needed_keys = ["Jsd","Jx","Jz"];
+        H_constructor = H_STT_builder;
+        H_add = H_STT_polarizer;
+    elif(sys_type=="SIAM"):
+        needed_keys = ["U","Vg","Vb"];
+        H_constructor = H_SIAM_builder;
+        H_add = H_SIAM_polarizer;
+    else:
+        raise Exception("System type = "+sys_type+" not supported");
+
+    # check compatibility
+    for key in needed_keys:
+        if(key not in params_dict.keys()):
+            raise KeyError("params_dict missing "+key);
+
+    # construct
+    H_t = H_constructor(params_dict, scratch_dir=scratch_dir, verbose=verbose); # all times
+    if(time==0): H_t = H_add(params_dict, H_t, verbose=verbose); # time<=0 only;
+    return H_t;
+
+def H_SIAM_builder(params_dict, scrath_dir="tmp",verbose=0):
+    '''
+    Builds the parts of the STT Hamiltonian which apply at all t
+    The physical params are contained in a .json file. They are all in eV.
+    They are:
+    tl (lead hopping), th (lead-impurity hopping), Vg (gate voltage on impurity),
+    U (Coulomb repulsion on impurity), Vb (bias between left and right leads.
+    Vb>0 means that left lead is higher chem potential than right, leading to
+    rightward/positive current).
+
+    NL (number sites in left lead),  NR (number of sites in right lead).
+    There is always exactly 1 impurity, so Nsites=NL+1+NR
+    NB this system is assumed half-filled, so Ne=Nsites.
+    The total Sz of the electrons is always 0, so Ne_up=Ne_down=Ne//2
+    NB this requires that Ne//2==0
+
+    There is NO supersiting in this system
+
+    Returns: a tuple of DMRGDriver, ExprBuilder objects
+    '''
+
+    # load data from json
+    tl, th, Vg, U, Vb = params_dict["tl"], params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
+    NL, NR = params_dict["NL"], params_dict["NR"];
+    Nsites = NL+1+NR;
+    Ne=Nsites;
+    assert(Ne//2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz = 0;
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(NL)]);
+    central_sites = np.array([j for j in range(NL,NL+1) ]);
+    rlead_sites = np.array([j for j in range(NL+1,Nsites)]);
+    all_sites = np.array([j for j in range(Nsites)]);
+
+    # construct ExprBuilder
+    if(params_dict["symmetry"] == "Sz"):
+        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+        driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+    else: raise NotImplementedError;
+    builder = driver.expr_builder();
+    print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+
+    # j <-> j+1 hopping for fermions
+    for j in all_sites[:-1]:
+        builder.add_term("cd",[j,j+1],-tl); 
+        builder.add_term("CD",[j,j+1],-tl);
+        builder.add_term("cd",[j+1,j],-tl);
+        builder.add_term("CD",[j+1,j],-tl);
+
+    # Vg and U on impurity
+    for j in central_sites:
+        builder.add_term("cd",[j,j], Vg);
+        builder.add_term("CD",[j,j], Vg);
+        builder.add_term("cdCD",[j,j,j,j], U);
+
+    # bias
+    # NB this will be REMOVED by polarizer so that it is ABSENT for t<0
+    # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
+    # by the polarizer
+    for j in llead_sites:
+        builder.add_term("cd",[j,j], Vb/2); 
+        builder.add_term("CD",[j,j], Vb/2);
+    for j in rlead_sites:
+        builder.add_term("cd",[j,j],-Vb/2); 
+        builder.add_term("CD",[j,j],-Vb/2);
+
+    return driver, builder;
+
+def H_SIAM_polarizer(params_dict, to_add_to, verbose=0):
+    '''
+    Adds terms specific to the t<0 SIAM Hamiltonian (REMOVES Vb)
+
+    There is NO supersiting in this system
+
+    Args:
+    Params_dict: dict containing physical param values, these are defined in Hsys_base
+    to_add_to, tuple of objects to add terms to:
+        if block is True: these will be DMRGDriver, ExprBuilder objects
+        else: these will be 1-body and 2-body parts of the second quantized
+        Hamiltonian
+
+    Returns: a tuple of DMRGDriver, MPO
+    '''
+    
+    # load data from json
+    tl, th, Vg, U, Vb = params_dict["tl"], params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
+    NL, NR = params_dict["NL"], params_dict["NR"];
+    Nsites = NL+1+NR;
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(NL)]);
+    rlead_sites = np.array([j for j in range(NL+1,Nsites)]);
+
+    # unpack ExprBuilder
+    driver, builder = to_add_to;
+    if(driver.n_sites != Nsites): raise ValueError;
+
+    # REMOVE bias
+    for j in llead_sites:
+        builder.add_term("cd",[j,j],-Vb/2); 
+        builder.add_term("CD",[j,j],-Vb/2);
+    for j in rlead_sites:
+        builder.add_term("cd",[j,j], Vb/2); 
+        builder.add_term("CD",[j,j], Vb/2);
+
+    # return
+    mpo_from_builder = driver.get_mpo(builder.finalize());
+    return driver, mpo_from_builder;
+
+def H_STT_builder(params_dict, scratch_dir="tmp", verbose=0):
+    '''
+    Builds the parts of the STT Hamiltonian which apply at all t
     The physical params are contained in a .json file. They are all in eV.
     They are:
     tl (lead hopping), Vconf (confining voltage depth), Be (field to polarize
@@ -264,9 +410,7 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
 
     NB this builds in terms of supersited dofs, rather than fermionic dofs
 
-    Returns:
-        if block is True: a tuple of DMRGDriver, ExprBuilder objects
-        else: a tuple of 1-body, 2-body 2nd quantized Hamiltonian arrays
+    Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
 
     # load data from json
@@ -302,7 +446,7 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
         # in latter case, we get a floating point exception even when complex sym is turned off!
         #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4)
         driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
-    else: raise NotImplementedError
+    else: raise NotImplementedError;
 
     # Szd blocks for fermion-impurity operators
     # squares are diagonal blocks and triangles are one off diagonal
@@ -389,7 +533,7 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
         site_states.append(states);
         site_ops.append(ops);
 
-    # input custom site basis states and ops to driver
+    # input custom site basis states and ops to driver, and build builder
     driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
     builder = driver.expr_builder();
     print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
@@ -418,9 +562,9 @@ def Hsys_builder(params_dict, scratch_dir="tmp", verbose=0):
 
     return driver, builder;
 
-def Hsys_polarizer(params_dict, to_add_to, verbose=0):
+def H_STT_polarizer(params_dict, to_add_to, verbose=0):
     '''
-    Adds terms specific to the t<0 Hamiltonian in which the deloc e's, loc spins are
+    Adds terms specific to the t<0 STT Hamiltonian in which the deloc e's, loc spins are
     confined and polarized by application of external fields Be, BFM
 
     NB this builds in terms of supersited dofs, rather than fermionic dofs
@@ -432,9 +576,7 @@ def Hsys_polarizer(params_dict, to_add_to, verbose=0):
         else: these will be 1-body and 2-body parts of the second quantized
         Hamiltonian
         
-    Returns:
-        if block is True: a tuple of DMRGDriver, MPO
-        else: return a tuple of 1-body and 2-body Hamiltonian arrays
+    Returns: a tuple of DMRGDriver, MPO
     '''
 
     # load data from json
@@ -461,7 +603,7 @@ def Hsys_polarizer(params_dict, to_add_to, verbose=0):
     all_sites = np.array([j for j in range(Nsites)]);
     conf_sites = np.array([j for j in range(Nbuffer,Nbuffer+Nconf)]);
 
-    # construct ExprBuilder
+    # unpack ExprBuilder
     driver, builder = to_add_to;
     if(driver.n_sites != Nsites): raise ValueError;
     

@@ -1,0 +1,7 @@
+{
+"tl":1.0, "th":0.4, "Vg":0.0, "U":1.0, "Vb":0.0,
+"NL":7, "NR":8,
+"symmetry":"Sz","plot":0,
+"bdim_0":[150,150,150,200,200],"bdim_t":[250], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"rk4",
+"time_step":0.1, "tupdate":0.5, "Nupdates":20
+}
