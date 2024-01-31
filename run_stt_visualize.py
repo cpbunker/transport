@@ -29,7 +29,7 @@ if(case in [1,2]): # observable as a function of time
     # axes
     fig, ax = plt.subplots();
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-    ax.set_yticks(ticks1);
+    #ax.set_yticks(ticks1);
     ax.set_xlabel("Time $(\hbar/t_l)$");
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 

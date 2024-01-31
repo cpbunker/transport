@@ -34,10 +34,11 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def check_observables(the_sites,psi,eris_or_driver, none_or_mpo,the_time):
+def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time):
     '''
     Print update on selected observables
     '''
+    the_sites = params_dict["ex_sites"];
     print("\nTime = {:.2f}".format(the_time));
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
@@ -84,7 +85,7 @@ def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbos
                 final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables
-        check_observables(params_dict["ex_sites"],tevol_mps_inst,driver_inst,mpo_inst,total_time);
+        check_observables(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time);
         plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, time=total_time);
 
     evol_end = time.time();
@@ -123,10 +124,10 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.Hsys_builder(params, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+H_driver, H_builder = tddmrg.H_STT_builder(params, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.Hsys_polarizer(params, (H_driver,H_builder), verbose=verbose);
+H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), verbose=verbose);
     
 # gd state
 gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
@@ -154,14 +155,14 @@ print(">>> Init compute time = "+str(init_end-init_start));
 mytime=0;
 
 # plot observables
-check_observables(my_sites, gdstate_mps_inst, H_driver, H_mpo_initial, mytime);
+check_observables(params, gdstate_mps_inst, H_driver, H_mpo_initial, mytime);
 plot.snapshot_bench(gdstate_mps_inst, H_driver,
         params, json_name, time = mytime);
 
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.Hsys_builder(params, scratch_dir=json_name, verbose=verbose);
+H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, scratch_dir=json_name, verbose=verbose);
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
 time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn,
                   gdstate_mps_inst,json_name,verbose=2) # set to 2 to see mmps
