@@ -78,10 +78,10 @@ def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbos
 
         # time evol
         krylov_subspace = 20; # default
-        if(params["te_type"] == "tdvp"): krylov_subspace = 40;
+        if(params_dict["te_type"] == "tdvp"): krylov_subspace = 40;
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params["te_type"],krylov_subspace_size=krylov_subspace,
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],krylov_subspace_size=krylov_subspace,
                 final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables

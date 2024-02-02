@@ -107,7 +107,7 @@ def compute_update(ci, eris, h, RK=4):
 def compute_energy(d1, d2, eris, time=None):
     raise NotImplementedError("see ompute_obs below");
 
-def compute_obs(ci_inst, op_eris):
+def compute_obs(ci_inst, op_eris, dummy):
     '''
     Ruojing's code
     Computes <H> by
@@ -120,6 +120,7 @@ def compute_obs(ci_inst, op_eris):
     Args:
     ci_obj, object which contains a particular many body state
     eris_obj, object which contains hamiltonians
+    dummy, so it has same call signature as tddmrg.compute_obs, but not used
     '''
 
     # set up return values
@@ -154,6 +155,7 @@ def compute_obs(ci_inst, op_eris):
     e +=        lib.einsum('pQrS,rSpQ',g2e_ab,d2ab)
 
     if(abs(np.imag(e)) > op_eris.imag_cutoff): print(e); raise ValueError;
+    return e;
     return np.real(e);
 
 class ERIs():

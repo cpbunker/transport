@@ -1,0 +1,7 @@
+{
+"sys_type":"SIAM","symmetry":"Sz","plot":0,"tdfci":0,
+"tl":1.0, "th":0.4, "Vg":0.0, "U":0.0, "Vb":0.5,
+"NL":15, "NR":16,
+"bdim_0":[100,100,100,150,150],"bdim_t":[200], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"rk4",
+"time_step":0.1, "tupdate":1.0, "Nupdates":25
+}

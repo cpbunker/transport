@@ -21,7 +21,6 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbo
     '''
     '''
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
-    evol_start = time.time();
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
     time_update = time_step*int(abs(time_update/time_step)+0.1); # discrete number
@@ -37,18 +36,15 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbo
 
         # time evol
         krylov_subspace = 20; # default
-        if(params["te_type"] == "tdvp"): krylov_subspace = 40;
+        if(params_dict["te_type"] == "tdvp"): krylov_subspace = 40;
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params["te_type"],krylov_subspace_size=krylov_subspace,
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],krylov_subspace_size=krylov_subspace,
                 final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables
-        check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time);
-        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, time=total_time);
-
-    evol_end = time.time();
-    print(">>> Time evol compute time = {:.2f}".format(evol_end-evol_start));
+        check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time, True);
+        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, total_time, True);
 
 ################################################################################
 #### observables
@@ -62,13 +58,14 @@ def compute_obs(psi, mpo_inst, driver, conj=False):
     impo = driver.get_identity_mpo();
     return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
 
-def get_occ(eris_or_driver, whichsite, block=True, verbose=0):
+def get_occ(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing the occupancy of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else:
         Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
         h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
@@ -83,13 +80,14 @@ def get_occ(eris_or_driver, whichsite, block=True, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_sz(eris_or_driver, whichsite, block=True, verbose=0):
+def get_sz(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else: 
         Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
         h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
@@ -104,10 +102,11 @@ def get_sz(eris_or_driver, whichsite, block=True, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_Sd_mu(eris_or_driver, whichsite, component="z", verbose=0):
+def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
     '''
     MPO representing <Sz> of site impurity at site whichsite
     '''
+    assert(block);
     builder = eris_or_driver.expr_builder();
 
     # construct
@@ -125,24 +124,25 @@ def get_Sd_mu(eris_or_driver, whichsite, component="z", verbose=0):
 
     return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
 
-def purity_wrapper(psi,eris_or_driver, whichsite):
+def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
     Need to combine ops for x,y,z components of Sd to get purity
     '''
     components = ["x01","x10","y01","y10","z"];
     sterms = [];
     for comp in components:
-        op = get_Sd_mu(eris_or_driver, whichsite, component=comp);
+        op = get_Sd_mu(eris_or_driver, whichsite, block, component=comp);
         sterms.append( compute_obs(psi, op, eris_or_driver));
     purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
     ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
 
-def get_concurrence(eris_or_driver, whichsites, symm_block, verbose=0):
+def get_concurrence(eris_or_driver, whichsites, symm_block, block, verbose=0):
     '''
     MPO for concurrence
     '''
+    assert(block);
     builder = eris_or_driver.expr_builder()
 
     # construct
@@ -159,7 +159,7 @@ def get_concurrence(eris_or_driver, whichsites, symm_block, verbose=0):
     # return
     return eris_or_driver.get_mpo(builder.finalize(),add_ident=False, iprint=verbose);
 
-def concurrence_wrapper(psi,eris_or_driver, whichsites):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     '''
     Sums ops made by get_concurrence from TwoSz=+2, 0, -2 symmetry blocks to find concurrence
 
@@ -178,7 +178,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites):
     sblocks = [-2,0,2];
     sterms = [];
     for sblock in sblocks:
-        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock);
+        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, block);
         concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
@@ -186,49 +186,73 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites):
     if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
     return np.real(ret);
 
-def get_pcurrent(eris_or_driver, whichsites, spin, verbose=0):
+def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
     '''
-    MPO for particle current. Positive is rightward current
+    MPO for current from whichsites[0] to whichsites[1]
+    positive is rightward, associated with positive bias st left lead chem potential
+    is higher) 
+
+    Ultimately, we want this for conductance. The formula is found in 
+    Garnet's coupled cluster dynamics paper, JCP 2021, Eqs 69-70
+    G/G0 = \pi <J>/(Vb/e), where Vb/e is a VOLTAGE, and
+    <J> =  e/\hbar * hopping * i * \sum_sigma 
+    < c_j+1,\sigma^\dagger c_j,\sigma - c_j,\sigma^\dagger c_j+1,\sigma >
+    HOWEVER for convenience we wait till plotting to apply factor 
+    \pi e/\hbar * hopping/(Vb/e)
+
     Args:
     eris_or_driver, Block2 driver
-    whichsites, list of site indices. must be orered, so that
+    whichsites, list of site indices. must be ordered, so that
     add_term( "cd", whichsites ) represents NEGATIVE current
     spin, int 0 or 1, meaning up or down current
     '''
     if(whichsites[1]-whichsites[0]!=1): raise ValueError;
-    if(spin=0): spinstr = "cd";
-    elif(spin=1): spinstr = "CD";
+    if(spin==0): spinstr = "cd";
+    elif(spin==1): spinstr = "CD";
     else: raise ValueError;
 
-    # construct MPO
-    builder = eris_or_driver.expr_builder();
-    builder.add_term(spinstr, whichsites, -1); # c on left, d on right = negative current
-    builder.add_term(spinstr, whichsites[::-1], 1); # c on right, d on left = positive current
-    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block):# construct MPO
+        builder = eris_or_driver.expr_builder();
+        builder.add_term(spinstr, whichsites, -1); # c on left, d on right = negative current
+        builder.add_term(spinstr, whichsites[::-1], 1); # c on right, d on left = positive current
+        return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: # construct ERIs
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+        h1e[nloc*whichsites[0]+spin,nloc*whichsites[1]+spin] += -1.0;
+        h1e[nloc*whichsites[1]+spin,nloc*whichsites[0]+spin] += 1.0;
+        return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e12);
 
-def pcurrent_wrapper(psi, eris_or_driver, whichsite, verbose=0):
+
+def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     '''
     Consider site whichsite. This wrapper:
-    1) sums the spin currents from whichsite-1 to whcihsite (LEFT part)
+    1) sums the spin currents from whichsite-1 to whichsite (LEFT part)
     2) sums the spin currents from whichsite to whichsite+1 (RIGHT part)
     3) averages over the results of 1 and 2 to find the current "through" whichsite
+    Later this will be divided by Vb to make it *conductance*
     '''
+    if(block): compute_func = compute_obs;
+    else: compute_func = tdfci.compute_obs;
 
     # left part
     pcurrent_left = 0.0;
     for spin in [0,1]:
-        left_mpo += get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, verbose=verbose);
-        pcurrent_left += compute_obs(psi, left_mpo, eris_or_driver);
+        left_mpo = get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, block, verbose=verbose);
+        pcurrent_left += compute_func(psi, left_mpo, eris_or_driver);
 
     # right part
     pcurrent_right = 0.0;
     for spin in [0,1]:
-        right_mpo += get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, verbose=verbose);
-        pcurrent_right += compute_obs(psi, right_mpo, eris_or_driver);
+        right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
+        pcurrent_right += compute_func(psi, right_mpo, eris_or_driver);
 
     # average
-    return (pcurrent_left + pcurrent_right)/2;
-    
+    print(np.round(-np.imag(pcurrent_left), 4), np.round(-np.imag(pcurrent_right),4));
+    ret = complex(0,1)*(pcurrent_left + pcurrent_right)/2; # must add  e/\hbar * th/Vb later
+    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    return np.real(ret);
 
 ##########################################################################################################
 #### hamiltonian constructors
@@ -283,7 +307,7 @@ def H_wrapper(params_dict, sys_type, time, scratch_dir, verbose=0):
     if(time==0): H_t = H_add(params_dict, H_t, verbose=verbose); # time<=0 only;
     return H_t;
 
-def H_SIAM_builder(params_dict, scrath_dir="tmp",verbose=0):
+def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
     Builds the parts of the STT Hamiltonian which apply at all t
     The physical params are contained in a .json file. They are all in eV.
@@ -297,7 +321,7 @@ def H_SIAM_builder(params_dict, scrath_dir="tmp",verbose=0):
     There is always exactly 1 impurity, so Nsites=NL+1+NR
     NB this system is assumed half-filled, so Ne=Nsites.
     The total Sz of the electrons is always 0, so Ne_up=Ne_down=Ne//2
-    NB this requires that Ne//2==0
+    NB this requires that Ne%2==0
 
     There is NO supersiting in this system
 
@@ -309,7 +333,7 @@ def H_SIAM_builder(params_dict, scrath_dir="tmp",verbose=0):
     NL, NR = params_dict["NL"], params_dict["NR"];
     Nsites = NL+1+NR;
     Ne=Nsites;
-    assert(Ne//2 ==0); # need even number of electrons for TwoSz=0
+    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
     TwoSz = 0;
 
     # classify site indices (spin not included)
@@ -319,40 +343,67 @@ def H_SIAM_builder(params_dict, scrath_dir="tmp",verbose=0):
     all_sites = np.array([j for j in range(Nsites)]);
 
     # construct ExprBuilder
-    if(params_dict["symmetry"] == "Sz"):
-        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
-        driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
-    else: raise NotImplementedError;
-    builder = driver.expr_builder();
-    print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+    if(block):
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+        else: raise NotImplementedError;
+        builder = driver.expr_builder();
+        print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+    else:       # <---------- change dtype to complex ?
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
+
 
     # j <-> j+1 hopping for fermions
     for j in all_sites[:-1]:
-        builder.add_term("cd",[j,j+1],-tl); 
-        builder.add_term("CD",[j,j+1],-tl);
-        builder.add_term("cd",[j+1,j],-tl);
-        builder.add_term("CD",[j+1,j],-tl);
+        if(block):
+            builder.add_term("cd",[j,j+1],-tl); 
+            builder.add_term("CD",[j,j+1],-tl);
+            builder.add_term("cd",[j+1,j],-tl);
+            builder.add_term("CD",[j+1,j],-tl);
+        else:
+            h1e[nloc*j+0,nloc*(j+1)+0] += -tl;
+            h1e[nloc*(j+1)+0,nloc*j+0] += -tl;
+            h1e[nloc*j+1,nloc*(j+1)+1] += -tl;
+            h1e[nloc*(j+1)+1,nloc*j+1] += -tl;
+
 
     # Vg and U on impurity
     for j in central_sites:
-        builder.add_term("cd",[j,j], Vg);
-        builder.add_term("CD",[j,j], Vg);
-        builder.add_term("cdCD",[j,j,j,j], U);
+        if(block):
+            builder.add_term("cd",[j,j], Vg);
+            builder.add_term("CD",[j,j], Vg);
+            builder.add_term("cdCD",[j,j,j,j], U);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vg;
+            h1e[nloc*j+1,nloc*j+1] += Vg;
+            assert(U==0.0);
 
     # bias
     # NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
     # by the polarizer
     for j in llead_sites:
-        builder.add_term("cd",[j,j], Vb/2); 
-        builder.add_term("CD",[j,j], Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j], Vb/2); 
+            builder.add_term("CD",[j,j], Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += Vb/2;
     for j in rlead_sites:
-        builder.add_term("cd",[j,j],-Vb/2); 
-        builder.add_term("CD",[j,j],-Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j],-Vb/2); 
+            builder.add_term("CD",[j,j],-Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += -Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += -Vb/2;
 
-    return driver, builder;
+    if(block): return driver, builder;
+    else: return h1e, g2e;
 
-def H_SIAM_polarizer(params_dict, to_add_to, verbose=0):
+def H_SIAM_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
     Adds terms specific to the t<0 SIAM Hamiltonian (REMOVES Vb)
 
@@ -378,22 +429,39 @@ def H_SIAM_polarizer(params_dict, to_add_to, verbose=0):
     rlead_sites = np.array([j for j in range(NL+1,Nsites)]);
 
     # unpack ExprBuilder
-    driver, builder = to_add_to;
-    if(driver.n_sites != Nsites): raise ValueError;
+    if(block):
+        driver, builder = to_add_to;
+        if(driver.n_sites != Nsites): raise ValueError;
+    else:
+        h1e, g2e = to_add_to;
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        if(len(h1e) != Nspinorbs): raise ValueError;
 
     # REMOVE bias
     for j in llead_sites:
-        builder.add_term("cd",[j,j],-Vb/2); 
-        builder.add_term("CD",[j,j],-Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j],-Vb/2);
+            builder.add_term("CD",[j,j],-Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += -Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += -Vb/2;
     for j in rlead_sites:
-        builder.add_term("cd",[j,j], Vb/2); 
-        builder.add_term("CD",[j,j], Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j], Vb/2);
+            builder.add_term("CD",[j,j], Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += Vb/2;
 
     # return
-    mpo_from_builder = driver.get_mpo(builder.finalize());
-    return driver, mpo_from_builder;
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize());
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
 
-def H_STT_builder(params_dict, scratch_dir="tmp", verbose=0):
+def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
     Builds the parts of the STT Hamiltonian which apply at all t
     The physical params are contained in a .json file. They are all in eV.
@@ -412,6 +480,7 @@ def H_STT_builder(params_dict, scratch_dir="tmp", verbose=0):
 
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
+    assert(block);
 
     # load data from json
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
@@ -562,7 +631,7 @@ def H_STT_builder(params_dict, scratch_dir="tmp", verbose=0):
 
     return driver, builder;
 
-def H_STT_polarizer(params_dict, to_add_to, verbose=0):
+def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
     Adds terms specific to the t<0 STT Hamiltonian in which the deloc e's, loc spins are
     confined and polarized by application of external fields Be, BFM
@@ -578,6 +647,7 @@ def H_STT_polarizer(params_dict, to_add_to, verbose=0):
         
     Returns: a tuple of DMRGDriver, MPO
     '''
+    assert(block);
 
     # load data from json
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];

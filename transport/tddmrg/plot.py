@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from transport import tddmrg
+from transport import tddmrg, tdfci
 
 # fig standardizing
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
@@ -13,51 +13,72 @@ mylinewidth = 3.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def vs_site(js,psi,eris_or_driver,which_obs):
+def vs_site(js,psi,eris_or_driver,which_obs, block, prefactor):
     '''
     '''
+    if(not isinstance(prefactor, float)): raise TypeError;
     obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sd_mu, 
-            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper};
+            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper,
+            "G_":tddmrg.conductance_wrapper};
+    if(block): compute_func = tddmrg.compute_obs;
+    else: compute_func = tdfci.compute_obs;
+
+
     # site array
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
         if(which_obs in ["conc_"]): 
-            if(ji!=len(js)-1): vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]]);
+            if(ji!=len(js)-1): vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
             else: vals[ji] = np.nan; # since concur = C(d,d+1), we cannot compute C for the final d site.
-        elif(which_obs in ["pur_"]):
-            vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji]);
+        elif(which_obs in ["pur_","G_"]):
+            vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji],block);
         else:
-            op = obs_funcs[which_obs](eris_or_driver,js[ji]);
-            vals[ji] = np.real(tddmrg.compute_obs(psi, op, eris_or_driver));
+            op = obs_funcs[which_obs](eris_or_driver,js[ji],block);
+            vals[ji] = np.real(compute_func(psi, op, eris_or_driver));
 
-    return js, vals;
+    return js, prefactor*vals;
 
-def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
+def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True):
     '''
     '''
+    assert(isinstance(block, bool));
 
     # unpack
-    concur_sites = params_dict["ex_sites"];
+    sys_type = params_dict["sys_type"];
     plot_fig = params_dict["plot"];
-    Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
-    NL, NFM, NR, Ne = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Ne"];
-    Nbuffer = 0;
-    if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
+    NL, NR = params_dict["NL"], params_dict["NR"];
+    Nbuffer, NFM = 0, 1;
+    if(sys_type=="STT"):
+        Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
+        NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
+        if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
+        title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
+        # plot charge and spin vs site
+        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$|\mathbf{S}_j|$","$C_{j,j+1}$"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+    elif(sys_type=="SIAM"):
+        th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
+        NFM, Ne = 1, (NL+1+NR)//2;
+        title_str = "$t_h =$ {:.4f}$t_l, V_g =${:.4f}$t_l, U =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(th, Vg, U, Vb);
+        obs_strs = ["occ_", "sz_", "G_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle J_{"+str(NL)+"} \\rangle/V_b$"];
+        axlines = [ [2.0,1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0]];
+    else:
+        raise Exception("System type = "+sys_type+" not supported");
     Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
     central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM)]);
     all_sites = np.array([j for j in range(Nsites)]);
 
-    # plot charge and spin vs site
-    obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-    ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$|\mathbf{S}_j|$","$C_{j,j+1}$"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
-    fig, axes = plt.subplots(len(obs_strs),sharex=True);
-
+    # plot
+    fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] not in ["Sdz_","conc_","pur_"]): js_pass = all_sites;
+            if(obs_strs[obsi] not in ["Sdz_","conc_","pur_", "G_"]): js_pass = all_sites;
             else: js_pass = central_sites;
-            x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi]);
+            if(obs_strs[obsi] in ["G_"]): prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
+            else: prefactor = 1.0;
+            x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
                                label = ("DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])));
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
@@ -73,10 +94,9 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time = 0.0):
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
     axes[-1].set_xlabel("$j$");
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
-    title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
     axes[0].set_title(title_str);
     plt.tight_layout();
-    if(plot_fig): plt.show();
+    if(plot_fig): pass #plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
