@@ -34,7 +34,9 @@ def vs_site(js,psi,eris_or_driver,which_obs, block, prefactor):
             vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji],block);
         else:
             op = obs_funcs[which_obs](eris_or_driver,js[ji],block);
-            vals[ji] = np.real(compute_func(psi, op, eris_or_driver));
+            ret = compute_func(psi, op, eris_or_driver);
+            if(np.imag(ret) > 1e-12): print(ret); raise ValueError;
+            vals[ji] = np.real(ret);
 
     return js, prefactor*vals;
 
@@ -55,15 +57,15 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$|\mathbf{S}_j|$","$C_{j,j+1}$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
         title_str = "$t_h =$ {:.4f}$t_l, V_g =${:.4f}$t_l, U =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(th, Vg, U, Vb);
         obs_strs = ["occ_", "sz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle J_{"+str(NL)+"} \\rangle/V_b$"];
-        axlines = [ [2.0,1.0,0.0],[0.5,0.0,-0.5],[1.0,0.0]];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
+        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
@@ -82,8 +84,9 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
                                label = ("DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])));
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
+
             # save DMRG data
-            if(not plot_fig):
+            if(block and (not plot_fig)):
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
 
@@ -92,7 +95,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         axes[obsi].set_ylabel(ylabels[obsi]);
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
-    axes[-1].set_xlabel("$j$");
+    axes[-1].set_xlabel("$j(d)$");
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title(title_str);
     plt.tight_layout();
@@ -102,14 +105,23 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
     plt.close(); # keeps figure from being stored in memory
 
-def snapshot_fromdata(loadname, time):
+def snapshot_fromdata(loadname, time, sys_type):
     '''
     '''
     
     # plot charge and spin vs site
-    obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-    ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{j}^{z} \\rangle $","$|\mathbf{S}_j|$","$C_{j,j+1}$"];
-    axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+    if(sys_type == "STT"):
+        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+    elif(sys_type == "SIAM"):
+        obs_strs = ["occ_", "sz_", "G_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{Imp} \\rangle/V_b$"];
+        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
+    else:
+        raise Exception("System type = "+sys_type+" not supported");
+
+    # plot
     fig, axes = plt.subplots(len(obs_strs),sharex=True);
     for obsi in range(len(obs_strs)):
         y_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}.npy".format(time));
@@ -121,7 +133,7 @@ def snapshot_fromdata(loadname, time):
         axes[obsi].set_ylabel(ylabels[obsi]);
         for lineval in axlines[obsi]:
             axes[obsi].axhline(lineval,color="gray",linestyle="dashed");
-    axes[-1].set_xlabel("$j$");
+    axes[-1].set_xlabel("$j(d)$");
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title( open(loadname+"_arrays/"+obs_strs[0]+"title.txt","r").read().splitlines()[0][1:]);
     plt.tight_layout();

@@ -110,10 +110,10 @@ if(block):
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 else:
     H_1e, H_2e = np.copy(H_driver), np.copy(H_mpo_initial); # H_SIAM_polarizer output with block=False
-    print("H_1e = ");print(H_1e[:nloc*myNL,:nloc*myNL]);print(H_1e[nloc*myNL:nloc*(myNL+1),nloc*myNL:nloc*(myNL+1)]);print(H_1e[nloc*(myNL+1):,nloc*(myNL+1):]); 
+    print("H_1e = ");print(H_1e[:nloc*myNL,:nloc*myNL]);print(H_1e[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);print(H_1e[nloc*(myNL+1):,nloc*(myNL+1):]); 
 
     # gd state
-    gdstate_mps_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=1, verbose=verbose);
+    gdstate_mps_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=1, verbose=0);
     H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
     eris_or_driver = H_eris;
     print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
@@ -143,11 +143,15 @@ if(block):
 else:
     time_step, time_stop = params["time_step"], params["tupdate"];
     H_1e_dyn, H_2e_dyn = np.copy(H_driver_dyn), np.copy(H_builder_dyn); # output with block=True
-    print("H_1e_dyn = ");print(H_1e_dyn[:nloc*myNL,:nloc*myNL]);print(H_1e_dyn[nloc*myNL:nloc*(myNL+1),nloc*myNL:nloc*(myNL+1)]);print(H_1e_dyn[nloc*(myNL+1):,nloc*(myNL+1):]); 
-    #assert False # stop here while constructing zigzag
+    print("H_1e_dyn = ");print(H_1e_dyn[:nloc*myNL,:nloc*myNL]);print(H_1e_dyn[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);print(H_1e_dyn[nloc*(myNL+1):,nloc*(myNL+1):]); 
+
+    # repeated time evols
+    Nupdates = params["Nupdates"];
     H_eris_dyn = tdfci.ERIs(H_1e_dyn, H_2e_dyn, gdstate_scf_inst.mo_coeff);
-    t1_ci_inst = tdfci.kernel(gdstate_mps_inst, H_eris_dyn, time_stop, time_step);
-    check_observables(params, t1_ci_inst, H_driver, H_mpo_initial, mytime+time_stop, block);
-    plot.snapshot_bench(t1_ci_inst, eris_or_driver, params, json_name, mytime+time_stop, block);
-    if(params["Nupdates"]>1): raise NotImplementedError;
+    t_ci_inst = gdstate_mps_inst; del gdstate_mps_inst;
+    for update in range(1,Nupdates+1):
+        mytime += time_stop;
+        t_ci_inst = tdfci.kernel(t_ci_inst, H_eris_dyn, time_stop, time_step);
+        check_observables(params, t_ci_inst, H_driver, H_mpo_initial, mytime, block);
+        plot.snapshot_bench(t_ci_inst, eris_or_driver, params, json_name, mytime, block);
 

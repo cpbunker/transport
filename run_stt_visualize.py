@@ -8,9 +8,10 @@ import sys
 import json
 
 # top level
-datafile = sys.argv[1];
-params = json.load(open(datafile+".txt"));
-case = int(sys.argv[2]);
+case = int(sys.argv[1]);
+time0 = int(sys.argv[2]);
+Nupdates = int(sys.argv[3]);
+datafiles = sys.argv[4:];
 
 # plotting
 obs1, color1, ticks1, linewidth1, fontsize1 = "Sdz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
@@ -22,9 +23,11 @@ num_xticks = 4;
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
     from transport.tddmrg import plot
-    tddmrg.plot.snapshot_fromdata(datafile, float(sys.argv[3]))
+    tddmrg.plot.snapshot_fromdata(datafiles[0], time0, "STT")
 
 if(case in [1,2]): # observable as a function of time
+    datafile = datafiles[0];
+    params = json.load(open(datafile+".txt"));
 
     # axes
     fig, ax = plt.subplots();
@@ -34,9 +37,7 @@ if(case in [1,2]): # observable as a function of time
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
     # time evolution params
-    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = time0 + ti*tupdate;
@@ -88,6 +89,8 @@ if(case in [1,2]): # observable as a function of time
     plt.show();
 
 if(case in [3,4]): # observable as a function of time
+    datafile = datafiles[0];
+    params = json.load(open(datafile+".txt"));
 
     # axes
     fig, ax = plt.subplots();
@@ -95,9 +98,7 @@ if(case in [3,4]): # observable as a function of time
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
     # time evolution params
-    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = time0 + ti*tupdate;
@@ -138,6 +139,8 @@ if(case in [3,4]): # observable as a function of time
     plt.show();
 
 if(case in [10]): # animate time evol
+    datafile = datafiles[0];
+    params = json.load(open(datafile+".txt"));
 
     # axes
     fig, ax = plt.subplots();
@@ -147,9 +150,7 @@ if(case in [10]): # animate time evol
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
     
     # time evolution params
-    time0 = int(sys.argv[3]);
     tupdate = params["tupdate"];
-    Nupdates = int(sys.argv[4]);
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = time0 + ti*tupdate;

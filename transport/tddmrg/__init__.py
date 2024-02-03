@@ -135,7 +135,7 @@ def purity_wrapper(psi,eris_or_driver, whichsite, block):
         sterms.append( compute_obs(psi, op, eris_or_driver));
     purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
     ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
 def get_concurrence(eris_or_driver, whichsites, symm_block, block, verbose=0):
@@ -183,7 +183,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
         sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
     concur_norm = np.sum(sterms);
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
 def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
@@ -213,16 +213,16 @@ def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
 
     if(block):# construct MPO
         builder = eris_or_driver.expr_builder();
-        builder.add_term(spinstr, whichsites, -1); # c on left, d on right = negative current
-        builder.add_term(spinstr, whichsites[::-1], 1); # c on right, d on left = positive current
+        builder.add_term(spinstr, whichsites, complex(0,-1)); # c on left, d on right = negative current
+        builder.add_term(spinstr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive current
         return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: # construct ERIs
         Nspinorbs = len(eris_or_driver.h1e[0]);
         nloc = 2;
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-        h1e[nloc*whichsites[0]+spin,nloc*whichsites[1]+spin] += -1.0;
-        h1e[nloc*whichsites[1]+spin,nloc*whichsites[0]+spin] += 1.0;
-        return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e12);
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=complex), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=complex);
+        h1e[nloc*whichsites[0]+spin,nloc*whichsites[1]+spin] += complex(0,-1.0);
+        h1e[nloc*whichsites[1]+spin,nloc*whichsites[0]+spin] += complex(0,1.0);
+        return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e-12);
 
 
 def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
@@ -240,18 +240,21 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     pcurrent_left = 0.0;
     for spin in [0,1]:
         left_mpo = get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, block, verbose=verbose);
-        pcurrent_left += compute_func(psi, left_mpo, eris_or_driver);
+        left_val = compute_func(psi, left_mpo, eris_or_driver);
+        pcurrent_left += left_val;
+    print("left_val (spin={:.0f}) = {:.4f}".format(spin,np.real(pcurrent_left)*np.pi*0.4/0.001));
 
     # right part
     pcurrent_right = 0.0;
     for spin in [0,1]:
         right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
-        pcurrent_right += compute_func(psi, right_mpo, eris_or_driver);
+        right_val = compute_func(psi, right_mpo, eris_or_driver);
+        pcurrent_right += right_val;
+    print("right_val (spin={:.0f}) = {:.4f}".format(spin,np.real(pcurrent_right)*np.pi*0.4/0.001));
 
     # average
-    print(np.round(-np.imag(pcurrent_left), 4), np.round(-np.imag(pcurrent_right),4));
-    ret = complex(0,1)*(pcurrent_left + pcurrent_right)/2; # must add  e/\hbar * th/Vb later
-    if(abs(np.imag(ret)) > 1e-12): print(ret); assert False;
+    ret = complex(1,0)*(pcurrent_left + pcurrent_right)/2; # must add  e/\hbar * th/Vb later
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
 ##########################################################################################################
@@ -356,19 +359,35 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
 
-    # j <-> j+1 hopping for fermions
-    for j in all_sites[:-1]:
-        if(block):
-            builder.add_term("cd",[j,j+1],-tl); 
-            builder.add_term("CD",[j,j+1],-tl);
-            builder.add_term("cd",[j+1,j],-tl);
-            builder.add_term("CD",[j+1,j],-tl);
-        else:
-            h1e[nloc*j+0,nloc*(j+1)+0] += -tl;
-            h1e[nloc*(j+1)+0,nloc*j+0] += -tl;
-            h1e[nloc*j+1,nloc*(j+1)+1] += -tl;
-            h1e[nloc*(j+1)+1,nloc*j+1] += -tl;
+    # LEAD j <-> j+1 hopping for fermions
+    for lead_sites in [llead_sites, rlead_sites]:
+        for j in lead_sites[:-1]:
+            if(block):
+                builder.add_term("cd",[j,j+1],-tl); 
+                builder.add_term("CD",[j,j+1],-tl);
+                builder.add_term("cd",[j+1,j],-tl);
+                builder.add_term("CD",[j+1,j],-tl);
+            else:
+                h1e[nloc*j+0,nloc*(j+1)+0] += -tl;
+                h1e[nloc*(j+1)+0,nloc*j+0] += -tl;
+                h1e[nloc*j+1,nloc*(j+1)+1] += -tl;
+                h1e[nloc*(j+1)+1,nloc*j+1] += -tl;
 
+    # left lead coupling to impurity
+    jpairs = [(llead_sites[-1], central_sites[0]), (rlead_sites[0], central_sites[-1])];
+    for jpair in jpairs:
+        print(">>> ",jpair)
+        jlead, jimp = jpair;
+        if(block):
+            builder.add_term("cd",[jlead,jimp],-th);
+            builder.add_term("CD",[jlead,jimp],-th);
+            builder.add_term("cd",[jimp,jlead],-th);
+            builder.add_term("CD",[jimp,jlead],-th);
+        else:
+            h1e[nloc*jlead+0,nloc*jimp+0] += -th;
+            h1e[nloc*jimp+0,nloc*jlead+0] += -th;
+            h1e[nloc*jlead+1,nloc*jimp+1] += -th;
+            h1e[nloc*jimp+1,nloc*jlead+1] += -th;
 
     # Vg and U on impurity
     for j in central_sites:
