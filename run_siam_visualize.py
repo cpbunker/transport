@@ -58,7 +58,7 @@ elif(case in [1,2]): # observable as a function of time
         for ti in range(len(times)):
             yjs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
         yjdelta_vs_time = np.sum(yjs_vs_time[:,:params["NL"]], axis=1) - np.sum(yjs_vs_time[:,:params["NL"]], axis=1)[0];
-        ax.plot(times, yjdelta_vs_time,color=color1,marker=datamarkers[datai]);
+        #ax.plot(times, yjdelta_vs_time,color=color1,marker=datamarkers[datai]);
 
     # formatting
     ax.set_ylabel("$\pi \langle J_{Imp}^z \\rangle /V_b$", color=color2, fontsize=fontsize1);

@@ -9,8 +9,8 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 
 from transport import tdfci
 from transport.tdfci import utils
-from pyblock2.driver import core
-from pyblock3.block2.io import MPSTools, MPOTools
+#from pyblock2.driver import core
+#from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
 
     
@@ -97,6 +97,79 @@ def get_sz(eris_or_driver, whichsite, block, verbose=0):
     else:
         h1e[nloc*whichsite+0,nloc*whichsite+0] += 0.5;
         h1e[nloc*whichsite+1,nloc*whichsite+1] +=-0.5;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
+def get_sz2(eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIs) representing <Sz * Sz> of site whichsite
+    '''
+    if(block): builder = eris_or_driver.expr_builder()
+    else: 
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=complex);
+
+    # construct
+    if(block):
+        builder.add_term("cdcd",[whichsite,whichsite,whichsite,whichsite], 0.25);
+        builder.add_term("cdCD",[whichsite,whichsite,whichsite,whichsite],-0.25);
+        builder.add_term("CDcd",[whichsite,whichsite,whichsite,whichsite],-0.25);
+        builder.add_term("CDCD",[whichsite,whichsite,whichsite,whichsite], 0.25);
+    else:
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 0.25;
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += -0.25;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += -0.25;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 0.25;
+        # switch particle labels
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 0.25;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += -0.25;
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += -0.25;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 0.25;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
+def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite
+    '''
+    if(block): builder = eris_or_driver.expr_builder()
+    else: 
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=complex), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=complex);
+
+    # construct
+    if(not squared):
+        if(sigmax): coefs = np.array([0.5,0.5]);
+        else: coefs = np.array([complex(0,-0.5), complex(0,0.5)]);
+        if(block):
+            raise NotImplementedError;
+        else:
+            h1e[nloc*whichsite+0,nloc*whichsite+1] += coefs[0];
+            h1e[nloc*whichsite+0,nloc*whichsite+1] += coefs[1];
+    else:
+        if(sigmax): coefs = np.array([0.25,0.25,0.25,0.25]);
+        else: coefs = (-1)*np.array([0.25,-0.25,-0.25,0.25]);
+        if(block):
+            builder.add_term("cDcD",[whichsite,whichsite,whichsite,whichsite],coefs[0]);
+            builder.add_term("cDCd",[whichsite,whichsite,whichsite,whichsite],coefs[0]);
+            builder.add_term("CdcD",[whichsite,whichsite,whichsite,whichsite],coefs[0]);
+            builder.add_term("CdCd",[whichsite,whichsite,whichsite,whichsite],coefs[0]);
+        else:
+            g2e[nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+1] += coefs[0];
+            g2e[nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0] += coefs[1];
+            g2e[nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1] += coefs[2];
+            g2e[nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+0] += coefs[3];
+            # switch particle labels
+            g2e[nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+1] += coefs[0];
+            g2e[nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1] += coefs[1];
+            g2e[nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0] += coefs[2];
+            g2e[nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+0] += coefs[3];
 
     # return
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);

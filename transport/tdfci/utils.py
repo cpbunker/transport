@@ -222,7 +222,7 @@ def scf_FCI(mol_inst, scf_inst, nroots, verbose = 0):
     # run kernel to get exact energy
     E_fci, v_fci = cisolver.kernel(h1e_tup, h2e_tup, norbs, nelecs, nroots = nroots)
 
-    return E_fci, v_fci;
+    return E_fci, np.array(v_fci);
 
 ################################################################################
 #### array dimensionality
