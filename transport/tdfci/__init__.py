@@ -118,8 +118,8 @@ def compute_obs(ci_inst, op_eris, dummy):
     then ruojings code gets <x> for any eris operator x
 
     Args:
-    ci_obj, object which contains a particular many body state
-    eris_obj, object which contains hamiltonians
+    ci_inst, object which contains a particular many body state
+    op_eris, ERIs (see below) which contains all Hamiltonian information
     dummy, so it has same call signature as tddmrg.compute_obs, but not used
     '''
 

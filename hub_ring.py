@@ -43,7 +43,6 @@ def H_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # load data from json
     tl, Vg, U = params_dict["tl"], params_dict["Vg"], params_dict["U"];
     Nsites, Ne = params_dict["Nsites"], params_dict["Ne"];
-    TwoSz = 2; # for dimer when Bz-> -\infty
 
     # classify site indices (spin not included)
     all_sites = np.array([j for j in range(Nsites)]);
@@ -51,6 +50,7 @@ def H_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # construct ExprBuilder
     if(block):
         from pyblock2.driver import core
+        TwoSz = params_dict["TwoSz"];
         if(params_dict["symmetry"] == "Sz"):
             driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
             driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
@@ -124,7 +124,7 @@ def H_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # tiny bit of spin polarization and spin mixing
     # when present, breaks fourfold degeneracy of E levels, but ensures z is special direction so total sz is \pm 0.5
     Bx, Bz = params_dict["Bx"], params_dict["Bz"];
-    for j in all_sites:#[:1]:
+    for j in all_sites:
         if(block):
             builder.add_term("cd",[j,j], Bz/2);
             builder.add_term("CD",[j,j],-Bz/2);
@@ -166,39 +166,43 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     '''
     print("\nTime = {:.2f}".format(the_time));
     if(not block): compute_func = tdfci.compute_obs;
-    else: raise NotImplementedError
+    else: compute_func = tddmrg.compute_obs; # call signature for both is psi, none_or_mpo, eris_or_driver
 
     # check gd state
-    check_E_dmrg = compute_func(psi, eris_or_driver, none_or_mpo);
+    if(not block):
+        check_E_dmrg = compute_func(psi, eris_or_driver, None); # the *op itself* is the H eris
+        check_norm = psi.dot( psi)
+    else:
+        check_E_dmrg = compute_func(psi, none_or_mpo, eris_or_driver); #none_or_mpo is H_mpo
+        check_norm = eris_or_driver.expectation(psi, eris_or_driver.get_identity_mpo(), psi);
     print("Total energy = {:.8f}".format(check_E_dmrg));
-    check_norm = psi.dot( psi)
     print("WF norm = {:.8f}".format(check_norm));
 
     # fermionic charge and spin in LL, Imp, RL
-    sz_vals, occ_vals = np.zeros((params_dict["Nsites"],),dtype=float), np.zeros((params_dict["Nsites"],),dtype=float);
+    sz_vals, occ_vals = np.zeros((params_dict["Nsites"],),dtype=complex), np.zeros((params_dict["Nsites"],),dtype=complex);
     sx2_vals, sy2_vals, sz2_vals = np.zeros_like(sz_vals), np.zeros_like(sz_vals), np.zeros_like(sz_vals);
     for sitei in range(len(sz_vals)):
         sz_mpo = tddmrg.get_sz(eris_or_driver, sitei, block);
-        sz_vals[sitei] = compute_func(psi, sz_mpo, eris_or_driver);
+        sz_vals[sitei] += compute_func(psi, sz_mpo, eris_or_driver);
         occ_mpo = tddmrg.get_occ(eris_or_driver, sitei, block);
-        occ_vals[sitei] = compute_func(psi, occ_mpo, eris_or_driver);
+        occ_vals[sitei] += compute_func(psi, occ_mpo, eris_or_driver);
         #sx2_mpo = tddmrg.get_sxy(eris_or_driver, sitei, block, True, True);
-        #sx2_vals[sitei] = compute_func(psi, sx2_mpo, eris_or_driver);
+        #sx2_vals[sitei] += compute_func(psi, sx2_mpo, eris_or_driver);
         #sy2_mpo = tddmrg.get_sxy(eris_or_driver, sitei, block, False, True);
-        #sy2_vals[sitei] = compute_func(psi, sy2_mpo, eris_or_driver);
+        #sy2_vals[sitei] += compute_func(psi, sy2_mpo, eris_or_driver);
         sz2_mpo = tddmrg.get_sz2(eris_or_driver, sitei, block);
-        sz2_vals[sitei] = compute_func(psi, sz2_mpo, eris_or_driver);
+        sz2_vals[sitei] += compute_func(psi, sz2_mpo, eris_or_driver);
     for sitei in range(len(occ_vals)):
         print("<n  j={:.0f}> = {:.8f}".format(sitei, occ_vals[sitei]));
     print("Total <n> = {:.8f}".format(np.sum(occ_vals)));
     for sitei in range(len(sz_vals)):
         print("<sz j={:.0f}> = {:.8f}".format(sitei, sz_vals[sitei]));
     print("Total <sz> = {:.8f}".format(np.sum(sz_vals)));
-    #print(sx2_vals)
-    #print(sy2_vals)
-    print(sz2_vals)
-    #for sitei in range(len(sz_vals)):
-    #print("<s.s j={:.0f}> = {:.8f}".format(sitei, sx2_vals[sitei]+sy2_vals[sitei]+sz2_vals[sitei]));
+    for sitei in range(len(sz_vals)):
+        print("<s.s j={:.0f}> = {:.8f}".format(sitei, 3*sz2_vals[sitei]));
+
+    #chiral_val = tddmrg.chirality_wrapper(psi, eris_or_driver, [0,1,2], block);
+    #print("chiral val = {:.8f}".format(chiral_val));
                          
 ##################################################################################
 #### run code
@@ -210,6 +214,8 @@ if(__name__ == "__main__"):
     json_name = sys.argv[1];
     params = json.load(open(json_name)); print(">>> Params = ",params);
     is_block = True;
+    if("tdfci" in params.keys()):
+        if(params["tdfci"]==1): is_block=False;
 
     # total num electrons. For fci, should all be input as spin up
     myNsites, myNe = params["Nsites"], params["Ne"];
@@ -231,27 +237,18 @@ if(__name__ == "__main__"):
         print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
         gdstate_E, gdstate_psi = [gdstate_E_dmrg], [gdstate_mps_inst]
     else:
-        H_mpo_initial = None;
         H_1e, H_2e = np.copy(H_driver), np.copy(H_mpo_initial);
         print("H_1e =\n", H_1e); 
-        gdstate_psi, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=20, tol=1e8, verbose=0);
+        gdstate_psi, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=20, tol=params["tol"], verbose=0);
         H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
         eris_or_driver = H_eris;
     init_end = time.time();
     print(">>> Init compute time = "+str(init_end-init_start));
 
     # plot observables
-    the_h1e = np.zeros((4,4),dtype=float);
-    the_g2e = np.zeros((4,4,4,4),dtype=float)
-    the_g2e[0,0,0,0] = 2*1/4;
-    the_g2e[1,1,1,1] = 2*1/4;
-    if(not is_block):the_eris = tdfci.ERIs(the_h1e, the_g2e, gdstate_scf_inst.mo_coeff)
     mytime=0;
     for statei in range(len(gdstate_E)):
         print("\nGround state energy (FCI) = {:.8f}".format(gdstate_E[statei]));
-        print(gdstate_psi[statei])
-        if(not is_block): print(tdfci.compute_obs(gdstate_psi[statei], the_eris,None))
-        
         check_observables(params, gdstate_psi[statei], eris_or_driver, H_mpo_initial, mytime, is_block);
 
     # lookup exact energy per site from Ramasesha PRB, table II
@@ -259,7 +256,7 @@ if(__name__ == "__main__"):
     lookup_ring  = {6:-0.61145, 8:-0.57544};
     assert(myNe == myNsites); # must be half filling
     assert( abs(params["U"] - 4*params["tl"]) < 1e-12); # must be U=4t case 
-    if(is_ring): exact_E = lookup_ring[myNsites]*myNsites;
+    if(params["is_ring"]): exact_E = lookup_ring[myNsites]*myNsites;
     else: exact_E = lookup_chain[myNsites]*myNsites;
     print("\nGround state energy (ED) = {:.8f}".format(exact_E))
 

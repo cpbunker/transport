@@ -34,7 +34,7 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
     CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
     return CI_inst, E_fci, uhf_inst;
 
-def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time):
+def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block):
     '''
     Print update on selected observables
     '''
@@ -48,19 +48,20 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time):
     print("WF norm = {:.6f}".format(check_norm));
     if(the_sites):
         # site spins
-        s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0]);
+        s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0], block);
         gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
         print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1]);
+        sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1], block);
         gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
         print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
         # concurrence between 
-        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites);
+        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
         print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
 
-def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbose=0):
+def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, block, verbose=0):
     '''
     '''
+    assert(block);
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     evol_start = time.time();
     time_step = params_dict["time_step"];
@@ -85,8 +86,8 @@ def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, verbos
                 final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables
-        check_observables(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time);
-        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, time=total_time);
+        check_observables(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time,block);
+        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, total_time,block);
 
     evol_end = time.time();
     print(">>> Time evol compute time = {:.2f}".format(evol_end-evol_start));
@@ -100,6 +101,7 @@ verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
 params = json.load(open(json_name)); print(">>> Params = ",params);
+is_block = True;
 
 # unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
@@ -124,10 +126,10 @@ if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.H_STT_builder(params, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+H_driver, H_builder = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), verbose=verbose);
+H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
     
 # gd state
 gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
@@ -155,16 +157,16 @@ print(">>> Init compute time = "+str(init_end-init_start));
 mytime=0;
 
 # plot observables
-check_observables(params, gdstate_mps_inst, H_driver, H_mpo_initial, mytime);
+check_observables(params, gdstate_mps_inst, H_driver, H_mpo_initial, mytime, is_block);
 plot.snapshot_bench(gdstate_mps_inst, H_driver,
-        params, json_name, time = mytime);
+        params, json_name, mytime, is_block);
 
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, scratch_dir=json_name, verbose=verbose);
+H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
 time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn,
-                  gdstate_mps_inst,json_name,verbose=2) # set to 2 to see mmps
+                  gdstate_mps_inst,json_name,is_block,verbose=2) # set to 2 to see mmps
 
 

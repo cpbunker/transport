@@ -9,8 +9,8 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 
 from transport import tdfci
 from transport.tdfci import utils
-#from pyblock2.driver import core
-#from pyblock3.block2.io import MPSTools, MPOTools
+from pyblock2.driver import core
+from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
 
     
@@ -110,7 +110,7 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
     else: 
         Nspinorbs = len(eris_or_driver.h1e[0]);
         nloc = 2;
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=complex);
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
 
     # construct
     if(block):
@@ -118,7 +118,8 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
         builder.add_term("cdCD",[whichsite,whichsite,whichsite,whichsite],-0.25);
         builder.add_term("CDcd",[whichsite,whichsite,whichsite,whichsite],-0.25);
         builder.add_term("CDCD",[whichsite,whichsite,whichsite,whichsite], 0.25);
-    else:
+    else: 
+        # g_pqrs a_p^+ a_q a_r^+ a_s
         g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 0.25;
         g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += -0.25;
         g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += -0.25;
@@ -128,6 +129,12 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
         g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += -0.25;
         g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += -0.25;
         g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 0.25;
+
+        # - delta_qr a_p^+ a_s
+        h1e[nloc*whichsite+0,nloc*whichsite+0] += 0.25;
+        h1e[nloc*whichsite+0,nloc*whichsite+1] += -0.25;
+        h1e[nloc*whichsite+1,nloc*whichsite+0] += -0.25;
+        h1e[nloc*whichsite+1,nloc*whichsite+1] += 0.25;
 
     # return
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
@@ -208,6 +215,77 @@ def purity_wrapper(psi,eris_or_driver, whichsite, block):
         sterms.append( compute_obs(psi, op, eris_or_driver));
     purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
     ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    return np.real(ret);
+
+def get_chirality(eris_or_driver, whichsites, block, symm_block, verbose=0):
+    '''
+    MPO representing S1 \cdot (S2 \times S3)
+    '''
+    assert(block);
+    builder = eris_or_driver.expr_builder();
+
+    def sblock_from_string(st):
+        sblock=0;
+        for c in st:
+            if(c in ["c","D"]): sblock += 1;
+            elif(c in ["C","d"]): sblock += -1;
+            else: raise Exception(c+" not in [c,d,C,D]");
+        if(sblock not in [-4,0,4]): print(sblock); raise ValueError;
+        return sblock//2;
+
+    def string_from_pauli(pauli):
+        if(pauli=="x"): st, coefs = ["cD","Cd"], [1,1];
+        elif(pauli=="y"): st, coefs = ["cD","Cd"], [complex(0,-1),complex(0,1)];
+        elif(pauli=="z"): st, coefs = ["cd","CD"], [1,-1];
+        else: raise Exception(pauli+" not in [x,y,z]");
+        return st, coefs;
+
+    def term_from_pauli(pauli3, coef):
+        if(len(pauli3) != 3): raise ValueError;
+        s0vals, c0vals = string_from_pauli(pauli3[0]);
+        s1vals, c1vals = string_from_pauli(pauli3[1]);
+        s2vals, c2vals = string_from_pauli(pauli3[2]);
+        for s0i in range(len(s0vals)):
+            for s1i in range(len(s1vals)):
+                for s2i in range(len(s2vals)):
+                    s_full = s0vals[s0i]+s1vals[s1i]+s2vals[s2i];
+                    c_full = coef*c0vals[s0i]*c1vals[s1i]*c2vals[s2i];
+                    print(s_full, "{:.2f}+{:.2f}j".format(np.real(c_full),np.imag(c_full)), sblock_from_string(s_full));
+        return s_full, c_full;
+
+    # brute force strings
+    terms_m2, terms_0, terms_p2 = {}, {}, {}
+    # 1st set
+    term_from_pauli("xyz",1);
+    assert False;
+
+    # separate terms by symm_block
+    ima = complex(0,1);
+    if(symm_block == 2):
+        terms = {"cDcDcd":-1*ima,"cDcDCD":1*ima};
+    elif(symm_block == 0):
+        terms = {"cDCdcd":1*ima,"cDCdCD":-1*ima,"CdcDcd":-1*ima,"CdcDCD":1*ima};
+    elif(symm_block == -2):
+        terms = {"CdCdcd":1*ima,"CdCdCD":-1*ima};
+    else:
+        raise NotImplementedError;
+
+    # construct
+    jlist = [whichsites[0],whichsites[0],whichsites[1],whichsites[1],whichsites[2],whichsites[2]];
+
+    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+
+def chirality_wrapper(psi,eris_or_driver, whichsites, block):
+    '''
+    Need to combine symmetry blocks of chirality op
+    '''
+    sblocks = [2,0,-2];
+    sterms = [];
+    for sblock in sblocks:
+        op = get_chirality(eris_or_driver, whichsites, block, sblock);
+        sterms.append( compute_obs(psi, op, eris_or_driver));
+    ret = np.sum(sterms);
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 

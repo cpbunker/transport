@@ -1,4 +1,5 @@
 {
+"sys_type":"STT",
 "tl":1.0, "Vconf":10.0, "Be":100.0, "BFM": -100.0,
 "Jz":0.1, "Jx":0.1, "Jsd":0.5,
 "NL":15, "NFM":5, "NR":5, "Nconf":5, "Ne":5, "TwoSz":0,"TwoSd":1,
