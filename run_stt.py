@@ -62,6 +62,7 @@ def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, block,
     '''
     '''
     assert(block);
+    assert(params_dict["te_type"]=="tdvp");
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     evol_start = time.time();
     time_step = params_dict["time_step"];

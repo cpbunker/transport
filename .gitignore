@@ -1,5 +1,3 @@
 block_scratch/*
 slurm/*
-data/stt/demo/test_Jsd_arrays/
-data/stt/demo/test_bdim_arrays/
 tex.py

@@ -796,8 +796,13 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("cdZ",[j,j,j],-Jsd/2);
         builder.add_term("CDZ",[j,j,j], Jsd/2);
         # plus minus terms
-        builder.add_term("cDM",[j,j,j],-Jsd/2);
-        builder.add_term("CdP",[j,j,j],-Jsd/2);
+        if("Jsd_pm" in params_dict.keys()):
+            Jsd_pm = params_dict["Jsd_pm"];
+            print("\n\n\n","*"*40,"\n Jsd_pm override\n\n\n");
+        else:
+            Jsd_pm = 1*Jsd;
+        builder.add_term("cDM",[j,j,j],-Jsd_pm/2);
+        builder.add_term("CdP",[j,j,j],-Jsd_pm/2);
 
     return driver, builder;
 
