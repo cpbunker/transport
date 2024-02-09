@@ -24,28 +24,23 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-def get_energy_fci(h1e, g2e, nelec, nroots=1, verbose=0):
-    # convert from arrays to uhf instance
-    mol_inst, uhf_inst = utils.arr_to_uhf(h1e, g2e, len(h1e), nelec, verbose = verbose);
-    # fci solution
-    E_fci, v_fci = utils.scf_FCI(mol_inst, uhf_inst, nroots);
-    if(nroots>1): E_fci, v_fci = E_fci[0], v_fci[0];
-    # ci object
-    CI_inst = tdfci.CIObject(v_fci, len(h1e), nelec);
-    return CI_inst, E_fci, uhf_inst;
-
 def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block):
     '''
     Print update on selected observables
     '''
-    the_sites = params_dict["ex_sites"];
+    if(not isinstance(block, bool)): raise TypeError;
+    if(not block): raise NotImplementedError;
     print("\nTime = {:.2f}".format(the_time));
+    
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
     print("Total energy = {:.6f}".format(check_E_dmrg));
     impo = eris_or_driver.get_identity_mpo()
     check_norm = eris_or_driver.expectation(psi, impo, psi)
     print("WF norm = {:.6f}".format(check_norm));
+
+    # impurity Sz and concurrence
+    the_sites = params_dict["ex_sites"];
     if(the_sites):
         # site spins
         s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0], block);
@@ -57,42 +52,6 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         # concurrence between 
         C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
         print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
-
-def time_evol_wrapper(params_dict, driver_inst, mpo_inst, psi, save_name, block, verbose=0):
-    '''
-    '''
-    assert(block);
-    assert(params_dict["te_type"]=="tdvp");
-    print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
-    evol_start = time.time();
-    time_step = params_dict["time_step"];
-    time_update = params_dict["tupdate"];
-    time_update = time_step*int(abs(time_update/time_step)+0.1); # discrete number
-    total_time = 0.0;
-    Nupdates = params_dict["Nupdates"];
-
-    # time evolve with repeated snapshots
-    tevol_mps_inst = psi;
-    for timei in range(Nupdates):
-        if(timei in [0]): the_verbose=verbose;
-        else: the_verbose=0; # ensures verbosity only on initial time steps
-        total_time += time_update;
-
-        # time evol
-        krylov_subspace = 20; # default
-        if(params_dict["te_type"] == "tdvp"): krylov_subspace = 40;
-        tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
-                delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],krylov_subspace_size=krylov_subspace,
-                final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
-
-        # observables
-        check_observables(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time,block);
-        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, total_time,block);
-
-    evol_end = time.time();
-    print(">>> Time evol compute time = {:.2f}".format(evol_end-evol_start));
-
                            
 ##################################################################################
 #### run code

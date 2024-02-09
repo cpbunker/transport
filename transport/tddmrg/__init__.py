@@ -20,6 +20,7 @@ import numpy as np
 def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbose=0):
     '''
     '''
+    assert(params_dict["te_type"]=="tdvp");
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
@@ -524,10 +525,9 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                 h1e[nloc*j+1,nloc*(j+1)+1] += -tl;
                 h1e[nloc*(j+1)+1,nloc*j+1] += -tl;
 
-    # left lead coupling to impurity
+    # lead coupling to impurity
     jpairs = [(llead_sites[-1], central_sites[0]), (rlead_sites[0], central_sites[-1])];
     for jpair in jpairs:
-        print(">>> ",jpair)
         jlead, jimp = jpair;
         if(block):
             builder.add_term("cd",[jlead,jimp],-th);
@@ -551,8 +551,7 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
             h1e[nloc*j+1,nloc*j+1] += Vg;
             assert(U==0.0);
 
-    # bias
-    # NB this will be REMOVED by polarizer so that it is ABSENT for t<0
+    # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
     # by the polarizer
     for j in llead_sites:
@@ -631,6 +630,263 @@ def H_SIAM_polarizer(params_dict, to_add_to, block, verbose=0):
     else:
         return h1e, g2e;
 
+def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
+    '''
+    Builds the parts of the spin IETS Hamiltonian which apply at all t
+    The physical params are contained in a .json file. They are all in eV.
+    They are:
+    tl (lead hopping), th (lead-impurity hopping),Jz (z component of loc spins
+    XXZ exchange), Jx (x comp of loc spins XXZ exchange), Jsd (deloc e's -
+    loc spins exchange), Delta (energy of Sdz up - energy of Sdz down)
+    Vb (bias between left and right leads. Vb>0 means
+    that left lead is higher chem potential than right, leading to
+    rightward/positive current), BFM (field to polarize loc spins).
+
+    NL (number sites in left lead), NFM (number of sites in central region
+    = number of loc spins), NR (number of sites in right lead)
+
+    NB this system is assumed half-filled, so Ne=Nsites.
+    The total Sz of the electrons is always 0, so Ne_up=Ne_down=Ne//2
+
+    NB this builds in terms of supersited dofs, rather than fermionic dofs
+
+    Returns: a tuple of DMRGDriver, ExprBuilder objects
+    '''
+    if(not block): raise NotImplementedError;
+
+    # load data from json
+    tl, th, Jz, Jx, Jsd, Delta, Vb = params_dict["tl"], params_dict["th"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"], params_dict["Delta"], params_dict["Vb"];
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+
+    # fermionic sites and spin
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+    Ne=Nsites;
+    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz = 0;
+
+    # impurity spin
+    TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
+    TwoSdz_ladder = (2*np.arange(TwoSd+1) -TwoSd)[::-1];
+    n_fer_dof = 4;
+    n_imp_dof = len(TwoSdz_ladder);
+    assert(TwoSd == 1); # for now, to get degeneracies right
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(NL)]);
+    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+    all_sites = np.array([j for j in range(Nsites)]);
+
+    # construct ExprBuilder
+    if(params_dict["symmetry"] == "Sz"):
+        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+        # using complex symmetry type, as above, seems linked to
+        # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
+        # but only when TwoSz is input correctly
+        # in latter case, we get a floating point exception even when complex sym is turned off!
+        #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4)
+        driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+    else: raise NotImplementedError;
+
+    # Szd blocks for fermion-impurity operators
+    # squares are diagonal blocks and triangles are one off diagonal
+    squar_I = np.eye(n_fer_dof); # identity - for basis see states below
+    squar_c = np.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0]]); # c_up^\dagger
+    squar_d = np.array([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0]]); # c_up
+    squar_C = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0,-1, 0, 0]]); # c_down^\dagger
+    squar_D = np.array([[0, 0, 1, 0], [0, 0, 0,-1], [0, 0, 0, 0], [0, 0, 0, 0]]); # c_down
+
+    # construct 4d ops from blocks
+    # fermion ops 
+    fourd_base = np.zeros((n_imp_dof,n_imp_dof,n_fer_dof,n_fer_dof),dtype=float);
+    fourd_c = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_c[Sdz_index,Sdz_index] = np.copy(squar_c);
+    fourd_d = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_d[Sdz_index,Sdz_index] = np.copy(squar_d);
+    fourd_C = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_C[Sdz_index,Sdz_index] = np.copy(squar_C);
+    fourd_D = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_D[Sdz_index,Sdz_index] = np.copy(squar_D);
+    # Sd ops 
+    fourd_Sdz = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof): fourd_Sdz[Sdz_index,Sdz_index] = (TwoSdz_ladder[Sdz_index]/2)*np.eye(n_fer_dof);
+    print("TwoSdz_ladder =\n",TwoSdz_ladder);
+    print("four_Sdz = \n",reblock(fourd_Sdz))
+    fourd_Sdminus = np.copy(fourd_base);
+    fourd_Sdplus = np.copy(fourd_base);
+    for Sdz_index in range(n_imp_dof-1): 
+        fourd_Sdminus[Sdz_index+1,Sdz_index] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index]*(0.5*TwoSdz_ladder[Sdz_index]-1))*np.eye(n_fer_dof);
+        fourd_Sdplus[Sdz_index,Sdz_index+1] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index+1]*(0.5*TwoSdz_ladder[Sdz_index+1]+1))*np.eye(n_fer_dof);
+    print("four_Sdminus = \n",reblock(fourd_Sdminus))
+    print("four_Sdplus = \n",reblock(fourd_Sdplus))
+
+    # def custom states and operators
+    site_states, site_ops = [], [];
+    qnumber = driver.bw.SX # quantum number wrapper
+    # quantum numbers here: nelec, TwoSz, TwoSdz
+    # Sdz is z projection of impurity spin: ladder from +s to -s
+    for sitei in all_sites:
+        if(sitei not in central_sites): # regular fermion dofs
+            states = [(qnumber(0, 0,0),1), # |> # (always obey n_elec and TwoSz symmetry)
+                      (qnumber(1, 1,0),1), # |up> #<--
+                      (qnumber(1,-1,0),1), # |down>
+                      (qnumber(2, 0,0),1)];# |up down>
+            ops = { "":np.copy(squar_I), # identity
+                   "c":np.copy(squar_c), # c_up^\dagger 
+                   "d":np.copy(squar_d), # c_up
+                   "C":np.copy(squar_C), # c_down^\dagger
+                   "D":np.copy(squar_D)} # c_down
+        elif(sitei in central_sites): # has fermion AND impurity dofs
+            states = [];
+            nelec_dofs, spin_dofs = [0,1,1,2], [0,1,-1,0];
+            qnumber_degens = {};
+            for fer_dofi in range(len(nelec_dofs)):
+                for TwoSdz in TwoSdz_ladder:
+                    pass; # TODO: create qnumber_degens here
+            qnumber_degens = {(0, 1,0):1,
+                              (0,-1,0):1,
+                              (1, 2,0):1,
+                              (1, 0,0):2,
+                              (1,-2,0):1,
+                              (2, 1,0):1,
+                              (2,-1,0):1};
+            qnumbers_added = {};
+            for fer_dofi in range(len(nelec_dofs)):
+                for TwoSdz in TwoSdz_ladder:
+                    qnumber_tup = (nelec_dofs[fer_dofi],spin_dofs[fer_dofi]+TwoSdz,0);
+                    if(qnumber_tup in qnumber_degens and qnumber_tup not in qnumbers_added):
+                        print(">>>",qnumber_tup)
+                        states.append((qnumber(*qnumber_tup),qnumber_degens[qnumber_tup]));         
+                        qnumbers_added[qnumber_tup] = 1;
+            # ops dictionary
+            ops = { "":np.eye(n_fer_dof*n_imp_dof), # identity
+                   "c":reblock(fourd_c), # c_up^\dagger
+                   "d":reblock(fourd_d), # c_up
+                   "C":reblock(fourd_C), # c_down^\dagger
+                   "D":reblock(fourd_D), # c_down
+                   "Z":reblock(fourd_Sdz)    # Sz of impurity
+                   ,"P":reblock(fourd_Sdplus) # S+ on impurity
+                   ,"M":reblock(fourd_Sdminus) # S- on impurity
+                    }
+        else:
+            raise Exception("Site i = ",sitei," never caught");
+        site_states.append(states);
+        site_ops.append(ops);
+
+    # input custom site basis states and ops to driver, and build builder
+    driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
+    builder = driver.expr_builder();
+    print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+
+    # LEAD j <-> j+1 hopping for fermions
+    for lead_sites in [llead_sites, rlead_sites]:
+        for j in lead_sites[:-1]:
+            builder.add_term("cd",[j,j+1],-tl); 
+            builder.add_term("CD",[j,j+1],-tl);
+            builder.add_term("cd",[j+1,j],-tl);
+            builder.add_term("CD",[j+1,j],-tl);
+
+    # lead coupling to impurity
+    jpairs = [(llead_sites[-1], central_sites[0]), (rlead_sites[0], central_sites[-1])];
+    for jpair in jpairs:
+        jlead, jimp = jpair;
+        builder.add_term("cd",[jlead,jimp],-th);
+        builder.add_term("CD",[jlead,jimp],-th);
+        builder.add_term("cd",[jimp,jlead],-th);
+        builder.add_term("CD",[jimp,jlead],-th);
+
+    # XXZ exchange between neighboring impurities
+    for j in central_sites[:-1]:
+        builder.add_term("ZZ",[j,j+1],-Jz);
+        builder.add_term("PM",[j,j+1],-Jx/2);
+        builder.add_term("MP",[j,j+1],-Jx/2);
+
+    # sd exchange between impurities and charge density on their site
+    # (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
+    # and PRESENT at t>0) 
+    for j in central_sites:
+        # z terms
+        builder.add_term("cdZ",[j,j,j],-Jsd/2);
+        builder.add_term("CDZ",[j,j,j], Jsd/2);
+        # plus minus terms
+        builder.add_term("cDM",[j,j,j],-Jsd/2);
+        builder.add_term("CdP",[j,j,j],-Jsd/2);
+
+    # energy splitting of impurity spin
+    for j in central_sites: # Delta and BFM must be same sign so t=0 is gd state
+        builder.add_term("Z",[j],-Delta);
+
+    # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
+    # and PRESENT at t>0) ie opposite to B fields in STT, but still "added"
+    # by the polarizer
+    for j in llead_sites:
+        builder.add_term("cd",[j,j], Vb/2); 
+        builder.add_term("CD",[j,j], Vb/2);
+    for j in rlead_sites:
+        builder.add_term("cd",[j,j],-Vb/2); 
+        builder.add_term("CD",[j,j],-Vb/2);
+
+    return driver, builder;
+
+def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
+    '''
+    Adds terms specific to the t<0 spin IETS Hamiltonian in which the impurity
+    spins are polarized and the bias is removed
+
+    NB this builds in terms of supersited dofs, rather than fermionic dofs
+
+    Args:
+    Params_dict: dict containing physical param values, these are defined in Hsys_base
+    to_add_to, tuple of objects to add terms to:
+        if block is True: these will be DMRGDriver, ExprBuilder objects
+        else: these will be 1-body and 2-body parts of the second quantized
+        Hamiltonian
+        
+    Returns: a tuple of DMRGDriver, MPO
+    '''
+    if(not block): raise NotImplementedError;
+
+    # load data from json
+    Jsd, BFM, Vb = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"];
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+
+    # fermionic sites and spin
+    Nsites = NL+NFM+NR; # number of j sites in 1D chain
+
+    # classify site indices (spin not included)
+    llead_sites = np.array([j for j in range(NL)]);
+    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
+    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+
+    # unpack ExprBuilder
+    driver, builder = to_add_to;
+    if(driver.n_sites != Nsites): raise ValueError;
+
+    # REMOVE Jsd (to avoid spin polarization of deloc elecs at t=0)
+    for j in central_sites:
+        # z terms
+        builder.add_term("cdZ",[j,j,j], Jsd/2);
+        builder.add_term("CDZ",[j,j,j], -Jsd/2);
+        # plus minus terms
+        builder.add_term("cDM",[j,j,j], Jsd/2);
+        builder.add_term("CdP",[j,j,j], Jsd/2);
+
+    # REMOVE bias
+    for j in llead_sites:
+        builder.add_term("cd",[j,j],-Vb/2);
+        builder.add_term("CD",[j,j],-Vb/2);
+    for j in rlead_sites:
+        builder.add_term("cd",[j,j], Vb/2);
+        builder.add_term("CD",[j,j], Vb/2);
+
+    # B field on the loc spins
+    for j in central_sites:
+        builder.add_term("Z",[j],-BFM);
+
+    # return
+    mpo_from_builder = driver.get_mpo(builder.finalize());
+    return driver, mpo_from_builder;
+
 def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
     Builds the parts of the STT Hamiltonian which apply at all t
@@ -638,7 +894,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     They are:
     tl (lead hopping), Vconf (confining voltage depth), Be (field to polarize
     deloc es), BFM (field to polarize loc spins), Jz (z component of exchange
-    for loc spins XXY model), Jx (x component of exchange for loc spins XXY
+    for loc spins XXZ model), Jx (x component of exchange for loc spins XXZ
     model), Jsd (deloc e's - loc spins exchange)
 
     NL (number sites in left lead), NFM (number of sites in central region
@@ -650,7 +906,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
-    assert(block);
+    if(not block): raise NotImplementedError;
 
     # load data from json
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
@@ -822,7 +1078,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         
     Returns: a tuple of DMRGDriver, MPO
     '''
-    assert(block);
+    if(not block): raise NotImplementedError;
 
     # load data from json
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
@@ -834,12 +1090,6 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
     Ne = params_dict["Ne"];
     TwoSz = params_dict["TwoSz"]; # fermion spin + impurity spin
-
-    # impurity spin
-    TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
-    TwoSdz_ladder = (2*np.arange(TwoSd+1) -TwoSd)[::-1];
-    n_fer_dof = 4;
-    n_imp_dof = len(TwoSdz_ladder);
 
     # classify site indices (spin not included)
     llead_sites = np.array([j for j in range(Nbuffer,Nbuffer+NL)]);
