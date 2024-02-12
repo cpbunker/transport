@@ -662,7 +662,7 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
     Ne=Nsites;
     assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
-    TwoSz = 0;
+    TwoSz = 0 + np.sign(int(params_dict["BFM"]))*NFM;
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int

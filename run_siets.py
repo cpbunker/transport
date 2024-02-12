@@ -39,16 +39,19 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
 
     # fermionic spin, impurity spin, current through all impurity sites
     central_sites = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
-    for sitei in central_sites
+    for sitei in central_sites:
+        occ_mpo = tddmrg.get_occ(eris_or_driver, sitei, block);
+        occ_val = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
         sz_mpo = tddmrg.get_sz(eris_or_driver, sitei, block);
         sz_val = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
         Sdz_mpo = tddmrg.get_Sd_mu(eris_or_driver, sitei, block);
         Sdz_val = tddmrg.compute_obs(psi, Sdz_mpo, eris_or_driver);
         Jimp_val = tddmrg.conductance_wrapper(psi, eris_or_driver, sitei, block);
         Jimp_val *= np.pi*params_dict["th"]/params_dict["Vb"];
-        print("<sz j={:.0f} = {:.6f}".format(sitei, sz_val));
-        print("<Sdz  j={:.0f} = {:.6f}".format(sitei, Sdz_val));
-        print("<J  j={:.0f}>/Vb = {:.6f}".format(sitei, Jimp_val));
+        print("<occ j={:.0f}> = {:.6f}".format(sitei, occ_val));
+        print("<sz  j={:.0f}> = {:.6f}".format(sitei, sz_val));
+        print("<Sdz j={:.0f}> = {:.6f}".format(sitei, Sdz_val));
+        print("<J   j={:.0f}>/Vb = {:.6f}".format(sitei, Jimp_val));
                            
 ##################################################################################
 #### run code
@@ -105,7 +108,7 @@ plot.snapshot_bench(gdstate_mps_inst, eris_or_driver,
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.H_SIETS_builder(params, block, scratch_dir=json_name, verbose=verbose);
+H_driver_dyn, H_builder_dyn = tddmrg.H_SIETS_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
 if(is_block):
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
     tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,gdstate_mps_inst,

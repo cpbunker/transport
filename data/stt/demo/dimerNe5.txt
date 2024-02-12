@@ -1,8 +1,0 @@
-{
-"tl":1.0, "Vconf":10.0, "Be":100.0, "BFM": -100.0,
-"Jz":0.1, "Jx":0.1, "Jsd":0.5,
-"NL":10, "NFM":2, "NR":20, "Nconf":5, "Ne":5, "TwoSz":3,"TwoSd":1,
-"symmetry":"Sz", "ex_sites":[10,11],"plot":0,
-"bdim_0":[150,150,150,200,200],"bdim_t":[250], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
-"time_step":0.1, "tupdate":0.5, "Nupdates":40
-}

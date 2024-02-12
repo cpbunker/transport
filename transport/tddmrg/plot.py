@@ -69,7 +69,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     elif(sys_type=="SIETS"):
         th, Delta, Vb = params_dict["th"], params_dict["Delta"], params_dict["Vb"];
         NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
-        title_str = "$t_h =$ {:.4f}$t_l, \Delta =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(Delta, Vb);
+        title_str = "$t_h =$ {:.4f}$t_l, \Delta =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(th, Delta, Vb);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
