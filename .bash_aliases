@@ -1,0 +1,7 @@
+alias transport="cd Desktop/GitHub/transport"
+alias hpg="ssh -Y cpbunker@hpg2.rc.ufl.edu"
+alias condain="bash $HOME/Downloads/Miniconda3-latest-Linux-x86_64.sh"
+alias condain_block2="pip install block2==0.5.3rc5 --extra-index-url=https://block-hczhai.github.io/block2-preview/pypi/"
+alias condab="conda activate block2"
+alias make_scratch="mkdir block_scratch; mkdir block_scratch/data; mkdir block_scratch/data/siets; mkdir block_scratch/data/siam; mkdir block_scratch/data/stt"
+alias condade="conda deactivate"
