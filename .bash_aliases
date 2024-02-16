@@ -5,3 +5,4 @@ alias condain_block2="pip install block2==0.5.3rc5 --extra-index-url=https://blo
 alias condab="conda activate block2"
 alias make_scratch="mkdir block_scratch; mkdir block_scratch/data; mkdir block_scratch/data/siets; mkdir block_scratch/data/siam; mkdir block_scratch/data/stt"
 alias condade="conda deactivate"
+# alias resize = "sudo cfdisk; sudo parted /dev/sda; print; resizepart 1 100%; yes; 54GB; quit; sudo cfdisk; sudo resize2fs /dev/sda1"
