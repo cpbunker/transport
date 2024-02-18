@@ -74,10 +74,11 @@ final_plots = int(sys.argv[3]);
 vlines = not final_plots; # whether to highlight certain x vals with vertical dashed lines
 summed_columns = True;
 elecspin = 0; # itinerant e is spin up
+if(which_gate != "SWAP"): assert(not final_plots);
 
 # fig standardizing
 myxvals = 29;
-if(final_plots): myxvals = 99;
+if(final_plots): myxvals =99;
 myfontsize = 14;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
@@ -93,7 +94,7 @@ tl = 1.0;
 myspinS = 0.5;
 n_mol_dof = int((2*myspinS+1)**2);
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-Jval = -0.2*tl;
+Jval = -0.05*tl;
 VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
 
@@ -137,6 +138,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     # iter over incident kinetic energy (colors)
     Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
     knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
+    knumbers = np.sqrt(np.array([1e-5,2.5e-6,1e-6,6.25e-7]));
     Kvals = 2*tl - 2*tl*np.cos(knumbers);
     Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
     rhatvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals),dtype=complex); # by  init spin, final spin, energy, NB
@@ -147,7 +149,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
         kNBmax = 0.75*np.pi;
         if(NB_indep): NBmax = 150;
         else: NBmax = int(kNBmax/knumbers[Kvali]);
-        if(verbose): print("2*NBmax = ",2*NBmax); 
+        if(verbose): print("k^2, NBmax = ",knumbers[Kvali]**2, NBmax); 
         NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
@@ -193,7 +195,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
         if(NB_indep): indep_var = NBvals; # what to put on x axis
-        else: indep_var = 2*knumbers[Kvali]*NBvals[NBvali]/np.pi;
+        else: indep_var = 2*knumbers[Kvali]*NBvals/np.pi;
         indep_star = indep_var[np.argmax(Fvals_Uchi[Kvali])];
         if(verbose): print("indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, np.max(Fvals_Uchi[Kvali])));
         if(False and Kvali==1):
@@ -220,6 +222,8 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
                     axes[-1,sigmai].set_xlabel('$2k_i aN_B /\pi$',fontsize=myfontsize);
  
                 # plot rhat
+                if(len(knumbers)== len(Kpowers)): mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
+                else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
                 axes[sourcei,sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,Kvali], label = "$k_i^2 a^2= 10^{"+str(Kpowers[Kvali])+"}$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
                 axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
                 
@@ -247,7 +251,9 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     fig.suptitle(suptitle);
     plt.tight_layout();
     if(final_plots): # save fig
-        fname = "figs/gate/spin12_"+case;
+        Jstring = ""
+        if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))
+        fname = "figs/gate/spin12_"+Jstring+"_"+case;
         plt.savefig(fname+".pdf")
 
     else:
@@ -277,9 +283,9 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
                                               # note that at the right NB, R(SWAP) approaches 1 asymptotically at
                                               # lower Ki. But diminishing returns kick in around 10^-4
-        Kvals = np.logspace(Kpowers[-1],Kpowers[0],num=myxvals);
+        knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals));
+        Kvals = 2*tl - 2*tl*np.cos(knumbers);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
-        knumbers = np.arccos(Energies/(-2*tl)); # wavenumbers
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from spin ham

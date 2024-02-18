@@ -97,7 +97,7 @@ verbose = 5;
 which_gate = sys.argv[1]; # not used
 case = sys.argv[2];
 final_plots = int(sys.argv[3]);
-if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+#if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
 vlines = not final_plots;
 elecspin = 0; # itinerant e is spin up
 
@@ -142,9 +142,9 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
 
         # iter over incident kinetic energy (colors)
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
-        Kvals = np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)); # Kval > 0 always, what I call K_i in paper
+        knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)-1));
+        Kvals = 2*tl - 2*tl*np.cos(knumbers);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
-        knumbers = np.arccos(Energies/(-2*tl)); # wavenumbers
         Fvals_min = np.empty((len(Kvals), myxvals),dtype=float); # fidelity min'd over chi states
         for Kvali in range(len(Kvals)):
                    
@@ -153,7 +153,7 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             NBmax = int(kNBmax/knumbers[Kvali]);
             if(NB_indep): NBmax = 150;
             NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
-            if(verbose): print("2*NBmax = ",2*NBmax); 
+            if(verbose): print("k^2 = {:6f}, NBmax = {:.0f}".format(knumbers[Kvali]**2, NBmax)); 
             
             for NBvali in range(len(NBvals)):
                 NBval = NBvals[NBvali];
@@ -210,7 +210,9 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$");
  
             # plot fidelity, starred SWAP locations, as a function of NB
-            axes[gatevali].plot(indep_vals,Fvals_min[Kvali], label = "$K_i/t= 10^{"+str(Kpowers[Kvali])+"}$",color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
+            if(len(knumbers)== len(Kpowers)): mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
+            else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
+            axes[gatevali].plot(indep_vals,Fvals_min[Kvali], label = mylabel,color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");           
 
         #### end loop over Ki
@@ -245,7 +247,7 @@ if(case in ["Ki", "ki"]): # at fixed NB, as a function of Ki,
          # for each gate of interest
 
     # axes
-    gates = ["SQRT","SWAP"]; #,"I"];
+    gates = ["SQRT","SWAP","I"];
     gate_strs = ["$\mathbf{U} = \mathbf{U}_{SQRT}$","$\mathbf{U} = \mathbf{U}_{SWAP}$","$\mathbf{U} = \mathbf{I}$"];  
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
@@ -259,16 +261,17 @@ if(case in ["Ki", "ki"]): # at fixed NB, as a function of Ki,
         U_gate = get_U_gate(gates[gatevali]);
 
         # iter over barrier distance (colors)
-        NBvals = np.array([50,100,150]);
+        NBvals = np.array([93,97,131,150]);
         Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); # fidelity min'd over chi states
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
+            if(verbose): print("NB = ",NBval); 
 
             # iter over incident kinetic energy (x axis)
             Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
-            Kvals = np.logspace(Kpowers[0],Kpowers[-1],num=myxvals); # Kval > 0 always, what I call K_i in paper
+            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals));
+            Kvals = 2*tl - 2*tl*np.cos(knumbers);
             Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
-            knumbers = np.arccos(Energies/(-2*tl)); # wavenumbers
             for Kvali in range(len(Kvals)):
 
                 # construct hblocks from spin ham
@@ -306,7 +309,7 @@ if(case in ["Ki", "ki"]): # at fixed NB, as a function of Ki,
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
             if(K_indep): indep_vals = knumbers*knumbers;
-            else: raise NotImplementedError;
+            else: 2*knumbers*NBvals[NBvali]/np.pi;
             indep_star = indep_vals[np.argmax(Fvals_min[:,NBvali])];
             print("indep_star, fidelity(Kstar) = {:.6f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali])));
 
