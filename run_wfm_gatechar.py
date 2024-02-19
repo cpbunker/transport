@@ -15,78 +15,7 @@ import matplotlib.pyplot as plt
 
 import sys
 
-# constructing the hamiltonian
-def h_cicc(J, i1, i2) -> np.ndarray: 
-    '''
-    TB matrices for ciccarrello system (1 electron, 2 spin-1/2s)
-    Args:
-    - J, float, eff heisenberg coupling
-    - i1, list of sites for first spin-1/2
-    - i2, list of sites for second spin-1/2
-    '''
-    if(not isinstance(i1, list) or not isinstance(i2, list)): raise TypeError;
-    assert(i1[0] == 1);
-    if(not i1[-1] < i2[0]): raise Exception("i1 and i2 cannot overlap");
-    NC = i2[-1]; # num sites in the central region
-    
-    # heisenberg interaction matrices
-    Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
-                        [0,1,0,0,0,0,0,0],
-                        [0,0,-1,0,2,0,0,0],
-                        [0,0,0,-1,0,2,0,0],
-                        [0,0,2,0,-1,0,0,0],
-                        [0,0,0,2,0,-1,0,0],
-                        [0,0,0,0,0,0,1,0],
-                        [0,0,0,0,0,0,0,1] ]);
-    Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
-                        [0,-1,0,0,2,0,0,0],
-                        [0,0,1,0,0,0,0,0],
-                        [0,0,0,-1,0,0,2,0],
-                        [0,2,0,0,-1,0,0,0],
-                        [0,0,0,0,0,1,0,0],
-                        [0,0,0,2,0,0,-1,0],
-                        [0,0,0,0,0,0,0,1] ]);
-
-    # insert these local interactions
-    h_cicc =[];
-    Nsites = NC+1; # N sites in SR + 1 for LL
-    for sitei in range(Nsites): # iter over all sites
-        if(sitei in i1 and sitei not in i2):
-            h_cicc.append(Se_dot_S1);
-        elif(sitei in i2 and sitei not in i1):
-            h_cicc.append(Se_dot_S2);
-        elif(sitei not in i1 and sitei not in i2):
-            h_cicc.append(np.zeros_like(Se_dot_S1) );
-        else:
-            raise Exception("i1 and i2 cannot overlap");
-    return np.array(h_cicc, dtype=complex);
-
-
-def get_U_gate(which_gate):
-    if(which_gate=="SQRT"):
-        U_q = np.array([[1,0,0,0],
-                           [0,complex(0.5,0.5),complex(0.5,-0.5),0],
-                           [0,complex(0.5,-0.5),complex(0.5,0.5),0],
-                           [0,0,0,1]], dtype=complex); #  SWAP^1/2 gate
-    elif(which_gate=="SWAP"):
-        U_q = np.array([[1,0,0,0],
-                       [0,0,1,0],
-                       [0,1,0,0],
-                       [0,0,0,1]], dtype=complex); # SWAP gate
-    elif(which_gate=="I"):
-        U_q = np.array([[1,0,0,0],
-                       [0,1,0,0],
-                       [0,0,1,0],
-                       [0,0,0,1]], dtype=complex); # Identity gate
-    else:
-        raise NotImplementedError("which_gate not supported");
-
-    # from Uq to Ugate
-    U_gate = np.zeros( (2*len(U_q),2*len(U_q)), dtype=complex);
-    U_gate[:n_mol_dof,:n_mol_dof] = U_q[:n_mol_dof,:n_mol_dof];
-    U_gate[n_mol_dof:,n_mol_dof:] = U_q[:n_mol_dof,:n_mol_dof];
-    print("U_gate =\n",U_gate);
-    return U_gate;
+from run_wfm_gate import h_cicc, get_U_gate;
           
 #########################################################
 #### barrier in right lead for total reflection

@@ -8,7 +8,8 @@ Want to make a SWAP gate
 solved in time-independent QM using wfm method in transport/wfm
 '''
 
-from transport import wfm
+from transport import wfm, tdfci
+from transport.tdfci import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +17,7 @@ import matplotlib.pyplot as plt
 import sys
 
 # constructing the hamiltonian
-def h_cicc(J, i1, i2) -> np.ndarray: 
+def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray: 
     '''
     TB matrices for ciccarrello system (1 electron, 2 spin-1/2s)
     Args:
@@ -28,24 +29,39 @@ def h_cicc(J, i1, i2) -> np.ndarray:
     assert(i1[0] == 1);
     if(not i1[-1] < i2[0]): raise Exception("i1 and i2 cannot overlap");
     NC = i2[-1]; # num sites in the central region
+    mol_dof = (TwoS+1)*(TwoS+1);
+    
+    # Sd ops 
+    TwoS_ladder = (2*np.arange(TwoS+1) -TwoS)[::-1];
+    Seye = np.eye(TwoS+1);
+    Sz = np.diagflat(0.5*TwoS_ladder)
+    Splus = np.diagflat(np.sqrt(0.5*TwoS*(0.5*TwoS+1)-0.5*TwoS_ladder[1:]*(0.5*TwoS_ladder[1:]+1)),k=1);
+    Sminus = np.diagflat(np.sqrt(0.5*TwoS*(0.5*TwoS+1)-0.5*TwoS_ladder[:-1]*(0.5*TwoS_ladder[:-1]-1)),k=-1);
+    if(TwoS > 1):
+        print("TwoS_ladder =\n",TwoS_ladder)
+        print("Sz = \n",Sz)
+        print("S+ = \n",Splus)
+        print("S- = \n",Sminus)
+
     
     # heisenberg interaction matrices
-    Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
-                        [0,1,0,0,0,0,0,0],
-                        [0,0,-1,0,2,0,0,0],
-                        [0,0,0,-1,0,2,0,0],
-                        [0,0,2,0,-1,0,0,0],
-                        [0,0,0,2,0,-1,0,0],
-                        [0,0,0,0,0,0,1,0],
-                        [0,0,0,0,0,0,0,1] ]);
-    Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
-                        [0,-1,0,0,2,0,0,0],
-                        [0,0,1,0,0,0,0,0],
-                        [0,0,0,-1,0,0,2,0],
-                        [0,2,0,0,-1,0,0,0],
-                        [0,0,0,0,0,1,0,0],
-                        [0,0,0,2,0,0,-1,0],
-                        [0,0,0,0,0,0,0,1] ]);
+    Se_dot_S1_z = tdfci.utils.mat_4d_to_2d(np.tensordot(Sz, Seye, axes=0));
+    Se_dot_S1_z = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0.5,0],[0,-0.5]]), Se_dot_S1_z, axes=0));
+    Se_dot_S1_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(Sminus, Seye, axes=0));
+    Se_dot_S1_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,1],[0,0]]), Se_dot_S1_pm, axes=0));
+    Se_dot_S1_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(Splus, Seye, axes=0));
+    Se_dot_S1_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,0],[1,0]]), Se_dot_S1_mp, axes=0));
+    Se_dot_S1 = J*(Se_dot_S1_z + 0.5*(Se_dot_S1_pm + Se_dot_S1_mp));
+    Se_dot_S2_z = tdfci.utils.mat_4d_to_2d(np.tensordot(Seye, Sz, axes=0));
+    Se_dot_S2_z = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0.5,0],[0,-0.5]]), Se_dot_S2_z, axes=0));
+    Se_dot_S2_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(Seye, Sminus, axes=0));
+    Se_dot_S2_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,1],[0,0]]), Se_dot_S2_pm, axes=0));
+    Se_dot_S2_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(Sminus, Seye, axes=0));
+    Se_dot_S2_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,0],[1,0]]), Se_dot_S2_mp, axes=0));
+    Se_dot_S2 = J*(Se_dot_S2_z + 0.5*(Se_dot_S2_pm + Se_dot_S2_mp));
+    print(Se_dot_S1);
+    print(Se_dot_S2);
+    assert False
 
     # insert these local interactions
     h_cicc =[];
@@ -60,9 +76,50 @@ def h_cicc(J, i1, i2) -> np.ndarray:
         else:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
+    
+def get_U_gate(gate0, TwoS):
+    if(gate0=="SQRT"):
+        ticks = [-1.0,0.0,1.0];
+        U_q = np.array([[1,0,0,0],
+                       [0,complex(0.5,0.5),complex(0.5,-0.5),0],
+                       [0,complex(0.5,-0.5),complex(0.5,0.5),0],
+                       [0,0,0,1]], dtype=complex); #  SWAP^1/2 gate
+    elif(gate0=="SWAP"):
+        ticks = [0.0,1.0];
+        U_q = np.array([[1,0,0,0],
+                   [0,0,1,0],
+                   [0,1,0,0],
+                   [0,0,0,1]], dtype=complex); # SWAP gate
+    elif(gate0=="I"):
+        ticks = [0.0,1.0];
+        U_q = np.array([[1,0,0,0],
+                   [0,1,0,0],
+                   [0,0,1,0],
+                   [0,0,0,1]], dtype=complex); # Identity gate
+    else:
+        raise NotImplementedError("gate0 = "+gate0+" not supported");
+        
+    # from Uq to Ugate
+    mol_dof = (TwoS+1)*(TwoS+1); 
+    U_mol = np.eye(mol_dof, dtype=complex); # acts on full space of 2 molecular spins
+    # matrix elements to keep are |s,s>,|s,s-1>,|s-1,s>,|s-1,s-1>. Rest should be diagonal
+    elems_to_keep = [0,1,TwoS+1,TwoS+1+1];
+    for elemi in range(len(elems_to_keep)):
+        for elemj in range(len(elems_to_keep)):
+            U_mol[elems_to_keep[elemi],elems_to_keep[elemj]] = U_q[elemi,elemj]; 
+    # project onto electron spin
+    U = np.zeros( (2*mol_dof,2*mol_dof), dtype=complex);
+    U[:mol_dof,:mol_dof] = U_mol[:,:];
+    U[mol_dof:,mol_dof:] = U_mol[:,:];
+    if(gate0 != "SQRT"): print("U_gate =\n",np.real(U));
+    else: print(U);
+        
+    return U, ticks;
            
-#########################################################
-#### barrier in right lead for total reflection
+############################################################################ 
+#### exec code
+#if(__name__ == "__main__"):
+#if True: # to get right spacing, lol
 
 #### top level
 np.set_printoptions(precision = 6, suppress = True);
@@ -91,40 +148,13 @@ ylabels = ["\\uparrow_e \\uparrow_1 \\uparrow_2","\\uparrow_e \\uparrow_1 \downa
 
 # tight binding params
 tl = 1.0;
-myspinS = 0.5;
-n_mol_dof = int((2*myspinS+1)**2);
+myTwoS = 1+1;
+n_mol_dof = (myTwoS+1)*(myTwoS+1); 
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-Jval = -0.05*tl;
+Jval = -0.2*tl;
 VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
-
-
-if(which_gate=="SQRT"):
-    the_ticks = [-1.0,0.0,1.0];
-    U_q = np.array([[1,0,0,0],
-                       [0,complex(0.5,0.5),complex(0.5,-0.5),0],
-                       [0,complex(0.5,-0.5),complex(0.5,0.5),0],
-                       [0,0,0,1]], dtype=complex); #  SWAP^1/2 gate
-elif(which_gate=="SWAP"):
-    the_ticks = [0.0,1.0];
-    U_q = np.array([[1,0,0,0],
-                   [0,0,1,0],
-                   [0,1,0,0],
-                   [0,0,0,1]], dtype=complex); # SWAP gate
-elif(which_gate=="I"):
-    the_ticks = [0.0,1.0];
-    U_q = np.array([[1,0,0,0],
-                   [0,1,0,0],
-                   [0,0,1,0],
-                   [0,0,0,1]], dtype=complex); # Identity gate
-else:
-    raise NotImplementedError("which_gate not supported");
-
-# from Uq to Ugate
-U_gate = np.zeros( (2*len(U_q),2*len(U_q)), dtype=complex);
-U_gate[:n_mol_dof,:n_mol_dof] = U_q[:n_mol_dof,:n_mol_dof];
-U_gate[n_mol_dof:,n_mol_dof:] = U_q[:n_mol_dof,:n_mol_dof];
-print("U_gate =\n",U_gate);
+U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
 if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     
@@ -155,7 +185,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
             NBval = NBvals[NBvali];
 
             # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(Jval, [1],[2]);
+            hblocks_cicc = h_cicc(myTwoS,Jval, [1],[2]);
 
             # add large barrier at end
             NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
@@ -179,6 +209,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
 
             # fidelity w/r/t U, chi
+            assert(np.shape(rhatvals[:,:,0,0]) == np.shape(U_gate));
             M_matrix = np.matmul(np.conj(U_gate.T), rhatvals[:,:,Kvali,NBvali]);
             trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
             if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
@@ -251,9 +282,11 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     fig.suptitle(suptitle);
     plt.tight_layout();
     if(final_plots): # save fig
-        Jstring = ""
-        if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))
-        fname = "figs/gate/spin12_"+Jstring+"_"+case;
+        Jstring = "";
+        if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
+        sstring = "";
+        if(TwoS != 1): sstring = "2s"+str(int(TwoS))+"_";
+        fname = "figs/gate/spin12_"+Jstring+string+case;
         plt.savefig(fname+".pdf")
 
     else:
@@ -313,6 +346,7 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
 
             # fidelity w/r/t U, chi
+            assert(np.shape(rhatvals[:,:,0,0]) == np.shape(U_gate));
             M_matrix = np.matmul(np.conj(U_gate.T), rhatvals[:,:,Kvali,NBvali]);
             trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
             if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
@@ -381,9 +415,12 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
     fig.suptitle(suptitle);
     plt.tight_layout();
     if(final_plots): # save fig
-        fname = "figs/gate/spin12_"+case;
+        Jstring = "";
+        if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
+        sstring = "";
+        if(TwoS != 1): sstring = "2s"+str(int(TwoS))+"_";
+        fname = "figs/gate/spin12_"+Jstring+string+case;
         plt.savefig(fname+".pdf")
-
     else:
         plt.show();
 
