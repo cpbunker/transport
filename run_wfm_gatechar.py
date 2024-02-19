@@ -139,8 +139,10 @@ if(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$");
  
             # plot fidelity, starred SWAP locations, as a function of NB
-            if(len(knumbers)== len(Kpowers)): mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
-            else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
+            if(abs(knumbers[1] - np.sqrt(10.0**Kpowers[1])) < 1e-10):
+                mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
+            else: 
+                mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
             axes[gatevali].plot(indep_vals,Fvals_min[Kvali], label = mylabel,color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");           
 

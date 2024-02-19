@@ -37,7 +37,7 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     Sz = np.diagflat(0.5*TwoS_ladder)
     Splus = np.diagflat(np.sqrt(0.5*TwoS*(0.5*TwoS+1)-0.5*TwoS_ladder[1:]*(0.5*TwoS_ladder[1:]+1)),k=1);
     Sminus = np.diagflat(np.sqrt(0.5*TwoS*(0.5*TwoS+1)-0.5*TwoS_ladder[:-1]*(0.5*TwoS_ladder[:-1]-1)),k=-1);
-    if(TwoS > 1):
+    if(verbose and TwoS > 1):
         print("TwoS_ladder =\n",TwoS_ladder)
         print("Sz = \n",Sz)
         print("S+ = \n",Splus)
@@ -56,12 +56,12 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     Se_dot_S2_z = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0.5,0],[0,-0.5]]), Se_dot_S2_z, axes=0));
     Se_dot_S2_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(Seye, Sminus, axes=0));
     Se_dot_S2_pm = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,1],[0,0]]), Se_dot_S2_pm, axes=0));
-    Se_dot_S2_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(Sminus, Seye, axes=0));
+    Se_dot_S2_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(Seye, Splus, axes=0));
     Se_dot_S2_mp = tdfci.utils.mat_4d_to_2d(np.tensordot(np.array([[0,0],[1,0]]), Se_dot_S2_mp, axes=0));
     Se_dot_S2 = J*(Se_dot_S2_z + 0.5*(Se_dot_S2_pm + Se_dot_S2_mp));
-    print(Se_dot_S1);
-    print(Se_dot_S2);
-    assert False
+    #print(Se_dot_S1);
+    #print(Se_dot_S2);
+    #assert False
 
     # insert these local interactions
     h_cicc =[];
@@ -148,7 +148,7 @@ ylabels = ["\\uparrow_e \\uparrow_1 \\uparrow_2","\\uparrow_e \\uparrow_1 \downa
 
 # tight binding params
 tl = 1.0;
-myTwoS = 1+1;
+myTwoS = 1
 n_mol_dof = (myTwoS+1)*(myTwoS+1); 
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
 Jval = -0.2*tl;
@@ -159,7 +159,7 @@ U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     
     # axes
-    nrows, ncols = n_mol_dof, n_mol_dof;
+    nrows, ncols = 4, 4;
     fig, axes = plt.subplots(nrows, ncols, sharex='col', sharey = 'row');
     fig.set_size_inches(ncols*7/2,nrows*3/2);
     if(case=="NB"): NB_indep = True;
@@ -168,7 +168,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     # iter over incident kinetic energy (colors)
     Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
     knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
-    knumbers = np.sqrt(np.array([1e-5,2.5e-6,1e-6,6.25e-7]));
+    print("knumbers^2 = \n",knumbers*knumbers);
     Kvals = 2*tl - 2*tl*np.cos(knumbers);
     Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
     rhatvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals),dtype=complex); # by  init spin, final spin, energy, NB
@@ -239,10 +239,14 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
             assert False;
             
         # plot as a function of NBvals
-        for sourcei in range(n_mol_dof):
+        elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
+        for sourcei in range(len(elems_to_keep)):
             for sigmai in range(sourcei+1):
                 # formatting
-                axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"+str(ylabels[n_mol_dof*elecspin+sourcei])+"| \mathbf{r} |"+str(ylabels[n_mol_dof*elecspin+sigmai])+"\\rangle"+rbracket+"$");
+                axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"
+               +str(ylabels[4*elecspin+sourcei])+"| \mathbf{r} |"+str(ylabels[4*elecspin+sigmai])+"\\rangle"+rbracket+"$");
+                #axes[sourcei,sigmai].set_title(str(n_mol_dof*elecspin+elems_to_keep[sourcei])
+                #+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
                 axes[sourcei,-1].set_yticks(the_ticks);
                 axes[sourcei,-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                 for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color='lightgray',linestyle='dashed');
@@ -253,10 +257,12 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
                     axes[-1,sigmai].set_xlabel('$2k_i aN_B /\pi$',fontsize=myfontsize);
  
                 # plot rhat
-                if(len(knumbers)== len(Kpowers)): mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
-                else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
-                axes[sourcei,sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,Kvali], label = "$k_i^2 a^2= 10^{"+str(Kpowers[Kvali])+"}$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
+                if(abs(knumbers[1] - np.sqrt(10.0**Kpowers[1])) < 1e-10):
+                    mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
+                else: 
+                    mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
+                axes[sourcei, sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], label = mylabel, color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
+                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
                 
                 # plot fidelity, starred SWAP locations
                 if(sourcei==2 and sigmai==1):
@@ -268,25 +274,25 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
                 if(vlines): axes[sourcei,sigmai].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");
                     
                 # plot with final states (columns) summed together
-                if((sourcei<n_mol_dof-1 and sigmai==sourcei) and (summed_columns and elecspin==0)):
+                if((sourcei<3 and sigmai==sourcei) and (summed_columns and elecspin==0)):
                     if(Kvali==0): showlegstring = ""; 
                     else: showlegstring = "_"; # hides duplicate labels
                     for tick in the_ticks: axes[sourcei,-1].axhline(tick,color='lightgray',linestyle='dashed');
                     # for this row (incoming state), sum over all columns (outgoing states) with given \sigma_e
                      # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+sourcei,:,Kvali])*rhatvals_down[n_mol_dof*elecspin+sourcei,:,Kvali]),axis=0), linestyle="dashed", label=showlegstring+"$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[n_mol_dof*elecspin+sigmai])+"| \mathbf{r} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);     
+                    axes[sourcei,-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali])*rhatvals_down[n_mol_dof*elecspin+sourcei,:,Kvali]),axis=0), linestyle="dashed", label=showlegstring+"$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sigmai])+"| \mathbf{r} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);     
                     axes[sourcei,-1].legend();
                     
     # show
-    suptitle = which_gate+" gate, $s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(myspinS, Jval/tl, V0/tl, VB/tl);
+    suptitle = which_gate+" gate, $s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(0.5*myTwoS, Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle);
     plt.tight_layout();
     if(final_plots): # save fig
         Jstring = "";
         if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
         sstring = "";
-        if(TwoS != 1): sstring = "2s"+str(int(TwoS))+"_";
-        fname = "figs/gate/spin12_"+Jstring+string+case;
+        if(myTwoS != 1): sstring = "2s"+str(int(myTwoS))+"_";
+        fname = "figs/gate/spin12_"+Jstring+sstring+case;
         plt.savefig(fname+".pdf")
 
     else:
@@ -296,14 +302,14 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
          # NB is now fixed !!!!
 
     # axes
-    nrows, ncols = n_mol_dof, n_mol_dof;
+    nrows, ncols = 4,4;
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
     if(case=="ki"): K_indep = False;
     elif(case=="Ki"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi 
 
     # iter over fixed NB (colors)
-    NBvals = np.array([50,93,100,131,150]);
+    NBvals = np.array([93,97,131,150]);
     Fvals_Uchi = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -322,7 +328,7 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(Jval, [1],[2]);
+            hblocks_cicc = h_cicc(myTwoS, Jval, [1],[2]);
 
             # add large barrier at end
             NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
@@ -375,10 +381,14 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
             assert False;
             
         # plot as a function of K
-        for sourcei in range(n_mol_dof):
+        elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
+        for sourcei in range(len(elems_to_keep)):
             for sigmai in range(sourcei+1):
                 # formatting
-                axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"+str(ylabels[n_mol_dof*elecspin+sourcei])+"| \mathbf{r} |"+str(ylabels[n_mol_dof*elecspin+sigmai])+"\\rangle"+rbracket+"$");
+                axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"
+                +str(ylabels[4*elecspin+sourcei])+"| \mathbf{r} |"+str(ylabels[4*elecspin+sigmai])+"\\rangle"+rbracket+"$");
+                #axes[sourcei,sigmai].set_title(str(n_mol_dof*elecspin+elems_to_keep[sourcei])
+                #+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
                 axes[sourcei,-1].set_yticks(the_ticks);
                 axes[sourcei,-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                 for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color='lightgray',linestyle='dashed');
@@ -389,8 +399,8 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
                     axes[-1,sigmai].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
  
                 # plot rhat
-                axes[sourcei,sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+sourcei,n_mol_dof*elecspin+sigmai,:,NBvali], linestyle="dashed", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                axes[sourcei,sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], linestyle="dashed", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
 
                 # plot fidelity, starred SWAP locations
                 if(sourcei==2 and sigmai==1):
@@ -402,24 +412,24 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
                 if(vlines): axes[sourcei,sigmai].axvline(indep_star, color=mycolors[NBvali], linestyle="dotted");
  
                 # plot reflection summed over final states (columns)
-                if(sourcei<n_mol_dof-1 and summed_columns and elecspin==0):
+                if(sourcei<3 and summed_columns and elecspin==0):
                     if(NBvali==0): showlegstring = ""; 
                     else: showlegstring = "_"; # hides duplicate labels
                     for tick in the_ticks: axes[sourcei,-1].axhline(tick,color='lightgray',linestyle='dashed');
                     # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+sourcei,:,:,NBvali])*rhatvals_down[n_mol_dof*elecspin+sourcei,:,:,NBvali]),axis=0), linestyle="dashed", label=showlegstring+"$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[n_mol_dof*elecspin+sigmai])+"| \mathbf{r} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                    axes[sourcei,-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali]),axis=0), linestyle="dashed", label=showlegstring+"$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{r} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
                     axes[sourcei,-1].legend();
                          
     # show
-    suptitle = "$s=${:.1f}, $J/t=${:.2f}, $V_0/tl={:.2f}$, $V_B/t=${:.2f}".format(myspinS, Jval/tl, V0/tl, VB/tl);
+    suptitle = "$s=${:.1f}, $J/t=${:.2f}, $V_0/tl={:.2f}$, $V_B/t=${:.2f}".format(0.5*myTwoS, Jval/tl, V0/tl, VB/tl);
     fig.suptitle(suptitle);
     plt.tight_layout();
     if(final_plots): # save fig
         Jstring = "";
         if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
         sstring = "";
-        if(TwoS != 1): sstring = "2s"+str(int(TwoS))+"_";
-        fname = "figs/gate/spin12_"+Jstring+string+case;
+        if(myTwoS != 1): sstring = "2s"+str(int(myTwoS))+"_";
+        fname = "figs/gate/spin12_"+Jstring+sstring+case;
         plt.savefig(fname+".pdf")
     else:
         plt.show();
