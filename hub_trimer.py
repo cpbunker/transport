@@ -38,7 +38,7 @@ if(__name__ == "__main__"):
     mynroots = 20;
     init_start = time.time();
 
-    # iter over U
+    # iter over U/t
     Uvals = np.linspace(0,10,11);
     Evals = np.zeros((len(Uvals),mynroots),dtype=float);
     for Uvali in range(len(Uvals)):

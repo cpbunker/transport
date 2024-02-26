@@ -81,6 +81,70 @@ def get_occ(eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
+def get_onehop(eris_or_driver, whichsite, block, verbose=0):
+    '''
+    '''
+    if(block): builder = eris_or_driver.expr_builder()
+    else:
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cd",[whichsite,whichsite+1],1.0);
+        builder.add_term("cd",[whichsite+1,whichsite],1.0);
+        builder.add_term("CD",[whichsite,whichsite+1],1.0);
+        builder.add_term("CD",[whichsite+1,whichsite],1.0);
+    else:
+        h1e[nloc*(whichsite)+0,nloc*(whichsite+1)+0] += 1.0;
+        h1e[nloc*(whichsite+1)+0,nloc*(whichsite)+0] += 1.0;
+        h1e[nloc*(whichsite)+1,nloc*(whichsite+1)+1] += 1.0;
+        h1e[nloc*(whichsite+1)+1,nloc*(whichsite)+1] += 1.0;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
+
+def get_occ2(eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIs) representing n^2
+    '''
+    if(block): builder = eris_or_driver.expr_builder()
+    else:
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cdcd",[whichsite,whichsite],1.0);
+        builder.add_term("cdCD",[whichsite,whichsite],1.0);
+        builder.add_term("CDcd",[whichsite,whichsite],1.0);
+        builder.add_term("CDCD",[whichsite,whichsite],1.0);
+    else:
+        # g_pqrs a_p^+ a_q a_r^+ a_s
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+        # switch particle labels
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+
+        # - delta_qr a_p^+ a_s
+        h1e[nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        h1e[nloc*whichsite+0,nloc*whichsite+1] += 1.0;
+        h1e[nloc*whichsite+1,nloc*whichsite+0] += 1.0;
+        h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);   
+
 def get_sz(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite

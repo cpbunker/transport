@@ -2,7 +2,7 @@
 "is_ring":1, "is_triangular":0,"tol":1e8,
 "tdfci":1, "TwoSz":0,
 "Nsites":2, "Ne":2,
-"tl":1.0,"tp":0.0,"Vg":0.0,"U":10.0,
+"tl":0.5,"tp":0.0,"Vg":0.0,"U":0.33,"Deltanu":0.4,
 "Bx":0.0, "Bz":-1e-6,
 "symmetry":"Sz", "bdim_0":[100,100,100,150,150], "noises":[1e-2,1e-3,1e-4,1e-5],
 "dmrg_sweeps":20,"cutoff":-1.0

@@ -9,6 +9,7 @@ from transport.tdfci import utils
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy
 
 import time
 import json
@@ -113,20 +114,6 @@ def H_builder(params_dict, block, scratch_dir="tmp",verbose=0):
             h1e[nloc*j+0,nloc*j+0] += Vg;
             h1e[nloc*j+1,nloc*j+1] += Vg;
 
-    # Delta nu
-    if(Nsites==2 and "Deltanu" in params_dict.keys()):
-        Deltanu = params_dict["Deltanu"];
-        if(block):
-            builder.add_term("cd",[0,0], -Deltanu/2);
-            builder.add_term("CD",[0,0], -Deltanu/2);
-            builder.add_term("cd",[1,1],  Deltanu/2);
-            builder.add_term("CD",[1,1],  Deltanu/2);
-        else:
-            h1e[nloc*0+0,nloc*0+0] += -Deltanu/2;
-            h1e[nloc*0+1,nloc*0+1] += -Deltanu/2;
-            h1e[nloc*1+0,nloc*1+0] +=  Deltanu/2;
-            h1e[nloc*1+1,nloc*1+1] +=  Deltanu/2; 
-
     # U
     for j in all_sites: 
         if(block):
@@ -174,54 +161,7 @@ def get_energy_fci(h1e, g2e, nelec, nroots=1, tol = 1e-2, verbose=0):
         CI_list.append( tdfci.CIObject(v_fci[fcii], len(h1e), nelec));
     return CI_list, E_fci, uhf_inst;
 
-def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, block):
-    '''
-    Print update on selected observables
-    '''
-    print("\nTime = {:.2f}".format(the_time));
-    if(not block): compute_func = tdfci.compute_obs;
-    else: compute_func = tddmrg.compute_obs; # call signature for both is psi, none_or_mpo, eris_or_driver
-
-    # check gd state
-    if(not block):
-        check_E_dmrg = compute_func(psi, eris_or_driver, None); # the *op itself* is the H eris
-        check_norm = psi.dot( psi)
-    else:
-        check_E_dmrg = compute_func(psi, none_or_mpo, eris_or_driver); #none_or_mpo is H_mpo
-        check_norm = eris_or_driver.expectation(psi, eris_or_driver.get_identity_mpo(), psi);
-    print("Total energy = {:.8f}".format(check_E_dmrg));
-    print("WF norm = {:.8f}".format(check_norm));
-
-    # fermionic charge and spin in LL, Imp, RL
-    sz_vals, occ_vals = np.zeros((params_dict["Nsites"],),dtype=complex), np.zeros((params_dict["Nsites"],),dtype=complex);
-    occ2_vals, sz2_vals, onehop_vals = np.zeros_like(sz_vals), np.zeros_like(sz_vals), np.zeros_like(sz_vals);
-    for sitei in range(len(sz_vals)):
-        occ_mpo = tddmrg.get_occ(eris_or_driver, sitei, block);
-        occ_vals[sitei] += compute_func(psi, occ_mpo, eris_or_driver);
-        occ2_mpo = tddmrg.get_occ2(eris_or_driver, sitei, block);
-        occ2_vals[sitei] += compute_func(psi, occ2_mpo, eris_or_driver);
-        sz_mpo = tddmrg.get_sz(eris_or_driver, sitei, block);
-        sz_vals[sitei] += compute_func(psi, sz_mpo, eris_or_driver);
-        sz2_mpo = tddmrg.get_sz2(eris_or_driver, sitei, block);
-        sz2_vals[sitei] += compute_func(psi, sz2_mpo, eris_or_driver);
-        onehop_mpo = tddmrg.get_onehop(eris_or_driver, 0, block);
-        onehop_vals[0] = compute_func(psi, onehop_mpo, eris_or_driver);
-    for sitei in range(len(occ_vals)):
-        print("<n   j={:.0f}> = {:.8f}".format(sitei, occ_vals[sitei]));
-    for sitei in range(len(occ2_vals)):
-        print("<n^2 j={:.0f}> = {:.8f}".format(sitei, occ2_vals[sitei]));
-    print("Total <n> = {:.8f}".format(np.sum(occ_vals)));
-    for sitei in range(len(sz_vals)):
-        print("<sz  j={:.0f}> = {:.8f}".format(sitei, sz_vals[sitei]));
-    print("Total <sz> = {:.8f}".format(np.sum(sz_vals)));
-    for sitei in range(len(sz2_vals)):
-        print("<s.s j={:.0f}> = {:.8f}".format(sitei, 3*sz2_vals[sitei]));
-    for sitei in range(len(onehop_vals)):
-        print("<c-c j={:.0f}> = {:.8f}".format(sitei, onehop_vals[sitei]));
-
-    #chiral_val = tddmrg.chirality_wrapper(psi, eris_or_driver, [0,1,2], block);
-    #print("chiral val = {:.8f}".format(chiral_val));
-                         
+                        
 ##################################################################################
 #### run code
 if(__name__ == "__main__"):
@@ -238,43 +178,76 @@ if(__name__ == "__main__"):
     # total num electrons. For fci, should all be input as spin up
     myNsites, myNe = params["Nsites"], params["Ne"];
     nloc = 2; # spin dofs
-    init_start = time.time();
+    loop_start = time.time();
 
-    # init ExprBuilder object with terms that are there for all times
-    # here we do it all in one step
-    H_driver, H_mpo_initial = H_builder(params, is_block, verbose=verbose);
+    # iter over U/t
+    Uvals = np.linspace(0.0,params["U"],29);
+    Evals = np.zeros((len(Uvals),),dtype=float);
+    Evals_inf = np.zeros((len(Uvals),),dtype=float); # Lieb and Wu expression
+    S2vals = np.zeros((len(Uvals),),dtype=float);
+    S2vals_inf = np.zeros((len(Uvals),),dtype=float);
+    for Uvali in range(len(Uvals)):
+        # override json
+        params_over = params.copy();
+        params_over["U"] = Uvals[Uvali];
+        
+        # build H, get gd state
+        if(is_block):
+            gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
+                                 bond_dim=params["bdim_0"][0] )
+            gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
+                bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], 
+                cutoff=params["cutoff"], iprint=2); # set to 2 to see Mmps
+            eris_or_driver = H_driver;
+            Evals[Uvali] = gdstate_E_dmrg/params_over["Nsites"];
+            Sz2_mpo = tddmrg.get_sz2(eris_or_driver, 0, is_block);
+            S2vals[Uvali] = 3*tdddmrg.compute_obs(gdstate_psi[0], Sz2_mpo, eris_or_driver);
 
-    # get gd state
-    if(is_block):
-        gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
-                             bond_dim=params["bdim_0"][0] )
-        gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
-            bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], 
-            cutoff=params["cutoff"], iprint=2); # set to 2 to see Mmps
-        eris_or_driver = H_driver;
-        print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
-        gdstate_E, gdstate_psi = [gdstate_E_dmrg], [gdstate_mps_inst]
-    else:
-        H_1e, H_2e = np.copy(H_driver), np.copy(H_mpo_initial);
-        print("H_1e =\n", H_1e); 
-        gdstate_psi, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=20, tol=params["tol"], verbose=0);
-        H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
-        eris_or_driver = H_eris;
-    init_end = time.time();
-    print(">>> Init compute time = "+str(init_end-init_start));
+        else:
+            H_mpo_initial = None;
+            H_1e, H_2e = H_builder(params_over, is_block, scratch_dir=json_name, verbose=verbose);
+            if(Uvali==0): print("H_1e =\n", H_1e); 
+            gdstate_psi, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e,
+                                    (myNe, 0), nroots=20, tol=1e6, verbose=0);
+            H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
+            eris_or_driver = H_eris;
+            Evals[Uvali] = gdstate_E[0]/params_over["Nsites"];
+            Sz2_mpo = tddmrg.get_sz2(eris_or_driver, 0, is_block);
+            S2vals[Uvali] = 3*tddmrg.compute_obs(gdstate_psi, Sz2_mpo, eris_or_driver);
 
-    # plot observables
-    mytime=0;
-    for statei in range(len(gdstate_E)):
-        print("\nGround state energy (FCI) = {:.8f}".format(gdstate_E[statei]));
-        check_observables(params, gdstate_psi[statei], eris_or_driver, H_mpo_initial, mytime, is_block);
+        # exact soln
+        # infinite chain closed form numerical soln
+        Ja_func = scipy.special.jv
+        omega_crossover, nomega = 10.0,2000
+        omega_mesh = np.linspace(1e-12,omega_crossover,nomega//2)
+        omega_mesh = np.append(omega_mesh, np.linspace(omega_crossover, 1e1*omega_crossover,nomega//2));
+        integrand = Ja_func(0,omega_mesh)*Ja_func(1,omega_mesh)/(omega_mesh*(1+np.exp(2*omega_mesh*params_over["U"]/(4*params_over["tl"]))))
+        scipy_integ = np.trapz
+        Evals_inf[Uvali] = -4*scipy_integ(integrand, x=omega_mesh);
+        #fig, ax = plt.subplots()
+        #ax.plot(omega_mesh, integrand)
+        #plt.show()
+        print("N = {:.0f}, U = {:.4f}, U/2t = {:.4f}, E = {:.4f}, E_inf = {:.4f}".format(params_over["Nsites"], params_over["U"], params_over["U"]/(2*params_over["tl"]), Evals[Uvali], Evals_inf[Uvali]))
 
-    # lookup exact energy per site from Ramasesha PRB, table II
-    lookup_chain = {6:-0.51543, 8:-0.52948};
-    lookup_ring  = {4:-11.8443/myNsites +2.5,6:-0.61145, 8:-0.57544};
-    assert(myNe == myNsites); # must be half filling
-    if(myNsites == 4): assert( abs(params["U"] - 5.0*params["tl"]) < 1e-12); # to use Schumann 
-    else: assert( abs(params["U"] - 4*params["tl"]) < 1e-12); # must be U=4t case 
-    if(params["is_ring"]): exact_E = lookup_ring[myNsites]*myNsites;
-    else: exact_E = lookup_chain[myNsites]*myNsites;
-    print("\nGround state energy (ED) = {:.8f}".format(exact_E))
+    # plot E
+    fig, axes = plt.subplots(2, sharex=True);
+    axes[0].plot(Uvals/(2*params_over["tl"]), Evals_inf, color="black", label = "Exact");
+    axes[0].scatter(Uvals/(2*params_over["tl"]), Evals, marker='o',s=100, facecolors='none',edgecolors='purple', label = "DMRG");
+    axes[0].set_ylabel("Energy/site");
+
+    # plot S2
+    S2vals_inf = 3/4 - (3/2)*np.gradient(Evals_inf,Uvals)
+    axes[1].plot(Uvals/(2*params_over["tl"]), S2vals_inf, color="black", label="Exact");
+    axes[1].scatter(Uvals/(2*params_over["tl"]), S2vals, marker='o',s=100, facecolors='none',edgecolors='purple', label = "DMRG");
+    S2_lims = [3/8,3/4];
+    for lim in S2_lims: axes[1].axhline(lim,color="grey",linestyle="dashed");
+    axes[1].set_yticks(S2_lims);
+    axes[1].set_ylabel("$\\langle S_p^2 \\rangle$")
+    loop_end = time.time();
+    print(">>> Loop compute time = "+str(loop_end-loop_start));
+
+    # format
+    axes[0].legend();
+    axes[0].set_title("$N = N_e =${:.0f}, $\\nu_p = ${:.2f}".format(myNsites, 0.0));
+    axes[-1].set_xlabel("$U/2t$");
+    plt.show();

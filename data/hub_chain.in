@@ -1,5 +1,5 @@
 {
-"is_ring":1, "is_triangular":0,"tol":1e-2,
+"is_ring":0, "is_triangular":0,"tol":1e-2,
 "tdfci":1,"TwoSz":0,"symmetry":"Sz",
 "Nsites":6, "Ne":6,
 "tl":1.0,"tp":0.0,"Vg":0.0,"U":10.0,
