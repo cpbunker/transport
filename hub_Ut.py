@@ -182,7 +182,7 @@ if(__name__ == "__main__"):
     loop_start = time.time();
 
     # iter over U/t
-    Uvals = np.linspace(0.0,params["U"],3);
+    Uvals = np.linspace(0.0,params["U"],29);
     Evals = np.zeros((len(Uvals),),dtype=float);
     Evals_inf = np.zeros((len(Uvals),),dtype=float); # Lieb and Wu expression
     S2vals = np.zeros((len(Uvals),),dtype=float);
