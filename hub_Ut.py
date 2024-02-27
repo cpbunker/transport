@@ -169,6 +169,7 @@ if(__name__ == "__main__"):
     # top level
     verbose = 2; assert verbose in [1,2,3];
     np.set_printoptions(precision = 6, suppress = True);
+    #plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
     json_name = sys.argv[1];
     params = json.load(open(json_name)); print(">>> Params = ",params);
     is_block = True;
@@ -181,7 +182,7 @@ if(__name__ == "__main__"):
     loop_start = time.time();
 
     # iter over U/t
-    Uvals = np.linspace(0.0,params["U"],29);
+    Uvals = np.linspace(0.0,params["U"],3);
     Evals = np.zeros((len(Uvals),),dtype=float);
     Evals_inf = np.zeros((len(Uvals),),dtype=float); # Lieb and Wu expression
     S2vals = np.zeros((len(Uvals),),dtype=float);
@@ -193,15 +194,16 @@ if(__name__ == "__main__"):
         
         # build H, get gd state
         if(is_block):
+            H_driver, H_mpo_initial = H_builder(params_over, is_block, verbose=verbose);
             gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                                  bond_dim=params["bdim_0"][0] )
             gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
                 bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], 
-                cutoff=params["cutoff"], iprint=2); # set to 2 to see Mmps
+                cutoff=params["cutoff"], iprint=0); # set to 2 to see Mmps
             eris_or_driver = H_driver;
             Evals[Uvali] = gdstate_E_dmrg/params_over["Nsites"];
             Sz2_mpo = tddmrg.get_sz2(eris_or_driver, 0, is_block);
-            S2vals[Uvali] = 3*tdddmrg.compute_obs(gdstate_psi[0], Sz2_mpo, eris_or_driver);
+            S2vals[Uvali] = 3*np.real(tddmrg.compute_obs(gdstate_mps_inst, Sz2_mpo, eris_or_driver));
 
         else:
             H_mpo_initial = None;
@@ -213,7 +215,7 @@ if(__name__ == "__main__"):
             eris_or_driver = H_eris;
             Evals[Uvali] = gdstate_E[0]/params_over["Nsites"];
             Sz2_mpo = tddmrg.get_sz2(eris_or_driver, 0, is_block);
-            S2vals[Uvali] = 3*tddmrg.compute_obs(gdstate_psi, Sz2_mpo, eris_or_driver);
+            S2vals[Uvali] = 3*tdfci.compute_obs(gdstate_psi, Sz2_mpo, eris_or_driver);
 
         # exact soln
         # infinite chain closed form numerical soln
@@ -250,4 +252,6 @@ if(__name__ == "__main__"):
     axes[0].legend();
     axes[0].set_title("$N = N_e =${:.0f}, $\\nu_p = ${:.2f}".format(myNsites, 0.0));
     axes[-1].set_xlabel("$U/2t$");
-    plt.show();
+    fname = "chainN{:.0f}.pdf".format(myNsites);
+    if(params["is_ring"]): fname = "ringN{:.0f}.pdf".format(myNsites);
+    plt.savefig(fname);

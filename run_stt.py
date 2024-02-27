@@ -126,7 +126,7 @@ plot.snapshot_bench(gdstate_mps_inst, H_driver,
 ####
 H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
-time_evol_wrapper(params, H_driver_dyn, H_mpo_dyn,
-                  gdstate_mps_inst,json_name,is_block,verbose=2) # set to 2 to see mmps
+tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,
+                  gdstate_mps_inst,check_observables,json_name,verbose=2) # set to 2 to see mmps
 
 
