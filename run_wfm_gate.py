@@ -122,7 +122,7 @@ def get_U_gate(gate0, TwoS):
 #if True: # to get right spacing, lol
 
 #### top level
-np.set_printoptions(precision = 6, suppress = True);
+np.set_printoptions(precision = 8, suppress = True);
 verbose = 1;
 which_gate = sys.argv[1];
 case = sys.argv[2];
@@ -134,7 +134,7 @@ elecspin = 0; # itinerant e is spin up
 if(which_gate != "SWAP"): assert(not final_plots);
 
 # fig standardizing
-myxvals = 29;
+myxvals = 100;
 if(final_plots): myxvals =99;
 myfontsize = 14;
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
@@ -151,7 +151,7 @@ tl = 1.0;
 myTwoS = 1
 n_mol_dof = (myTwoS+1)*(myTwoS+1); 
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-Jval = -0.2*tl;
+Jval = -0.21*tl;
 VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
 U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
@@ -166,7 +166,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
     elif(case=="kNB"): NB_indep = False # whether to put NB, alternatively wavenumber*NB
 
     # iter over incident kinetic energy (colors)
-    Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+    Kpowers = np.array([-6.2,-6.3]); # incident kinetic energy/t = 10^Kpower
     knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
     print("knumbers^2 = \n",knumbers*knumbers);
     Kvals = 2*tl - 2*tl*np.cos(knumbers);
@@ -181,6 +181,7 @@ if(case in ["NB","kNB"]): # distance of the barrier NB on the x axis
         else: NBmax = int(kNBmax/knumbers[Kvali]);
         if(verbose): print("k^2, NBmax = ",knumbers[Kvali]**2, NBmax); 
         NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
+        NBvals = np.linspace(51,150,100,dtype=int);
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
 
@@ -309,7 +310,7 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
     elif(case=="Ki"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi 
 
     # iter over fixed NB (colors)
-    NBvals = np.array([93,97,131,150]);
+    NBvals = np.array([93])   #93,97,131,150]);
     Fvals_Uchi = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -319,10 +320,11 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+        Kpowers = np.array([-4,-6]); # incident kinetic energy/t = 10^Kpower
                                               # note that at the right NB, R(SWAP) approaches 1 asymptotically at
                                               # lower Ki. But diminishing returns kick in around 10^-4
         knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals));
+        #print(knumbers**2); assert False
         Kvals = 2*tl - 2*tl*np.cos(knumbers);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t, what I call E in paper
         for Kvali in range(len(Kvals)):
@@ -370,7 +372,7 @@ elif(case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
         if(K_indep): indep_var = knumbers*knumbers; # what to put on x axis
         else: indep_var = 2*knumbers*NBvals[NBvali]/np.pi;
         indep_star = indep_var[np.argmax(Fvals_Uchi[:,NBvali])];
-        if(verbose): print("indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, np.max(Fvals_Uchi[:,NBvali])));
+        if(verbose): print("indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_Uchi[:,NBvali])));
         if(False and Kvali==1):
             the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
             the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
