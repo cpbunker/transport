@@ -268,6 +268,18 @@ def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
     else: raise NotImplementedError;
 
     return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    
+def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
+    '''
+    MPO representing <Sz^2> of site impurity at site whichsite
+    '''
+    assert(block);
+    builder = eris_or_driver.expr_builder();
+
+    # construct
+    builder.add_term("ZZ",[whichsite,whichsite], 1.0);
+
+    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
 
 def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
@@ -404,7 +416,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
 
 def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
     '''
-    MPO for current from whichsites[0] to whichsites[1]
+    MPO for particle current from whichsites[0] to whichsites[1]
     positive is rightward, associated with positive bias st left lead chem potential
     is higher) 
 
@@ -429,8 +441,8 @@ def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
 
     if(block):# construct MPO
         builder = eris_or_driver.expr_builder();
-        builder.add_term(spinstr, whichsites, complex(0,-1)); # c on left, d on right = negative current
-        builder.add_term(spinstr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive current
+        builder.add_term(spinstr, whichsites, complex(0,-1)); # c on left, d on right = negative particle current
+        builder.add_term(spinstr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive particle current
         return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
     else: # construct ERIs
         Nspinorbs = len(eris_or_driver.h1e[0]);
@@ -440,14 +452,13 @@ def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
         h1e[nloc*whichsites[1]+spin,nloc*whichsites[0]+spin] += complex(0,1.0);
         return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e-12);
 
-
 def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     '''
     Consider site whichsite. This wrapper:
     1) sums the spin currents from whichsite-1 to whichsite (LEFT part)
     2) sums the spin currents from whichsite to whichsite+1 (RIGHT part)
     3) averages over the results of 1 and 2 to find the current "through" whichsite
-    Later this will be divided by Vb to make it *conductance*
+    Later we multiply this by  \pi e/\hbar * hopping/(Vb/e) to make it *conductance*
     '''
     if(block): compute_func = compute_obs;
     else: compute_func = tdfci.compute_obs;
@@ -458,7 +469,6 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
         left_mpo = get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, block, verbose=verbose);
         left_val = compute_func(psi, left_mpo, eris_or_driver);
         pcurrent_left += left_val;
-    print("left_val (spin={:.0f}) = {:.4f}".format(spin,np.real(pcurrent_left)*np.pi*0.4/0.001));
 
     # right part
     pcurrent_right = 0.0;
@@ -466,7 +476,6 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
         right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
         right_val = compute_func(psi, right_mpo, eris_or_driver);
         pcurrent_right += right_val;
-    print("right_val (spin={:.0f}) = {:.4f}".format(spin,np.real(pcurrent_right)*np.pi*0.4/0.001));
 
     # average
     ret = complex(1,0)*(pcurrent_left + pcurrent_right)/2; # must add  e/\hbar * th/Vb later
@@ -721,12 +730,15 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     # load data from json
     tl, th, Jz, Jx, Jsd, Delta, Vb = params_dict["tl"], params_dict["th"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"], params_dict["Delta"], params_dict["Vb"];
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+    #assert(tl==th); # since SIAM uses th, but SIETS doesn't
 
     # fermionic sites and spin
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
-    Ne=Nsites;
-    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
-    TwoSz = 0 + np.sign(int(params_dict["BFM"]))*NFM;
+    Ne=1*Nsites;
+    TwoSz = 0; assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz += np.sign(int(params_dict["BFM"]))*NFM; # add imp spin
+    if("BFM_first" in params_dict.keys() ): # 1st imp has diff spin
+        TwoSz += np.sign(int(params_dict["BFM_first"])) - np.sign(int(params_dict["BFM"])); # add new, remove old
 
     # impurity spin
     TwoSd = params_dict["TwoSd"]; # impurity spin magnitude, doubled to be an int
@@ -841,23 +853,22 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
     builder = driver.expr_builder();
     print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
-
-    # LEAD j <-> j+1 hopping for fermions
-    for lead_sites in [llead_sites, rlead_sites]:
-        for j in lead_sites[:-1]:
-            builder.add_term("cd",[j,j+1],-tl); 
-            builder.add_term("CD",[j,j+1],-tl);
-            builder.add_term("cd",[j+1,j],-tl);
-            builder.add_term("CD",[j+1,j],-tl);
-
-    # lead coupling to impurity
+    
+    # j <-> j+1 hopping for fermions
+    for j in all_sites[:-1]:
+        builder.add_term("cd",[j,j+1],-tl); 
+        builder.add_term("CD",[j,j+1],-tl);
+        builder.add_term("cd",[j+1,j],-tl);
+        builder.add_term("CD",[j+1,j],-tl);
+        
+    # lead coupling to impurity (REMOVE regular hopping)
     jpairs = [(llead_sites[-1], central_sites[0]), (rlead_sites[0], central_sites[-1])];
     for jpair in jpairs:
         jlead, jimp = jpair;
-        builder.add_term("cd",[jlead,jimp],-th);
-        builder.add_term("CD",[jlead,jimp],-th);
-        builder.add_term("cd",[jimp,jlead],-th);
-        builder.add_term("CD",[jimp,jlead],-th);
+        builder.add_term("cd",[jlead,jimp],-th+tl);
+        builder.add_term("CD",[jlead,jimp],-th+tl);
+        builder.add_term("cd",[jimp,jlead],-th+tl);
+        builder.add_term("CD",[jimp,jlead],-th+tl);
 
     # XXZ exchange between neighboring impurities
     for j in central_sites[:-1]:
@@ -946,7 +957,19 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     # B field on the loc spins
     for j in central_sites:
         builder.add_term("Z",[j],-BFM);
-
+        
+    # special case initialization
+    if("BFM_first" in params_dict.keys() and len(central_sites)>0): # B field that targets 1st loc spin only
+        BFM_first = params_dict["BFM_first"];
+        j = central_sites[0];
+        builder.add_term("Z",[j], -BFM_first+BFM);
+    if("B_Heis" in params_dict.keys() and len(central_sites)>0): # prep singlet
+        B_Heis = params_dict["B_Heis"];
+        for j in central_sites[:-1]:
+            builder.add_term("ZZ",[j,j+1],-B_Heis);
+            builder.add_term("PM",[j,j+1],-B_Heis/2);
+            builder.add_term("MP",[j,j+1],-B_Heis/2);
+        
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize());
     return driver, mpo_from_builder;

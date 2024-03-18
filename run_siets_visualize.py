@@ -16,13 +16,15 @@ datafiles = sys.argv[4:];
 # plotting
 obs1, color1, ticks1, linewidth1, fontsize1 = "occ_", "cornflowerblue", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
 obs2, color2 = "G_", "darkred";
+obs3, color3 = "Sdz_", "darkgreen";
 num_xticks = 4;
 datamarkers = ["s","^","d","*"]
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
     from transport.tddmrg import plot
-    tddmrg.plot.snapshot_fromdata(datafiles[0], time0, "SIAM")
+    sys_type = json.load(open(datafiles[0]+".txt"))["sys_type"];
+    tddmrg.plot.snapshot_fromdata(datafiles[0], time0, sys_type);
 
 elif(case in [1,2]): # observable as a function of time
 
@@ -44,21 +46,28 @@ elif(case in [1,2]): # observable as a function of time
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = time0 + ti*tupdate;
-
-        # current vs time
-        which_imp = 0;
-        Nsites = params["NL"]+1+params["NR"]; # number of d sites
-        yds_vs_time = np.zeros((len(times),1),dtype=float);
-        for ti in range(len(times)):
-            yds_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-        ax.plot(times,yds_vs_time[:,which_imp],color=color2, marker=datamarkers[datai],label=the_label);
-
+            
         # CHANGE IN left lead occ vs time
+        Nsites = params["NL"]+params["NFM"]+params["NR"]; 
         yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
         for ti in range(len(times)):
             yjs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
         yjdelta_vs_time = np.sum(yjs_vs_time[:,:params["NL"]], axis=1) - np.sum(yjs_vs_time[:,:params["NL"]], axis=1)[0];
         ax.plot(times, yjdelta_vs_time,color=color1,marker=datamarkers[datai]);
+
+        # current vs time
+        which_imp = 0;
+        yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        for ti in range(len(times)):
+            yds_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+        ax.plot(times,yds_vs_time[:,which_imp],color=color2, marker=datamarkers[datai],label=the_label);
+        
+        # Sdz vs time
+        Sdzs_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        for ti in range(len(times)):
+            Sdzs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
+        ax.plot(times,Sdzs_vs_time[:,which_imp],color=color3, marker=datamarkers[datai]);
+
 
     # formatting
     ax.set_ylabel("$\pi \langle J_{Imp}^z \\rangle /V_b$", color=color2, fontsize=fontsize1);

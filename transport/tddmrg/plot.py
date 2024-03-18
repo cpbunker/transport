@@ -54,7 +54,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
-        title_str = "$J_{sd} = $"+"{:.4f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
@@ -62,17 +62,17 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
-        title_str = "$t_h =$ {:.4f}$t_l, V_g =${:.4f}$t_l, U =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(th, Vg, U, Vb);
+        title_str = "$t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, U =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Vg, U, Vb);
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type=="SIETS"):
-        th, Delta, Vb = params_dict["th"], params_dict["Delta"], params_dict["Vb"];
+        Jsd, Jx, Jz, Delta, Vb = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"], params_dict["Delta"], params_dict["Vb"];
         NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
-        title_str = "$t_h =$ {:.4f}$t_l, \Delta =${:.4f}$t_l, V_b =${:.4f}$t_l$".format(th, Delta, Vb);
-        obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
-        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $\Delta =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(Jx, Jz, Delta, Vb);
+        obs_strs = ["occ_", "sz_", "Sdz_", "G_", "conc_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$","$C_{d,d+1}$"];
+        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
@@ -125,6 +125,10 @@ def snapshot_fromdata(loadname, time, sys_type):
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{Imp} \\rangle/V_b$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
+    elif(sys_type == "SIETS"):
+        obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\pi \langle J_{Imp} \\rangle/V_b$"];
+        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
 
