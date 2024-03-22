@@ -76,8 +76,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     else:
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = Nbuffer+NL+NFM+NR; # number of j sites in 1D chain
-    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM)]);
-    all_sites = np.array([j for j in range(Nsites)]);
+    central_sites = np.arange(Nbuffer+NL,Nbuffer+NL+NFM);
+    all_sites = np.arange(Nsites);
 
     # plot
     fig, axes = plt.subplots(len(obs_strs));
@@ -85,7 +85,9 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         for obsi in range(len(obs_strs)):
             if(obs_strs[obsi] not in ["Sdz_","conc_","pur_", "G_"]): js_pass = all_sites;
             else: js_pass = central_sites;
-            if(obs_strs[obsi] in ["G_"]): prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
+            if(obs_strs[obsi] in ["G_"]): 
+                prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
+                js_pass = np.arange(Nbuffer+NL,Nbuffer+NL+NFM+1); # one extra
             else: prefactor = 1.0;
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,

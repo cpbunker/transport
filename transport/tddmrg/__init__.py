@@ -471,14 +471,14 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
         pcurrent_left += left_val;
 
     # right part
-    pcurrent_right = 0.0;
-    for spin in [0,1]:
-        right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
-        right_val = compute_func(psi, right_mpo, eris_or_driver);
-        pcurrent_right += right_val;
+    #pcurrent_right = 0.0;
+    #for spin in [0,1]:
+    #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
+    #right_val = compute_func(psi, right_mpo, eris_or_driver);
+    #pcurrent_right += right_val;
 
     # average
-    ret = complex(1,0)*(pcurrent_left + pcurrent_right)/2; # must add  e/\hbar * th/Vb later
+    ret = complex(1,0)*(pcurrent_left); # must add  e/\hbar * th/Vb later
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
@@ -730,7 +730,6 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     # load data from json
     tl, th, Jz, Jx, Jsd, Delta, Vb = params_dict["tl"], params_dict["th"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"], params_dict["Delta"], params_dict["Vb"];
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
-    #assert(tl==th); # since SIAM uses th, but SIETS doesn't
 
     # fermionic sites and spin
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
@@ -900,6 +899,13 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     for j in rlead_sites:
         builder.add_term("cd",[j,j],-Vb/2); 
         builder.add_term("CD",[j,j],-Vb/2);
+        
+    # special case terms
+    if("Vg" in params_dict.keys()):
+        Vg = params_dict["Vg"];
+        for j in central_sites:
+            builder.add_term("cd",[j,j], Vg);
+            builder.add_term("CD",[j,j], Vg);
 
     return driver, builder;
 
@@ -920,6 +926,7 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     Returns: a tuple of DMRGDriver, MPO
     '''
     if(not block): raise NotImplementedError;
+    REMOVE = False;
 
     # load data from json
     Jsd, BFM, Vb = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"];
@@ -938,13 +945,14 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     if(driver.n_sites != Nsites): raise ValueError;
 
     # REMOVE Jsd (to avoid spin polarization of deloc elecs at t=0)
-    for j in central_sites:
-        # z terms
-        builder.add_term("cdZ",[j,j,j], Jsd/2);
-        builder.add_term("CDZ",[j,j,j], -Jsd/2);
-        # plus minus terms
-        builder.add_term("cDM",[j,j,j], Jsd/2);
-        builder.add_term("CdP",[j,j,j], Jsd/2);
+    if(REMOVE):
+        for j in central_sites:
+            # z terms
+            builder.add_term("cdZ",[j,j,j], Jsd/2);
+            builder.add_term("CDZ",[j,j,j], -Jsd/2);
+            # plus minus terms
+            builder.add_term("cDM",[j,j,j], Jsd/2);
+            builder.add_term("CdP",[j,j,j], Jsd/2);
 
     # REMOVE bias
     for j in llead_sites:
@@ -969,7 +977,13 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("ZZ",[j,j+1],-B_Heis);
             builder.add_term("PM",[j,j+1],-B_Heis/2);
             builder.add_term("MP",[j,j+1],-B_Heis/2);
-        
+    if("Vg" in params_dict.keys()): # REMOVE Vg for t<0
+        if(REMOVE):
+            Vg = params_dict["Vg"];
+            for j in central_sites:
+                builder.add_term("cd",[j,j], -Vg);
+                builder.add_term("CD",[j,j], -Vg);
+                    
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize());
     return driver, mpo_from_builder;
