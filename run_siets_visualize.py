@@ -59,8 +59,10 @@ elif(case in [1,2]): # observable as a function of time
         which_imp = 0;
         yds_vs_time = np.zeros((len(times),params["NFM"]+1),dtype=float);
         for ti in range(len(times)):
-            yds_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-        current_vs_time = (yds_vs_time[:,0]+yds_vs_time[:,1])/2;
+            dummy_current = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+            print(np.shape(dummy_current));
+            yds_vs_time[ti] = dummy_current[:];
+        current_vs_time = (yds_vs_time[:,0]+yds_vs_time[:,-1])/2;
         ax.plot(times,current_vs_time,color=color2, marker=datamarkers[datai],label=the_label);
         
         # Sdz vs time

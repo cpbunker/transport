@@ -927,6 +927,7 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
     if(not block): raise NotImplementedError;
     REMOVE = False;
+    print(">>> REMOVE = ",REMOVE)
 
     # load data from json
     Jsd, BFM, Vb = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"];
