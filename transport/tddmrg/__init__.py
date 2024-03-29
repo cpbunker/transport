@@ -565,10 +565,10 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     TwoSz = 0;
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    central_sites = np.array([j for j in range(NL,NL+1) ]);
-    rlead_sites = np.array([j for j in range(NL+1,Nsites)]);
-    all_sites = np.array([j for j in range(Nsites)]);
+    llead_sites = np.arange(NL);
+    central_sites = np.arange(NL,NL+1);
+    rlead_sites = np.arange(NL+1,Nsites);
+    all_sites = np.arange(Nsites);
 
     # construct ExprBuilder
     if(block):
@@ -667,8 +667,8 @@ def H_SIAM_polarizer(params_dict, to_add_to, block, verbose=0):
     Nsites = NL+1+NR;
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    rlead_sites = np.array([j for j in range(NL+1,Nsites)]);
+    llead_sites = np.arange(NL);
+    rlead_sites = np.arange(NL+1,Nsites);
 
     # unpack ExprBuilder
     if(block):
@@ -725,7 +725,6 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
-    if(not block): raise NotImplementedError;
 
     # load data from json
     tl, th, Jz, Jx, Jsd, Delta, Vb = params_dict["tl"], params_dict["th"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"], params_dict["Delta"], params_dict["Vb"];
@@ -747,167 +746,212 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     assert(TwoSd == 1); # for now, to get degeneracies right
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
-    all_sites = np.array([j for j in range(Nsites)]);
+    llead_sites = np.arange(NL);
+    central_sites = np.arange(NL,NL+NFM);
+    rlead_sites = np.arange(NL+NFM,Nsites);
+    all_sites = np.arange(Nsites);
 
     # construct ExprBuilder
-    if(params_dict["symmetry"] == "Sz"):
-        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
-        # using complex symmetry type, as above, seems linked to
-        # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
-        # but only when TwoSz is input correctly
-        # in latter case, we get a floating point exception even when complex sym is turned off!
-        #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4)
-        driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
-    else: raise NotImplementedError;
+    if(block):
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            # using complex symmetry type, as above, seems linked to
+            # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
+            # but only when TwoSz is input correctly
+            # in latter case, we get a floating point exception even when complex sym is turned off!
+            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+        else: raise NotImplementedError;
 
-    # Szd blocks for fermion-impurity operators
-    # squares are diagonal blocks and triangles are one off diagonal
-    squar_I = np.eye(n_fer_dof); # identity - for basis see states below
-    squar_c = np.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0]]); # c_up^\dagger
-    squar_d = np.array([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0]]); # c_up
-    squar_C = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0,-1, 0, 0]]); # c_down^\dagger
-    squar_D = np.array([[0, 0, 1, 0], [0, 0, 0,-1], [0, 0, 0, 0], [0, 0, 0, 0]]); # c_down
+        # Szd blocks for fermion-impurity operators
+        # squares are diagonal blocks and triangles are one off diagonal
+        squar_I = np.eye(n_fer_dof); # identity - for basis see states below
+        squar_c = np.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0]]); # c_up^\dagger
+        squar_d = np.array([[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0]]); # c_up
+        squar_C = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0,-1, 0, 0]]); # c_down^\dagger
+        squar_D = np.array([[0, 0, 1, 0], [0, 0, 0,-1], [0, 0, 0, 0], [0, 0, 0, 0]]); # c_down
 
-    # construct 4d ops from blocks
-    # fermion ops 
-    fourd_base = np.zeros((n_imp_dof,n_imp_dof,n_fer_dof,n_fer_dof),dtype=float);
-    fourd_c = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof): fourd_c[Sdz_index,Sdz_index] = np.copy(squar_c);
-    fourd_d = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof): fourd_d[Sdz_index,Sdz_index] = np.copy(squar_d);
-    fourd_C = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof): fourd_C[Sdz_index,Sdz_index] = np.copy(squar_C);
-    fourd_D = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof): fourd_D[Sdz_index,Sdz_index] = np.copy(squar_D);
-    # Sd ops 
-    fourd_Sdz = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof): fourd_Sdz[Sdz_index,Sdz_index] = (TwoSdz_ladder[Sdz_index]/2)*np.eye(n_fer_dof);
-    print("TwoSdz_ladder =\n",TwoSdz_ladder);
-    print("four_Sdz = \n",reblock(fourd_Sdz))
-    fourd_Sdminus = np.copy(fourd_base);
-    fourd_Sdplus = np.copy(fourd_base);
-    for Sdz_index in range(n_imp_dof-1): 
-        fourd_Sdminus[Sdz_index+1,Sdz_index] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index]*(0.5*TwoSdz_ladder[Sdz_index]-1))*np.eye(n_fer_dof);
-        fourd_Sdplus[Sdz_index,Sdz_index+1] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index+1]*(0.5*TwoSdz_ladder[Sdz_index+1]+1))*np.eye(n_fer_dof);
-    print("four_Sdminus = \n",reblock(fourd_Sdminus))
-    print("four_Sdplus = \n",reblock(fourd_Sdplus))
+        # construct 4d ops from blocks
+        # fermion ops 
+        fourd_base = np.zeros((n_imp_dof,n_imp_dof,n_fer_dof,n_fer_dof),dtype=float);
+        fourd_c = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof): fourd_c[Sdz_index,Sdz_index] = np.copy(squar_c);
+        fourd_d = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof): fourd_d[Sdz_index,Sdz_index] = np.copy(squar_d);
+        fourd_C = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof): fourd_C[Sdz_index,Sdz_index] = np.copy(squar_C);
+        fourd_D = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof): fourd_D[Sdz_index,Sdz_index] = np.copy(squar_D);
+        # Sd ops 
+        fourd_Sdz = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof): fourd_Sdz[Sdz_index,Sdz_index] = (TwoSdz_ladder[Sdz_index]/2)*np.eye(n_fer_dof);
+        print("TwoSdz_ladder =\n",TwoSdz_ladder);
+        print("four_Sdz = \n",reblock(fourd_Sdz))
+        fourd_Sdminus = np.copy(fourd_base);
+        fourd_Sdplus = np.copy(fourd_base);
+        for Sdz_index in range(n_imp_dof-1): 
+            fourd_Sdminus[Sdz_index+1,Sdz_index] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index]*(0.5*TwoSdz_ladder[Sdz_index]-1))*np.eye(n_fer_dof);
+            fourd_Sdplus[Sdz_index,Sdz_index+1] = np.sqrt(0.5*TwoSd*(0.5*TwoSd+1)-0.5*TwoSdz_ladder[Sdz_index+1]*(0.5*TwoSdz_ladder[Sdz_index+1]+1))*np.eye(n_fer_dof);
+        print("four_Sdminus = \n",reblock(fourd_Sdminus))
+        print("four_Sdplus = \n",reblock(fourd_Sdplus))
 
-    # def custom states and operators
-    site_states, site_ops = [], [];
-    qnumber = driver.bw.SX # quantum number wrapper
-    # quantum numbers here: nelec, TwoSz, TwoSdz
-    # Sdz is z projection of impurity spin: ladder from +s to -s
-    for sitei in all_sites:
-        if(sitei not in central_sites): # regular fermion dofs
-            states = [(qnumber(0, 0,0),1), # |> # (always obey n_elec and TwoSz symmetry)
-                      (qnumber(1, 1,0),1), # |up> #<--
-                      (qnumber(1,-1,0),1), # |down>
-                      (qnumber(2, 0,0),1)];# |up down>
-            ops = { "":np.copy(squar_I), # identity
-                   "c":np.copy(squar_c), # c_up^\dagger 
-                   "d":np.copy(squar_d), # c_up
-                   "C":np.copy(squar_C), # c_down^\dagger
-                   "D":np.copy(squar_D)} # c_down
-        elif(sitei in central_sites): # has fermion AND impurity dofs
-            states = [];
-            nelec_dofs, spin_dofs = [0,1,1,2], [0,1,-1,0];
-            qnumber_degens = {};
-            for fer_dofi in range(len(nelec_dofs)):
-                for TwoSdz in TwoSdz_ladder:
-                    pass; # TODO: create qnumber_degens here
-            qnumber_degens = {(0, 1,0):1,
-                              (0,-1,0):1,
-                              (1, 2,0):1,
-                              (1, 0,0):2,
-                              (1,-2,0):1,
-                              (2, 1,0):1,
-                              (2,-1,0):1};
-            qnumbers_added = {};
-            for fer_dofi in range(len(nelec_dofs)):
-                for TwoSdz in TwoSdz_ladder:
-                    qnumber_tup = (nelec_dofs[fer_dofi],spin_dofs[fer_dofi]+TwoSdz,0);
-                    if(qnumber_tup in qnumber_degens and qnumber_tup not in qnumbers_added):
-                        print(">>>",qnumber_tup)
-                        states.append((qnumber(*qnumber_tup),qnumber_degens[qnumber_tup]));         
-                        qnumbers_added[qnumber_tup] = 1;
-            # ops dictionary
-            ops = { "":np.eye(n_fer_dof*n_imp_dof), # identity
-                   "c":reblock(fourd_c), # c_up^\dagger
-                   "d":reblock(fourd_d), # c_up
-                   "C":reblock(fourd_C), # c_down^\dagger
-                   "D":reblock(fourd_D), # c_down
-                   "Z":reblock(fourd_Sdz)    # Sz of impurity
-                   ,"P":reblock(fourd_Sdplus) # S+ on impurity
-                   ,"M":reblock(fourd_Sdminus) # S- on impurity
-                    }
-        else:
-            raise Exception("Site i = ",sitei," never caught");
-        site_states.append(states);
-        site_ops.append(ops);
+        # def custom states and operators
+        site_states, site_ops = [], [];
+        qnumber = driver.bw.SX # quantum number wrapper
+        # quantum numbers here: nelec, TwoSz, TwoSdz
+        # Sdz is z projection of impurity spin: ladder from +s to -s
+        for sitei in all_sites:
+            if(sitei not in central_sites): # regular fermion dofs
+                states = [(qnumber(0, 0,0),1), # |> # (always obey n_elec and TwoSz symmetry)
+                          (qnumber(1, 1,0),1), # |up> #<--
+                          (qnumber(1,-1,0),1), # |down>
+                          (qnumber(2, 0,0),1)];# |up down>
+                ops = { "":np.copy(squar_I), # identity
+                       "c":np.copy(squar_c), # c_up^\dagger 
+                       "d":np.copy(squar_d), # c_up
+                       "C":np.copy(squar_C), # c_down^\dagger
+                       "D":np.copy(squar_D)} # c_down
+            elif(sitei in central_sites): # has fermion AND impurity dofs
+                states = [];
+                nelec_dofs, spin_dofs = [0,1,1,2], [0,1,-1,0];
+                qnumber_degens = {};
+                for fer_dofi in range(len(nelec_dofs)):
+                    for TwoSdz in TwoSdz_ladder:
+                        pass; # TODO: create qnumber_degens here
+                qnumber_degens = {(0, 1,0):1,
+                                  (0,-1,0):1,
+                                  (1, 2,0):1,
+                                  (1, 0,0):2,
+                                  (1,-2,0):1,
+                                  (2, 1,0):1,
+                                  (2,-1,0):1};
+                qnumbers_added = {};
+                for fer_dofi in range(len(nelec_dofs)):
+                    for TwoSdz in TwoSdz_ladder:
+                        qnumber_tup = (nelec_dofs[fer_dofi],spin_dofs[fer_dofi]+TwoSdz,0);
+                        if(qnumber_tup in qnumber_degens and qnumber_tup not in qnumbers_added):
+                            print(">>>",qnumber_tup)
+                            states.append((qnumber(*qnumber_tup),qnumber_degens[qnumber_tup]));         
+                            qnumbers_added[qnumber_tup] = 1;
+                # ops dictionary
+                ops = { "":np.eye(n_fer_dof*n_imp_dof), # identity
+                       "c":reblock(fourd_c), # c_up^\dagger
+                       "d":reblock(fourd_d), # c_up
+                       "C":reblock(fourd_C), # c_down^\dagger
+                       "D":reblock(fourd_D), # c_down
+                       "Z":reblock(fourd_Sdz)    # Sz of impurity
+                       ,"P":reblock(fourd_Sdplus) # S+ on impurity
+                       ,"M":reblock(fourd_Sdminus) # S- on impurity
+                        }
+            else:
+                raise Exception("Site i = ",sitei," never caught");
+            site_states.append(states);
+            site_ops.append(ops);
 
-    # input custom site basis states and ops to driver, and build builder
-    driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
-    builder = driver.expr_builder();
-    print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
-    
-    # j <-> j+1 hopping for fermions
-    for j in all_sites[:-1]:
-        builder.add_term("cd",[j,j+1],-tl); 
-        builder.add_term("CD",[j,j+1],-tl);
-        builder.add_term("cd",[j+1,j],-tl);
-        builder.add_term("CD",[j+1,j],-tl);
+        # input custom site basis states and ops to driver, and build builder
+        driver.ghamil = driver.get_custom_hamiltonian(site_states, site_ops)
+        builder = driver.expr_builder();
+        print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
         
-    # lead coupling to impurity (REMOVE regular hopping)
-    jpairs = [(llead_sites[-1], central_sites[0]), (rlead_sites[0], central_sites[-1])];
+    # end of if(block) code
+    else:
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+    
+    # LEAD j <-> j+1 hopping for fermions
+    for lead_sites in [llead_sites, rlead_sites]:
+        for j in lead_sites[:-1]:
+            if(block):
+                builder.add_term("cd",[j,j+1],-tl); 
+                builder.add_term("CD",[j,j+1],-tl);
+                builder.add_term("cd",[j+1,j],-tl);
+                builder.add_term("CD",[j+1,j],-tl);
+            else:
+                h1e[nloc*j+0,nloc*(j+1)+0] += -tl;
+                h1e[nloc*(j+1)+0,nloc*j+0] += -tl;
+                h1e[nloc*j+1,nloc*(j+1)+1] += -tl;
+                h1e[nloc*(j+1)+1,nloc*j+1] += -tl;
+                
+        
+    # lead coupling to impurity 
+    jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[0], central_sites[1]), (central_sites[-1], rlead_sites[0])];
+    assert(len(central_sites)==2);
     for jpair in jpairs:
         jlead, jimp = jpair;
-        builder.add_term("cd",[jlead,jimp],-th+tl);
-        builder.add_term("CD",[jlead,jimp],-th+tl);
-        builder.add_term("cd",[jimp,jlead],-th+tl);
-        builder.add_term("CD",[jimp,jlead],-th+tl);
+        if(block):
+            builder.add_term("cd",[jlead,jimp],-th);
+            builder.add_term("CD",[jlead,jimp],-th);
+            builder.add_term("cd",[jimp,jlead],-th);
+            builder.add_term("CD",[jimp,jlead],-th);
+        else:
+            h1e[nloc*jlead+0,nloc*jimp+0] += -th;
+            h1e[nloc*jimp+0,nloc*jlead+0] += -th;
+            h1e[nloc*jlead+1,nloc*jimp+1] += -th;
+            h1e[nloc*jimp+1,nloc*jlead+1] += -th;            
 
     # XXZ exchange between neighboring impurities
     for j in central_sites[:-1]:
-        builder.add_term("ZZ",[j,j+1],-Jz);
-        builder.add_term("PM",[j,j+1],-Jx/2);
-        builder.add_term("MP",[j,j+1],-Jx/2);
+        if(block):
+            builder.add_term("ZZ",[j,j+1],-Jz);
+            builder.add_term("PM",[j,j+1],-Jx/2);
+            builder.add_term("MP",[j,j+1],-Jx/2);
+        else:
+            assert(Jz==0.0);
+            assert(Jx==0.0);
 
     # sd exchange between impurities and charge density on their site
     # (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0) 
     for j in central_sites:
-        # z terms
-        builder.add_term("cdZ",[j,j,j],-Jsd/2);
-        builder.add_term("CDZ",[j,j,j], Jsd/2);
-        # plus minus terms
-        builder.add_term("cDM",[j,j,j],-Jsd/2);
-        builder.add_term("CdP",[j,j,j],-Jsd/2);
+        if(block):
+            # z terms
+            builder.add_term("cdZ",[j,j,j],-Jsd/2);
+            builder.add_term("CDZ",[j,j,j], Jsd/2);
+            # plus minus terms
+            builder.add_term("cDM",[j,j,j],-Jsd/2);
+            builder.add_term("CdP",[j,j,j],-Jsd/2);
+        else:
+            assert(Jsd==0.0);
 
     # energy splitting of impurity spin
     for j in central_sites: # Delta and BFM must be same sign so t=0 is gd state
-        builder.add_term("Z",[j],-Delta);
+        if(block):
+            builder.add_term("Z",[j],-Delta);
+        else:
+            assert(Delta==0.0);
 
     # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0) ie opposite to B fields in STT, but still "added"
     # by the polarizer
     for j in llead_sites:
-        builder.add_term("cd",[j,j], Vb/2); 
-        builder.add_term("CD",[j,j], Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j], Vb/2); 
+            builder.add_term("CD",[j,j], Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += Vb/2;
     for j in rlead_sites:
-        builder.add_term("cd",[j,j],-Vb/2); 
-        builder.add_term("CD",[j,j],-Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j],-Vb/2); 
+            builder.add_term("CD",[j,j],-Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += -Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += -Vb/2;
         
     # special case terms
     if("Vg" in params_dict.keys()):
         Vg = params_dict["Vg"];
-        for j in central_sites:
-            builder.add_term("cd",[j,j], Vg);
-            builder.add_term("CD",[j,j], Vg);
+        if(block):
+            for j in central_sites:
+                builder.add_term("cd",[j,j], Vg);
+                builder.add_term("CD",[j,j], Vg);
+        else:
+            for j in central_sites:
+                h1e[nloc*j+0,nloc*j+0] += Vg;
+                h1e[nloc*j+1,nloc*j+1] += Vg;
 
-    return driver, builder;
+    if(block): return driver, builder;
+    else: return h1e, g2e;
 
 def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
@@ -925,9 +969,6 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
         
     Returns: a tuple of DMRGDriver, MPO
     '''
-    if(not block): raise NotImplementedError;
-    REMOVE = False;
-    print(">>> REMOVE = ",REMOVE)
 
     # load data from json
     Jsd, BFM, Vb = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"];
@@ -937,57 +978,65 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(NL)]);
-    central_sites = np.array([j for j in range(NL,NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(NL+NFM,Nsites)]);
+    llead_sites = np.arange(NL);
+    central_sites = np.arange(NL,NL+NFM);
+    rlead_sites = np.arange(NL+NFM,Nsites);
 
     # unpack ExprBuilder
-    driver, builder = to_add_to;
-    if(driver.n_sites != Nsites): raise ValueError;
-
-    # REMOVE Jsd (to avoid spin polarization of deloc elecs at t=0)
-    if(REMOVE):
-        for j in central_sites:
-            # z terms
-            builder.add_term("cdZ",[j,j,j], Jsd/2);
-            builder.add_term("CDZ",[j,j,j], -Jsd/2);
-            # plus minus terms
-            builder.add_term("cDM",[j,j,j], Jsd/2);
-            builder.add_term("CdP",[j,j,j], Jsd/2);
+    if(block):
+        driver, builder = to_add_to;
+        if(driver.n_sites != Nsites): raise ValueError;
+    else:
+        h1e, g2e = to_add_to;
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        if(len(h1e) != Nspinorbs): raise ValueError;
 
     # REMOVE bias
     for j in llead_sites:
-        builder.add_term("cd",[j,j],-Vb/2);
-        builder.add_term("CD",[j,j],-Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j],-Vb/2);
+            builder.add_term("CD",[j,j],-Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += -Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += -Vb/2;
     for j in rlead_sites:
-        builder.add_term("cd",[j,j], Vb/2);
-        builder.add_term("CD",[j,j], Vb/2);
+        if(block):
+            builder.add_term("cd",[j,j], Vb/2);
+            builder.add_term("CD",[j,j], Vb/2);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vb/2;
+            h1e[nloc*j+1,nloc*j+1] += Vb/2;
 
     # B field on the loc spins
-    for j in central_sites:
-        builder.add_term("Z",[j],-BFM);
+    if(block):
+        for j in central_sites:
+            builder.add_term("Z",[j],-BFM);
         
     # special case initialization
     if("BFM_first" in params_dict.keys() and len(central_sites)>0): # B field that targets 1st loc spin only
         BFM_first = params_dict["BFM_first"];
         j = central_sites[0];
-        builder.add_term("Z",[j], -BFM_first+BFM);
+        if(block):
+            builder.add_term("Z",[j], -BFM_first+BFM);
+        else:
+            assert(BFM_first==0.0);
     if("B_Heis" in params_dict.keys() and len(central_sites)>0): # prep singlet
         B_Heis = params_dict["B_Heis"];
-        for j in central_sites[:-1]:
-            builder.add_term("ZZ",[j,j+1],-B_Heis);
-            builder.add_term("PM",[j,j+1],-B_Heis/2);
-            builder.add_term("MP",[j,j+1],-B_Heis/2);
-    if("Vg" in params_dict.keys()): # REMOVE Vg for t<0
-        if(REMOVE):
-            Vg = params_dict["Vg"];
-            for j in central_sites:
-                builder.add_term("cd",[j,j], -Vg);
-                builder.add_term("CD",[j,j], -Vg);
+        if(block):
+            for j in central_sites[:-1]:
+                builder.add_term("ZZ",[j,j+1],-B_Heis);
+                builder.add_term("PM",[j,j+1],-B_Heis/2);
+                builder.add_term("MP",[j,j+1],-B_Heis/2);
+        else:
+            assert(B_Heis==0.0);
                     
     # return
-    mpo_from_builder = driver.get_mpo(builder.finalize());
-    return driver, mpo_from_builder;
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize());
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
 
 def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     '''
