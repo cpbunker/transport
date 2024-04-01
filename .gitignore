@@ -1,4 +1,4 @@
 block_scratch/*
 slurm/*
 tex.py
-data/siets
+data/siets/*
