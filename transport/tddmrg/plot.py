@@ -63,14 +63,14 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         NFM, Ne = 1, (NL+1+NR)//2;
         title_str = "$t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, U =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Vg, U, Vb);
         obs_strs = ["occ_", "sz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type=="SIETS"):
         Jsd, th, Delta, Vb = params_dict["Jsd"], params_dict["th"], params_dict["Delta"], params_dict["Vb"];
         NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$t_h = ${:.2f}$t_l$, $\Delta =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Delta, Vb);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_", "conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$","$C_{d,d+1}$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$","$C_{d,d+1}$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
@@ -124,11 +124,11 @@ def snapshot_fromdata(loadname, time, sys_type):
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
     elif(sys_type == "SIAM"):
         obs_strs = ["occ_", "sz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{Imp} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type == "SIETS"):
         obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\pi \langle J_{Imp} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");

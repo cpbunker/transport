@@ -50,11 +50,6 @@ elif(case in [1,2]): # observable as a function of time
         # CHANGE IN left lead occ vs time
         NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
         Nsites = NL+NFM+NR; 
-        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
-        yjdelta_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1) - np.sum(yjs_vs_time[:,:NL], axis=1)[0];
-        ax.plot(times, yjdelta_vs_time,color=color1,marker=datamarkers[datai]);
 
         # current vs time
         which_imp = 0;
@@ -67,24 +62,26 @@ elif(case in [1,2]): # observable as a function of time
         ax.plot(times,current_vs_time,color=color2, marker=datamarkers[datai],label=the_label);
         
         # Sdz vs time
-        Sdzs_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
-        for ti in range(len(times)):
-            Sdzs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
-        ax.plot(times,Sdzs_vs_time[:,which_imp],color=color3, marker=datamarkers[datai]);
+        if(params["sys_type"] == "SIETS"):
+            Sdzs_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+            for ti in range(len(times)):
+                Sdzs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
+            ax.plot(times,Sdzs_vs_time[:,which_imp],color=color3, marker=datamarkers[datai]);
 
 
     # formatting
-    ax.set_ylabel("$\pi \langle J_{Imp}^z \\rangle /V_b$", color=color2, fontsize=fontsize1);
+    ax.set_ylabel("$\langle G_{SR}\\rangle /G_0$", color=color2, fontsize=fontsize1);
     ax.set_title(the_title);
     time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
     ax.set_xticks(time_ticks);
     ax.set_xlim((times[0], times[-1]));
-    ax3 = ax.twinx();
-    ax3.yaxis.set_label_position("left");
-    ax3.spines.left.set_position(("axes", -0.2));
-    ax3.spines.left.set(alpha=0.0);
-    ax3.set_yticks([])
-    ax3.set_ylabel("$n_L(t) - n_L(0)$", color=color1, fontsize=fontsize1);
+    if(params["sys_type"] == "SIETS"):
+        ax3 = ax.twinx();
+        ax3.yaxis.set_label_position("left");
+        ax3.spines.left.set_position(("axes", -0.2));
+        ax3.spines.left.set(alpha=0.0);
+        ax3.set_yticks([])
+        ax3.set_ylabel("$\langle S_{d}^{z} \\rangle$", color=color3, fontsize=fontsize1);
     
     # show
     if(len(datafiles) > 1): ax.legend();
@@ -132,13 +129,13 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
             yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
         
         # plot occupancies
-        ax.plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai],label=the_label);
-        ax.plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai]);
-        ax.plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
+        #ax.plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai]);
+        ax.plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);
+        #ax.plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
         
     # formatting
-    if(difference): ax.set_ylabel("$\Delta n(t)$", color=color2, fontsize=fontsize1);
-    else: ax.set_ylabel("$n(t)$", color=color2, fontsize=fontsize1);
+    if(difference): ax.set_ylabel("$\Delta n_{SR}(t)$", color=color2, fontsize=fontsize1);
+    else: ax.set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
     ax.set_title(the_title);
     time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
     ax.set_xticks(time_ticks);

@@ -20,7 +20,7 @@ import numpy as np
 def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbose=0):
     '''
     '''
-    assert(params_dict["te_type"]=="tdvp");
+    #assert(params_dict["te_type"]=="tdvp");
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
@@ -78,7 +78,7 @@ def get_occ(eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_onehop(eris_or_driver, whichsite, block, verbose=0):
@@ -103,7 +103,7 @@ def get_onehop(eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*(whichsite+1)+1,nloc*(whichsite)+1] += 1.0;
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 
@@ -111,6 +111,7 @@ def get_occ2(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing n^2
     '''
+    raise NotImplementedError
     if(block): builder = eris_or_driver.expr_builder()
     else:
         Nspinorbs = len(eris_or_driver.h1e[0]);
@@ -142,7 +143,7 @@ def get_occ2(eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);   
 
 def get_sz(eris_or_driver, whichsite, block, verbose=0):
@@ -164,13 +165,14 @@ def get_sz(eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*whichsite+1,nloc*whichsite+1] +=-0.5;
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_sz2(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing <Sz * Sz> of site whichsite
     '''
+    #return eris_or_driver.get_spin_square_mpo(); this method works for *entire* system not site
     if(block): builder = eris_or_driver.expr_builder()
     else: 
         Nspinorbs = len(eris_or_driver.h1e[0]);
@@ -202,7 +204,7 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
         h1e[nloc*whichsite+1,nloc*whichsite+1] += 0.25;
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
@@ -244,7 +246,7 @@ def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
             g2e[nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+0] += coefs[3];
 
     # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
@@ -267,7 +269,7 @@ def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
         builder.add_term("M",[whichsite], complex(0,1));
     else: raise NotImplementedError;
 
-    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     
 def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -279,7 +281,23 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
     # construct
     builder.add_term("ZZ",[whichsite,whichsite], 1.0);
 
-    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    
+def get_SdotS(eris_or_driver, whichsites, block, verbose=0):
+    '''
+    '''
+    assert(block);
+    builder = eris_or_driver.expr_builder();
+
+    # construct
+    which1, which2 = whichsites;
+    for jpair in [[which1,which1], [which1,which2], [which2,which1], [which2,which2]]:
+        builder.add_term("ZZ",jpair,1.0);
+        builder.add_term("PM",jpair,0.5);
+        builder.add_term("MP",jpair,0.5);
+
+    # return
+    return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
 
 def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
@@ -351,7 +369,7 @@ def get_chirality(eris_or_driver, whichsites, block, symm_block, verbose=0):
     # construct
     jlist = [whichsites[0],whichsites[0],whichsites[1],whichsites[1],whichsites[2],whichsites[2]];
 
-    return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+    return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
 
 def chirality_wrapper(psi,eris_or_driver, whichsites, block):
     '''
@@ -366,9 +384,15 @@ def chirality_wrapper(psi,eris_or_driver, whichsites, block):
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
-def get_concurrence(eris_or_driver, whichsites, symm_block, block, verbose=0):
+def get_concurrence(eris_or_driver, whichsites, symm_block, add_ident, block, verbose=0):
     '''
-    MPO for concurrence
+    MPO corresponding to the action of the operator
+    \sigma_y^1 \otimes \sigma_y^2 
+    where 1, 2 denote the impurity spins, which in this case must be spin-1/2
+    This operator is needed to compute concurrence and pseudoconcurrence, below
+    
+    Since the full form of this operator does not conserve total TwoSz, we break it up
+    into blocks which do, and only return one of such "symmetry blocks" at a time
     '''
     assert(block);
     builder = eris_or_driver.expr_builder()
@@ -385,31 +409,76 @@ def get_concurrence(eris_or_driver, whichsites, symm_block, block, verbose=0):
     else: raise NotImplementedError;
 
     # return
-    return eris_or_driver.get_mpo(builder.finalize(),add_ident=False, iprint=verbose);
+    #print("\n"*20)
+    from pyblock2.driver.core import MPOAlgorithmTypes
+    ret = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"),add_ident=add_ident, iprint=0)# cutoff=0.0, algo_type=MPOAlgorithmTypes.SVD, iprint=2);
+    #print(type(ret))
+    #print(type(ret.prim_mpo))
+    #assert False
+    return ret
 
 def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     '''
-    Sums ops made by get_concurrence from TwoSz=+2, 0, -2 symmetry blocks to find concurrence
-
-    NB since get_concurrence ops are def'd in terms of P,M,Z operators, cannot get
-    concurrence between two fermionic spins or between fermionic spin and imp spin
+    Concurrence is defined by Eqs 4 and 7 of https://doi.org/10.1103/PhysRevLett.80.2245
+    It involes taking the complex conjugate of the coefficients of the ket |\psi> (this 
+    is NOT the same as taking the bra, which complex conjugates the coefficients AND takes
+    the basis states from kets to bras). As far as I can tell, complex conjugating the ket
+    coefficients is possible only in pyblock3, not block2
+    C=1 is maximal entanglement
+    
+    Sums expectation values across TwoSz=+2, 0, -2 symmetry blocks to find concurrence
 
     NB also for s>1/2 we will need to define which levels are the qubits
     '''
-    if(whichsites[0] == whichsites[1]): return np.nan;
+    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
 
     # block3 MPS
-    psi_b3 = MPSTools.from_block2(psi); #  block 3 mps
-    psi_star = psi_b3.conj(); # so now we can do this operation
+    psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
+    psi_star = psi_b3.conj(); # enables this operation, which complex conjugates the coefficients of the ket
 
     # exp vals across symmetry blocks
     sblocks = [-2,0,2];
     sterms = [];
     for sblock in sblocks:
-        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, block);
+        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, False, block);
         concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
-        sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/np.dot(psi_b3.conj(),psi_b3) );
-    concur_norm = np.sum(sterms);
+        norm_b3 = np.dot(psi_b3.conj(),psi_b3);
+        sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/norm_b3 );
+    print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
+    ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    return np.real(ret);
+    
+def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=True):
+    '''
+    I call this the "pseudo-concurrence", meaning we construct the same \sigma_y^1 \otimes \sigma_y^2 
+    MPO as in the concurrence above, but we do not take the complex conjugate of the ket coefficients
+    anymore (thus we do not have to use pyblock3 at all!)
+    In other words this is just a normal expectation value of the operator produced by get_concurrence
+    Pseudococncurrence only measures entanglement when all the ket coefficients are real valued!
+    '''
+    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
+    
+    # exp vals across symmetry blocks
+    sblocks = [-2,0,2];
+    sterms = [];
+    if(use_b3): # use pyblock3 to calculate
+        psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
+        for sblock in sblocks:
+            mpo = get_concurrence(eris_or_driver, whichsites, sblock, False, block);
+            mpo_b3 = MPOTools.from_block2(mpo); # convert the MPO to pyblock3
+            # pyblock3 construction for determining the expectation value of an MPO:
+            norm_b3 = np.dot(psi_b3.conj(),psi_b3);
+            sterms.append( np.dot(psi_b3.conj(), mpo_b3 @ psi_b3)/norm_b3 );
+
+    else: # use block2 to calculate
+        for sblock in sblocks:
+            concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
+            # since complex conjugation of the state is not required, we can use
+            # the normal block2 construction for determining the expectation value of an MPO
+            sterms.append( compute_obs(psi, concur_mpo, eris_or_driver));
+
+    print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
@@ -443,7 +512,7 @@ def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
         builder = eris_or_driver.expr_builder();
         builder.add_term(spinstr, whichsites, complex(0,-1)); # c on left, d on right = negative particle current
         builder.add_term(spinstr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive particle current
-        return eris_or_driver.get_mpo(builder.finalize(), iprint=verbose);
+        return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: # construct ERIs
         Nspinorbs = len(eris_or_driver.h1e[0]);
         nloc = 2;
@@ -900,8 +969,6 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             assert(Jx==0.0);
 
     # sd exchange between impurities and charge density on their site
-    # (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
-    # and PRESENT at t>0) 
     for j in central_sites:
         if(block):
             # z terms
@@ -1033,7 +1100,7 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
                     
     # return
     if(block):
-        mpo_from_builder = driver.get_mpo(builder.finalize());
+        mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;
@@ -1203,13 +1270,9 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("cdZ",[j,j,j],-Jsd/2);
         builder.add_term("CDZ",[j,j,j], Jsd/2);
         # plus minus terms
-        if("Jsd_pm" in params_dict.keys()):
-            Jsd_pm = params_dict["Jsd_pm"];
-            print("\n\n\n","*"*40,"\n Jsd_pm override\n\n\n");
-        else:
-            Jsd_pm = 1*Jsd;
-        builder.add_term("cDM",[j,j,j],-Jsd_pm/2);
-        builder.add_term("CdP",[j,j,j],-Jsd_pm/2);
+        builder.add_term("cDM",[j,j,j],-Jsd/2);
+        builder.add_term("CdP",[j,j,j],-Jsd/2);
+        #pass;
 
     return driver, builder;
 
@@ -1280,7 +1343,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         builder.add_term("CD",[j,j], Bsd/2);
 
     # return
-    mpo_from_builder = driver.get_mpo(builder.finalize());
+    mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
     return driver, mpo_from_builder;
  
     # special case initialization
@@ -1288,9 +1351,5 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         Bsd_x = params_dict["Bsd_x"];
         s = central_sites[0];
         builder.add_term("cD",[s,s],-Bsd_x/2);
-    if("Bcentral" in params_dict.keys()): # B field on all js coupled to loc spins
-        Bcentral = params_dict["Bcentral"];
-        for s in central_sites:
-            builder.add_term(spin_strs[0],[s,s],-Bcentral/2);
-            builder.add_term(spin_strs[1],[s,s], Bcentral/2);
+
 
