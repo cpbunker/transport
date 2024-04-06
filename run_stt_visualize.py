@@ -78,8 +78,8 @@ if(case in [1,2]): # observable as a function of time
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
     else: # plot concurrence
-        obs4, color4 = "conc_", "black";
-        label4 = "$\langle C_{d,d+1} \\rangle$";
+        obs4, color4 = "pconc_", "black";
+        label4 = "$\langle pC_{d,d+1} \\rangle$";
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
@@ -189,11 +189,11 @@ if(case in [10]): # animate time evol
     ax3.set_yticks([])
     ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
 
-    # plot concurrence
-    obs4, color4, label4 = "conc_", "black", "$\langle C_{d,d+1} \\rangle$";
+    # plot (S1+S2)^2 /2
+    obs4, color4, label4 = "S2_", "black", "$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $";
     xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
-    yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
-    conc, = ax.plot(xds_4,yds_4,marker="^",color=color4);
+    yds_4 = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
+    S2, = ax.plot(xds_4,yds_4,marker="^",color=color4);
     ax4 = ax.twinx();
     ax4.yaxis.set_label_position("right");
     ax4.spines.right.set_position(("axes", 1.05));
@@ -216,9 +216,9 @@ if(case in [10]): # animate time evol
         # spin density
         yjs_3_t = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time));
         spin_density.set_ydata(yjs_3_t);
-        # concurrence
-        yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
-        conc.set_ydata(yds_4_t);
+        # (S1+S2)^2 / 2
+        yds_4_t = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
+        S2.set_ydata(yds_4_t);
 
     # animate
     if(Nupdates > 0): interval = 1000*(10/Nupdates); # so total animation time is 10 sec

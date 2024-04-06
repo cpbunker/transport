@@ -283,7 +283,7 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
 
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     
-def get_SdotS(eris_or_driver, whichsites, block, verbose=0):
+def get_S2(eris_or_driver, whichsites, block, verbose=0):
     '''
     '''
     assert(block);
@@ -298,6 +298,16 @@ def get_SdotS(eris_or_driver, whichsites, block, verbose=0):
 
     # return
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    
+def S2_wrapper(psi, eris_or_driver, whichsites, block):
+    '''
+    '''
+    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
+    
+    op = get_S2(eris_or_driver, whichsites, block);
+    ret = compute_obs(psi, op, eris_or_driver);
+    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    return np.real(ret);
 
 def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
@@ -431,6 +441,7 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     NB also for s>1/2 we will need to define which levels are the qubits
     '''
     if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
+    raise NotImplementedError; # not trusted
 
     # block3 MPS
     psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
@@ -449,13 +460,13 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
     
-def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=True):
+def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=False):
     '''
     I call this the "pseudo-concurrence", meaning we construct the same \sigma_y^1 \otimes \sigma_y^2 
     MPO as in the concurrence above, but we do not take the complex conjugate of the ket coefficients
     anymore (thus we do not have to use pyblock3 at all!)
     In other words this is just a normal expectation value of the operator produced by get_concurrence
-    Pseudococncurrence only measures entanglement when all the ket coefficients are real valued!
+    Pseudoconcurrence only measures entanglement when all the ket coefficients are real valued!
     '''
     if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
     
@@ -478,7 +489,7 @@ def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=True
             # the normal block2 construction for determining the expectation value of an MPO
             sterms.append( compute_obs(psi, concur_mpo, eris_or_driver));
 
-    print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
+    #print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);

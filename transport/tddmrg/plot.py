@@ -18,15 +18,16 @@ def vs_site(js,psi,eris_or_driver,which_obs, block, prefactor):
     '''
     if(not isinstance(prefactor, float)): raise TypeError;
     obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sd_mu, 
-            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper,
-            "G_":tddmrg.conductance_wrapper};
+            "pur_":tddmrg.purity_wrapper, "G_":tddmrg.conductance_wrapper,
+            "conc_":tddmrg.concurrence_wrapper, "pconc_":tddmrg.pseudoconcurrence_wrapper,
+            "S2_":tddmrg.S2_wrapper};
     if(block): compute_func = tddmrg.compute_obs;
     else: compute_func = tdfci.compute_obs;
 
     # site array
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs in ["conc_"]): 
+        if(which_obs in ["conc_","pconc_", "S2_"]): 
             if(ji!=len(js)-1): vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
             else: vals[ji] = np.nan; # since concur = C(d,d+1), we cannot compute C for the final d site.
         elif(which_obs in ["pur_","G_"]):
@@ -55,9 +56,9 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+        obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0],[2.0,0.0]];
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
@@ -82,7 +83,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] not in ["Sdz_","conc_","pur_", "G_"]): js_pass = all_sites;
+            if(obs_strs[obsi] not in ["Sdz_","pur_", "G_","pconc_","S2_",]): js_pass = all_sites;
             else: js_pass = central_sites;
             if(obs_strs[obsi] in ["G_"]): 
                 prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
@@ -90,7 +91,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             else: prefactor = 1.0;
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
-                               label = ("DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])));
+                               label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
 
             # save DMRG data
@@ -107,7 +108,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title(title_str);
     plt.tight_layout();
-    if(plot_fig): pass #plt.show();
+    if(plot_fig): plt.show() #pass #plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
@@ -119,9 +120,9 @@ def snapshot_fromdata(loadname, time, sys_type):
     
     # plot charge and spin vs site
     if(sys_type == "STT"):
-        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+        obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0],[2.0,0.0]];
     elif(sys_type == "SIAM"):
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
