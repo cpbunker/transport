@@ -641,7 +641,7 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     NL, NR = params_dict["NL"], params_dict["NR"];
     Nsites = NL+1+NR;
     Ne=Nsites;
-    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    if(block): assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
     TwoSz = 0;
 
     # classify site indices (spin not included)
@@ -954,8 +954,11 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
                 
         
     # lead coupling to impurity 
-    jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[0], central_sites[1]), (central_sites[-1], rlead_sites[0])];
-    assert(len(central_sites)==2);
+    if(len(central_sites)==2):
+        jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[0], central_sites[1]), (central_sites[-1], rlead_sites[0])];
+    elif(len(central_sites)==1):
+        jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[-1], rlead_sites[0])];
+    else: raise NotImplementedError;
     for jpair in jpairs:
         jlead, jimp = jpair;
         if(block):
@@ -1049,7 +1052,7 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
 
     # load data from json
-    Jsd, BFM, Vb = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"];
+    Jsd, BFM, Vb, th = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"], params_dict["th"];
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
 
     # fermionic sites and spin
@@ -1092,6 +1095,26 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("Z",[j],-BFM);
         
     # special case initialization
+    if("thquench" in params_dict.keys() and (params_dict["thquench"]>0)):
+        # REMOVE lead coupling to impurity at time 0
+        thquench = params_dict["thquench"];
+        if(len(central_sites)==2):
+            jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[0], central_sites[1]), (central_sites[-1], rlead_sites[0])];
+        elif(len(central_sites)==1):
+            jpairs = [(llead_sites[-1], central_sites[0]), (central_sites[-1], rlead_sites[0])];
+        else: raise NotImplementedError;
+        for jpair in jpairs:
+            jlead, jimp = jpair;
+            if(block):
+                builder.add_term("cd",[jlead,jimp], th-thquench);
+                builder.add_term("CD",[jlead,jimp], th-thquench);
+                builder.add_term("cd",[jimp,jlead], th-thquench);
+                builder.add_term("CD",[jimp,jlead], th-thquench);
+            else:
+                h1e[nloc*jlead+0,nloc*jimp+0] +=  th-thquench;
+                h1e[nloc*jimp+0,nloc*jlead+0] +=  th-thquench;
+                h1e[nloc*jlead+1,nloc*jimp+1] +=  th-thquench;
+                h1e[nloc*jimp+1,nloc*jlead+1] +=  th-thquench; 
     if("BFM_first" in params_dict.keys() and len(central_sites)>0): # B field that targets 1st loc spin only
         BFM_first = params_dict["BFM_first"];
         j = central_sites[0];

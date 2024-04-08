@@ -18,7 +18,7 @@ obs1, color1, ticks1, linewidth1, fontsize1 = "occ_", "cornflowerblue", (-1.0,-0
 obs2, color2 = "G_", "darkred";
 obs3, color3 = "Sdz_", "darkgreen";
 num_xticks = 4;
-datamarkers = ["s","^","d","*"]
+datamarkers = ["s","^","d","*"];
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -46,20 +46,24 @@ elif(case in [1,2]): # observable as a function of time
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = time0 + ti*tupdate;
-            
-        # CHANGE IN left lead occ vs time
-        NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
-        Nsites = NL+NFM+NR; 
 
         # current vs time
+        NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
+        Nsites = NL+NFM+NR; 
         which_imp = 0;
-        yds_vs_time = np.zeros((len(times),params["NFM"]+1),dtype=float);
+        yds_vs_time = np.zeros((len(times),NFM+1),dtype=float);
         for ti in range(len(times)):
             dummy_current = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
             print(np.shape(dummy_current));
             yds_vs_time[ti] = dummy_current[:];
-        current_vs_time = (yds_vs_time[:,0]+yds_vs_time[:,-1])/2;
-        ax.plot(times,current_vs_time,color=color2, marker=datamarkers[datai],label=the_label);
+            
+        # plot averaged or separated current
+        if(case in [1]): # averaged
+            current_vs_time = (yds_vs_time[:,0]+yds_vs_time[:,-1])/2;
+            ax.plot(times,current_vs_time,color=color2, marker=datamarkers[datai],label=the_label);
+        elif(case in [2]):
+            ax.plot(times,yds_vs_time[:,0], color=color2, marker=datamarkers[datai], label=the_label);
+            ax.plot(times,yds_vs_time[:,-1], color=color2, linestyle="dashed",  marker=datamarkers[datai], label=the_label);
         
         # Sdz vs time
         if(params["sys_type"] == "SIETS"):
@@ -93,8 +97,8 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     else: difference = False;
 
     # axes
-    fig, ax = plt.subplots();
-    ax.set_xlabel("Time $(\hbar/t_l)$");
+    fig, axes = plt.subplots(2, sharex=True);
+    axes[-1].set_xlabel("Time $(\hbar/t_l)$");
 
     # plot observables for EACH datafile
     for datai in range(len(datafiles)):
@@ -127,22 +131,39 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
             yjSR_vs_time = yjSR_vs_time - yjSR_vs_time[0];
             print("RL n(0) = {:.4f}".format(yjR_vs_time[0]));
             yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
+            axes[0].set_ylim(0.0,0.01);
         
         # plot occupancies
-        #ax.plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai]);
-        ax.plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);
-        #ax.plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
+        #axes[0].plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai]);
+        axes[0].plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);
+        #axes[0].plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
         
+        # plot discrete time deriv of SR occ
+        dt = params["tupdate"]
+        ddt_SR = np.gradient(yjSR_vs_time, dt)
+        axes[1].plot(times, -ddt_SR, color=color2, marker=datamarkers[datai], label="$-\\frac{n_{SR}(t+dt) - n_{SR}(t-dt)}{2dt}$"+" (dt={:.1f})".format(dt));
+        
+         # load current vs time data
+        yds_vs_time = np.zeros((len(times),NFM+1),dtype=float);
+        for ti in range(len(times)):
+            dummy_current = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+            print(np.shape(dummy_current));
+            yds_vs_time[ti] = dummy_current[:];
+            
+        # plot discrete spatial deriv of current
+        del_current = (params["Vb"]/np.pi)*(yds_vs_time[:,-1]-yds_vs_time[:,0]); # convert units from conductance to current
+        axes[1].plot(times,del_current, color=color3, marker=datamarkers[datai], label="$\\frac{J(j+1) - J(j)}{a}$");
+             
     # formatting
-    if(difference): ax.set_ylabel("$\Delta n_{SR}(t)$", color=color2, fontsize=fontsize1);
-    else: ax.set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
-    ax.set_title(the_title);
+    if(difference): axes[0].set_ylabel("$\Delta n_{SR}(t)$", color=color2, fontsize=fontsize1);
+    else: axes[0].set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
+    axes[0].set_title(the_title);
     time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
-    ax.set_xticks(time_ticks);
-    ax.set_xlim((times[0], times[-1]));
+    axes[-1].set_xticks(time_ticks);
+    axes[-1].set_xlim((times[0], times[-1]));
 
     # show
-    if(len(datafiles) > 1): ax.legend();
+    axes[1].legend();
     plt.tight_layout();
     plt.show();
 

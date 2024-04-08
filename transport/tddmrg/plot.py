@@ -62,14 +62,14 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
-        title_str = "$t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, U =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Vg, U, Vb);
+        title_str = "$U =${:.2f}$t_l, t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(U, th, Vg, Vb);
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type=="SIETS"):
         Jsd, th, Delta, Vb = params_dict["Jsd"], params_dict["th"], params_dict["Delta"], params_dict["Vb"];
         NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
-        title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$t_h = ${:.2f}$t_l$, $\Delta =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Delta, Vb);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$t_h = ${:.2f}$t_l$, $V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, V_g, Vb);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_", "conc_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$","$C_{d,d+1}$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
@@ -83,7 +83,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] not in ["Sdz_","pur_", "G_","pconc_","S2_",]): js_pass = all_sites;
+            if(obs_strs[obsi] not in ["Sdz_","pur_", "G_","conc_", "pconc_","S2_",]): js_pass = all_sites;
             else: js_pass = central_sites;
             if(obs_strs[obsi] in ["G_"]): 
                 prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
@@ -95,7 +95,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
 
             # save DMRG data
-            if((not plot_fig) and block):
+            if(not plot_fig):
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
 
