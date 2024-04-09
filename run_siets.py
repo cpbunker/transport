@@ -136,4 +136,4 @@ H_driver_dyn, H_builder_dyn = tddmrg.H_SIETS_builder(params, is_block, scratch_d
 if(is_block):
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
     tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,gdstate_mps_inst,
-                  check_observables,json_name, verbose=1) # set to 2 to see mmps
+                  check_observables,json_name, verbose=2) # set to 2 to see mmps

@@ -427,7 +427,7 @@ def get_concurrence(eris_or_driver, whichsites, symm_block, add_ident, block, ve
     #assert False
     return ret
 
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
+def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
     '''
     Concurrence is defined by Eqs 4 and 7 of https://doi.org/10.1103/PhysRevLett.80.2245
     It involes taking the complex conjugate of the coefficients of the ket |\psi> (this 
@@ -441,20 +441,30 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block):
     NB also for s>1/2 we will need to define which levels are the qubits
     '''
     if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
-    raise NotImplementedError; # not trusted
-
-    # block3 MPS
-    psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
-    psi_star = psi_b3.conj(); # enables this operation, which complex conjugates the coefficients of the ket
+    #raise NotImplementedError; # not trusted
 
     # exp vals across symmetry blocks
     sblocks = [-2,0,2];
     sterms = [];
-    for sblock in sblocks:
-        concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, False, block);
-        concur_mpo_b3 = MPOTools.from_block2(concur_mpo);
-        norm_b3 = np.dot(psi_b3.conj(),psi_b3);
-        sterms.append( np.dot(psi_b3.conj(), concur_mpo_b3 @ psi_star)/norm_b3 );
+    if(use_b3): # use pyblock3 to calculate
+        psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
+        psi_star = psi_b3.conj(); # complex conjugates coefs of ket
+        for sblock in sblocks:
+            mpo = get_concurrence(eris_or_driver, whichsites, sblock, False, block);
+            mpo_b3 = MPOTools.from_block2(mpo); # convert the MPO to pyblock3
+            # pyblock3 construction for determining the expectation value of an MPO:
+            norm_b3 = np.dot(psi_b3.conj(),psi_b3);
+            sterms.append( np.dot(psi_b3.conj(), mpo_b3 @ psi_star)/norm_b3 );
+
+    else: # use block2 to calculate
+        for sblock in sblocks:
+            psi_star = eris_or_driver.copy_mps(psi, tag="PSI-STAR");
+            psi_star.conjugate(); # in-place
+            mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
+            # since complex conjugation of the state is not required, we can use
+            # the normal block2 construction for determining the expectation value of an MPO
+            norm = eris_or_driver.expectation(psi, eris_or_driver.get_identity_mpo(), psi);
+            sterms.append(eris_or_driver.expectation(psi, mpo, psi_star)/norm)
     print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
@@ -484,10 +494,10 @@ def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=Fals
 
     else: # use block2 to calculate
         for sblock in sblocks:
-            concur_mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
+            mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
             # since complex conjugation of the state is not required, we can use
             # the normal block2 construction for determining the expectation value of an MPO
-            sterms.append( compute_obs(psi, concur_mpo, eris_or_driver));
+            sterms.append( compute_obs(psi, mpo, eris_or_driver)); # already/norm
 
     #print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));

@@ -54,8 +54,8 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         S2_dmrg = tddmrg.compute_obs(psi, S2_mpo, eris_or_driver);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
         # concurrence between 
-        #C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
-        #print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
+        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
+        print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
         # pseudo concurrence between 
         pC_dmrg = tddmrg.pseudoconcurrence_wrapper(psi, eris_or_driver, the_sites, block);
         print("<pC"+str(the_sites)+">= {:.6f}".format(pC_dmrg));
