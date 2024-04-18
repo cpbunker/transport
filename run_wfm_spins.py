@@ -118,7 +118,7 @@ if True: # T+ at different Delta E by changing D
 
             # energy
             Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-            Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+            Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
 
             # get R, T coefs
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source, all_debug = False);

@@ -59,7 +59,7 @@ if False: # compare T vs rhoJa for N not fixed
 
         # energy
         Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-        Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+        Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
         
         # location of impurities, fixed by kx0 = pi
         k_rho = np.arccos(Energy/(-2*tl)); # = ka since \varepsilon_0ss = 0
@@ -104,7 +104,7 @@ if False: # compare T vs rhoJa for N=2 fixed
 
         # energy
         Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-        Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+        Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
         
         # optical distances, N = 2 fixed
         N0 = 1; # N0 = N - 1

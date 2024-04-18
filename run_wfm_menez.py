@@ -103,7 +103,7 @@ if True:
 
             # energy
             Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-            Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+            Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
 
             # R and T
             # kernel returns R[beta], T[beta] at given E
