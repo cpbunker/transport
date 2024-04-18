@@ -76,9 +76,9 @@ verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
 params = json.load(open(json_name)); print(">>> Params = ",params);
-block = True;
+is_block = True;
 if("tdfci" in params.keys()):
-    if(params["tdfci"]==1): block=False;
+    if(params["tdfci"]==1): is_block=False;
 
 # unpacking
 myNL, myNR = params["NL"], params["NR"];
@@ -94,13 +94,13 @@ pass;
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.H_SIAM_builder(params, block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+H_driver, H_builder = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), block, verbose=verbose);
+H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
     
 # gd state
-if(block):
+if(is_block):
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                          bond_dim=params["bdim_0"][0] )
     gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
@@ -110,13 +110,16 @@ if(block):
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 else:
     H_1e, H_2e = np.copy(H_driver), np.copy(H_mpo_initial); # H_SIAM_polarizer output with block=False
-    print("H_1e = ");print(H_1e[:nloc*myNL,:nloc*myNL]);print(H_1e[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);print(H_1e[nloc*(myNL+1):,nloc*(myNL+1):]); 
+    print("H_1e = ");
+    print(H_1e[:nloc*myNL,:nloc*myNL]);
+    print(H_1e[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);
+    print(H_1e[nloc*(myNL+1):,nloc*(myNL+1):]); 
 
     # gd state
     gdstate_mps_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=1, verbose=0);
     H_eris = tdfci.ERIs(H_1e, H_2e, gdstate_scf_inst.mo_coeff);
     eris_or_driver = H_eris;
-    print("Ground state energy (FCI) = {:.6f}".format(gdstate_E))
+    print("Ground state energy (FCI) = {:.6f}".format(gdstate_E));
 
 
 init_end = time.time();
@@ -128,15 +131,15 @@ print(">>> Init compute time = "+str(init_end-init_start));
 mytime=0;
 
 # plot observables
-check_observables(params, gdstate_mps_inst, H_driver, H_mpo_initial, mytime, block);
+check_observables(params, gdstate_mps_inst, H_driver, H_mpo_initial, mytime, is_block);
 plot.snapshot_bench(gdstate_mps_inst, eris_or_driver,
-        params, json_name, mytime, block); 
+        params, json_name, mytime, is_block); 
 
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.H_SIAM_builder(params, block, scratch_dir=json_name, verbose=verbose);
-if(block):
+H_driver_dyn, H_builder_dyn = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+if(is_block):
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
     tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,gdstate_mps_inst,
                   check_observables,json_name, verbose=2) # set to 2 to see mmps
@@ -152,6 +155,6 @@ else:
     for update in range(1,Nupdates+1):
         mytime += time_stop;
         t_ci_inst = tdfci.kernel(t_ci_inst, H_eris_dyn, time_stop, time_step);
-        check_observables(params, t_ci_inst, H_driver, H_mpo_initial, mytime, block);
-        plot.snapshot_bench(t_ci_inst, eris_or_driver, params, json_name, mytime, block);
+        check_observables(params, t_ci_inst, H_driver, H_mpo_initial, mytime, is_block);
+        plot.snapshot_bench(t_ci_inst, eris_or_driver, params, json_name, mytime, is_block);
 

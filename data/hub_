@@ -1,6 +1,0 @@
-{
-"is_ring":1, "is_triangular":1,
-"Nsites":3, "Ne":3,
-"tl":1.0, "Vg":0.0,"U":10.0,
-"Bx":1e-7, "Bz":-1e-6
-}

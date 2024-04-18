@@ -19,6 +19,7 @@ obs2, color2 = "occ_", "cornflowerblue";
 obs3, color3 = "sz_", "darkblue";
 obs4, color4 = "pur_", "gray";
 num_xticks = 4;
+datamarkers = ["s","^","d","*"];
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -78,8 +79,8 @@ if(case in [1,2]): # observable as a function of time
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
     else: # plot concurrence
-        obs4, color4 = "conc_", "black";
-        label4 = "$\langle C_{d,d+1} \\rangle$";
+        obs4, color4 = "pconc_", "black";
+        label4 = "$\langle pC_{d,d+1} \\rangle$";
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
@@ -145,6 +146,64 @@ if(case in [3,4]): # observable as a function of time
     # show
     plt.tight_layout();
     plt.show();
+    
+elif(case in [5,6]): # left lead, SR, right lead occupancy as a function of time
+    if(case in [6]): difference=True;
+    else: difference = False;
+
+    # axes
+    fig, ax = plt.subplots();
+    ax.set_xlabel("Time $(\hbar/t_l)$");
+
+    # plot observables for EACH datafile
+    for datai in range(len(datafiles)):
+        params = json.load(open(datafiles[datai]+".txt"));
+        title_or_label = open(datafiles[datai]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:];
+        if(len(datafiles)==1): the_title = title_or_label[:]; the_label = "";
+        else: the_title = ""; the_label = title_or_label[:];
+
+        # time evolution params
+        tupdate = params["tupdate"];
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = time0 + ti*tupdate;
+            
+        # occ vs time
+        NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
+        Nsites = NL+NFM+NR; 
+        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
+        for ti in range(len(times)):
+            yjs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+
+        # break up occupancies
+        yjL_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1);
+        yjSR_vs_time = np.sum(yjs_vs_time[:,NL:NL+NFM], axis=1);
+        yjR_vs_time = np.sum(yjs_vs_time[:,NL+NFM:], axis=1);
+        if(difference): # only plot change in occupancy
+            print("LL n(0) = {:.4f}".format(yjL_vs_time[0]));
+            yjL_vs_time = yjL_vs_time - yjL_vs_time[0];
+            print("SR n(0) = {:.4f}".format(yjSR_vs_time[0]));
+            yjSR_vs_time = yjSR_vs_time - yjSR_vs_time[0];
+            print("RL n(0) = {:.4f}".format(yjR_vs_time[0]));
+            yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
+        
+        # plot occupancies
+        ax.plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai]);
+        ax.plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);
+        ax.plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
+        
+    # formatting
+    if(difference): ax.set_ylabel("$\Delta n_{SR}(t)$", color=color2, fontsize=fontsize1);
+    else: ax.set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
+    ax.set_title(the_title);
+    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
+    ax.set_xticks(time_ticks);
+    ax.set_xlim((times[0], times[-1]));
+
+    # show
+    if(len(datafiles) > 1): ax.legend();
+    plt.tight_layout();
+    plt.show();
 
 if(case in [10]): # animate time evol
     datafile = datafiles[0];
@@ -189,11 +248,11 @@ if(case in [10]): # animate time evol
     ax3.set_yticks([])
     ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
 
-    # plot concurrence
-    obs4, color4, label4 = "conc_", "black", "$\langle C_{d,d+1} \\rangle$";
+    # plot (S1+S2)^2 /2
+    obs4, color4, label4 = "S2_", "black", "$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $";
     xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
-    yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
-    conc, = ax.plot(xds_4,yds_4,marker="^",color=color4);
+    yds_4 = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
+    S2, = ax.plot(xds_4,yds_4,marker="^",color=color4);
     ax4 = ax.twinx();
     ax4.yaxis.set_label_position("right");
     ax4.spines.right.set_position(("axes", 1.05));
@@ -216,9 +275,9 @@ if(case in [10]): # animate time evol
         # spin density
         yjs_3_t = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time));
         spin_density.set_ydata(yjs_3_t);
-        # concurrence
-        yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
-        conc.set_ydata(yds_4_t);
+        # (S1+S2)^2 / 2
+        yds_4_t = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
+        S2.set_ydata(yds_4_t);
 
     # animate
     if(Nupdates > 0): interval = 1000*(10/Nupdates); # so total animation time is 10 sec

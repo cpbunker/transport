@@ -198,8 +198,6 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     for sitei in range(len(sz_vals)):
         occ_mpo = tddmrg.get_occ(eris_or_driver, sitei, block);
         occ_vals[sitei] += compute_func(psi, occ_mpo, eris_or_driver);
-        occ2_mpo = tddmrg.get_occ2(eris_or_driver, sitei, block);
-        occ2_vals[sitei] += compute_func(psi, occ2_mpo, eris_or_driver);
         sz_mpo = tddmrg.get_sz(eris_or_driver, sitei, block);
         sz_vals[sitei] += compute_func(psi, sz_mpo, eris_or_driver);
         sz2_mpo = tddmrg.get_sz2(eris_or_driver, sitei, block);
@@ -208,8 +206,6 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
         onehop_vals[0] = compute_func(psi, onehop_mpo, eris_or_driver);
     for sitei in range(len(occ_vals)):
         print("<n   j={:.0f}> = {:.8f}".format(sitei, occ_vals[sitei]));
-    for sitei in range(len(occ2_vals)):
-        print("<n^2 j={:.0f}> = {:.8f}".format(sitei, occ2_vals[sitei]));
     print("Total <n> = {:.8f}".format(np.sum(occ_vals)));
     for sitei in range(len(sz_vals)):
         print("<sz  j={:.0f}> = {:.8f}".format(sitei, sz_vals[sitei]));

@@ -18,16 +18,16 @@ def vs_site(js,psi,eris_or_driver,which_obs, block, prefactor):
     '''
     if(not isinstance(prefactor, float)): raise TypeError;
     obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sd_mu, 
-            "conc_":tddmrg.concurrence_wrapper, "pur_":tddmrg.purity_wrapper,
-            "G_":tddmrg.conductance_wrapper};
+            "pur_":tddmrg.purity_wrapper, "G_":tddmrg.conductance_wrapper,
+            "conc_":tddmrg.concurrence_wrapper, "pconc_":tddmrg.pseudoconcurrence_wrapper,
+            "S2_":tddmrg.S2_wrapper};
     if(block): compute_func = tddmrg.compute_obs;
     else: compute_func = tdfci.compute_obs;
-
 
     # site array
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs in ["conc_"]): 
+        if(which_obs in ["conc_","pconc_", "S2_"]): 
             if(ji!=len(js)-1): vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],block);
             else: vals[ji] = np.nan; # since concur = C(d,d+1), we cannot compute C for the final d site.
         elif(which_obs in ["pur_","G_"]):
@@ -43,7 +43,7 @@ def vs_site(js,psi,eris_or_driver,which_obs, block, prefactor):
 def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True):
     '''
     '''
-    assert(isinstance(block, bool));
+    if(not isinstance(block, bool)): raise TypeError;
 
     # unpack
     sys_type = params_dict["sys_type"];
@@ -56,22 +56,22 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+        obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0],[2.0,0.0]];
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
-        title_str = "$t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, U =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Vg, U, Vb);
+        title_str = "$U =${:.2f}$t_l, t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(U, th, Vg, Vb);
         obs_strs = ["occ_", "sz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type=="SIETS"):
-        Jsd, Jx, Jz, Delta, Vb = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"], params_dict["Delta"], params_dict["Vb"];
+        Jsd, th, Delta, Vg, Vb = params_dict["Jsd"], params_dict["th"], params_dict["Delta"], params_dict["Vg"], params_dict["Vb"];
         NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
-        title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $\Delta =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(Jx, Jz, Delta, Vb);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(Jsd)+"$t_h = ${:.2f}$t_l$, $V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(th, Vg, Vb);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_", "conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\pi \langle J_{"+str(NL)+"} \\rangle/V_b$","$C_{d,d+1}$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$","$C_{d,d+1}$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
@@ -83,7 +83,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
-            if(obs_strs[obsi] not in ["Sdz_","conc_","pur_", "G_"]): js_pass = all_sites;
+            if(obs_strs[obsi] not in ["Sdz_","pur_", "G_","conc_", "pconc_","S2_",]): js_pass = all_sites;
             else: js_pass = central_sites;
             if(obs_strs[obsi] in ["G_"]): 
                 prefactor = np.pi*params_dict["th"]/params_dict["Vb"];
@@ -91,11 +91,11 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             else: prefactor = 1.0;
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
-                               label = ("DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])));
+                               label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
 
             # save DMRG data
-            if(block and (not plot_fig)):
+            if(not plot_fig):
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
 
@@ -108,7 +108,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title(title_str);
     plt.tight_layout();
-    if(plot_fig): pass #plt.show();
+    if(plot_fig): plt.show() #pass #plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
@@ -120,16 +120,16 @@ def snapshot_fromdata(loadname, time, sys_type):
     
     # plot charge and spin vs site
     if(sys_type == "STT"):
-        obs_strs = ["occ_","sz_","Sdz_","pur_","conc_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$C_{d,d+1}$"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0]];
+        obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0],[2.0,0.0]];
     elif(sys_type == "SIAM"):
         obs_strs = ["occ_", "sz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\pi \langle J_{Imp} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type == "SIETS"):
         obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\pi \langle J_{Imp} \\rangle/V_b$"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");

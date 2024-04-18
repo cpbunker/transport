@@ -1,8 +1,8 @@
 {
 "sys_type":"SIETS","symmetry":"Sz","plot":0,
-"tl":1.0, "Delta":0.00, "Vb":0.001, "th":0.04, "Vg":0.00,
-"Jz":0.0, "Jx":0.0, "Jsd":0.04, "BFM":-100.0,
+"tl":1.0, "Delta":0.00, "Vb":0.001, "th":0.1, "Vg":0.00,
+"Jz":0.0, "Jx":0.0, "Jsd":0.12, "BFM":-100.0,
 "NL":15, "NFM":1, "NR":16, "TwoSd":1,
-"bdim_0":[100,100,100,150,150],"bdim_t":[200], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
-"time_step":0.1, "tupdate":1.0, "Nupdates":20
+"bdim_0":[400,400,400,500,500],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
+"time_step":0.1, "tupdate":2.0, "Nupdates":20
 }
