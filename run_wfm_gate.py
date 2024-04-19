@@ -78,7 +78,17 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     return np.array(h_cicc, dtype=complex);
     
 def get_U_gate(gate0, TwoS):
-    if(gate0=="SQRT"):
+    '''
+    '''
+    if(gate0=="I"):
+        ticks = [0.0,1.0];
+        proj_choice = "identical";
+        U_q = np.eye(4, dtype=complex); # Identity gate
+    elif(gate0=="SeS12"):
+        ticks = [0.0,1.0];
+        proj_choice = "identical";
+        U_q = np.nan*np.eye(4, dtype=complex);
+    elif(gate0=="SQRT"):
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
         U_q = np.array([[1,0,0,0],
@@ -92,13 +102,6 @@ def get_U_gate(gate0, TwoS):
                    [0,0,1,0],
                    [0,1,0,0],
                    [0,0,0,1]], dtype=complex); # SWAP gate
-    elif(gate0=="I"):
-        ticks = [0.0,1.0];
-        proj_choice = "identical";
-        U_q = np.array([[1,0,0,0],
-                   [0,1,0,0],
-                   [0,0,1,0],
-                   [0,0,0,1]], dtype=complex); # Identity gate
     elif(gate0=="RZ"):
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
@@ -126,7 +129,7 @@ def get_U_gate(gate0, TwoS):
         raise NotImplementedError("gate0 = "+gate0+" not supported");
         
     # from Uq to Ugate
-    mol_dof = (TwoS+1)*(TwoS+1); 
+    mol_dof = (TwoS+1)*(TwoS+1);
     U_mol = np.eye(mol_dof, dtype=complex); # acts on full space of 2 molecular spins
     # matrix elements to keep are |s,s>,|s,s-1>,|s-1,s>,|s-1,s-1>. Rest should be diagonal
     elems_to_keep = [0,1,TwoS+1,TwoS+1+1];
@@ -146,17 +149,41 @@ def get_U_gate(gate0, TwoS):
         raise NotImplementedError("proj_choice = "+proj_choice+" not supported");
 
     # return
-    if(gate0 not in ["SQRT", "RX", "RZ"]): print("U_gate =\n",np.real(U));
-    else: print(U);
-    #assert False
     return U, ticks;
+
+def get_Fval(gate0, TwoS, U, R):
+    '''
+    '''
+    assert(np.shape(R) == np.shape(U));
+
+    # from Uq to Ugate
+    mol_dof = (TwoS+1)*(TwoS+1); 
+    elems_to_keep = [0,1,TwoS+1,TwoS+1+1];
+
+    if(gate0 in ["SeS12"]): # do not actually get fidelity, instead quantify R^out
+        Rout = R[:mol_dof, mol_dof:]; 
+        # maximize over rows
+        R_rows = np.zeros((mol_dof,),dtype=float);
+        for row_sigma in range(mol_dof):
+            # sum over columns
+            Rout_row_mags = np.real(np.conj(Rout[row_sigma])*Rout[row_sigma]);
+            R_rows[row_sigma] = np.sum(Rout_row_mags);
+        the_trace = np.max(R_rows);
+
+    else: # actually get fidelity
+        M_matrix = np.matmul(np.conj(U.T), R);
+        the_trace = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U)*(len(U)+1));
+
+    # return
+    if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
+    return np.real(the_trace);
            
 ############################################################################ 
 #### exec code
 if(__name__ == "__main__"):
 
     #### top level
-    np.set_printoptions(precision = 8, suppress = True);
+    np.set_printoptions(precision = 4, suppress = True);
     verbose = 1;
     which_gate = sys.argv[1];
     case = sys.argv[2];
@@ -184,7 +211,7 @@ if(__name__ == "__main__"):
     myTwoS = 1;
     n_mol_dof = (myTwoS+1)*(myTwoS+1); 
     n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-    Jval = -0.04*tl;
+    Jval = -0.2*tl;
     VB = 5.0*tl;
     V0 = 0.0*tl; # just affects title, not implemented physically
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
@@ -199,8 +226,7 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
     elif(case=="kNB"): NB_indep = False # whether to put NB, alternatively wavenumber*NB
 
     # iter over incident kinetic energy (colors)
-    Kpowers = np.array([-5,-6,-7]); # incident kinetic energy/t = 10^Kpower
-    assert(Jval==-0.04)
+    Kpowers = np.array([-3,-4]); # incident kinetic energy/t = 10^Kpower
     knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
     print("knumbers^2 = \n",knumbers*knumbers);
     Kvals = 2*tl - 2*tl*np.cos(knumbers);
@@ -242,7 +268,6 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
-            if(verbose>4): print(rhatvals[:4,:4,Kvali,NBvali]);
             # fidelity w/r/t U, chi
             assert(np.shape(rhatvals[:,:,0,0]) == np.shape(U_gate));
             M_matrix = np.matmul(np.conj(U_gate.T), rhatvals[:,:,Kvali,NBvali]);
@@ -262,12 +287,12 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
         if(NB_indep): indep_var = NBvals; # what to put on x axis
         else: indep_var = 2*knumbers[Kvali]*NBvals/np.pi;
-        indep_argmax = np.argmax(Fvals_Uchi[Kvali])
+        indep_argmax = np.argmax(Fvals_Uchi[Kvali]);
         indep_star = indep_var[indep_argmax];
         if(verbose):
             indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_Uchi[Kvali,indep_argmax]);
             print(indep_comment,"\n",rhatvals[:,:,Kvali,indep_argmax]);
-            np.savetxt("data/wfm_swap/rhat_{:.0f}_{:.0f}.txt".format(Kvali,indep_argmax),rhatvals[:,:,Kvali,indep_argmax], fmt="%.4f", header=indep_comment);
+            np.savetxt("data/gate/rhat_{:.0f}_{:.0f}.txt".format(Kvali,indep_argmax),rhatvals[:,:,Kvali,indep_argmax], fmt="%.4f", header=indep_comment);
         if(False and Kvali==1):
             the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
             the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
@@ -338,7 +363,7 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
     else:
         plt.show();
 
-elif(__name__ == "__main__" and case in["Ki","ki"]): # incident kinetic energy or wavenumber on the x axis
+elif(__name__ == "__main__" and case in["K","ki"]): # incident kinetic energy or wavenumber on the x axis
          # NB is now fixed !!!!
 
     # axes
@@ -346,7 +371,7 @@ elif(__name__ == "__main__" and case in["Ki","ki"]): # incident kinetic energy o
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
     if(case=="ki"): K_indep = False;
-    elif(case=="Ki"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi 
+    elif(case=="K"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi 
 
     # iter over fixed NB (colors)
     NBvals = np.array([50,100,131,150]);
@@ -410,11 +435,11 @@ elif(__name__ == "__main__" and case in["Ki","ki"]): # incident kinetic energy o
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
         if(K_indep): indep_var = knumbers*knumbers; # what to put on x axis
         else: indep_var = 2*knumbers*NBvals[NBvali]/np.pi;
+        indep_argmax = np.argmax(Fvals_Uchi[Kvali]);
         indep_star = indep_var[np.argmax(Fvals_Uchi[:,NBvali])];
         if(verbose):
-            print("indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_Uchi[:,NBvali])));
-            print(rhatvals[:,:,np.argmax(Fvals_Uchi[:,NBvali]),NBvali]);
-            #print(indep_var); assert False
+            indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_Uchi[indep_argmax,NBvali]);
+            print(indep_comment,"\n",rhatvals[:,:,indep_argmax,Kvali]);
         if(False and Kvali==1):
             the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
             the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
