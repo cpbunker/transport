@@ -76,8 +76,9 @@ elif(case in [1,2]): # observable as a function of time
     # formatting
     ax.set_ylabel("$\langle G_{SR}\\rangle /G_0$", color=color2, fontsize=fontsize1);
     ax.set_title(the_title);
-    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
-    ax.set_xticks(time_ticks);
+    if(len(times) > num_xticks): 
+        time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
+        ax.set_xticks(time_ticks);
     ax.set_xlim((times[0], times[-1]));
     if(params["sys_type"] == "SIETS"):
         ax3 = ax.twinx();
@@ -158,8 +159,9 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     if(difference): axes[0].set_ylabel("$\Delta n_{SR}(t)$", color=color2, fontsize=fontsize1);
     else: axes[0].set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
     axes[0].set_title(the_title);
-    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
-    axes[-1].set_xticks(time_ticks);
+    if(len(times)>num_xticks):
+        time_ticks = np.arange(times[0], times[-1], times[-1]//max(1,num_xticks-1))
+        axes[-1].set_xticks(time_ticks);
     axes[-1].set_xlim((times[0], times[-1]));
 
     # show

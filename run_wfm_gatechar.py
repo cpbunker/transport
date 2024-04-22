@@ -51,7 +51,7 @@ V0 = 0.0*tl; # just affects title, not implemented physically
 the_ticks = [0.0,1.0]; # always positive since it is fidelity
 
 # axes
-gates = ["SeS12","SQRT","SWAP"]#,"I"];
+gates = ["SeS12","SQRT","SWAP","I"];
 nrows, ncols = len(gates), 1;
 fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
 fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
@@ -139,7 +139,7 @@ if(final_plots == 10):
             axes[colori].set_xlim(0,np.max(xvals));
             axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
             axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[int(3*len(xvals)/4)],1.01),fontsize=myfontsize);
-            axes[colori].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$",fontsize=myfontsize);
+            axes[colori].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over fixed NB vals
             
     # show
@@ -229,7 +229,7 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             if(NB_indep): axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
             else: axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
             if(Kvali==0): axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[0],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$",fontsize=myfontsize);
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
 
             # get and store label info
             if(abs(knumbers[Kvali] - np.sqrt(10.0**Kpowers[Kvali])) < 1e-10):
@@ -283,7 +283,7 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
 
     # iter over barrier distance (colors)
     NBvals = np.array([100,131,140,150,160]);
-    #NBvals = np.array([700,900]); assert(Jval==-0.02);
+    NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -358,7 +358,7 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
             else:
                 axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
             axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r},\mathbf{U})$",fontsize=myfontsize);
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
             axes[gatevali].plot(indep_vals,Fvals_min[:,NBvali,gatevali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
@@ -484,7 +484,7 @@ elif(case in ["roots"]): # compare different roots of swap
             else:
                 axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
             axes[NBvali].annotate("$N_B = {"+str(NBvals[NBvali])+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
-            axes[NBvali].set_ylabel("$F_{avg}(\mathbf{r},\mathbf{U})$",fontsize=myfontsize);
+            axes[NBvali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
             axes[NBvali].plot(indep_vals,Fvals_min[:,NBvali,rootvali], label = "$n = ${:.0f}".format(roots[rootvali]),color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
