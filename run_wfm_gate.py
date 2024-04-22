@@ -102,14 +102,14 @@ def get_U_gate(gate0, TwoS):
                    [0,0,1,0],
                    [0,1,0,0],
                    [0,0,0,1]], dtype=complex); # SWAP gate
-    elif(gate0=="RZ"):
+    elif(gate0[:2]=="RZ" and ((gate0[-1] in ["1","2","3","4"]) and len(gate0)==3) ):
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
-        root = 4; # tells us it is 4th root, ie angle = pi/4
+        root = int(gate0[-1]); # tells us it is nth root, ie angle = pi/n
         U_q = np.array([[1,0,0,0],
                        [0,0.5+0.5*np.exp(complex(0,np.pi/root)),0.5-0.5*np.exp(complex(0,np.pi/root)),0],
                        [0,0.5-0.5*np.exp(complex(0,np.pi/root)),0.5+0.5*np.exp(complex(0,np.pi/root)),0],
-                       [0,0,0,1]], dtype=complex); # roots of SWAP, that achieves X rotation on ST0 encoding
+                       [0,0,0,1]], dtype=complex); # roots of SWAP, that achieves Z rotation on ST0 encoding
     elif(gate0=="CNZ"):
         ticks = [0.0,1.0];
         proj_choice = "treversal";
