@@ -59,6 +59,8 @@ fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
 #### plot already existing data
 if(final_plots == 10):
 
+    # override fig and axes
+    plt.close(); del fig, axes;
     # title and colors
     if(case in ["NB","kNB"]): which_color = "K";
     elif(case in ["K","ki","roots"]): which_color = "NB";
@@ -74,6 +76,10 @@ if(final_plots == 10):
 
     # iter over gates
     if(case not in ["roots"]): 
+        gates = sys.argv[5:];
+        nrows, ncols = len(gates), 1;
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+        fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
         for gatevali in range(len(gates)):
 
             # load and plot Fidelity
@@ -112,6 +118,9 @@ if(final_plots == 10):
 
     elif(case in ["roots"]): # data structure is different
         roots = sys.argv[5:]; # these are actually the colors, not colorvals
+        nrows, ncols = len(colorvals), 1;
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+        fig.set_size_inches(ncols*myfigsize[0], nrows*myfigsize[1]);
         for colori in range(len(colorvals)): # this iters over axis rows!
 
             # iter over SWAP roots, which are colors
