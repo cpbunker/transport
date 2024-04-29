@@ -84,7 +84,7 @@ def get_U_gate(gate0, TwoS):
         ticks = [0.0,1.0];
         proj_choice = "identical";
         U_q = np.eye(4, dtype=complex); # Identity gate
-    elif(gate0=="SeS12"):
+    elif(gate0 in ["SeS12", "RZSeS12"]):
         ticks = [0.0,1.0];
         proj_choice = "identical";
         U_q = np.nan*np.eye(4, dtype=complex);
@@ -160,7 +160,7 @@ def get_Fval(gate0, TwoS, U, R):
     mol_dof = (TwoS+1)*(TwoS+1); 
     elems_to_keep = [0,1,TwoS+1,TwoS+1+1];
 
-    if(gate0 in ["SeS12"]): # do not actually get fidelity, instead quantify R^out
+    if("SeS12" in gate0): # do not actually get fidelity, instead quantify R^out
         Rout = R[:mol_dof, mol_dof:]; 
         # maximize over rows
         R_rows = np.zeros((mol_dof,),dtype=float);
@@ -171,7 +171,7 @@ def get_Fval(gate0, TwoS, U, R):
         the_trace = np.max(R_rows);
 
     else: # actually get fidelity
-        M_matrix = np.matmul(np.conj(U.T), R);
+        M_matrix = np.matmul(np.conj(U.T), R); # M = U^\dagger R
         the_trace = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U)*(len(U)+1));
 
     # return

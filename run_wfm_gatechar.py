@@ -12,6 +12,7 @@ from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.linalg import expm as scipy_expm
 
 import sys
 
@@ -21,7 +22,7 @@ from run_wfm_gate import h_cicc, get_U_gate, get_Fval;
 #### barrier in right lead for total reflection
 
 #### top level
-np.set_printoptions(precision = 4, suppress = True);
+np.set_printoptions(precision = 2, suppress = True);
 verbose = 1;
 case = sys.argv[2];
 final_plots = int(sys.argv[3]);
@@ -54,6 +55,7 @@ the_ticks = [0.0,1.0]; # always positive since it is fidelity
 gates = ["SeS12","SQRT","SWAP","I"];
 nrows, ncols = len(gates), 1;
 fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+if(nrows==1): axes = [axes];
 fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
 
 #### plot already existing data
@@ -79,6 +81,7 @@ if(final_plots == 10):
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+        if(nrows==1): axes = [axes];
         fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
         for gatevali in range(len(gates)):
 
@@ -118,8 +121,10 @@ if(final_plots == 10):
 
     elif(case in ["roots"]): # data structure is different
         roots = sys.argv[5:]; # these are actually the colors, not colorvals
+        if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
         nrows, ncols = len(colorvals), 1;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+        if(nrows==1): axes = [axes];
         fig.set_size_inches(ncols*myfigsize[0], nrows*myfigsize[1]);
         for colori in range(len(colorvals)): # this iters over axis rows!
 
@@ -130,6 +135,12 @@ if(final_plots == 10):
                 xvals = np.load(("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
                 mylabel = "$n = $"+roots[rootvali];
                 axes[colori].plot(xvals,yvals, label = mylabel, color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
+                
+                # maxima
+                indep_star = xvals[np.argmax(yvals)];
+                if(verbose):
+                    indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(yvals));
+                    print("\nU^1/"+roots[rootvali]+"\n",indep_comment);
             #### end loop over colors (root vals)
                 
              # plot formatting
@@ -139,7 +150,7 @@ if(final_plots == 10):
             axes[colori].set_xlim(0,np.max(xvals));
             axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
             axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[int(3*len(xvals)/4)],1.01),fontsize=myfontsize);
-            axes[colori].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
+            axes[colori].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
         #### end loop over fixed NB vals
             
     # show
@@ -275,15 +286,15 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
     if(case=="ki"): K_indep = False;
     elif(case=="K"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
 
-    #myxvals = int(myxvals/3) #!!!!!!!!!!!!!!!!!!!!!!!!!!
+    myxvals = int(myxvals/3) #!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     # physical params
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
     if(final_plots): suptitle += "";
 
     # iter over barrier distance (colors)
-    NBvals = np.array([100,131,140,150,160]);
-    NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
+    NBvals = np.array([575,600]);
+    #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -297,7 +308,7 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
             knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
         else:
             kNB_times2overpi = np.linspace(0.001, 2*kNBmax/np.pi - 0.001, myxvals);
-            #kNB_times2overpi = np.linspace(2*1.0, 2*kNBmax/np.pi - 0.001, myxvals); #!!!!!!!!!!!!!!!!!!!!!!!!!!
+            kNB_times2overpi = np.linspace(2*1.0, 2*kNBmax/np.pi - 0.001, myxvals); #!!!!!!!!!!!!!!!!!!!!!!!!!!
             knumbers = kNB_times2overpi *np.pi/(2*NBval)
         Kvals = 2*tl - 2*tl*np.cos(knumbers);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
@@ -397,20 +408,23 @@ elif(case in ["roots"]): # compare different roots of swap
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    NBvals = np.array([100,140,150])
+    NBvals = np.array([100,140,500])
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+    if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-
+    #myxvals = 5*myxvals;
+    #mymarkevery = (myxvals//3, myxvals//3);
     # physical params;
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.0f}".format(0.5*myTwoS, Jval, V0, VB);
+    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
     if(final_plots): suptitle += "";
 
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array([4,2]); 
+    roots = np.array(["4","2","1","SeS12"]); 
+    if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -418,7 +432,7 @@ elif(case in ["roots"]): # compare different roots of swap
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        kNBmax = 1.5*np.pi
+        kNBmax = 1.5*np.pi;
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
             knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
@@ -454,9 +468,9 @@ elif(case in ["roots"]): # compare different roots of swap
 
              # iter over gates to get fidelity for each one
             for rootvali in range(len(roots)):
-                gatestr = "RZ"+str(roots[rootvali]);
+                gatestr = "RZ"+roots[rootvali];
                 U_gate, dummy_ticks = get_U_gate(gatestr,myTwoS);
-                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali]);                
+                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali]);             
         #### end loop over Ki
 
         # plotting considerations
@@ -472,7 +486,7 @@ elif(case in ["roots"]): # compare different roots of swap
             indep_star = indep_vals[indep_argmax];
             if(verbose):
                 indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali,rootvali]));
-                print("\nU^1/"+str(roots[rootvali])+"\n",indep_comment);
+                print("\nU^1/"+roots[rootvali]+"\n",indep_comment);
 
             # plot formatting
             #axes[NBvali].set_yticks(the_ticks);
@@ -483,17 +497,18 @@ elif(case in ["roots"]): # compare different roots of swap
                 axes[-1].set_xscale('log', subs = []);
             else:
                 axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
+            axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
             axes[NBvali].annotate("$N_B = {"+str(NBvals[NBvali])+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
-            axes[NBvali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
+            axes[NBvali].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
-            axes[NBvali].plot(indep_vals,Fvals_min[:,NBvali,rootvali], label = "$n = ${:.0f}".format(roots[rootvali]),color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
-            if(vlines): axes[rootvali].axvline(indep_star, color=mycolors[rootvali], linestyle="dotted");
+            axes[NBvali].plot(indep_vals,Fvals_min[:,NBvali,rootvali], label = "$n = "+roots[rootvali]+"$",color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
+            if(vlines): axes[NBvali].axvline(indep_star, color=mycolors[rootvali], linestyle="dotted");
 
             # save Fvals to .npy
             if(final_plots > 1):
-                np.save("data/gate/"+case+"_{:.0f}_J{:.2f}_NB{:.0f}_y.npy".format(roots[rootvali],Jval, NBval),Fvals_min[:,NBvali,rootvali]);
-                np.save("data/gate/"+case+"_{:.0f}_J{:.2f}_NB{:.0f}_x.npy".format(roots[rootvali],Jval, NBval),indep_vals);
+                np.save("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,rootvali]);
+                np.save("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
         #### end loop over roots
 
     #### end loop over NB
@@ -517,4 +532,206 @@ elif(case in ["roots"]): # compare different roots of swap
     else:
         axes[-1].legend();
         plt.show();
+        
+elif(case in ["time","timeJ"]):
 
+    # override existing axes
+    plt.close();
+    del gates, fig, axes;
+    zvals = np.array([0.01,0.1,1.0]); # different values of \delta J/J
+    nrows, ncols = len(zvals), 1;
+    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+    if(nrows==1): axes = [axes];
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
+    if(case=="timeJ"): time_indep=False;
+    else: time_indep = True;
+    del V0, VB;
+    myxvals = 50*myxvals;
+    mymarkevery = (myxvals//3, myxvals//3);
+    analytical = False;
+
+    # physical params;
+    suptitle = "$s=${:.1f}, $J=${:.2f}".format(0.5*myTwoS, Jval);
+    if(final_plots): suptitle += "";
+
+    # iter over roots
+    # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
+    # but still order axes as Kvals, NBvals, roots
+    roots = np.array(["4","2","1", "SeS12"]); 
+    if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
+    Fvals_min = np.empty((myxvals, len(zvals),len(roots)),dtype=float); # avg fidelity 
+    rhatvals = np.zeros((n_loc_dof,n_loc_dof,myxvals,len(zvals)),dtype=complex); # by  init spin, final spin, energy, NB
+    
+    for axvali in range(len(zvals)): # perturbation strengths (non-identical J1,J2)
+
+        # iter over time (x axis)
+        xmax = 30.0*np.pi;
+        assert(Jval<0);
+        timevals = np.linspace(0,xmax/(-Jval),myxvals,dtype=float);
+        xvals = np.linspace(0,xmax,myxvals,dtype=float);
+        # fill in rhat 
+        if(analytical): # fill in from analytical J + pert theory deltaJ
+            rhatvals[0,0,:,axvali] = np.ones_like(xvals);
+            rhatvals[1,1,:,axvali] = (0.5+0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0,-Jval*zvals[axvali]/2)*timevals);
+            rhatvals[1,2,:,axvali] = (0.5-0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0, Jval*zvals[axvali]/2)*timevals);
+            rhatvals[2,1,:,axvali] = (0.5-0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0,-Jval*zvals[axvali]/2)*timevals);
+            rhatvals[2,2,:,axvali] = (0.5+0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0, Jval*zvals[axvali]/2)*timevals);
+            rhatvals[3,3,:,axvali] = np.ones_like(xvals) #np.exp(complex(0,8*Jval*zvals[axvali]*zvals[axvali]/3)*timevals);
+            #rhatvals[4,4,:,axvali] = np.ones_like(xvals);
+            #rhatvals[5,5,:,axvali] = 0.5+0.5*np.exp(complex(0,1)*xvals);
+            #rhatvals[5,6,:,axvali] = 0.5-0.5*np.exp(complex(0,1)*xvals);
+            #rhatvals[6,5,:,axvali] = 0.5-0.5*np.exp(complex(0,1)*xvals);
+            #rhatvals[6,6,:,axvali] = 0.5+0.5*np.exp(complex(0,1)*xvals);
+            #rhatvals[7,7,:,axvali] = np.ones_like(xvals);
+        else:
+            Hexch = (Jval/4)*np.array([[1+2*zvals[axvali],  -2,0,-2*zvals[axvali], 0, 0],
+                                       [-2,1-2*zvals[axvali],0,   2*zvals[axvali], 0, 0],
+                                       [0, 0, -1,        0, 2*zvals[axvali],-2*zvals[axvali]],
+                                       [-2*zvals[axvali],2*zvals[axvali],0,-1, 0, 0],
+                                       [0, 0, 2*zvals[axvali], 0, 1-2*zvals[axvali],-2],
+                                       [0, 0, -2*zvals[axvali],     0, -2, 1+2*zvals[axvali]]],
+                                       dtype=float);
+            assert( np.all(abs(np.transpose(Hexch) - Hexch) < 1e-10));
+            for timevali in range(len(timevals)):
+                U_coupled = scipy_expm(complex(0,-timevals[timevali])*Hexch);
+                assert(np.all(abs(np.matmul(np.conj(np.transpose(U_coupled)), U_coupled)-np.eye(len(U_coupled))) < 1e-10));
+                rhatvals[1:7,1:7,timevali,axvali] = 1*U_coupled;
+                rhatvals[0,0,timevali,axvali] = np.exp(complex(0,Jval)*timevals[timevali]/4);
+                rhatvals[7,7,timevali,axvali] = np.exp(complex(0,Jval)*timevals[timevali]/4);
+                if(False):
+                    print("time = {:.2f}\n".format(timevals[timevali]),U_coupled);
+                    if(timevali>50): assert False
+        
+        # iter over gates to get fidelity for each one
+        for rootvali in range(len(roots)):
+            gatestr = "RZ"+roots[rootvali];
+            U_gate, dummy_ticks = get_U_gate(gatestr,myTwoS);
+            for xvali in range(len(xvals)):
+                Fvals_min[xvali, axvali, rootvali] = get_Fval(gatestr, myTwoS, 
+                           U_gate[:,:], rhatvals[:,:,xvali,axvali]); 
+            assert(not analytical); # need to add rhat[i>4] correction terms above
+                           
+        # plotting considerations
+        if(time_indep): indep_vals = timevals;
+        else: indep_vals = xvals/np.pi;
+        if(verbose):
+            print(">>> indep_vals =\n",indep_vals);
+        for rootvali in range(len(roots)):
+            # determine fidelity and kNB*, ie x val where the SWAP is best
+            indep_argmax = np.argmax(Fvals_min[:,axvali,rootvali]);
+            indep_star = indep_vals[indep_argmax];
+            if(verbose):
+                indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,axvali,rootvali]));
+                print("\nU^1/"+roots[rootvali]+"\n",indep_comment);
+
+            # plot formatting
+            #axes[axvali].set_yticks(the_ticks);
+            axes[axvali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks: axes[axvali].axhline(tick,color='lightgray',linestyle='dashed');
+            if(time_indep):
+                axes[-1].set_xlabel('$\\tau$ ($\hbar$/Energy)',fontsize=myfontsize);
+            else:
+                axes[-1].set_xlabel('$|J|\\tau/\pi \hbar$',fontsize=myfontsize);
+            axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
+            axes[axvali].annotate("$z = {:.2f}$".format(zvals[axvali]), (indep_vals[0],1.01),fontsize=myfontsize);
+            axes[axvali].set_ylabel("$F_{avg}[\mathbf{U}(\\tau),(\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
+                
+            # plot fidelity, starred SWAP locations
+            axes[axvali].plot(indep_vals,Fvals_min[:,axvali,rootvali], label = "$n = "+roots[rootvali]+"$",color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
+            if(vlines): axes[axvali].axvline(indep_star, color=mycolors[rootvali], linestyle="dotted");
+
+            # save Fvals to .npy
+
+        #### end loop over roots
+
+    #### end loop over NB
+            
+    # show
+    fig.suptitle(suptitle, fontsize=myfontsize);
+    plt.tight_layout();
+    axes[0].legend();
+    plt.show();  
+        
+elif(case in ["ctap","ctapJ"]): # just time evolve initial state
+
+    # override existing axes
+    plt.close();
+    del gates, fig, axes;
+    nrows, ncols = 1, 1;
+    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+    if(nrows==1): axes = [axes];
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
+    if(case=="ctapJ"): time_indep=False;
+    else: time_indep = True;
+    myxvals = 10*myxvals;
+    mymarkevery = (myxvals//3, myxvals//3);
+
+    # Hamiltonian and psi0
+    psi0 = np.zeros((n_loc_dof,),dtype=complex);
+    psi0[1] = 1.0; # |up up down>
+    Hexch =(Jval/4)*np.array([[2, 0, 0, 0, 0, 0, 0, 0], # Se.(S1+S2)
+                              [0, 0, 0, 0, 2, 0, 0, 0],
+                              [0, 0, 0, 0, 2, 0, 0, 0],
+                              [0, 0, 0,-2, 0, 2, 2, 0],
+                              [0, 2, 2, 0,-2, 0, 0, 0],
+                              [0, 0, 0, 2, 0, 0, 0, 0],
+                              [0, 0, 0, 2, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0, 2]
+                              ],dtype=complex);
+    assert( np.all(abs(np.transpose(Hexch) - Hexch) < 1e-10));
+                                              
+    # time evolution
+    xmax = 6.0*np.pi;
+    assert(Jval<0);
+    timevals = np.linspace(0,xmax/(-Jval),myxvals,dtype=float);
+    xvals = np.linspace(0,xmax,myxvals,dtype=float);
+    
+    # define time-dep observables
+    which_states = np.array([1,4,2]);
+    state_labels = ["\\uparrow_e \\uparrow_1 \\uparrow_2","\\uparrow_e \\uparrow_1 \downarrow_2","\\uparrow_e \downarrow_1 \\uparrow_2","\\uparrow_e \downarrow_1 \downarrow_2",
+        "\downarrow_e \\uparrow_1 \\uparrow_2","\downarrow_e \\uparrow_1 \downarrow_2","\downarrow_e \downarrow_1 \\uparrow_2","\downarrow_e \downarrow_1 \downarrow_2"]; 
+    observables = np.empty((len(which_states), len(timevals)),dtype=float);
+    
+    # iter over time
+    for timevali in range(len(timevals)):
+        # propagator 
+        U_coupled = scipy_expm(complex(0,-timevals[timevali])*Hexch);
+        assert(np.all(abs(np.matmul(np.conj(np.transpose(U_coupled)), U_coupled)-np.eye(len(U_coupled))) < 1e-10));
+        # time dependent state
+        psit = np.matmul(U_coupled, psi0);
+        # get observables
+        for whichi in range(len(which_states)):
+            statei = which_states[whichi];
+            bra = np.zeros_like(psi0);
+            bra[statei] = 1.0;
+            overlap = np.dot(np.conj(bra), psit);
+            if( abs(np.imag(np.conj(overlap)*overlap)) > 1e-10): assert False;
+            observables[whichi,timevali] = np.real(np.conj(overlap)*overlap);
+            
+    # plotting
+    if(time_indep): indep_vals = timevals;
+    else: indep_vals = xvals/np.pi;
+    for whichi in range(len(which_states)):
+        axes[0].plot(indep_vals, observables[whichi], label = "$|\langle\psi(t)|"+state_labels[which_states[whichi]]+"\\rangle|^2$", color=mycolors[whichi], marker = mymarkers[1+whichi], markevery = mymarkevery);
+    axes[0].plot(indep_vals, np.sum(observables, axis=0), color="black");
+    
+    # format
+    #axes[0].set_yticks(the_ticks);
+    axes[0].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+    for tick in the_ticks: axes[0].axhline(tick,color='lightgray',linestyle='dashed');
+    if(time_indep):
+        axes[-1].set_xlabel('$\\tau$ ($\hbar$/Energy)',fontsize=myfontsize);
+    else:
+        axes[-1].set_xlabel('$|J|\\tau/\pi \hbar$',fontsize=myfontsize);
+    axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
+        
+    # show
+    suptitle = "$s=${:.1f}, $J=${:.2f}".format(0.5*myTwoS, Jval);
+    fig.suptitle(suptitle, fontsize=myfontsize);
+    plt.tight_layout();
+    axes[0].legend();
+    plt.show();
+
+        
+        
+        
