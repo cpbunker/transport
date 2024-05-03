@@ -172,7 +172,7 @@ def get_Fval(gate0, TwoS, U, R):
 
     else: # actually get fidelity
         M_matrix = np.matmul(np.conj(U.T), R); # M = U^\dagger R
-        the_trace = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U)*(len(U)+1));
+        the_trace = np.sqrt((np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U)*(len(U)+1)));
 
     # return
     if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
