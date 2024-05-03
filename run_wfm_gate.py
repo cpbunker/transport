@@ -155,6 +155,7 @@ def get_Fval(gate0, TwoS, U, R):
     '''
     '''
     assert(np.shape(R) == np.shape(U));
+    assert(len(U)==8); # this affects results even when off-diagonal blocks are zero, due to 1/nd dependence
 
     # from Uq to Ugate
     mol_dof = (TwoS+1)*(TwoS+1); 

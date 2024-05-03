@@ -408,24 +408,23 @@ elif(case in ["roots"]): # compare different roots of swap
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    NBvals = np.array([50,100,200])
+    NBvals = np.array([100,500])
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-    extend = True; # more multiples of 2kiaNB/pi
+    extend = False; # more multiples of 2kiaNB/pi
     if(extend):
         myxvals = 5*myxvals;
         mymarkevery = (myxvals//3, myxvals//3);
     # physical params;
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
-    if(final_plots): suptitle += "";
 
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["1","SeS12"]); 
+    roots = np.array(["4","2","1","SeS12"]); 
     if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -434,7 +433,7 @@ elif(case in ["roots"]): # compare different roots of swap
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        kNBmax = 1.5*np.pi;
+        kNBmax = 2.0*np.pi;
         if(extend): kNBmax = 5.0*np.pi;
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
@@ -536,31 +535,32 @@ elif(case in ["roots"]): # compare different roots of swap
         axes[-1].legend(loc="upper right");
         plt.show();
         
-elif(case in ["time","timeJ"]):
+elif(case in ["direct","directJ"]):
 
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    zvals = np.array([0.0,0.21]); # different values of \delta J/J
+    zvals = np.array([0.0]); # different values of \delta J/J_H (J_H not J !!)
     nrows, ncols = len(zvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-    if(case=="timeJ"): time_indep=False;
+    if(case=="directJ"): time_indep=False;
     else: time_indep = True;
     del V0, VB;
-    myxvals = 5*myxvals;
-    mymarkevery = (myxvals//3, myxvals//3);
-    analytical = False;
+    extend = False; # more multiples of 2kiaNB/pi
+    if(extend):
+        myxvals = 5*myxvals;
+        mymarkevery = (myxvals//3, myxvals//3);
+    J_on_JH_off = False;
 
     # physical params;
-    suptitle = "$s=${:.1f}, $J_H =${:.2f}".format(0.5*myTwoS, Jval);
-    if(final_plots): suptitle += "";
+    suptitle = "$s=${:.1f}, $J =${:.2f}, $J_H =${:.2f}".format(0.5*myTwoS, 0.0, Jval);
 
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["1", "SeS12"]); 
+    roots = np.array(["4","2","1"]); 
     if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(zvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.zeros((n_loc_dof,n_loc_dof,myxvals,len(zvals)),dtype=complex); 
@@ -568,34 +568,14 @@ elif(case in ["time","timeJ"]):
     for axvali in range(len(zvals)): # perturbation strengths (non-identical J1,J2)
 
         # iter over time (x axis)
-        xmax = 10.0*np.pi;
+        xmax = 4.0*np.pi;
+        if(extend): xmax = 10.0*np.pi;
         assert(Jval<0);
         timevals = np.linspace(0,xmax/(-Jval),myxvals,dtype=float);
         xvals = np.linspace(0,xmax,myxvals,dtype=float);
         # fill in rhat 
-        if(analytical): # fill in from analytical J + pert theory deltaJ
-            rhatvals[0,0,:,axvali] = np.ones_like(xvals);
-            rhatvals[1,1,:,axvali] = (0.5+0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0,-Jval*zvals[axvali]/2)*timevals);
-            rhatvals[1,2,:,axvali] = (0.5-0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0, Jval*zvals[axvali]/2)*timevals);
-            rhatvals[2,1,:,axvali] = (0.5-0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0,-Jval*zvals[axvali]/2)*timevals);
-            rhatvals[2,2,:,axvali] = (0.5+0.5*np.exp(complex(0,1)*xvals))*np.exp(complex(0, Jval*zvals[axvali]/2)*timevals);
-            rhatvals[3,3,:,axvali] = np.ones_like(xvals) #np.exp(complex(0,8*Jval*zvals[axvali]*zvals[axvali]/3)*timevals);
-            #rhatvals[4,4,:,axvali] = np.ones_like(xvals);
-            #rhatvals[5,5,:,axvali] = 0.5+0.5*np.exp(complex(0,1)*xvals);
-            #rhatvals[5,6,:,axvali] = 0.5-0.5*np.exp(complex(0,1)*xvals);
-            #rhatvals[6,5,:,axvali] = 0.5-0.5*np.exp(complex(0,1)*xvals);
-            #rhatvals[6,6,:,axvali] = 0.5+0.5*np.exp(complex(0,1)*xvals);
-            #rhatvals[7,7,:,axvali] = np.ones_like(xvals);
-        else:
-            Hexch = (Jval/4)*np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
-                                       [0,1+2*zvals[axvali],  -2,0,-2*zvals[axvali], 0, 0,0], # -J_H S1.S2
-                                       [0,-2,1-2*zvals[axvali],0,   2*zvals[axvali], 0, 0,0],
-                                       [0,0, 0, -1,        0, 2*zvals[axvali],-2*zvals[axvali],0],
-                                       [0,-2*zvals[axvali],2*zvals[axvali],0,-1, 0, 0,0],
-                                       [0,0, 0, 2*zvals[axvali], 0, 1-2*zvals[axvali],-2,0],
-                                       [0,0, 0, -2*zvals[axvali],     0, -2, 1+2*zvals[axvali],0],
-                                       [0, 0, 0, 0, 0, 0, 0, -1]],
-                                       dtype=float);
+        if(J_on_JH_off):
+            raise NotImplementedError;
             Hexch =(-Jval/4)*np.array([[2, 0, 0, 0, 0, 0, 0, 0], # -J Se.(S1+S2)
                                   [0, 0, 0, 0, 2, 0, 0, 0],
                                   [0, 0, 0, 0, 2, 0, 0, 0],
@@ -614,16 +594,23 @@ elif(case in ["time","timeJ"]):
                                        [0, 0, 0,-2, 0, 0, 2, 0],
                                        [0, 0, 0, 0, 0, 0, 0, 0]],
                                        dtype=float);
-            assert( np.all(abs(np.transpose(Hexch) - Hexch) < 1e-10));
-            for timevali in range(len(timevals)):
-                U_coupled = scipy_expm(complex(0,-timevals[timevali])*Hexch);
-                assert(np.all(abs(np.matmul(np.conj(np.transpose(U_coupled)), U_coupled)-np.eye(len(U_coupled))) < 1e-10));
-                rhatvals[:,:,timevali,axvali] = 1*U_coupled;
-                #rhatvals[0,0,timevali,axvali] = np.exp(complex(0,Jval)*timevals[timevali]/4);
-                #rhatvals[7,7,timevali,axvali] = np.exp(complex(0,Jval)*timevals[timevali]/4);
-                if(False):
-                    print("time = {:.2f}\n".format(timevals[timevali]),U_coupled);
-                    if(timevali>50): assert False
+        else:
+            assert(zvals[axvali]==0); # z = \delta J/J_H
+            Hexch = (Jval/4)*np.array([[-1, 0, 0, 0, 0, 0, 0, 0], # -J_H S1.S2 + \delta J Se.(S1-S2)
+                                       [0,1+2*zvals[axvali],  -2,0,-2*zvals[axvali], 0, 0,0],
+                                       [0,-2,1-2*zvals[axvali],0,   2*zvals[axvali], 0, 0,0],
+                                       [0,0, 0, -1,        0, 2*zvals[axvali],-2*zvals[axvali],0],
+                                       [0,-2*zvals[axvali],2*zvals[axvali],0,-1, 0, 0,0],
+                                       [0,0, 0, 2*zvals[axvali], 0, 1-2*zvals[axvali],-2,0],
+                                       [0,0, 0, -2*zvals[axvali],     0, -2, 1+2*zvals[axvali],0],
+                                       [0, 0, 0, 0, 0, 0, 0, -1]],
+                                       dtype=float);
+        # end if else statement
+        assert( np.all(abs(np.transpose(Hexch) - Hexch) < 1e-10));
+        for timevali in range(len(timevals)):
+            U_coupled = scipy_expm(complex(0,-timevals[timevali])*Hexch);
+            assert(np.all(abs(np.matmul(np.conj(np.transpose(U_coupled)), U_coupled)-np.eye(len(U_coupled))) < 1e-10));
+            rhatvals[:,:,timevali,axvali] = 1*U_coupled;
         
         # iter over gates to get fidelity for each one
         for rootvali in range(len(roots)):
@@ -632,8 +619,7 @@ elif(case in ["time","timeJ"]):
             for xvali in range(len(xvals)):
                 Fvals_min[xvali, axvali, rootvali] = get_Fval(gatestr, myTwoS, 
                            U_gate[:,:], rhatvals[:,:,xvali,axvali]); 
-            assert(not analytical); # need to add rhat[i>4] correction terms above
-                           
+               
         # plotting considerations
         if(time_indep): indep_vals = timevals;
         else: indep_vals = xvals/np.pi;
@@ -654,9 +640,9 @@ elif(case in ["time","timeJ"]):
             if(time_indep):
                 axes[-1].set_xlabel('$\\tau$ ($\hbar$/Energy)',fontsize=myfontsize);
             else:
-                axes[-1].set_xlabel('$|J|\\tau/\pi \hbar$',fontsize=myfontsize);
+                axes[-1].set_xlabel('$|J_H|\\tau/\pi \hbar$',fontsize=myfontsize);
             axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
-            axes[axvali].annotate("$\delta J/J_H = {:.2f}$".format(zvals[axvali]), (indep_vals[1],1.01),fontsize=myfontsize);
+            if(len(axes)>1): axes[axvali].annotate("$\delta J/J_H = {:.2f}$".format(zvals[axvali]), (indep_vals[1],1.01),fontsize=myfontsize);
             axes[axvali].set_ylabel("$F_{avg}[\mathbf{U}(\\tau),(\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
@@ -671,23 +657,25 @@ elif(case in ["time","timeJ"]):
     # show
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    axes[0].legend();
+    axes[0].legend(loc="lower right");
     plt.show();  
         
-elif(case in ["ctap","ctapJ"]): # just time evolve initial state
+elif(case in ["med","medJ"]): # just time evolve initial state
 
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    zvals = np.array([0.25]);
+    zvals = np.array([0.00]);
     nrows, ncols = 1+len(zvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-    if(case=="ctapJ"): time_indep=False;
+    if(case=="medJ"): time_indep=False;
     else: time_indep = True;
-    myxvals = 5*myxvals;
-    mymarkevery = (myxvals//3, myxvals//3);
+    extend = True; # more multiples of 2kiaNB/pi
+    if(extend):
+        myxvals = 5*myxvals;
+        mymarkevery = (myxvals//3, myxvals//3);
     
     # define time-dep observables
     which_states = np.array([1,4,2]);
@@ -734,7 +722,8 @@ elif(case in ["ctap","ctapJ"]): # just time evolve initial state
         assert(deltaJval == 0.0);
                                               
         # time evolution
-        xmax = 10.0*np.pi;
+        xmax = 4.0*np.pi;
+        if(extend): xmax = 10.0*np.pi;
         assert(Jval<0);
         timevals = np.linspace(0,xmax/abs(Jval),myxvals,dtype=float);
         xvals = np.linspace(0,xmax,myxvals,dtype=float);
@@ -772,9 +761,11 @@ elif(case in ["ctap","ctapJ"]): # just time evolve initial state
         if(axvali==0):
             for whichi in range(len(which_states)):
                 axes[axvali].plot(indep_vals, observables[whichi], label = "$|\langle\psi(\\tau)|"+state_labels[which_states[whichi]]+"\\rangle|^2$", color=mycolors[whichi], marker = mymarkers[1+whichi], markevery = mymarkevery);
-            axes[axvali].plot(indep_vals, np.sum(observables, axis=0), color="black");
+            #axes[axvali].plot(indep_vals, np.sum(observables, axis=0), color="red");
+            axes[axvali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks: axes[axvali].axhline(tick,color='lightgray',linestyle='dashed');
+            axes[axvali].legend(loc="lower right");
             axes[axvali].annotate("$J_H/J = {:.2f}$".format(zvals[axvali]), (indep_vals[1],1.01),fontsize=myfontsize);
-            axes[axvali].legend(loc="upper right");
                 
         # plot fidelity, starred SWAP locations
         for rootvali in range(len(roots)):
@@ -787,8 +778,8 @@ elif(case in ["ctap","ctapJ"]): # just time evolve initial state
         #axes[axvali+1].set_yticks(the_ticks);
         axes[axvali+1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
         for tick in the_ticks: axes[axvali+1].axhline(tick,color='lightgray',linestyle='dashed');
-        axes[axvali+1].legend(loc="upper right");
-        axes[axvali+1].annotate("$J_H/J = {:.2f}$".format(zvals[axvali]), (indep_vals[0],1.01),fontsize=myfontsize);
+        axes[axvali+1].legend(loc="lower right");
+        axes[axvali+1].annotate("$J_H/J = {:.2f}$".format(zvals[axvali]), (indep_vals[1],1.01),fontsize=myfontsize);
         axes[axvali+1].set_ylabel("$F_{avg}[\mathbf{U}(\\tau),(\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
     #### end loop over axvals    
     
