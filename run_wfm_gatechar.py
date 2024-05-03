@@ -67,7 +67,7 @@ if(final_plots == 10):
     if(case in ["NB","kNB"]): which_color = "K";
     elif(case in ["K","ki","roots"]): which_color = "NB";
     whichval = int(sys.argv[4]);
-    title_and_colors = ("data/gate/"+case+"_ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
+    title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
     suptitle = open(title_and_colors,"r").read().splitlines()[0][1:];
     colorvals = np.loadtxt(title_and_colors,ndmin=1); 
     if(case in ["NB","kNB"]):
@@ -88,8 +88,8 @@ if(final_plots == 10):
             # load and plot Fidelity
             for colori in range(len(colorvals)):
                 # load data
-                yvals = np.load(("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
-                xvals = np.load(("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
+                yvals = np.load(("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
+                xvals = np.load(("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
 
                 # determine label and plot
                 if(case in ["NB","kNB"]):
@@ -105,8 +105,8 @@ if(final_plots == 10):
 
             # plot formatting
             #axes[gatevali].set_yticks(the_ticks);
-            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-            for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
+            #axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            #for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
             axes[gatevali].set_xlim(0,np.max(xvals));
             if(case=="NB"):
                 axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
@@ -115,8 +115,9 @@ if(final_plots == 10):
                 axes[-1].set_xscale('log', subs = []);
             else:
                 axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
+                axes[gatevali].set_yscale("log",subs=[]);
             axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[0],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{r}, \mathbf{U})$",fontsize=myfontsize);
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
 
     elif(case in ["roots"]): # data structure is different
@@ -131,8 +132,8 @@ if(final_plots == 10):
             # iter over SWAP roots, which are colors
             for rootvali in range(len(roots)):
                 # load data
-                yvals = np.load(("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
-                xvals = np.load(("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
+                yvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
+                xvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
                 mylabel = "$n = $"+roots[rootvali];
                 axes[colori].plot(xvals,yvals, label = mylabel, color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
                 
@@ -254,8 +255,8 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
 
             # save Fvals to .npy
             if(final_plots>1):
-                np.save("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_K{:.0f}_y.npy".format(Jval, Kvali),Fvals_min[Kvali,:,gatevali]);
-                np.save("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_K{:.0f}_x.npy".format(Jval, Kvali),indep_vals);
+                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_K{:.0f}_y.npy".format(Jval, Kvali),Fvals_min[Kvali,:,gatevali]);
+                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_K{:.0f}_x.npy".format(Jval, Kvali),indep_vals);
         #### end loop over gates
             
     #### end loop over Ki
@@ -377,8 +378,8 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
 
             # save Fvals to .npy
             if(final_plots > 1):
-                np.save("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,gatevali]);
-                np.save("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
+                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,gatevali]);
+                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
         #### end loop over gates
 
     #### end loop over NB
@@ -408,15 +409,15 @@ elif(case in ["roots"]): # compare different roots of swap
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    NBvals = np.array([100,500])
+    NBvals = np.array([50])
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-    extend = False; # more multiples of 2kiaNB/pi
+    extend = True; # more multiples of 2kiaNB/pi
     if(extend):
-        myxvals = 5*myxvals;
+        myxvals = 12*5*myxvals;
         mymarkevery = (myxvals//3, myxvals//3);
     # physical params;
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
@@ -424,7 +425,7 @@ elif(case in ["roots"]): # compare different roots of swap
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["4","2","1","SeS12"]); 
+    roots = np.array(["1","SeS12"]); 
     if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -434,7 +435,7 @@ elif(case in ["roots"]): # compare different roots of swap
 
         # iter over incident kinetic energy (x axis)
         kNBmax = 2.0*np.pi;
-        if(extend): kNBmax = 5.0*np.pi;
+        if(extend): kNBmax =12* 5.0*np.pi;
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
             knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
@@ -509,8 +510,9 @@ elif(case in ["roots"]): # compare different roots of swap
 
             # save Fvals to .npy
             if(final_plots > 1):
-                np.save("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,rootvali]);
-                np.save("data/gate/"+case+"_"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
+                assert(extend); # always save high resolution, high quality data only
+                np.save("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,rootvali]);
+                np.save("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
         #### end loop over roots
 
     #### end loop over NB
@@ -520,17 +522,17 @@ elif(case in ["roots"]): # compare different roots of swap
     plt.tight_layout();
     if(final_plots): # save fig and legend
         fname = "figs/gate/F_vs_"+case;
-        plt.savefig(fname+".pdf")
-        fig_leg = plt.figure()
-        fig_leg.set_size_inches(3/2,3/2)
-        ax_leg = fig_leg.add_subplot(111)
+        #plt.savefig(fname+".pdf")
+        #fig_leg = plt.figure()
+        #fig_leg.set_size_inches(3/2,3/2)
+        #ax_leg = fig_leg.add_subplot(111)
         # add the legend from the previous axes
-        ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
+        #ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
         # hide the axes frame and the x/y labels
-        ax_leg.axis('off')
-        plt.savefig(fname+"_legend.pdf");
+        #ax_leg.axis('off')
+        #plt.savefig(fname+"_legend.pdf");
         # title and color values
-        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
     else:
         axes[-1].legend(loc="upper right");
         plt.show();
