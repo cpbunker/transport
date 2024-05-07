@@ -81,10 +81,14 @@ if(case in [1,2]): # observable as a function of time
     else: # plot concurrence
         obs4, color4 = "pconc_", "black";
         label4 = "$\langle pC_{d,d+1} \\rangle$";
+        normalizer4 = 1;
+        obs4, color4 = "S2_", "black";
+        label4 = "$\langle (S_1 + S_2)^2 \\rangle/2$";
+        normalizer4 = 1/2;
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
-            purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+            purds_vs_time[ti] = normalizer4*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.plot(times, purds_vs_time[:,which_imp],color=color4);
     ax4 = ax.twinx();
     ax4.yaxis.set_label_position("right");

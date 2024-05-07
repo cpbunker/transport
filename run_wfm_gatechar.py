@@ -90,7 +90,8 @@ if(final_plots == 10):
                 # load data
                 yvals = np.load(("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
                 xvals = np.load(("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
-
+                mymarkevery = (len(xvals)//3, len(xvals)//3);
+                
                 # determine label and plot
                 if(case in ["NB","kNB"]):
                     correct_Kpower = False;
@@ -134,6 +135,7 @@ if(final_plots == 10):
                 # load data
                 yvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
                 xvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
+                mymarkevery = (len(xvals)//3, len(xvals)//3);
                 mylabel = "$n = $"+roots[rootvali];
                 axes[colori].plot(xvals,yvals, label = mylabel, color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
                 
@@ -157,7 +159,7 @@ if(final_plots == 10):
     # show
     fig.suptitle(suptitle);
     plt.tight_layout();
-    axes[-1].legend();
+    axes[-1].legend(loc = "lower right");
     plt.show();
 
 #### generate data
@@ -409,15 +411,16 @@ elif(case in ["roots"]): # compare different roots of swap
     # override existing axes
     plt.close();
     del gates, fig, axes;
-    NBvals = np.array([50])
+    #NBvals = np.array([100,140,200,500]); # for the J=-0.2 case
+    NBvals = np.array([ 30, 38, 60, 200]) # for the J=-0.4 case
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
     K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-    extend = True; # more multiples of 2kiaNB/pi
+    extend = False; # more multiples of 2kiaNB/pi
     if(extend):
-        myxvals = 12*5*myxvals;
+        myxvals = 2*12*5*myxvals; 
         mymarkevery = (myxvals//3, myxvals//3);
     # physical params;
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
@@ -425,7 +428,7 @@ elif(case in ["roots"]): # compare different roots of swap
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["1","SeS12"]); 
+    roots = np.array(["4","2","1","SeS12"]); 
     if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -520,7 +523,7 @@ elif(case in ["roots"]): # compare different roots of swap
     # show
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    if(final_plots): # save fig and legend
+    if(final_plots > 1): # save fig and legend
         fname = "figs/gate/F_vs_"+case;
         #plt.savefig(fname+".pdf")
         #fig_leg = plt.figure()
