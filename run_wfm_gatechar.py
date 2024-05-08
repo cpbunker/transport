@@ -117,7 +117,7 @@ if(final_plots == 10):
             else:
                 axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
                 axes[gatevali].set_yscale("log",subs=[]);
-            axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[0],1.01),fontsize=myfontsize);
+            axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
 
@@ -152,7 +152,7 @@ if(final_plots == 10):
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
             axes[colori].set_xlim(0,np.max(xvals));
             axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
-            axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[int(3*len(xvals)/4)],1.01),fontsize=myfontsize);
+            axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[colori].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
         #### end loop over fixed NB vals
             

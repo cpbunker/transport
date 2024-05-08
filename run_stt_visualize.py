@@ -29,6 +29,8 @@ if(case in [0]): # standard charge density vs site snapshot
 if(case in [1,2]): # observable as a function of time
     datafile = datafiles[0];
     params = json.load(open(datafile+".txt"));
+    if(case in [2]): plot_purity = True;
+    else: plot_purity = False; # plot (pseudo) concurrence instead
 
     # axes
     fig, ax = plt.subplots();
@@ -69,22 +71,19 @@ if(case in [1,2]): # observable as a function of time
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
-    ax3.set_ylabel("$2 \overline{ s_j^z } /\hbar$", color=color3, fontsize=fontsize1);
+    ax3.set_ylabel("$2 \overline{ \langle s_j^z \\rangle} /\hbar$", color=color3, fontsize=fontsize1);
 
     # impurity purity vs time
-    if False: # plot purity
+    if plot_purity: # plot purity
         label4 = "$||$";
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.fill_between(times, (-2)*purds_vs_time[:,which_imp],color=color4);
-    else: # plot concurrence
+    else: # plot (pseudo) concurrence
         obs4, color4 = "pconc_", "black";
         label4 = "$\langle pC_{d,d+1} \\rangle$";
         normalizer4 = 1;
-        #obs4, color4 = "S2_", "black";
-        #label4 = "$\langle (S_1 + S_2)^2 \\rangle/2$";
-        #normalizer4 = 1/2;
         dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
@@ -119,7 +118,8 @@ if(case in [3,4]): # observable as a function of time
     ax.set_xticks(time_ticks);
     ax.set_xlim((times[0], times[-1]));
 
-    # SUMMED impurity spins vs time
+    # COMBINED impurity spins vs time
+    assert(params["NFM"] == 2);
     Nbuffer = 0;
     if("Nbuffer" in params.keys()): Nbuffer = params["Nbuffer"];
     Nsites = Nbuffer + params["NL"]+params["NFM"]+params["NR"]; # number of d sites
@@ -128,25 +128,42 @@ if(case in [3,4]): # observable as a function of time
         yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     yds_summed = np.sum(yds_vs_time, axis=1);
     ax.plot(times,yds_summed,color=color1);
-    ax.set_ylabel("$ \Sigma_d \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+    ax.set_ylabel("$ (S_1^z + S_2^z) /\hbar$", color=color1, fontsize=fontsize1);
 
-    # SUMMED electron spin vs time
+    # AVG electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
+    label3 = "$2 \overline{ \langle s_j^z \\rangle} /\hbar$";
+    normalizer3 = 2/Nsites;
     yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
     yjs_summed = np.sum(yjs_vs_time, axis=1);
-    ax.plot(times, yjs_summed,color=color3);
+    ax.plot(times, normalizer3*yjs_summed,color=color3);
     ax3 = ax.twinx();
     ax3.yaxis.set_label_position("left");
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
-    ax3.set_ylabel("$ \Sigma_j \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
-
-    # SUM of all spins
-    ax.plot(times, yds_summed+yjs_summed, color="black", linestyle="dashed");
+    # label later -> on right side
     
+    # determine S1 + S2 eigenstate
+    assert(params["NFM"] == 2);
+    obs4, color4 = "S2_", "black";
+    label4 = "$\langle (\mathbf{S}_1 + \mathbf{S}_2)^2 \\rangle/2 \hbar$";
+    normalizer4 = 1/2;
+    dfile = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[0]));
+    purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+    for ti in range(len(times)):
+        purds_vs_time[ti] = normalizer4*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+    ax.plot(times, purds_vs_time[:,which_imp],color=color4);
+    ax4 = ax.twinx();
+    ax4.yaxis.set_label_position("right");
+    ax4.spines.right.set_position(("axes", 1.0));
+    ax4.spines.right.set(alpha=1.0);
+    ax4.set_yticks([])
+    ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # labels (S1+S2)^2 on left
+    ax4.set_ylabel(label3, color=color3, fontsize=fontsize1); # labels s_j^z on right
+
     # show
     plt.tight_layout();
     plt.show();
