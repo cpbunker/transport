@@ -108,6 +108,7 @@ if(case in [3,4]): # observable as a function of time
     fig, ax = plt.subplots();
     ax.set_xlabel("Time $(\hbar/t_l)$");
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+    for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
 
     # time evolution params
     tupdate = params["tupdate"];
@@ -128,12 +129,12 @@ if(case in [3,4]): # observable as a function of time
         yds_vs_time[ti] = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
     yds_summed = np.sum(yds_vs_time, axis=1);
     ax.plot(times,yds_summed,color=color1);
-    ax.set_ylabel("$ (S_1^z + S_2^z) /\hbar$", color=color1, fontsize=fontsize1);
+    ax.set_ylabel("$ \langle S_1^z + S_2^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
 
-    # AVG electron spin vs time
+    # COMBINED electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
-    label3 = "$2 \overline{ \langle s_j^z \\rangle} /\hbar$";
-    normalizer3 = 2/Nsites;
+    label3 = "$\\frac{1}{N_e} \sum_j  2\langle s_j^z \\rangle /\hbar $";
+    normalizer3 = 2/Ne;
     yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
@@ -141,7 +142,7 @@ if(case in [3,4]): # observable as a function of time
     ax.plot(times, normalizer3*yjs_summed,color=color3);
     ax3 = ax.twinx();
     ax3.yaxis.set_label_position("left");
-    ax3.spines.left.set_position(("axes", -0.15));
+    ax3.spines.left.set_position(("axes", -0.2));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
     # label later -> on right side
@@ -155,7 +156,7 @@ if(case in [3,4]): # observable as a function of time
     purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
     for ti in range(len(times)):
         purds_vs_time[ti] = normalizer4*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-    ax.plot(times, purds_vs_time[:,which_imp],color=color4);
+    ax.plot(times, purds_vs_time[:,0],color=color4);
     ax4 = ax.twinx();
     ax4.yaxis.set_label_position("right");
     ax4.spines.right.set_position(("axes", 1.0));
@@ -270,7 +271,7 @@ if(case in [10]): # animate time evol
     ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
 
     # plot (S1+S2)^2 /2
-    obs4, color4, label4 = "S2_", "black", "$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $";
+    obs4, color4, label4 = "S2_", "black", "$\langle (\mathbf{S}_d + \mathbf{S}_{d+1})^2 \\rangle$";
     xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
     yds_4 = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
     S2, = ax.plot(xds_4,yds_4,marker="^",color=color4);

@@ -1385,6 +1385,12 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         j = central_sites[0];
         builder.add_term("cd",[j,j],-Bsd/2);
         builder.add_term("CD",[j,j], Bsd/2);
+    if("Bent" in params_dict.keys() and len(central_sites)==2): # B field that entangles 2 loc spins
+        Bent = params_dict["Bent"];
+        for j in central_sites[:-1]:
+            builder.add_term("ZZ",[j,j+1],-Bent);
+            builder.add_term("PM",[j,j+1],-Bent/2);
+            builder.add_term("MP",[j,j+1],-Bent/2);
 
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
