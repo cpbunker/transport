@@ -27,7 +27,7 @@ verbose = 1;
 case = sys.argv[2];
 final_plots = int(sys.argv[3]);
 #if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
-vlines = not final_plots;
+vlines = False;
 elecspin = 0; # itinerant e is spin up
 
 # fig standardizing
@@ -51,18 +51,9 @@ VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
 the_ticks = [0.0,1.0]; # always positive since it is fidelity
 
-# axes
-gates = ["SeS12","SQRT","SWAP","I"];
-nrows, ncols = len(gates), 1;
-fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-if(nrows==1): axes = [axes];
-fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-
 #### plot already existing data
 if(final_plots == 10):
 
-    # override fig and axes
-    plt.close(); del fig, axes;
     # title and colors
     if(case in ["NB","kNB"]): which_color = "K";
     elif(case in ["K","ki","roots"]): which_color = "NB";
@@ -106,8 +97,8 @@ if(final_plots == 10):
 
             # plot formatting
             #axes[gatevali].set_yticks(the_ticks);
-            #axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-            #for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
+            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
             axes[gatevali].set_xlim(0,np.max(xvals));
             if(case=="NB"):
                 axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
@@ -116,7 +107,7 @@ if(final_plots == 10):
                 axes[-1].set_xscale('log', subs = []);
             else:
                 axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
-                axes[gatevali].set_yscale("log",subs=[]);
+                #axes[gatevali].set_yscale("log",subs=[]);
             axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
@@ -159,7 +150,7 @@ if(final_plots == 10):
     # show
     fig.suptitle(suptitle);
     plt.tight_layout();
-    axes[-1].legend(loc = "lower right");
+    #axes[-1].legend(loc = "lower right");
     plt.show();
 
 #### generate data
@@ -168,6 +159,13 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
          # for each gate of interest
     if(case=="NB"): NB_indep = True; # whether to put NB, alternatively wavenumber*NB
     elif(case=="kNB"): NB_indep = False;
+
+    # axes
+    gates = ["SeS12","SQRT","SWAP","I"];
+    nrows, ncols = len(gates), 1;
+    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+    if(nrows==1): axes = [axes];
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
 
     # physical params
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
@@ -289,14 +287,19 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
     if(case=="ki"): K_indep = False;
     elif(case=="K"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
 
-    myxvals = int(myxvals/3) #!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # axes
+    gates = ["SQRT"];
+    nrows, ncols = len(gates), 1;
+    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+    if(nrows==1): axes = [axes];
+    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
 
     # physical params
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
     if(final_plots): suptitle += "";
 
     # iter over barrier distance (colors)
-    NBvals = np.array([575,600]);
+    NBvals = np.array([50,100,140]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -305,13 +308,12 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        kNBmax = 1.5*np.pi
+        kNBmax = 2.0*np.pi
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
             knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
         else:
             kNB_times2overpi = np.linspace(0.001, 2*kNBmax/np.pi - 0.001, myxvals);
-            kNB_times2overpi = np.linspace(2*1.0, 2*kNBmax/np.pi - 0.001, myxvals); #!!!!!!!!!!!!!!!!!!!!!!!!!!
             knumbers = kNB_times2overpi *np.pi/(2*NBval)
         Kvals = 2*tl - 2*tl*np.cos(knumbers);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
@@ -349,9 +351,6 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
         # plotting considerations
         if(K_indep): indep_vals = knumbers*knumbers;
         else: indep_vals = 2*knumbers*NBvals[NBvali]/np.pi;
-        if(verbose):
-            print(">>> indep_vals = ") #,indep_vals);
-            for vali in range(len(indep_vals)): print(indep_vals[vali], (Jval/tl)*(2*NBval)/(np.pi*np.pi*indep_vals[vali]), Fvals_min[vali,NBvali,2]);
         for gatevali in range(len(gates)):
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
@@ -371,6 +370,7 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
                 axes[-1].set_xscale('log', subs = []);
             else:
                 axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
+            axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
             axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
                 
