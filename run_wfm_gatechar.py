@@ -142,7 +142,7 @@ if(final_plots == 10):
             axes[colori].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
             axes[colori].set_xlim(0,np.max(xvals));
-            axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
+            axes[-1].set_xlabel('$N_B a /\lambda_i$',fontsize=myfontsize);
             axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[colori].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
         #### end loop over fixed NB vals
@@ -150,7 +150,7 @@ if(final_plots == 10):
     # show
     fig.suptitle(suptitle);
     plt.tight_layout();
-    #axes[-1].legend(loc = "lower right");
+    axes[-1].legend(loc = "lower right");
     plt.show();
 
 #### generate data
@@ -408,20 +408,16 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
 
 elif(case in ["roots"]): # compare different roots of swap
 
-    # override existing axes
-    plt.close();
-    del gates, fig, axes;
-    #NBvals = np.array([100,140,200,500]); # for the J=-0.2 case
-    NBvals = np.array([ 30, 38, 60, 200]) # for the J=-0.4 case
+    NBvals = np.array([100,140,200,500]); # for the J=-0.2 case
+    #NBvals = np.array([30, 38, 60, 200]) # for the J=-0.4 case
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-    K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-    extend = False; # more multiples of 2kiaNB/pi
+    K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
+    extend = True; # more multiples of 2kiaNB/pi
     if(extend):
-        myxvals = 2*12*5*myxvals; 
-        mymarkevery = (myxvals//3, myxvals//3);
+        myxvals = 5*myxvals; 
     # physical params;
     suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
 
@@ -437,15 +433,15 @@ elif(case in ["roots"]): # compare different roots of swap
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        kNBmax = 2.0*np.pi;
-        if(extend): kNBmax =12* 5.0*np.pi;
+        xmax = 1.1;
+        if(extend): xmax = 3*xmax;
         Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
             knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
         else:
-            kNB_times2overpi = np.linspace(0.001, 2*kNBmax/np.pi - 0.001, myxvals);
-            knumbers = kNB_times2overpi *np.pi/(2*NBval)
-        Kvals = 2*tl - 2*tl*np.cos(knumbers);
+            NBoverLambda = np.linspace(0.001, xmax - 0.001, myxvals);
+            wavelengths = NBval/NBoverLambda
+        Kvals = 2*tl - 2*tl*np.cos(2*np.pi/wavelengths);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
         for Kvali in range(len(Kvals)):
 
@@ -480,18 +476,18 @@ elif(case in ["roots"]): # compare different roots of swap
         #### end loop over Ki
 
         # plotting considerations
-        if(K_indep): indep_vals = knumbers*knumbers;
-        else: indep_vals = 2*knumbers*NBvals[NBvali]/np.pi;
+        if(K_indep): indep_vals = 4*np.pi*np.pi/wavelengths;
+        else: indep_vals = 1*NBoverLambda
         if(verbose):
             print(">>> indep_vals = ") 
-            for vali in range(len(indep_vals)): print(indep_vals[vali], (Jval/tl)*(2*NBval)/(np.pi*np.pi*indep_vals[vali]), Fvals_min[vali,NBvali,-1]);
+            for vali in range(len(indep_vals)): print(indep_vals[vali], Fvals_min[vali,NBvali,-1]);
         for rootvali in range(len(roots)):
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
             indep_argmax = np.argmax(Fvals_min[:,NBvali,rootvali]);
             indep_star = indep_vals[indep_argmax];
             if(verbose):
-                indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali,rootvali]));
+                indep_comment = "indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali,rootvali]));
                 print("\nU^1/"+roots[rootvali]+"\n",indep_comment);
 
             # plot formatting
@@ -502,8 +498,8 @@ elif(case in ["roots"]): # compare different roots of swap
                 axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
                 axes[-1].set_xscale('log', subs = []);
             else:
-                axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
-            axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
+                axes[-1].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
+            axes[-1].set_xlim(0.0, np.max(indep_vals));
             axes[NBvali].annotate("$N_B = {"+str(NBvals[NBvali])+"}$", (indep_vals[1],1.01),fontsize=myfontsize);
             axes[NBvali].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
                 
@@ -537,7 +533,7 @@ elif(case in ["roots"]): # compare different roots of swap
         # title and color values
         np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
     else:
-        axes[-1].legend(loc="upper right");
+        axes[-1].legend(loc="lower right");
         plt.show();
         
 elif(case in ["direct","directJ"]):
