@@ -80,14 +80,11 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
 def get_U_gate(gate0, TwoS):
     '''
     '''
-    if(gate0=="I"):
+    if(gate0 in ["I", "SeS12", "RZSeS12", "conc", "overlap"]): # identity and non-gate quantities
         ticks = [0.0,1.0];
         proj_choice = "identical";
-        U_q = np.eye(4, dtype=complex); # Identity gate
-    elif(gate0 in ["SeS12", "RZSeS12"]):
-        ticks = [0.0,1.0];
-        proj_choice = "identical";
-        U_q = np.nan*np.eye(4, dtype=complex);
+        if(gate0=="I"): U_q = np.eye(4, dtype=complex);
+        else: U_q = np.nan*np.eye(4, dtype=complex);
     elif(gate0=="SQRT"):
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
@@ -102,7 +99,7 @@ def get_U_gate(gate0, TwoS):
                    [0,0,1,0],
                    [0,1,0,0],
                    [0,0,0,1]], dtype=complex); # SWAP gate
-    elif(gate0[:2]=="RZ" and ((gate0[-1] in ["1","2","3","4"]) and len(gate0)==3) ):
+    elif(gate0[:2]=="RZ" and ((gate0[-1] in ["1","2","3","4"]) and len(gate0)==3) ): # roots of SWAP
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
         root = int(gate0[-1]); # tells us it is nth root, ie angle = pi/n
@@ -159,7 +156,7 @@ def get_Fval(gate0, TwoS, U, R):
 
     # from Uq to Ugate
     mol_dof = (TwoS+1)*(TwoS+1); 
-    elems_to_keep = [0,1,TwoS+1,TwoS+1+1];
+    elems_to_keep = [0,1,TwoS+1,TwoS+1+1]; # these are mol_dof elements, ie 0 represent up_1 up_2, no electron dofs
 
     if("SeS12" in gate0): # do not actually get fidelity, instead quantify R^out
         Rout = R[:mol_dof, mol_dof:]; 
@@ -170,6 +167,29 @@ def get_Fval(gate0, TwoS, U, R):
             Rout_row_mags = np.real(np.conj(Rout[row_sigma])*Rout[row_sigma]);
             R_rows[row_sigma] = np.sum(Rout_row_mags);
         the_trace = np.max(R_rows);
+        
+    elif(gate0 == "conc"): # do not actually get fidelity, get qubit-qubit concurrence from *some* initial state
+        in_state = np.zeros((len(R),),dtype=complex);
+        in_state[elems_to_keep[1]] = 1.0;
+        out_state = np.matmul(R, in_state);
+        Y_otimes_Y_q = np.array([[ 0, 0, 0,-1],
+                                 [ 0, 0, 1, 0],
+                                 [ 0, 1, 0, 0],
+                                 [-1, 0, 0, 0]]);
+        Y_otimes_Y = np.zeros_like(R);
+        Y_otimes_Y[:mol_dof, :mol_dof] = Y_otimes_Y_q[:,:];
+        Y_otimes_Y[mol_dof:, mol_dof:] = Y_otimes_Y_q[:,:];
+        the_trace = np.dot( np.conj(out_state), np.matmul(Y_otimes_Y, np.conj(out_state))); # inner product
+        the_trace = np.sqrt(np.conj(the_trace)*the_trace); # norm of that inner product is the concurrence
+        
+    elif(gate0 == "overlap"): # do not actually get fidelity, get overlap with qubit-flipped partner of initial state
+        in_state = np.zeros((len(R),),dtype=complex);
+        in_state[elems_to_keep[1]] = 1.0;
+        out_state = np.matmul(R, in_state);
+        overlap_state = np.zeros_like(out_state, dtype=complex);
+        overlap_state[elems_to_keep[2]] = 1.0;
+        the_trace = np.dot(np.conj(overlap_state), out_state); # overlap
+        the_trace = np.sqrt(np.conj(the_trace)*the_trace); # norm 
 
     else: # actually get fidelity
         M_matrix = np.matmul(np.conj(U.T), R); # M = U^\dagger R

@@ -56,14 +56,14 @@ if(final_plots == 10):
 
     # title and colors
     if(case in ["NB","kNB"]): which_color = "K";
-    elif(case in ["gates_lambda", "gates_K","roots_lambda", "roots_K"]): which_color = "NB";
+    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K"]): which_color = "NB";
     whichval = int(sys.argv[4]);
     title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
     suptitle = open(title_and_colors,"r").read().splitlines()[0][1:];
     colorvals = np.loadtxt(title_and_colors,ndmin=1); 
     if(case in ["NB","kNB"]):
         which_color_list = np.arange(len(colorvals));
-    elif(case in ["gates_lambda", "gates_K","roots_lambda", "roots_K"]):
+    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K"]):
         colorvals = colorvals.astype(int);
         which_color_list = 1*colorvals;
 
@@ -96,26 +96,35 @@ if(final_plots == 10):
                         if(abs(colorvals[colori] - 10.0**Kpower) < 1e-10): correct_Kpower = 1*Kpower;
                     if(correct_Kpower is not False): mylabel = "$k_i^2 a^2 = 10^{"+str(correct_Kpower)+"}$";
                     else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(colorvals[colori]);
-                elif(case in ["gates_lambda", "gates_K"]):
+                elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
                 axes[gatevali].plot(xvals,yvals, label = mylabel, color=mycolors[colori],marker=mymarkers[1+colori],markevery=mymarkevery);
             #### end loop over colors (here fixed K or NB vals)
 
             # plot formatting
+            
+            # x axis
+            if(case=="NB"):
+                axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
+            elif(case in ["gates_K", "conc_K"]):
+                axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
+                axes[-1].set_xscale('log', subs = []);
+            elif(case in ["gates_lambda", "conc_lambda"]):
+                axes[-1].set_xlabel('$N_B a/\lambda_i $',fontsize=myfontsize);
+                axes[gatevali].set_xlim(0,np.max(xvals));
+            else: raise NotImplementedError;
+            
+            # y axis
             #axes[gatevali].set_yticks(the_ticks);
             axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
-            axes[gatevali].set_xlim(0,np.max(xvals));
-            if(case=="NB"):
-                axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
-            elif(case=="gates_K"):
-                axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
-                axes[-1].set_xscale('log', subs = []);
-            elif(case=="gates_lambda"):
-                axes[-1].set_xlabel('$N_B a/\lambda $',fontsize=myfontsize);
-            else: raise NotImplementedError;
-            axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
+            if(gates[gatevali]=="conc"):
+                axes[gatevali].set_ylabel("$C(\mathbf{R}|\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+            elif(gates[gatevali]=="overlap"):
+                axes[gatevali].set_ylabel("$\langle \\uparrow_e \downarrow_1 \\uparrow_2 |\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+            else:
+                axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
+                axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
 
     elif(case in ["roots_lambda", "roots_K"]): # data structure is different
@@ -145,11 +154,15 @@ if(final_plots == 10):
             #### end loop over colors (root vals)
                 
              # plot formatting
+
+            # x axis
+            axes[-1].set_xlabel('$N_B a /\lambda_i$',fontsize=myfontsize);
+            axes[gatevali].set_xlim(0,np.max(xvals));
+            
+            # y axis
             #axes[colori].set_yticks(the_ticks);
             axes[colori].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
-            axes[colori].set_xlim(0,np.max(xvals));
-            axes[-1].set_xlabel('$N_B a /\lambda_i$',fontsize=myfontsize);
             axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[colori].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
         #### end loop over fixed NB vals
@@ -271,29 +284,20 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     # show
     fig.suptitle(suptitle);
     plt.tight_layout();
-    if(final_plots): # save fig and legend
-        fname = "figs/gate/F_vs_"+case;
-        plt.savefig(fname+".pdf")
-        fig_leg = plt.figure()
-        fig_leg.set_size_inches(3/2,3/2)
-        ax_leg = fig_leg.add_subplot(111)
-        # add the legend from the previous axes
-        ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
-        # hide the axes frame and the x/y labels
-        ax_leg.axis('off')
-        plt.savefig(fname+"_legend.pdf");
+    if(final_plots > 1): # save fig and legend
         # title and color values
         np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_K{:.0f}_title.txt".format(Jval,len(Kvals)),knumbers*knumbers,header=suptitle);
     else:
         axes[-1].legend();
         plt.show();
 
-elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as a function of Ki,
+elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, as a function of Ki,
     if("lambda" in case): K_indep = False;
     else: K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
 
     # axes
-    gates = ["SQRT"];
+    gates = ["SQRT", "SWAP","I"];
+    if("conc" in case): gates = ["overlap","conc"];
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
@@ -304,7 +308,7 @@ elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as
     if(final_plots): suptitle += "";
 
     # iter over barrier distance (colors)
-    NBvals = np.array([50,100,140]);
+    NBvals = np.array([100, 140, 500]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -313,14 +317,15 @@ elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident kinetic energy (x axis)
-        kNBmax = 2.0*np.pi
-        Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
         if(K_indep):
-            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
+            Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); 
+            wavelengths = 2*np.pi/knumbers;
         else:
-            kNB_times2overpi = np.linspace(0.001, 2*kNBmax/np.pi - 0.001, myxvals);
-            knumbers = kNB_times2overpi *np.pi/(2*NBval)
-        Kvals = 2*tl - 2*tl*np.cos(knumbers);
+            xmax = 1.1;
+            NBoverLambda = np.linspace(0.001, xmax - 0.001, myxvals);
+            wavelengths = NBval/NBoverLambda;
+        Kvals = 2*tl - 2*tl*np.cos(2*np.pi/wavelengths);
         Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
         for Kvali in range(len(Kvals)):
 
@@ -355,38 +360,47 @@ elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as
 
         # plotting considerations
         if(K_indep): indep_vals = knumbers*knumbers;
-        else: indep_vals = 2*knumbers*NBvals[NBvali]/np.pi;
+        else: indep_vals = NBvals[NBvali]/wavelengths;
         for gatevali in range(len(gates)):
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
             indep_argmax = np.argmax(Fvals_min[:,NBvali,gatevali]);
             indep_star = indep_vals[indep_argmax];
             if(verbose):
-                indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali,gatevali]));
+                indep_comment = "indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[:,NBvali,gatevali]));
                 print("\nU = "+gates[gatevali]+"\n",indep_comment);
-                if(gates[gatevali] == "SWAP" and (final_plots > 1)): np.savetxt("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_R.txt".format(Jval, NBval),rhatvals[:,:,indep_argmax,NBvali], fmt="%.4f", header=indep_comment);
 
             # plot formatting
-            #axes[gatevali].set_yticks(the_ticks);
-            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-            for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
+
+            # x axis
             if(K_indep):
                 axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
                 axes[-1].set_xscale('log', subs = []);
             else:
-                axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
-            axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
-            axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
-            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
+                axes[-1].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
+                axes[-1].set_xlim(0.0, np.max(indep_vals));
+            
+            # y axis
+            #axes[gatevali].set_yticks(the_ticks);
+            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
+            if(gates[gatevali]=="conc"):
+                axes[gatevali].set_ylabel("$C(\mathbf{R}|\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+            elif(gates[gatevali]=="overlap"):
+                axes[gatevali].set_ylabel("$\langle \\uparrow_e \downarrow_1 \\uparrow_2 |\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+            else:
+                axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[1],1.01),fontsize=myfontsize);
+                axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
-            axes[gatevali].plot(indep_vals,Fvals_min[:,NBvali,gatevali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
+            axes[gatevali].plot(indep_vals, Fvals_min[:,NBvali,gatevali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
             if(vlines): axes[gatevali].axvline(indep_star, color=mycolors[NBvali], linestyle="dotted");
 
             # save Fvals to .npy
             if(final_plots > 1):
-                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,gatevali]);
-                np.save("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
+                xy_savename = "data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
+                np.save(xy_savename + "_y.npy", Fvals_min[:,NBvali,gatevali]);
+                np.save(xy_savename + "_x.npy",indep_vals);
         #### end loop over gates
 
     #### end loop over NB
@@ -394,21 +408,11 @@ elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as
     # show
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
-    if(final_plots): # save fig and legend
-        fname = "figs/gate/F_vs_"+case;
-        plt.savefig(fname+".pdf")
-        fig_leg = plt.figure()
-        fig_leg.set_size_inches(3/2,3/2)
-        ax_leg = fig_leg.add_subplot(111)
-        # add the legend from the previous axes
-        ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
-        # hide the axes frame and the x/y labels
-        ax_leg.axis('off')
-        plt.savefig(fname+"_legend.pdf");
+    if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
     else:
-        axes[-1].legend();
+        axes[-1].legend(loc="lower right");
         plt.show();
 
 elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
@@ -497,15 +501,19 @@ elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
                 print("\nU^1/"+roots[rootvali]+"\n",indep_comment);
 
             # plot formatting
-            #axes[NBvali].set_yticks(the_ticks);
-            axes[NBvali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-            for tick in the_ticks: axes[NBvali].axhline(tick,color='lightgray',linestyle='dashed');
+
+            # x axis
             if(K_indep):
                 axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
                 axes[-1].set_xscale('log', subs = []);
             else:
                 axes[-1].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
-            axes[-1].set_xlim(0.0, np.max(indep_vals));
+                axes[-1].set_xlim(0.0, np.max(indep_vals));
+              
+            # y axis  
+            #axes[NBvali].set_yticks(the_ticks);
+            axes[NBvali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks: axes[NBvali].axhline(tick,color='lightgray',linestyle='dashed');
             axes[NBvali].annotate("$N_B = {"+str(NBvals[NBvali])+"}$", (indep_vals[1],1.01),fontsize=myfontsize);
             axes[NBvali].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
                 
