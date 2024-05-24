@@ -56,19 +56,19 @@ if(final_plots == 10):
 
     # title and colors
     if(case in ["NB","kNB"]): which_color = "K";
-    elif(case in ["K","ki","roots"]): which_color = "NB";
+    elif(case in ["gates_lambda", "gates_K","roots_lambda", "roots_K"]): which_color = "NB";
     whichval = int(sys.argv[4]);
     title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
     suptitle = open(title_and_colors,"r").read().splitlines()[0][1:];
     colorvals = np.loadtxt(title_and_colors,ndmin=1); 
     if(case in ["NB","kNB"]):
         which_color_list = np.arange(len(colorvals));
-    elif(case in ["K","ki","roots"]):
+    elif(case in ["gates_lambda", "gates_K","roots_lambda", "roots_K"]):
         colorvals = colorvals.astype(int);
         which_color_list = 1*colorvals;
 
     # iter over gates
-    if(case not in ["roots"]): 
+    if(case not in ["roots_lambda", "roots_K"]): 
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
@@ -83,6 +83,12 @@ if(final_plots == 10):
                 xvals = np.load(("data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
                 mymarkevery = (len(xvals)//3, len(xvals)//3);
                 
+                # maxima
+                indep_star = xvals[np.argmax(yvals)];
+                if(verbose):
+                    indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(yvals));
+                    print("\n"+gates[gatevali]+"\n",indep_comment);
+                
                 # determine label and plot
                 if(case in ["NB","kNB"]):
                     correct_Kpower = False;
@@ -90,7 +96,7 @@ if(final_plots == 10):
                         if(abs(colorvals[colori] - 10.0**Kpower) < 1e-10): correct_Kpower = 1*Kpower;
                     if(correct_Kpower is not False): mylabel = "$k_i^2 a^2 = 10^{"+str(correct_Kpower)+"}$";
                     else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(colorvals[colori]);
-                elif(case in ["K","ki"]):
+                elif(case in ["gates_lambda", "gates_K"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
                 axes[gatevali].plot(xvals,yvals, label = mylabel, color=mycolors[colori],marker=mymarkers[1+colori],markevery=mymarkevery);
             #### end loop over colors (here fixed K or NB vals)
@@ -102,17 +108,18 @@ if(final_plots == 10):
             axes[gatevali].set_xlim(0,np.max(xvals));
             if(case=="NB"):
                 axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
-            elif(case=="Ki"):
+            elif(case=="gates_K"):
                 axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
                 axes[-1].set_xscale('log', subs = []);
-            else:
-                axes[-1].set_xlabel('$2 k_i a N_B/\pi $',fontsize=myfontsize);
-                #axes[gatevali].set_yscale("log",subs=[]);
+            elif(case=="gates_lambda"):
+                axes[-1].set_xlabel('$N_B a/\lambda $',fontsize=myfontsize);
+            else: raise NotImplementedError;
             axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
             axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
 
-    elif(case in ["roots"]): # data structure is different
+    elif(case in ["roots_lambda", "roots_K"]): # data structure is different
+        if(case=="roots_K"): raise NotImplementedError;
         roots = sys.argv[5:]; # these are actually the colors, not colorvals
         if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
         nrows, ncols = np.shape(colorvals)[0], 1;
@@ -281,11 +288,9 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
         axes[-1].legend();
         plt.show();
 
-elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
-         # minimize over a set of states \chi_k
-         # for each gate of interest
-    if(case=="ki"): K_indep = False;
-    elif(case=="K"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
+elif(case in ["gates_lambda","gates_K","ent_lambda","ent_K"]): # at fixed NB, as a function of Ki,
+    if("lambda" in case): K_indep = False;
+    else: K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
 
     # axes
     gates = ["SQRT"];
@@ -406,16 +411,17 @@ elif(case in ["K", "ki"]): # at fixed NB, as a function of Ki,
         axes[-1].legend();
         plt.show();
 
-elif(case in ["roots"]): # compare different roots of swap
+elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
 
     NBvals = np.array([100,140,200,500]); # for the J=-0.2 case
-    #NBvals = np.array([30, 38, 60, 200]) # for the J=-0.4 case
+    #NBvals = np.array([30, 38, 60, 200]); assert(Jval == -0.4); # for the J=-0.4 case
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-    K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
-    extend = True; # more multiples of 2kiaNB/pi
+    if(case=="roots_lambda"): K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
+    else: K_indep = True;
+    extend = False; # more multiples of 2kiaNB/pi
     if(extend):
         myxvals = 5*myxvals; 
     # physical params;
