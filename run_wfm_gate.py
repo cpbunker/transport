@@ -77,6 +77,35 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
     
+def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, verbose = 0):
+    '''
+    '''
+    the_nlocdof = 2*(TwoS+1)*(TwoS+1);
+    
+    # ciccarello type interaction at beginning
+    hblocks_cicc = h_cicc(TwoS, the_J, [1],[2]);
+    if(verbose):
+        print("hblocks_cicc = ");
+        for block in hblocks_cicc: print(np.real(block));
+
+    # add large barrier at end
+    NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
+    hblocks_all, tnn_all = [], []; # new empty array all the way to barrier, will add cicc later
+    for _ in range(NC+the_NB):
+        hblocks_all.append(0.0*np.eye(the_nlocdof));
+        tnn_all.append(-the_tl*np.eye(the_nlocdof));
+    hblocks_all, tnn_all = np.array(hblocks_all,dtype=complex), np.array(tnn_all[:-1]);
+    hblocks_all[0:NC] += hblocks_cicc;
+    hblocks_all[-1] += the_VB*np.eye(the_nlocdof);
+    tnnn_all = np.zeros_like(tnn_all)[:-1]; # no next nearest neighbor hopping
+    
+    # the diagonal term must be the same for all channels!
+    for sigmai in range(the_nlocdof):
+        assert(hblocks_all[0][sigmai, sigmai]==0.0);
+    
+    # return
+    return hblocks_all, tnn_all, tnnn_all;
+    
 def get_U_gate(gate0, TwoS):
     '''
     '''
@@ -152,7 +181,7 @@ def get_Fval(gate0, TwoS, U, R):
     '''
     '''
     assert(np.shape(R) == np.shape(U));
-    assert(len(U)==8); # this affects results even when off-diagonal blocks are zero, due to 1/nd dependence
+    #assert(len(U)==2*(TwoS+1)*(TwoS+1)); # this affects results even when off-diagonal blocks are zero, due to 1/nd dependence
 
     # from Uq to Ugate
     mol_dof = (TwoS+1)*(TwoS+1); 
@@ -198,25 +227,68 @@ def get_Fval(gate0, TwoS, U, R):
     # return
     if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
     return np.real(the_trace);
+    
+def get_suptitle(TwoS, theJ, theV0, theVB, is_FM, is_overt):
+    '''
+    '''
+    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*TwoS, theJ, theV0, theVB);
+    if(is_overt): "$s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.1f}, $V_B/t=${:.1f}".format(0.5*TwoS, theJ, theV0, theVB);
+    
+    # add-ons
+    if(is_FM): suptitle += " (FM leads)";
+    return suptitle;
+    
+def get_indep_vals(is_NB_fixed, is_K_indep, the_xvals, the_xmax, the_NB, the_tl):
+    '''
+    '''
+    
+    # most of the time, NB is fixed for a give color, axis, and only wavenumber changes on x axis
+    if(is_NB_fixed):
+        if(is_K_indep):
+            the_Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+            the_wavelengths = 2*np.pi/np.sqrt(np.logspace(the_Kpowers[0], the_Kpowers[-1], num=the_xvals));
+        else:
+            the_NBoverLambda = np.linspace(0.001, the_xmax - 0.001, the_xvals);
+            the_wavelengths = the_NB/the_NBoverLambda
+        # dispersion
+        the_Kvals = 2*the_tl - 2*the_tl*np.cos(2*np.pi/the_wavelengths);
+        # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
+        the_Energies = the_Kvals - 2*the_tl; 
+    
+        if(is_K_indep): the_indep_vals = 4*np.pi*np.pi/(the_wavelengths*the_wavelengths);
+        else: the_indep_vals = 1*the_NBoverLambda;
+        
+        return the_Kvals, the_Energies, the_indep_vals;
+        
+    else: # change NB on the x axis
+        assert(the_NB == None);
+        the_Kpowers = np.array([-2,-3]) #,-4,-5]); # incident kinetic energy/t = 10^Kpower
+        
+        # wavenumbers
+        the_knumbers = np.sqrt(np.logspace(the_Kpowers[0], the_Kpowers[-1], num=len(the_Kpowers)));
+        
+        # dispersion
+        the_Kvals = 2*the_tl - 2*tl*np.cos(the_knumbers);
+        # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
+        the_Energies = the_Kvals - 2*the_tl; 
+        
+        return the_Kvals, the_Energies, the_knumbers, the_Kpowers;   
            
 ############################################################################ 
 #### exec code
 if(__name__ == "__main__"):
 
     #### top level
-    np.set_printoptions(precision = 4, suppress = True);
+    np.set_printoptions(precision = 2, suppress = True);
     verbose = 1;
-    which_gate = sys.argv[1];
     case = sys.argv[2];
     final_plots = int(sys.argv[3]);
     #if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
-    vlines = not final_plots; # whether to highlight certain x vals with vertical dashed lines
     summed_columns = True;
     elecspin = 0; # itinerant e is spin up
-    if(which_gate not in ["SWAP"]): assert(not final_plots);
 
     # fig standardizing
-    myxvals = 49; 
+    myxvals = 29; 
     if(final_plots): myxvals = 99;
     myfontsize = 14;
     mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
@@ -232,70 +304,62 @@ if(__name__ == "__main__"):
     myTwoS = 1;
     n_mol_dof = (myTwoS+1)*(myTwoS+1); 
     n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-    Jval = -0.2*tl;
+    Jval = float(sys.argv[1]);
     VB = 5.0*tl;
     V0 = 0.0*tl; # just affects title, not implemented physically
-    U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
-if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier NB on the x axis
+if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance of the barrier NB on the x axis
     
     # axes
     nrows, ncols = 4, 4;
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
-    if(case=="NB"): NB_indep = True;
-    elif(case=="kNB"): NB_indep = False # whether to put NB, alternatively wavenumber*NB
+    
+    # cases / other options
+    if("_lambda" in case): NB_indep = False # whether to put NB, alternatively wavenumber*NB
+    else: NB_indep = True;
+    ferromagnetic = False;
+    if("swap" in case): which_gate = "SWAP";
+    else: raise NotImplementedError;
+    U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
     # iter over incident kinetic energy (colors)
-    Kpowers = np.array([-3,-4]); # incident kinetic energy/t = 10^Kpower
-    knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
-    print("knumbers^2 = \n",knumbers*knumbers);
-    Kvals = 2*tl - 2*tl*np.cos(knumbers);
-    Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
-    rhatvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals),dtype=complex); # by  init spin, final spin, energy, NB
-    Fvals_Uchi = np.empty((len(Kvals), myxvals),dtype=float);
+    Kvals, Energies, knumbers, Kpowers = get_indep_vals(False, None, None, None, None, tl); 
+    # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
+    
+    # return value
+    rhatvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals),dtype=complex); 
+    # by  init spin, final spin, energy, NB
+    Fvals_min = np.empty((len(Kvals), myxvals),dtype=float);
     for Kvali in range(len(Kvals)):
         
         # iter over barrier distance (x axis)
         kNBmax = 0.75*np.pi #0.75*np.pi;
-        if(NB_indep): NBmax = 150;
-        else: NBmax = int(kNBmax/knumbers[Kvali]);
-        if(verbose): print("k^2, NBmax = ",knumbers[Kvali]**2, NBmax); 
-        NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
-        if(myxvals==100): NBvals = np.linspace(51,150,100,dtype=int); assert(myxvals==100);
+        if(NB_indep): 
+            NBmax = 150;
+            NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
+            indep_vals = 1*NBvals;
+        else: 
+            NBmax = int(kNBmax/knumbers[Kvali]);
+            NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
+            indep_vals = NBvals/(2*np.pi/knumbers[Kvali]);
+        if(verbose): print("k^2, NBmax = ", knumbers[Kvali]**2, NBmax); 
+        
+        # iter over barrier distance (x axis)
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
 
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS,Jval, [1],[2]);
+            # construct hblocks from cicc-type spin ham
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
 
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-            if(Kvali == 0 and NBvali == 0): print("\nhblocks = \n",np.real(hblocks));
-
-            # since we don't iter over sources, ALL sources must have 0 chem potential
+            # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
-            # fidelity w/r/t U, chi
-            assert(np.shape(rhatvals[:,:,0,0]) == np.shape(U_gate));
-            M_matrix = np.matmul(np.conj(U_gate.T), rhatvals[:,:,Kvali,NBvali]);
-            trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
-            if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
-            Fvals_Uchi[Kvali, NBvali] = np.real(trace_fidelity);
-            if(verbose>4): print(Kvali, 2*NBvals[NBvali], "{:.6f}, {:.4f}".format(2*knumbers[Kvali]*NBvals[NBvali]/np.pi, Fvals_Uchi[Kvali, NBvali]));
+            # fidelity w/r/t U_gate
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
             
         #### end loop over NB
 
@@ -306,23 +370,12 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
         if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
-        if(NB_indep): indep_var = NBvals; # what to put on x axis
-        else: indep_var = 2*knumbers[Kvali]*NBvals/np.pi;
-        indep_argmax = np.argmax(Fvals_Uchi[Kvali]);
-        indep_star = indep_var[indep_argmax];
+        indep_argmax = np.argmax(Fvals_min[Kvali]);
+        indep_star = indep_vals[indep_argmax];
         if(verbose):
-            indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_Uchi[Kvali,indep_argmax]);
-            print(indep_comment,"\n",rhatvals[:,:,Kvali,indep_argmax]);
-            np.savetxt("data/gate/rhat_{:.0f}_{:.0f}.txt".format(Kvali,indep_argmax),rhatvals[:,:,Kvali,indep_argmax], fmt="%.4f", header=indep_comment);
-        if(False and Kvali==1):
-            the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
-            the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
-            comp_phase = 2*np.arctan( the_y/(the_x+np.sqrt(the_x*the_x+the_y*the_y)));
-            print(yvals[:,:,Kvali,the_NBindex]); # |r|
-            print(rhatvals[:,:,Kvali,the_NBindex])
-            print(np.exp(complex(0,-comp_phase))*rhatvals[:,:,Kvali,the_NBindex]) # r*e^-i\phi =? |r|
-            assert False;
-            
+            indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_min[Kvali,indep_argmax]);
+            print(indep_comment,"\n",rhatvals[:n_mol_dof,:n_mol_dof,Kvali,indep_argmax]);
+               
         # plot as a function of NBvals
         elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
         for sourcei in range(len(elems_to_keep)):
@@ -333,25 +386,24 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
                 axes[sourcei,sigmai].set_yticks(the_ticks);
                 axes[sourcei,sigmai].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                 for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color='lightgray',linestyle='dashed');
-                axes[-1,sigmai].set_xlim(0,np.max(indep_var));
+                axes[-1,sigmai].set_xlim(0,np.max(indep_vals));
                 if(NB_indep):
-                    axes[-1,sigmai].set_xlabel('$N_B$',fontsize=myfontsize);
+                    axes[-1,sigmai].set_xlabel("$N_B$",fontsize=myfontsize);
                 else:
-                    axes[-1,sigmai].set_xlabel('$2k_i aN_B /\pi$',fontsize=myfontsize);
+                    axes[-1,sigmai].set_xlabel("$N_B a/\lambda_i$",fontsize=myfontsize);
  
                 # plot rhat
                 if(abs(knumbers[1] - np.sqrt(10.0**Kpowers[1])) < 1e-10):
                     mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
                 else: 
-                    mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
-                axes[sourcei, sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], label = mylabel, color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                if(vlines): axes[sourcei,sigmai].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");
+                    mylabel = "$k_i^2 a^2 = {:.6f} $".format((2*np.pi/wavelengths)[Kvali]**2);
+                axes[sourcei, sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], label = mylabel, color=mycolors[Kvali]);
+                axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
  
                 # plot fidelity, starred SWAP locations
                 if(sourcei==2 and sigmai==1):
-                    axes[sigmai,sourcei].plot(indep_var,Fvals_Uchi[Kvali], label = "$k_i^2 a^2= 10^{"+str(Kpowers[Kvali])+"}$",color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
-                    axes[sigmai,sourcei].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");
+                    axes[sigmai,sourcei].plot(indep_vals,Fvals_min[Kvali], label = "$k_i^2 a^2= 10^{"+str(Kpowers[Kvali])+"}$",color=mycolors[Kvali]);
+
                     for tick in the_ticks: axes[sigmai,sourcei].axhline(tick,color='lightgray',linestyle='dashed');
                     axes[sigmai,sourcei].set_title("$F_{avg}(\mathbf{R}, \mathbf{U}_{"+which_gate+"})$");
                     axes[1,0].legend();
@@ -362,88 +414,70 @@ if(__name__ == "__main__" and case in ["NB","kNB"]): # distance of the barrier N
                     axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                     for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep)-1].axhline(tick,color='lightgray',linestyle='dashed');
                     # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali]),axis=0), label="dummy", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali]),axis=0), label="dummy", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
                     axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$")
                     # difference between diagonal elements of r
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_var, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_var, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery,linestyle="dashed");
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery);
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery,linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                     
     # show
-    suptitle = which_gate+" gate, $s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.2f}, $V_B/t=${:.2f}".format(0.5*myTwoS, Jval/tl, V0/tl, VB/tl);
-    fig.suptitle(suptitle);
+    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     plt.tight_layout();
-    if(final_plots): # save fig
+    if(final_plots > 1): # save fig
         Jstring = "";
         if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
         sstring = "";
         if(myTwoS != 1): sstring = "2s"+str(int(myTwoS))+"_";
         fname = "figs/gate/spin12_"+Jstring+sstring+case;
         plt.savefig(fname+".pdf")
-
     else:
         plt.show();
 
-elif(__name__ == "__main__" and case in["K","ki"]): # incident kinetic energy or wavenumber on the x axis
+elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kinetic energy or wavenumber on the x axis
          # NB is now fixed !!!!
 
     # axes
     nrows, ncols = 4,4;
     fig, axes = plt.subplots(nrows, ncols, sharex=True);
     fig.set_size_inches(ncols*7/2,nrows*3/2);
-    if(case=="ki"): K_indep = False;
-    elif(case=="K"): K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi 
+    
+    # cases / other options
+    if("_lambda" in case): K_indep = False;
+    elif("_K" in case): K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/lambda
+    ferromagnetic = False;
+    if("swap" in case): which_gate = "SWAP";
+    else: raise NotImplementedError;
+    U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
     # iter over fixed NB (colors)
-    NBvals = np.array([50,100,131,150]);
-    Fvals_Uchi = np.empty((myxvals, len(NBvals)),dtype=float); 
+    NBvals = np.array([50,100,140]);
+    Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
 
         # set barrier distance
-        NBval = int(NBvals[NBvali])
-        if(verbose): print("NB = ",NBval); 
-
-        # iter over incident kinetic energy (x axis)
-        kNBmax = 2.0*np.pi #0.75*np.pi;
-        Kpowers = np.array([-2,-4]); # incident kinetic energy/t = 10^Kpower
-        if(K_indep): knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
-        else: knumbers = np.linspace(0.001, kNBmax/NBval, myxvals); 
-        print(knumbers**2); #assert False
-        Kvals = 2*tl - 2*tl*np.cos(knumbers);
-        Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
+        NBval = int(NBvals[NBvali]); 
+        if(verbose): print("NB = ",NBval);
+        
+        # iter over incident wavenumber (x axis)
+        xmax = 1.1;
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl); 
+        # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc 
         for Kvali in range(len(Kvals)):
 
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS, Jval, [1],[2]);
+            # construct hblocks from cicc-type spin ham
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
 
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-            if(Kvali == 0 and NBvali == 0): print("\nhblocks = \n",np.real(hblocks));
-
-            # since we don't iter over sources, ALL sources must have 0 chem potential
+            # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
 
-            # fidelity w/r/t U, chi
-            assert(np.shape(rhatvals[:,:,0,0]) == np.shape(U_gate));
-            M_matrix = np.matmul(np.conj(U_gate.T), rhatvals[:,:,Kvali,NBvali]);
-            trace_fidelity = (np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U_gate)*(len(U_gate)+1));
-            if(np.imag(trace_fidelity) > 1e-10): print(trace_fidelity); assert False;
-            Fvals_Uchi[Kvali, NBvali] = np.real(trace_fidelity);
+            # fidelity w/r/t U_gate
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
 
         #### end loop over Kvals
 
@@ -454,21 +488,11 @@ elif(__name__ == "__main__" and case in["K","ki"]): # incident kinetic energy or
         if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
-        if(K_indep): indep_var = knumbers*knumbers; # what to put on x axis
-        else: indep_var = 2*knumbers*NBvals[NBvali]/np.pi;
-        indep_argmax = np.argmax(Fvals_Uchi[Kvali]);
-        indep_star = indep_var[np.argmax(Fvals_Uchi[:,NBvali])];
+        indep_argmax = np.argmax(Fvals_min[:,NBvali]);
+        indep_star = indep_vals[np.argmax(Fvals_min[:,NBvali])];
         if(verbose):
-            indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_Uchi[indep_argmax,NBvali]);
-            print(indep_comment,"\n",rhatvals[:,:,indep_argmax,Kvali]);
-        if(False and Kvali==1):
-            the_sourceindex, the_NBindex = 1, np.argmax(Fvals_Uchi[Kvali]);
-            the_y, the_x = np.imag(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]), np.real(rhatvals[the_sourceindex,the_sourceindex,Kvali,the_NBindex]);
-            comp_phase = 2*np.arctan( the_y/(the_x+np.sqrt(the_x*the_x+the_y*the_y)));
-            print(yvals[:,:,Kvali,the_NBindex])
-            print(rhatvals[:,:,Kvali,the_NBindex])
-            print(np.exp(complex(0,-comp_phase))*rhatvals[:,:,Kvali,the_NBindex])
-            assert False;
+            indep_comment = "case = "+case+": indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, Fvals_min[indep_argmax, NBvali]);
+            print(indep_comment, "\n", rhatvals[:n_mol_dof,:n_mol_dof,indep_argmax,NBvali]);
             
         # plot as a function of K
         elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
@@ -484,18 +508,16 @@ elif(__name__ == "__main__" and case in["K","ki"]): # incident kinetic energy or
                     axes[-1,sigmai].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
                     axes[-1,sigmai].set_xscale('log', subs = []);
                 else:
-                    axes[-1,sigmai].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
+                    axes[-1,sigmai].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
  
                 # plot rhat
-                axes[sourcei,sigmai].plot(indep_var, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                axes[sourcei,sigmai].plot(indep_var, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], linestyle="dashed", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                if(vlines): axes[sourcei,sigmai].axvline(indep_star, color=mycolors[NBvali], linestyle="dotted");
+                axes[sourcei,sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
+                axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], linestyle="dashed", color=mycolors[NBvali]);
  
                 # plot fidelity
                 if(sourcei==2 and sigmai==1): # NB sourcei, sigmai reversed here
-                    axes[sigmai,sourcei].plot(indep_var,Fvals_Uchi[:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                    axes[sigmai,sourcei].axvline(indep_star, color=mycolors[NBvali], linestyle="dotted");
-                    for tick in the_ticks: axes[sigmai,sourcei].axhline(tick,color='lightgray',linestyle='dashed');
+                    axes[sigmai,sourcei].plot(indep_vals, Fvals_min[:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                    for tick in the_ticks: axes[sigmai, sourcei].axhline(tick, color='lightgray', linestyle='dashed');
                     axes[sigmai,sourcei].set_title("$F_{avg}(\mathbf{R},\mathbf{U}_{"+which_gate+"})$");
                     axes[1,0].legend();
 
@@ -505,18 +527,18 @@ elif(__name__ == "__main__" and case in["K","ki"]): # incident kinetic energy or
                     axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                     for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep)-1].axhline(tick,color='lightgray',linestyle='dashed');
                     # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_var, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali]),axis=0), label="dummy", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$")
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali]),axis=0), label="dummy", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$");
+                    
                     # difference between diagonal elements of r
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_var, np.real(yvals)[1,1,:,NBvali] - np.real(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_var, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery,linestyle="dashed");
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,:,NBvali] - np.real(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery,linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
-    suptitle = "$s=${:.1f}, $J/t=${:.2f}, $V_0/tl={:.2f}$, $V_B/t=${:.2f}".format(0.5*myTwoS, Jval/tl, V0/tl, VB/tl);
-    fig.suptitle(suptitle);
+    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     plt.tight_layout();
-    if(final_plots): # save fig
+    if(final_plots > 1): # save fig
         Jstring = "";
         if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
         sstring = "";

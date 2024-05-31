@@ -24,15 +24,19 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = 
     -tnn, array, nearest neighbor block hopping matrices
     -tnnn, array, next nearest neighbor block hopping matrices
     -tl, float, hopping in leads, not necessarily same as hopping on/off SR
-        or within SR which is defined by th matrices
+        or within SR which is defined by tnn, tnnn matrices
     -E, float, energy of the incident electron
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
     Optional args
     -verbose, how much printing to do
+    -rhat, whether to return Rhat operator or just R, T probabilities
     -all_debug, whether to enforce a bunch of extra assert statements
 
     Returns
     tuple of R coefs (vector of floats for each sigma) and T coefs (likewise)
+    UNLESS rhat = True, in which case
+    returns n_loc_dof \times n_loc_dof matrix rhat, which
+    transforms incoming spin states to reflected spin states
     '''
     if(not isinstance(h, np.ndarray)): raise TypeError;
     if(not isinstance(tnn, np.ndarray)): raise TypeError;

@@ -12,11 +12,10 @@ from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.linalg import expm as scipy_expm
 
 import sys
 
-from run_wfm_gate import h_cicc, get_U_gate, get_Fval;
+from run_wfm_gate import h_cicc, get_hblocks, get_U_gate, get_Fval, get_suptitle, get_indep_vals;
           
 #########################################################
 #### barrier in right lead for total reflection
@@ -27,7 +26,6 @@ verbose = 1;
 case = sys.argv[2];
 final_plots = int(sys.argv[3]);
 #if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
-vlines = False;
 elecspin = 0; # itinerant e is spin up
 
 # fig standardizing
@@ -157,7 +155,7 @@ if(final_plots == 10):
 
             # x axis
             axes[-1].set_xlabel('$N_B a /\lambda_i$',fontsize=myfontsize);
-            axes[gatevali].set_xlim(0,np.max(xvals));
+            #axes[gatevali].set_xlim(0,np.max(xvals));
             
             # y axis
             #axes[colori].set_yticks(the_ticks);
@@ -173,12 +171,12 @@ if(final_plots == 10):
     axes[-1].legend(loc = "lower right");
     plt.show();
 
+######################################################################################
 #### generate data
-elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
-         # minimize over a set of states \chi_k
-         # for each gate of interest
+elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
     if(case=="NB"): NB_indep = True; # whether to put NB, alternatively wavenumber*NB
     elif(case=="kNB"): NB_indep = False;
+    raise NotImplementedError;
 
     # axes
     gates = ["SeS12","SQRT","SWAP","I"];
@@ -187,14 +185,7 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
 
-    # physical params
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
-    if(final_plots): suptitle += "";
-
-    # iter over incident kinetic energy (colors)
-    Kpowers = np.array([-2,-3,-4]); # incident kinetic energy/t = 10^Kpower
-    knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=len(Kpowers)));
-    Kvals = 2*tl - 2*tl*np.cos(knumbers);
+    # iter over incident wavenumber (colors)
     Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
     rhatvals = np.empty((n_loc_dof,n_loc_dof,len(Kvals),myxvals),dtype=complex); # by  init spin, final spin, energy, NB
     Fvals_min = np.empty((len(Kvals), myxvals, len(gates)),dtype=float); # avg fidelity
@@ -210,25 +201,12 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
 
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS,Jval, [1],[2]);
+            # construct hblocks from cicc-type spin ham
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
 
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-
-            # since we don't iter over sources, ALL sources must have 0 chem potential
+            # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
@@ -236,7 +214,7 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
             # iter over gates to get fidelity for each one
             for gatevali in range(len(gates)):
                 U_gate, dummy_ticks = get_U_gate(gates[gatevali],myTwoS);
-                Fvals_min[Kvali, NBvali, gatevali] = get_Fval(gates[gatevali], myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali]);                
+                Fvals_min[Kvali, NBvali, gatevali] = get_Fval(gates[gatevali], myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);                
         #### end loop over NB
 
         # plotting considerations
@@ -270,8 +248,7 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
                 mylabel = "$k_i^2 a^2 = {:.6f} $".format(knumbers[Kvali]**2);
                 
             # plot fidelity, starred SWAP locations, as a function of NB
-            axes[gatevali].plot(indep_vals,Fvals_min[Kvali,:,gatevali], label = mylabel,color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);
-            if(vlines): axes[gatevali].axvline(indep_star, color=mycolors[Kvali], linestyle="dotted");           
+            axes[gatevali].plot(indep_vals,Fvals_min[Kvali,:,gatevali], label = mylabel,color=mycolors[Kvali],marker=mymarkers[1+Kvali],markevery=mymarkevery);     
 
             # save Fvals to .npy
             if(final_plots>1):
@@ -282,33 +259,40 @@ elif(case in ["NB","kNB"]): # at fixed Ki, as a function of NB,
     #### end loop over Ki
             
     # show
-    fig.suptitle(suptitle);
+    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     plt.tight_layout();
     if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_K{:.0f}_title.txt".format(Jval,len(Kvals)),knumbers*knumbers,header=suptitle);
+        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_K{:.0f}_title.txt".format(Jval,len(Kvals)),knumbers*knumbers,header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     else:
         axes[-1].legend();
         plt.show();
 
 elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, as a function of Ki,
     if("lambda" in case): K_indep = False;
-    else: K_indep = True; # whether to put ki^2 on x axis, alternatively ki a Nb/pi
+    else: K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/\lambda
+    extend = True; # more multiples of NBa/\lambda
+    if(extend): myxvals = 5*myxvals; 
 
     # axes
-    gates = ["SQRT", "SWAP","I"];
+    gates = ["SQRT", "SWAP","I", "SeS12"];
     if("conc" in case): gates = ["overlap","conc"];
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
     fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-
-    # physical params
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
-    if(final_plots): suptitle += "";
+    
+    # cases / other options
+    if("_lambda" in case): K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
+    else: K_indep = True;
+    extend = False; 
+    if("_extend" in case): extend = True; # plot further out multiples of 2kiaNB/pi
+    if(extend):
+        myxvals = 5*myxvals; 
+    ferromagnetic = False;
 
     # iter over barrier distance (colors)
-    NBvals = np.array([100, 140, 500]);
+    NBvals = np.array([100]) #, 140, 500]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -316,38 +300,18 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
         NBval = NBvals[NBvali];
         if(verbose): print("NB = ",NBval); 
 
-        # iter over incident kinetic energy (x axis)
-        if(K_indep):
-            Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
-            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); 
-            wavelengths = 2*np.pi/knumbers;
-        else:
-            xmax = 1.1;
-            NBoverLambda = np.linspace(0.001, xmax - 0.001, myxvals);
-            wavelengths = NBval/NBoverLambda;
-        Kvals = 2*tl - 2*tl*np.cos(2*np.pi/wavelengths);
-        Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
+        # iter over incident wavenumber (x axis)
+        xmax = 1.1;
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl);  
+        # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         for Kvali in range(len(Kvals)):
 
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS, Jval, [1],[2]);
+            # construct hblocks from cicc-type spin ham
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
 
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-            
-            # since we don't iter over sources, ALL sources must have 0 chem potential
+            # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
@@ -359,8 +323,6 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
         #### end loop over Ki
 
         # plotting considerations
-        if(K_indep): indep_vals = knumbers*knumbers;
-        else: indep_vals = NBvals[NBvali]/wavelengths;
         for gatevali in range(len(gates)):
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
@@ -393,11 +355,11 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
                 axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
-            axes[gatevali].plot(indep_vals, Fvals_min[:,NBvali,gatevali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali],markevery=mymarkevery);
-            if(vlines): axes[gatevali].axvline(indep_star, color=mycolors[NBvali], linestyle="dotted");
+            axes[gatevali].plot(indep_vals, Fvals_min[:,NBvali,gatevali], label = "$N_B = ${:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali]);
 
             # save Fvals to .npy
             if(final_plots > 1):
+                assert(extend); # always save high resolution, high quality data only
                 xy_savename = "data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
                 np.save(xy_savename + "_y.npy", Fvals_min[:,NBvali,gatevali]);
                 np.save(xy_savename + "_x.npy",indep_vals);
@@ -406,30 +368,32 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     #### end loop over NB
             
     # show
-    fig.suptitle(suptitle, fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False), fontsize=myfontsize);
     plt.tight_layout();
     if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
-
-elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
-
-    NBvals = np.array([100,140,200,500]); # for the J=-0.2 case
+        
+# compare different roots of swap at fixed NB, vs NBa/\lambda_i
+elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]):
+    # different axes are different NB
+    NBvals = np.array([100]) #,140,200,500]); # for the J=-0.2 case
     #NBvals = np.array([30, 38, 60, 200]); assert(Jval == -0.4); # for the J=-0.4 case
     nrows, ncols = len(NBvals), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
-    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
+    fig.set_size_inches(ncols*myfigsize[0], nrows*myfigsize[1]);
+    
+    # cases / other options
     if(case=="roots_lambda"): K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
     else: K_indep = True;
-    extend = False; # more multiples of 2kiaNB/pi
-    if(extend):
-        myxvals = 5*myxvals; 
-    # physical params;
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
+    extend = False; 
+    if("_extend" in case): extend = True; # plot further out multiples of NBa/\lambda
+    if(extend): myxvals = 5*myxvals; 
+    ferromagnetic = False;
 
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
@@ -442,38 +406,30 @@ elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
         NBval = NBvals[NBvali];
         if(verbose): print("NB = ",NBval); 
 
-        # iter over incident kinetic energy (x axis)
+        # iter over incident wavenumber (x axis)
         xmax = 1.1;
         if(extend): xmax = 3*xmax;
-        Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
-        if(K_indep):
-            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
-        else:
-            NBoverLambda = np.linspace(0.001, xmax - 0.001, myxvals);
-            wavelengths = NBval/NBoverLambda
-        Kvals = 2*tl - 2*tl*np.cos(2*np.pi/wavelengths);
-        Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl);
+        # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         for Kvali in range(len(Kvals)):
 
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS, Jval, [1],[2]);
+            # construct hblocks from cicc-type spin ham
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
 
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-            
-            # since we don't iter over sources, ALL sources must have 0 chem potential
+            # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
+            
+            # FM leads = modify so only up-up hopping allowed
+            if(ferromagnetic): 
+                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
+                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
+                
+                # printing
+                for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
+                    print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
+                    print(tnn[jindex]);
+                    assert False;
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
@@ -482,15 +438,15 @@ elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
             for rootvali in range(len(roots)):
                 gatestr = "RZ"+roots[rootvali];
                 U_gate, dummy_ticks = get_U_gate(gatestr,myTwoS);
-                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali]);             
+                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
+                
+                # limit to e up quadrant <--------------------- !!!!!!!!!!!!!!!!
+                if(ferromagnetic): Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate[:n_mol_dof,:n_mol_dof], rhatvals[:n_mol_dof,:n_mol_dof, Kvali, NBvali]);      
+                # < -------------- !!!!!!!!!!!!
+                       
         #### end loop over Ki
 
         # plotting considerations
-        if(K_indep): indep_vals = 4*np.pi*np.pi/wavelengths;
-        else: indep_vals = 1*NBoverLambda
-        if(verbose):
-            print(">>> indep_vals = ") 
-            for vali in range(len(indep_vals)): print(indep_vals[vali], Fvals_min[vali,NBvali,-1]);
         for rootvali in range(len(roots)):
 
             # determine fidelity and kNB*, ie x val where the SWAP is best
@@ -518,39 +474,30 @@ elif(case in ["roots_lambda", "roots_K"]): # compare different roots of swap
             axes[NBvali].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
                 
             # plot fidelity, starred SWAP locations
-            axes[NBvali].plot(indep_vals,Fvals_min[:,NBvali,rootvali], label = "$n = "+roots[rootvali]+"$",color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
-            if(vlines): axes[NBvali].axvline(indep_star, color=mycolors[rootvali], linestyle="dotted");
+            axes[NBvali].plot(indep_vals,Fvals_min[:,NBvali,rootvali], label = "$n = "+roots[rootvali]+"$",color=mycolors[rootvali]);
 
             # save Fvals to .npy
             if(final_plots > 1):
                 assert(extend); # always save high resolution, high quality data only
-                np.save("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_y.npy".format(Jval, NBval),Fvals_min[:,NBvali,rootvali]);
-                np.save("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}_x.npy".format(Jval, NBval),indep_vals);
+                xy_savename = "data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
+                np.save(xy_savename + "_y.npy", Fvals_min[:,NBvali,rootvali]);
+                np.save(xy_savename + "_x.npy",indep_vals);
+
         #### end loop over roots
 
     #### end loop over NB
             
     # show
-    fig.suptitle(suptitle, fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False), fontsize=myfontsize);
     plt.tight_layout();
-    if(final_plots > 1): # save fig and legend
-        fname = "figs/gate/F_vs_"+case;
-        #plt.savefig(fname+".pdf")
-        #fig_leg = plt.figure()
-        #fig_leg.set_size_inches(3/2,3/2)
-        #ax_leg = fig_leg.add_subplot(111)
-        # add the legend from the previous axes
-        #ax_leg.legend(*axes[-1].get_legend_handles_labels(), loc='center')
-        # hide the axes frame and the x/y labels
-        #ax_leg.axis('off')
-        #plt.savefig(fname+"_legend.pdf");
-        # title and color values
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=suptitle);
+    if(final_plots > 1): # save title, don't show
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals, header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
         
 elif(case in ["direct","directJ"]):
+    from scipy.linalg import expm as scipy_expm
 
     # override existing axes
     plt.close();
@@ -676,6 +623,7 @@ elif(case in ["direct","directJ"]):
     plt.show();  
         
 elif(case in ["med","medJ"]): # just time evolve initial state
+    from scipy.linalg import expm as scipy_expm
 
     # override existing axes
     plt.close();
@@ -808,110 +756,6 @@ elif(case in ["med","medJ"]): # just time evolve initial state
     fig.suptitle(suptitle, fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
-
-elif(case in ["ctap_scat"]): # compare different roots of swap
-
-    # override existing axes
-    plt.close();
-    del gates, fig, axes;
-    NBvals = np.array([40,50,100])
-    nrows, ncols = len(NBvals), 1;
-    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-    if(nrows==1): axes = [axes];
-    fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
-    K_indep = False; # whether to plot (ki*a)^2 or 2ki *a * NB/\pi on the x axis
-    myxvals = 5*myxvals;
-    mymarkevery = (myxvals//3, myxvals//3);
-    # physical params;
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*myTwoS, Jval, V0, VB);
     
-    # define time-dep observables
-    which_states = np.array([1,4,2]);
-    state_labels = ["\\uparrow_e \\uparrow_1 \\uparrow_2","\\uparrow_e \\uparrow_1 \downarrow_2","\\uparrow_e \downarrow_1 \\uparrow_2","\\uparrow_e \downarrow_1 \downarrow_2",
-        "\downarrow_e \\uparrow_1 \\uparrow_2","\downarrow_e \\uparrow_1 \downarrow_2","\downarrow_e \downarrow_1 \\uparrow_2","\downarrow_e \downarrow_1 \downarrow_2"]; 
-    observables = np.empty((len(which_states), myxvals, len(NBvals)),dtype=float);
-    psi0 = np.zeros((n_loc_dof,),dtype=complex);
-    psi0[which_states[0]] = 1.0; # |up up down>
-    
-    # iter over NB
-    rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
-    for NBvali in range(len(NBvals)):
-        NBval = NBvals[NBvali];
-        if(verbose): print("NB = ",NBval); 
-
-        # iter over incident kinetic energy (x axis)
-        kNBmax = 10*np.pi;
-        Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
-        if(K_indep):
-            knumbers = np.sqrt(np.logspace(Kpowers[0],Kpowers[-1],num=myxvals)); del kNBmax;
-        else:
-            kNB_times2overpi = np.linspace(0.001, 2*kNBmax/np.pi - 0.001, myxvals);
-            knumbers = kNB_times2overpi *np.pi/(2*NBval)
-        Kvals = 2*tl - 2*tl*np.cos(knumbers);
-        Energies = Kvals - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
-        for Kvali in range(len(Kvals)):
-
-            # construct hblocks from spin ham
-            hblocks_cicc = h_cicc(myTwoS, Jval, [1],[2]);
-
-            # add large barrier at end
-            NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
-            hblocks, tnn = [], []; # new empty array all the way to barrier, will add cicc later
-            for _ in range(NC+NBval):
-                hblocks.append(0.0*np.eye(n_loc_dof));
-                tnn.append(-tl*np.eye(n_loc_dof));
-            hblocks, tnn = np.array(hblocks,dtype=complex), np.array(tnn[:-1]);
-            hblocks[0:NC] += hblocks_cicc;
-            hblocks[-1] += VB*np.eye(n_loc_dof);
-            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
-            
-            # since we don't iter over sources, ALL sources must have 0 chem potential
-            source = np.zeros((n_loc_dof,));
-            source[-1] = 1;
-            for sourcei in range(n_loc_dof):
-                assert(hblocks[0][sourcei,sourcei]==0.0);
-                    
-            # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
-
-            # iter state weights
-            psit = np.matmul(rhatvals[:,:,Kvali,NBvali], psi0);
-            # get observables
-            for whichi in range(len(which_states)):
-                statei = which_states[whichi];
-                bra = np.zeros_like(psi0);
-                bra[statei] = 1.0;
-                overlap = np.dot(np.conj(bra), psit);
-                if( abs(np.imag(np.conj(overlap)*overlap)) > 1e-10): assert False;
-                observables[whichi, Kvali, NBvali] = np.real(np.conj(overlap)*overlap);         
-        #### end loop over Ki
-
-        # plotting considerations
-        if(K_indep): indep_vals = knumbers*knumbers;
-        else: indep_vals = 2*knumbers*NBvals[NBvali]/np.pi;
-
-        # plot formatting
-        #axes[NBvali].set_yticks(the_ticks);
-        axes[NBvali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-        for tick in the_ticks: axes[NBvali].axhline(tick,color='lightgray',linestyle='dashed');
-        if(K_indep):
-            axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
-            axes[-1].set_xscale('log', subs = []);
-        else:
-            axes[-1].set_xlabel('$2k_i a N_B/\pi$',fontsize=myfontsize);
-        axes[-1].set_xlim(np.floor(indep_vals[0]), np.ceil(indep_vals[-1]));
-        axes[NBvali].annotate("$N_B = {"+str(NBvals[NBvali])+"}$", (indep_vals[int(3*len(indep_vals)/4)],1.01),fontsize=myfontsize);
-                
-        for whichi in range(len(which_states)):
-            axes[NBvali].plot(indep_vals, observables[whichi,:,NBvali], label = "$|\langle\psi(\\tau)|"+state_labels[which_states[whichi]]+"\\rangle|^2$", color=mycolors[whichi], marker = mymarkers[1+whichi], markevery = mymarkevery);
-        axes[NBvali].plot(indep_vals, np.sum(observables[:,:,NBvali], axis=0), color="black");
-
-    #### end loop over NB
-            
-    # show
-    fig.suptitle(suptitle, fontsize=myfontsize);
-    plt.tight_layout();
-    axes[-1].legend();
-    plt.show();      
         
         
