@@ -177,11 +177,11 @@ def get_U_gate(gate0, TwoS):
     # return
     return U, ticks;
 
-def get_Fval(gate0, TwoS, U, R):
+def get_Fval(gate0, TwoS, U, R, the_espin, is_FM):
     '''
     '''
     assert(np.shape(R) == np.shape(U));
-    #assert(len(U)==2*(TwoS+1)*(TwoS+1)); # this affects results even when off-diagonal blocks are zero, due to 1/nd dependence
+    assert(len(U)==2*(TwoS+1)*(TwoS+1)); # this affects results even when off-diagonal blocks are zero, due to 1/nd dependence
 
     # from Uq to Ugate
     mol_dof = (TwoS+1)*(TwoS+1); 
@@ -221,6 +221,14 @@ def get_Fval(gate0, TwoS, U, R):
         the_trace = np.sqrt(np.conj(the_trace)*the_trace); # norm 
 
     else: # actually get fidelity
+    
+        # truncate for ferromagnetic leads 
+        if(is_FM):
+            U=U[the_espin*mol_dof:(the_espin+1)*mol_dof, the_espin*mol_dof:(the_espin+1)*mol_dof];
+            R=R[the_espin*mol_dof:(the_espin+1)*mol_dof, the_espin*mol_dof:(the_espin+1)*mol_dof]; 
+    
+        # Molmer formula
+        print(np.shape(U), np.shape(R));
         M_matrix = np.matmul(np.conj(U.T), R); # M = U^\dagger R
         the_trace = np.sqrt((np.trace(np.matmul(M_matrix,np.conj(M_matrix.T) ))+np.conj(np.trace(M_matrix))*np.trace(M_matrix))/(len(U)*(len(U)+1)));
 
@@ -318,7 +326,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
     # cases / other options
     if("_lambda" in case): NB_indep = False # whether to put NB, alternatively wavenumber*NB
     else: NB_indep = True;
-    ferromagnetic = False;
+    ferromagnetic = True;
     if("swap" in case): which_gate = "SWAP";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
@@ -355,26 +363,43 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
+            
+            # FM leads = modify so only up-up hopping allowed
+            if(ferromagnetic): 
+                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
+                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
+                
+                if(False): # printing
+                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
+                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
+                        print(tnn[jindex]);
+                    assert False;
+            # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            
             # fidelity w/r/t U_gate
-            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic);  
             
         #### end loop over NB
 
-        # determine fidelity and kNB*, ie x val where the SWAP happens
-        rhatvals_up = rhatvals[:,np.array(range(n_loc_dof))<n_mol_dof]; # ref'd is e up
-        rhatvals_down = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof]; # ref'd is e down
+        # process R output
+        if(elecspin==1): # final e state (column, 2nd index) is spin up
+            rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))<n_mol_dof]; 
+        elif(elecspin==0): # final e state (column, 2nd index) is spin down
+            rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         yvals = np.copy(rhatvals); rbracket = "";
         if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
+            
+        # determine fidelity and kNB*, ie x val where the SWAP happens
         indep_argmax = np.argmax(Fvals_min[Kvali]);
         indep_star = indep_vals[indep_argmax];
         if(verbose):
             indep_comment = case+": indep_star, fidelity(indep_star) = {:.6f}, {:.4f}".format(indep_star, Fvals_min[Kvali,indep_argmax]);
-            print(indep_comment,"\n",rhatvals[:n_mol_dof,:n_mol_dof,Kvali,indep_argmax]);
+            print(indep_comment,"\n",rhatvals[elecspin*n_mol_dof:(elecspin+1)*n_mol_dof, elecspin*n_mol_dof:(elecspin+1)*n_mol_dof,Kvali,indep_argmax]);
                
         # plot as a function of NBvals
         elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
@@ -392,13 +417,13 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
                 else:
                     axes[-1,sigmai].set_xlabel("$N_B a/\lambda_i$",fontsize=myfontsize);
  
-                # plot rhat
+                # plot rhat (real part = solid, imag part = dashed)
                 if(abs(knumbers[1] - np.sqrt(10.0**Kpowers[1])) < 1e-10):
                     mylabel = "$k_i^2 a^2 = 10^{"+str(Kpowers[Kvali])+"}$"
                 else: 
                     mylabel = "$k_i^2 a^2 = {:.6f} $".format((2*np.pi/wavelengths)[Kvali]**2);
-                axes[sourcei, sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], label = mylabel, color=mycolors[Kvali]);
-                axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], linestyle="dashed", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
+                axes[sourcei, sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei], n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], label = mylabel, color=mycolors[Kvali]);
+                if(rbracket != "|"): axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei], n_mol_dof*elecspin+elems_to_keep[sigmai],Kvali], linestyle="dashed", color=mycolors[Kvali]);
  
                 # plot fidelity, starred SWAP locations
                 if(sourcei==2 and sigmai==1):
@@ -409,16 +434,21 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
                     axes[1,0].legend();
                    
                 # plot reflection summed over final states (columns)
-                if((sourcei in [1,2] and sigmai==0) and summed_columns and elecspin==0):
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_yticks(the_ticks);
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-                    for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep)-1].axhline(tick,color='lightgray',linestyle='dashed');
+                if((sourcei in [1,2] and sigmai==0) and summed_columns):                
                     # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,Kvali]),axis=0), label="dummy", color=mycolors[Kvali], marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$")
+                    # NB rhatvals_offdiag have shape (8,4)
+                    which_rhatvals_offdiag = rhatvals_offdiag[elecspin*n_mol_dof + elems_to_keep[sourcei], :,Kvali];
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(which_rhatvals_offdiag)*which_rhatvals_offdiag),axis=0), label="dummy", color=mycolors[Kvali]);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[n_mol_dof*elecspin+sourcei])+"| \mathbf{R} |"+["\downarrow_e","\\uparrow_e"][elecspin]+" \sigma_1 \sigma_2 \\rangle |^2$");
+                    
+                    # format summed final states
+                    axes[sourcei,sigmai+len(elems_to_keep)- 1].set_yticks(the_ticks);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+                    for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep) -1].axhline(tick,color='lightgray',linestyle='dashed');
+                    
                     # difference between diagonal elements of r
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],marker=mymarkers[1+Kvali], markevery=mymarkevery,linestyle="dashed");
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali]);
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                     
     # show
@@ -472,35 +502,53 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-                    
+            
+             # FM leads = modify so only up-up hopping allowed
+            if(ferromagnetic): 
+                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
+                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
+                
+                if(False): # printing
+                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
+                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
+                        print(tnn[jindex]);
+                    assert False;
+            # new code < -------------- !!!!!!!!!!!!
+            
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);            
 
-            # fidelity w/r/t U_gate
-            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
+            # fidelity w/r/t U_gate           
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic); 
 
         #### end loop over Kvals
 
-        # determine fidelity and K*, ie x val where the SWAP happens
-        rhatvals_up = rhatvals[:,np.array(range(n_loc_dof))<n_mol_dof]; # ref'd is e up
-        rhatvals_down = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof]; # ref'd is e down
+        # process R output
+        if(elecspin==1): # final e state (column, 2nd index) is spin up
+            rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))<n_mol_dof]; 
+        elif(elecspin==0): # final e state (column, 2nd index) is spin down
+            rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         yvals = np.copy(rhatvals); rbracket = "";
         if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
+            
+        # determine fidelity and K*, ie x val where the SWAP happens   
         indep_argmax = np.argmax(Fvals_min[:,NBvali]);
         indep_star = indep_vals[np.argmax(Fvals_min[:,NBvali])];
         if(verbose):
             indep_comment = "case = "+case+": indep_star, fidelity(indep_star) = {:.8f}, {:.4f}".format(indep_star, Fvals_min[indep_argmax, NBvali]);
-            print(indep_comment, "\n", rhatvals[:n_mol_dof,:n_mol_dof,indep_argmax,NBvali]);
+            print(indep_comment, "\n", rhatvals[elecspin*n_mol_dof:(elecspin+1)*n_mol_dof, elecspin*n_mol_dof:(elecspin+1)*n_mol_dof, indep_argmax, NBvali]);
             
         # plot as a function of K
         elems_to_keep = np.array([0,1,myTwoS+1,myTwoS+1+1]);
         for sourcei in range(len(elems_to_keep)):
             for sigmai in range(sourcei+1):
                 # formatting
-                if(myTwoS > 1): axes[sourcei,sigmai].set_title(str(n_mol_dof*elecspin+elems_to_keep[sourcei])+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
-                else: axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |"+str(ylabels[4*elecspin+sigmai])+"\\rangle"+rbracket+"$")
+                if(myTwoS > 1): 
+                    axes[sourcei,sigmai].set_title(str(n_mol_dof*elecspin+elems_to_keep[sourcei])+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
+                else: 
+                    axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"+ str(ylabels[4*elecspin+sourcei])+ "| \mathbf{R} |"+str(ylabels[4*elecspin+sigmai])+"\\rangle"+rbracket+"$")
                 axes[sourcei,sigmai].set_yticks(the_ticks);
                 axes[sourcei,sigmai].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                 for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color='lightgray',linestyle='dashed');
@@ -510,29 +558,33 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
                 else:
                     axes[-1,sigmai].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
  
-                # plot rhat
-                axes[sourcei,sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
-                axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+elems_to_keep[sourcei],n_mol_dof*elecspin+elems_to_keep[sigmai],:,NBvali], linestyle="dashed", color=mycolors[NBvali]);
+                # plot rhat (real part = solid, imag part = dashed)
+                axes[sourcei,sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+ elems_to_keep[sourcei], n_mol_dof*elecspin+ elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
+                if(rbracket != "|"): axes[sourcei,sigmai].plot(indep_vals, np.imag(yvals)[n_mol_dof*elecspin+ elems_to_keep[sourcei], n_mol_dof*elecspin+ elems_to_keep[sigmai],:,NBvali], linestyle="dashed", color=mycolors[NBvali]);
  
                 # plot fidelity
                 if(sourcei==2 and sigmai==1): # NB sourcei, sigmai reversed here
-                    axes[sigmai,sourcei].plot(indep_vals, Fvals_min[:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
+                    axes[sigmai,sourcei].plot(indep_vals, Fvals_min[:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali]);
                     for tick in the_ticks: axes[sigmai, sourcei].axhline(tick, color='lightgray', linestyle='dashed');
                     axes[sigmai,sourcei].set_title("$F_{avg}(\mathbf{R},\mathbf{U}_{"+which_gate+"})$");
                     axes[1,0].legend();
 
-                # plot reflection summed over final states (columns)
-                if((sourcei in [1,2] and sigmai==0) and summed_columns and elecspin==0):
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_yticks(the_ticks);
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-                    for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep)-1].axhline(tick,color='lightgray',linestyle='dashed');
+                # plot reflection summed over final states (column, 2nd index)
+                if((sourcei in [1,2] and sigmai==0) and summed_columns):                    
                     # < elec up row state| \sum |final states elec down>. to measure Se <-> S1(2)
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali])*rhatvals_down[n_mol_dof*elecspin+elems_to_keep[sourcei],:,:,NBvali]),axis=0), label="dummy", color=mycolors[NBvali], marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[4*elecspin+sourcei])+"| \mathbf{R} |\downarrow_e \sigma_1 \sigma_2 \\rangle |^2$");
+                    # NB rhatvals_offdiag have shape (8,4)
+                    which_rhatvals_offdiag = rhatvals_offdiag[elecspin*n_mol_dof + elems_to_keep[sourcei], :,:,NBvali];
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.sum(np.real(np.conj(which_rhatvals_offdiag)*which_rhatvals_offdiag),axis=0), label="dummy", color=mycolors[NBvali]);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_title("$\sum_{\sigma_1 \sigma_2}| \langle"+str(ylabels[n_mol_dof*elecspin+sourcei])+"| \mathbf{R} |"+["\downarrow_e","\\uparrow_e"][elecspin]+" \sigma_1 \sigma_2 \\rangle |^2$");
                     
-                    # difference between diagonal elements of r
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,:,NBvali] - np.real(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],marker=mymarkers[1+NBvali], markevery=mymarkevery,linestyle="dashed");
+                    # format summed reflection
+                    axes[sourcei, sigmai+len(elems_to_keep)-1].set_yticks(the_ticks);
+                    axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+                    for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep) -1].axhline(tick, color='lightgray', linestyle='dashed');
+                    
+                    # difference between diagonal elements of R
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,:,NBvali] - np.real(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
+                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show

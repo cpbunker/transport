@@ -26,7 +26,6 @@ verbose = 1;
 case = sys.argv[2];
 final_plots = int(sys.argv[3]);
 #if final_plots: plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
-elecspin = 0; # itinerant e is spin up
 
 # fig standardizing
 myxvals = 29; myfigsize = (5/1.2,3/1.2); myfontsize = 14;
@@ -429,7 +428,8 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
                 for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
                     print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
                     print(tnn[jindex]);
-                    assert False;
+                assert False;
+            # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
@@ -442,7 +442,7 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
                 
                 # limit to e up quadrant <--------------------- !!!!!!!!!!!!!!!!
                 if(ferromagnetic): Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate[:n_mol_dof,:n_mol_dof], rhatvals[:n_mol_dof,:n_mol_dof, Kvali, NBvali]);      
-                # < -------------- !!!!!!!!!!!!
+                # new code < -------------- !!!!!!!!!!!!
                        
         #### end loop over Ki
 
