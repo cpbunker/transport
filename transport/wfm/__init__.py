@@ -16,7 +16,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = True) -> tuple:
+def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = True, verbose = 0, ):
     '''
     coefficient for a transmitted up and down electron
     Args
@@ -29,13 +29,13 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = 
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
     Optional args
     -verbose, how much printing to do
-    -rhat, whether to return Rhat operator or just R, T probabilities
+    -is_Rhat, whether to return Rhat operator or just R, T probabilities
     -all_debug, whether to enforce a bunch of extra assert statements
 
     Returns
     tuple of R coefs (vector of floats for each sigma) and T coefs (likewise)
-    UNLESS rhat = True, in which case
-    returns n_loc_dof \times n_loc_dof matrix rhat, which
+    UNLESS is_Rhat = True, in which case
+    returns n_loc_dof \times n_loc_dof matrix Rhat, which
     transforms incoming spin states to reflected spin states
     '''
     if(not isinstance(h, np.ndarray)): raise TypeError;
@@ -69,6 +69,15 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
     Gmat = Green(h, tnn, tnnn, tl, E, verbose = verbose); # spatial and spin indices separate
+    
+    # from Green's function, determine wavefunction elements \psi_j\sigma
+    psi_jsigma = complex(0,1)*np.dot(Gmat[:,0], Ajsigma*v_L);
+    if(is_psi_jsigma): return psi_jsigma;
+    
+    # from Green's func, determine matrix elements < \sigma | rhat | \sigma'> of the
+    # reflection operator Rhat, which scatters \sigma' -> \sigma
+    Rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
+    if(is_Rhat): return Rhat_matrix;
 
     # determine matrix elements
     i_flux = np.sqrt(np.dot(Ajsigma, Ajsigma*np.real(v_L))); # sqrt of i flux
@@ -81,16 +90,19 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, verbose = 0, rhat = False, all_debug = 
         # sqrt of r flux, numerator of eq:Rcoef in manuscript
         r_flux = (complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
         r_el = r_flux/i_flux;
-        Rs[sigma] = np.real(r_el*np.conjugate(r_el));
+        Rcoef_to_add = r_el*np.conjugate(r_el);
+        if(abs(np.imag(Rcoef_to_add))>1e-10): 
+            print("Imag(Rs[{:.0f}]) = {:.10f}".format(sigma, np.imag(Rcoef_to_add)));
+            assert(abs(np.imag(Rcoef_to_add))<1e-10);
+        Rs[sigma] = np.real(Rcoef_to_add);
         # sqrt of t flux, numerator of eq:Tcoef in manuscript
         t_flux = complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
         t_el = t_flux/i_flux;
-        Ts[sigma] = np.real(t_el*np.conjugate(t_el));
-
-    # determine matrix elements < \sigma | rhat | \sigma'> of the reflection
-    # operator rhat, which scatters \sigma' -> \sigma
-    rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
-    if(rhat): return rhat_matrix;
+        Tcoef_to_add = t_el*np.conjugate(t_el);
+        if(abs(np.imag(Tcoef_to_add))>1e-10): 
+            print("Imag(Ts[{:.0f}]) = {:.10f}".format(sigma, np.imag(Tcoef_to_add)));
+            assert(abs(np.imag(Tcoef_to_add))<1e-10);
+        Ts[sigma] = np.real(Tcoef_to_add);
     
     return Rs, Ts;
 

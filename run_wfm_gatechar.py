@@ -10,12 +10,12 @@ solved in time-independent QM using wfm method in transport/wfm
 
 from transport import wfm
 
+from run_wfm_gate import get_hblocks, get_U_gate, get_Fval, get_suptitle, get_indep_vals;
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 import sys
-
-from run_wfm_gate import h_cicc, get_hblocks, get_U_gate, get_Fval, get_suptitle, get_indep_vals;
           
 #########################################################
 #### barrier in right lead for total reflection
@@ -208,7 +208,7 @@ elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
             source[-1] = 1;
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
 
             # iter over gates to get fidelity for each one
             for gatevali in range(len(gates)):
@@ -227,7 +227,6 @@ elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
             if(verbose):
                 indep_comment = "indep_star, max F = {:.8f}, {:.4f}".format(indep_star, np.max(Fvals_min[Kvali,:,gatevali]));
                 print("\nU = "+gates[gatevali]+"\n",indep_comment);
-                if(gates[gatevali] == "SWAP" and (final_plots > 1)): np.savetxt("data/gate/"+case+"_"+gates[gatevali]+"_J{:.2f}_K{:.0f}_R.txt".format(Jval, Kvali),rhatvals[:,:,Kvali,indep_argmax], fmt="%.4f", header=indep_comment);
 
             # formatting
             #axes[gatevali].set_yticks(the_ticks);
@@ -313,7 +312,7 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
             source[-1] = 1;
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for gatevali in range(len(gates)):
@@ -397,8 +396,8 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["4","2","1","SeS12"]); 
-    if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
+    roots = np.array(["4","2","1","I"]); 
+    if(roots[-1] in ["SeS12", "I"]): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -424,25 +423,21 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
                 tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
                 for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
                 
-                # printing
-                for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
-                    print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
-                    print(tnn[jindex]);
-                assert False;
+                if(False): # printing
+                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
+                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
+                        print(tnn[jindex]);
+                    assert False;
             # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for rootvali in range(len(roots)):
                 gatestr = "RZ"+roots[rootvali];
                 U_gate, dummy_ticks = get_U_gate(gatestr,myTwoS);
-                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate[:,:], rhatvals[:,:,Kvali,NBvali]);  
-                
-                # limit to e up quadrant <--------------------- !!!!!!!!!!!!!!!!
-                if(ferromagnetic): Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate[:n_mol_dof,:n_mol_dof], rhatvals[:n_mol_dof,:n_mol_dof, Kvali, NBvali]);      
-                # new code < -------------- !!!!!!!!!!!!
+                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], 0, ferromagnetic); 
                        
         #### end loop over Ki
 

@@ -109,10 +109,10 @@ def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, verbose = 0):
 def get_U_gate(gate0, TwoS):
     '''
     '''
-    if(gate0 in ["I", "SeS12", "RZSeS12", "conc", "overlap"]): # identity and non-gate quantities
+    if(gate0 in ["I", "RZI", "SeS12", "RZSeS12", "conc", "overlap"]): # identity and non-gate quantities
         ticks = [0.0,1.0];
         proj_choice = "identical";
-        if(gate0=="I"): U_q = np.eye(4, dtype=complex);
+        if(gate0 in ["I", "RZI"]): U_q = np.eye(4, dtype=complex);
         else: U_q = np.nan*np.eye(4, dtype=complex);
     elif(gate0=="SQRT"):
         ticks = [-1.0,0.0,1.0];
@@ -377,7 +377,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
             # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
             
             # fidelity w/r/t U_gate
             Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic);  
@@ -448,7 +448,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
                     
                     # difference between diagonal elements of r
                     axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali]);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],linestyle="dashed");
+                    if(rbracket != "|"): axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                     
     # show
@@ -475,13 +475,13 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
     # cases / other options
     if("_lambda" in case): K_indep = False;
     elif("_K" in case): K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/lambda
-    ferromagnetic = False;
+    ferromagnetic = True;
     if("swap" in case): which_gate = "SWAP";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
     # iter over fixed NB (colors)
-    NBvals = np.array([50,100,140]);
+    NBvals = np.array([100]);
     Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -516,7 +516,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
             # new code < -------------- !!!!!!!!!!!!
             
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, rhat = True, all_debug = False);            
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);            
 
             # fidelity w/r/t U_gate           
             Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic); 
@@ -529,7 +529,8 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
         elif(elecspin==0): # final e state (column, 2nd index) is spin down
             rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         yvals = np.copy(rhatvals); rbracket = "";
-        if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
+        the_ticks = [-1.0,0.0,1.0];
+        if(which_gate not in ["SWAP","SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
             
@@ -584,7 +585,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
                     
                     # difference between diagonal elements of R
                     axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,:,NBvali] - np.real(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
-                    axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],linestyle="dashed");
+                    if(rbracket != "|"): axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,:,NBvali] - np.imag(yvals)[2,2,:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]),color=mycolors[NBvali],linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
