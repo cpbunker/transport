@@ -23,10 +23,11 @@ Jval = float(sys.argv[1]);
 NBval = int(sys.argv[2]);
 VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
-ferromagnetic = True;
+ferromagnetic = False;
 
 # iter over differnt NBval/lambda points
-if(NBval == 100): xvals = [0.13, 0.50, 0.70,1.00];
+if(  NBval == 100): xvals = [0.13, 0.50, 0.70,1.00];
+elif(NBval == 200): xvals = [0.26, 1.00];
 elif(NBval == 500): xvals = [0.13, 0.30, 0.50, 0.63, 1.00, 1.17];
 else: raise NotImplementedError;
 for xval in xvals:
@@ -36,7 +37,8 @@ for xval in xvals:
     fig, axes = plt.subplots(2, sharex = True); # for elec spin up and elec spin down
     
     # construct hblocks from cicc-type spin ham
-    hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+    hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval, the_offset = NBval//2, verbose = 1);
+    #assert False;
 
     # define source vector (boundary condition for incident wave)
     source = np.zeros((n_loc_dof,));

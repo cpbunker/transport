@@ -21,7 +21,7 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     '''
     TB matrices for ciccarrello system (1 electron, 2 spin-1/2s)
     Args:
-    - J, float, eff heisenberg coupling
+    - J, float, sd exchange coupling
     - i1, list of sites for first spin-1/2
     - i2, list of sites for second spin-1/2
     '''
@@ -77,11 +77,11 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
     
-def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, verbose = 0):
+def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, the_offset = 0, verbose = 0):
     '''
     '''
     the_nlocdof = 2*(TwoS+1)*(TwoS+1);
-    
+ 
     # ciccarello type interaction at beginning
     hblocks_cicc = h_cicc(TwoS, the_J, [1],[2]);
     if(verbose):
@@ -95,9 +95,10 @@ def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, verbose = 0):
         hblocks_all.append(0.0*np.eye(the_nlocdof));
         tnn_all.append(-the_tl*np.eye(the_nlocdof));
     hblocks_all, tnn_all = np.array(hblocks_all,dtype=complex), np.array(tnn_all[:-1]);
-    hblocks_all[0:NC] += hblocks_cicc;
+    hblocks_all[the_offset:the_offset+NC] += hblocks_cicc;
     hblocks_all[-1] += the_VB*np.eye(the_nlocdof);
     tnnn_all = np.zeros_like(tnn_all)[:-1]; # no next nearest neighbor hopping
+    if(verbose): print(np.real(hblocks_all[:,0,0]));
     
     # the diagonal term must be the same for all channels!
     for sigmai in range(the_nlocdof):
