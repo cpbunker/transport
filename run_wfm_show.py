@@ -23,10 +23,11 @@ Jval = float(sys.argv[1]);
 NBval = int(sys.argv[2]);
 VB = 5.0*tl;
 V0 = 0.0*tl; # just affects title, not implemented physically
+ferromagnetic = True;
 
 # iter over differnt NBval/lambda points
-if(NBval == 100): xvals = [0.13, 0.50, 0.70];
-elif(NBval == 500): xvals = [0.63, 1.00, 1.17];
+if(NBval == 100): xvals = [0.13, 0.50, 0.70,1.00];
+elif(NBval == 500): xvals = [0.13, 0.30, 0.50, 0.63, 1.00, 1.17];
 else: raise NotImplementedError;
 for xval in xvals:
     lambdaval = NBval/xval;
@@ -40,6 +41,18 @@ for xval in xvals:
     # define source vector (boundary condition for incident wave)
     source = np.zeros((n_loc_dof,));
     source[n_mol_dof*elecspin + elems_to_keep[1]] = 1.0;
+    
+     # FM leads = modify so only up-up hopping allowed
+    if(ferromagnetic): 
+        tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
+        for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
+                
+        if(False): # printing
+            for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
+                print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
+                print(tnn[jindex]);
+            assert False;
+    # new code < -------------- !!!!!!!!!!!!
     
     # get real-space scattered wavefunction
     psi = wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(2*np.pi/lambdaval), source, 
@@ -63,7 +76,7 @@ for xval in xvals:
     to_annotate = "";
     for gs in gate_strings:
         Uhat, dummy_ticks = get_U_gate(gs, myTwoS);
-        F_gs = get_Fval(gs, myTwoS, Uhat, Rhat, elecspin, False);
+        F_gs = get_Fval(gs, myTwoS, Uhat, Rhat, elecspin, ferromagnetic);
         to_annotate += ", $F_{avg} [ \mathbf{R}, \mathbf{U}_{"+gs+"}] = $"+ "{:.4f}".format(F_gs);
     axes[-1].annotate(to_annotate, (jvals[1],0.0));
 

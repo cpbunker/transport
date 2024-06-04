@@ -326,7 +326,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
     # cases / other options
     if("_lambda" in case): NB_indep = False # whether to put NB, alternatively wavenumber*NB
     else: NB_indep = True;
-    ferromagnetic = True;
+    ferromagnetic = False;
     if("swap" in case): which_gate = "SWAP";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
@@ -475,7 +475,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
     # cases / other options
     if("_lambda" in case): K_indep = False;
     elif("_K" in case): K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/lambda
-    ferromagnetic = True;
+    ferromagnetic = False;
     if("swap" in case): which_gate = "SWAP";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
