@@ -77,28 +77,54 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
     
-def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, the_offset = 0, verbose = 0):
+def get_hblocks(TwoS, the_tl, the_J, the_Vend, the_NB,
+                is_Lbarrier = False, is_SRbarrier = False, is_V0 = False, is_Rbarrier = False,
+                bval = 0.0, the_offset = 0, verbose = 0):
     '''
     '''
     the_nlocdof = 2*(TwoS+1)*(TwoS+1);
+    cicc_indices = ([1], [2]);
+    assert(the_NB > the_offset);
+    assert(np.sum([is_Lbarrier, is_SRbarrier, is_V0, is_Rbarrier]) in [0,1]); # max 1 of these on
  
-    # ciccarello type interaction at beginning
-    hblocks_cicc = h_cicc(TwoS, the_J, [1],[2]);
+    # ciccarello type interaction 
+    hblocks_cicc = h_cicc(TwoS, the_J, *cicc_indices);
+    if(is_SRbarrier): # change onsite energy of localized spins
+        for cicc_index in cicc_indices:
+            hblocks_cicc[cicc_index] += bval*np.eye(the_nlocdof);
     if(verbose):
         print("hblocks_cicc = ");
         for block in hblocks_cicc: print(np.real(block));
 
-    # add large barrier at end
+    # place cicc interations in real space
     NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
     hblocks_all, tnn_all = [], []; # new empty array all the way to barrier, will add cicc later
     for _ in range(NC+the_NB):
         hblocks_all.append(0.0*np.eye(the_nlocdof));
         tnn_all.append(-the_tl*np.eye(the_nlocdof));
-    hblocks_all, tnn_all = np.array(hblocks_all,dtype=complex), np.array(tnn_all[:-1]);
+    hblocks_all = np.array(hblocks_all,dtype=complex);
     hblocks_all[the_offset:the_offset+NC] += hblocks_cicc;
-    hblocks_all[-1] += the_VB*np.eye(the_nlocdof);
+    if(is_V0):
+        for j in range(the_offset+NC, len(hblocks_all)):
+            hblocks_all[j] += bval*np.eye(the_nlocdof);
+
+    # hopping
+    tnn_all = np.array(tnn_all[:-1]); # nearest neighbor hopping, length is 1 less than hblocks
     tnnn_all = np.zeros_like(tnn_all)[:-1]; # no next nearest neighbor hopping
-    if(verbose): print(np.real(hblocks_all[:,0,0]));
+
+    # add barriers at junctions with leads
+    if(is_Lbarrier):
+        hblocks_all[cicc_indices[0][0]] += bval*np.eye(the_nlocdof); # barrier at LL-SR junction
+    if(is_Rbarrier):
+        Rbarrier_size = 30;
+        for j in range(Rbarrier_size):
+            hblocks_all[-2-j] += bval*np.diag([0,0,0,0,1,1,1,1]);
+
+    # wide band gap at very end to force reflection
+    hblocks_all[-1] = the_Vend*np.eye(the_nlocdof); # note = not += is used
+    if(verbose):
+        print(np.real(hblocks_all[:,0,0]));
+        print(np.real(hblocks_all[:,-1,-1]));
     
     # the diagonal term must be the same for all channels!
     for sigmai in range(the_nlocdof):
@@ -110,11 +136,15 @@ def get_hblocks(TwoS, the_tl, the_J, the_VB, the_NB, the_offset = 0, verbose = 0
 def get_U_gate(gate0, TwoS):
     '''
     '''
-    if(gate0 in ["I", "RZI", "SeS12", "RZSeS12", "conc", "overlap"]): # identity and non-gate quantities
+
+    # identity and non-gate quantities
+    if(gate0 in ["I", "RZI", "SeS12", "RZSeS12", "conc", "overlap", "overlap_sf"]): 
         ticks = [0.0,1.0];
         proj_choice = "identical";
         if(gate0 in ["I", "RZI"]): U_q = np.eye(4, dtype=complex);
         else: U_q = np.nan*np.eye(4, dtype=complex);
+
+    # gates
     elif(gate0=="SQRT"):
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
@@ -129,7 +159,9 @@ def get_U_gate(gate0, TwoS):
                    [0,0,1,0],
                    [0,1,0,0],
                    [0,0,0,1]], dtype=complex); # SWAP gate
-    elif(gate0[:2]=="RZ" and ((gate0[-1] in ["1","2","3","4"]) and len(gate0)==3) ): # roots of SWAP
+
+    # roots of SWAP
+    elif(gate0[:2]=="RZ" and ((gate0[-1] in ["1","2","3","4"]) and len(gate0)==3) ): 
         ticks = [-1.0,0.0,1.0];
         proj_choice = "identical";
         root = int(gate0[-1]); # tells us it is nth root, ie angle = pi/n
@@ -178,7 +210,7 @@ def get_U_gate(gate0, TwoS):
     # return
     return U, ticks;
 
-def get_Fval(gate0, TwoS, U, R, the_espin, is_FM):
+def get_Fval(gate0, TwoS, U, R, the_espin, is_FM = False):
     '''
     '''
     assert(np.shape(R) == np.shape(U));
@@ -186,7 +218,10 @@ def get_Fval(gate0, TwoS, U, R, the_espin, is_FM):
 
     # from Uq to Ugate
     mol_dof = (TwoS+1)*(TwoS+1); 
-    elems_to_keep = [0,1,TwoS+1,TwoS+1+1]; # these are mol_dof elements, ie 0 represent up_1 up_2, no electron dofs
+    if(the_espin == 0):
+        elems_to_keep = [0,1,TwoS+1,TwoS+1+1]; # these are mol_dof elements, ie 0 represent up_1 up_2, no electron dof
+    else:
+        elems_to_keep = [mol_dof+0, mol_dof+1, mol_dof+TwoS+1, mol_dof+TwoS+1+1];
 
     if("SeS12" in gate0): # do not actually get fidelity, instead quantify R^out
         Rout = R[:mol_dof, mol_dof:]; 
@@ -212,14 +247,29 @@ def get_Fval(gate0, TwoS, U, R, the_espin, is_FM):
         the_trace = np.dot( np.conj(out_state), np.matmul(Y_otimes_Y, np.conj(out_state))); # inner product
         the_trace = np.sqrt(np.conj(the_trace)*the_trace); # norm of that inner product is the concurrence
         
-    elif(gate0 == "overlap"): # do not actually get fidelity, get overlap with qubit-flipped partner of initial state
+    elif(gate0 == "overlap"): # do not actually get fidelity, get overlap with qubit-swapped partner of initial state
         in_state = np.zeros((len(R),),dtype=complex);
         in_state[elems_to_keep[1]] = 1.0;
         out_state = np.matmul(R, in_state);
         overlap_state = np.zeros_like(out_state, dtype=complex);
         overlap_state[elems_to_keep[2]] = 1.0;
-        the_trace = np.dot(np.conj(overlap_state), out_state); # overlap
-        the_trace = np.sqrt(np.conj(the_trace)*the_trace); # norm 
+        the_overlap = np.dot(np.conj(overlap_state), out_state); # overlap
+        the_trace = np.conj(the_overlap)*the_overlap; # probability
+
+    elif(gate0 == "overlap_sf"): # do not actually get fidelity, get overlap with e spin flip
+        in_state = np.zeros((len(R),),dtype=complex);
+        in_state[elems_to_keep[1]] = 1.0;
+        out_state = np.matmul(R, in_state);
+
+        # sum over e spin-flipped states
+        if(the_espin == 0): overlap_indices = np.arange(mol_dof, 2*mol_dof);
+        elif(the_espin == 1): overlap_indices = np.arange(0, mol_dof);
+        the_trace = 0.0; 
+        for overlapi in overlap_indices:
+            overlap_state = np.zeros_like(out_state, dtype=complex);
+            overlap_state[overlapi] = 1.0;
+            the_overlap = np.dot(np.conj(overlap_state), out_state); # overlap
+            the_trace += np.conj(the_overlap)*the_overlap; # probability
 
     else: # actually get fidelity
     
@@ -237,11 +287,11 @@ def get_Fval(gate0, TwoS, U, R, the_espin, is_FM):
     if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
     return np.real(the_trace);
     
-def get_suptitle(TwoS, theJ, theV0, theVB, is_FM, is_overt):
+def get_suptitle(TwoS, theJ, theVq, theVB, is_FM = False, is_overt = False):
     '''
     '''
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_0=${:.1f}, $V_B=${:.1f}".format(0.5*TwoS, theJ, theV0, theVB);
-    if(is_overt): "$s=${:.1f}, $J/t=${:.2f}, $V_0/t=${:.1f}, $V_B/t=${:.1f}".format(0.5*TwoS, theJ, theV0, theVB);
+    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_q=${:.1f}, $V_B=${:.1f}".format(0.5*TwoS, theJ, theVq, theVB);
+    if(is_overt): "$s=${:.1f}, $J/t=${:.2f}, $V_q/t=${:.1f}, $V_B/t=${:.1f}".format(0.5*TwoS, theJ, theVq, theVB);
     
     # add-ons
     if(is_FM): suptitle += " (FM leads)";
@@ -314,8 +364,8 @@ if(__name__ == "__main__"):
     n_mol_dof = (myTwoS+1)*(myTwoS+1); 
     n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
     Jval = float(sys.argv[1]);
-    VB = 5.0*tl;
-    V0 = 0.0*tl; # just affects title, not implemented physically
+    Vend = 5.0*tl;
+    VBar = 0.0*tl; # just affects title, not implemented physically
 
 if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance of the barrier NB on the x axis
     
@@ -327,7 +377,6 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
     # cases / other options
     if("_lambda" in case): NB_indep = False # whether to put NB, alternatively wavenumber*NB
     else: NB_indep = True;
-    ferromagnetic = False;
     if("swap" in case): which_gate = "SWAP";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
@@ -343,45 +392,34 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
     for Kvali in range(len(Kvals)):
         
         # iter over barrier distance (x axis)
-        kNBmax = 0.75*np.pi #0.75*np.pi;
         if(NB_indep): 
             NBmax = 150;
             NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
             indep_vals = 1*NBvals;
-        else: 
-            NBmax = int(kNBmax/knumbers[Kvali]);
+        else:
+            xmax = 0.5; # one period only
+            NBmax = int(2*xmax*np.pi/knumbers[Kvali]);
             NBvals = np.linspace(1,NBmax,myxvals,dtype=int);
-            indep_vals = NBvals/(2*np.pi/knumbers[Kvali]);
-        if(verbose): print("k^2, NBmax = ", knumbers[Kvali]**2, NBmax); 
+            indep_vals = NBvals/(2*np.pi/knumbers[Kvali]); # ie NBa/lambdai
+        if(verbose): print("k^2, NBmax = ", knumbers[Kvali]**2, NBmax);
         
         # iter over barrier distance (x axis)
         for NBvali in range(len(NBvals)):
             NBval = NBvals[NBvali];
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            
-            # FM leads = modify so only up-up hopping allowed
-            if(ferromagnetic): 
-                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
-                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
-                
-                if(False): # printing
-                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
-                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
-                        print(tnn[jindex]);
-                    assert False;
-            # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
+                                            is_psi_jsigma = False, is_Rhat = True, all_debug = False);
             
             # fidelity w/r/t U_gate
-            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic);  
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin);  
             
         #### end loop over NB
 
@@ -447,13 +485,13 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
                     axes[sourcei,sigmai+len(elems_to_keep)-1].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
                     for tick in the_ticks: axes[sourcei,sigmai+len(elems_to_keep) -1].axhline(tick,color='lightgray',linestyle='dashed');
                     
-                    # difference between diagonal elements of r
+                    # difference between diagonal elements of R
                     axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.real(yvals)[1,1,Kvali] - np.real(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali]);
                     if(rbracket != "|"): axes[0,sigmai+len(elems_to_keep)-1].plot(indep_vals, np.imag(yvals)[1,1,Kvali] - np.imag(yvals)[2,2,Kvali], label = "$N_B$ = {:.0f}".format(NBvals[Kvali]),color=mycolors[Kvali],linestyle="dashed");
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                     
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend));
     plt.tight_layout();
     if(final_plots > 1): # save fig
         Jstring = "";
@@ -464,8 +502,8 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
         plt.savefig(fname+".pdf")
     else:
         plt.show();
-
-elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kinetic energy or wavenumber on the x axis
+        
+elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_lambda"]): # incident kinetic energy or wavenumber on the x axis
          # NB is now fixed !!!!
 
     # axes
@@ -476,8 +514,8 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
     # cases / other options
     if("_lambda" in case): K_indep = False;
     elif("_K" in case): K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/lambda
-    ferromagnetic = False;
     if("swap" in case): which_gate = "SWAP";
+    elif("conc" in case): which_gate = "conc";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
 
@@ -492,35 +530,24 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
         if(verbose): print("NB = ",NBval);
         
         # iter over incident wavenumber (x axis)
-        xmax = 1.1;
+        xmax = 1.5;
         Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl); 
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc 
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
             
-             # FM leads = modify so only up-up hopping allowed
-            if(ferromagnetic): 
-                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
-                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
-                
-                if(False): # printing
-                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
-                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
-                        print(tnn[jindex]);
-                    assert False;
-            # new code < -------------- !!!!!!!!!!!!
-            
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);            
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
+                                            is_psi_jsigma = False, is_Rhat = True, all_debug = False);            
 
             # fidelity w/r/t U_gate           
-            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin, ferromagnetic); 
+            Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin); 
 
         #### end loop over Kvals
 
@@ -530,8 +557,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
         elif(elecspin==0): # final e state (column, 2nd index) is spin down
             rhatvals_offdiag = rhatvals[:,np.array(range(n_loc_dof))>=n_mol_dof];
         yvals = np.copy(rhatvals); rbracket = "";
-        the_ticks = [-1.0,0.0,1.0];
-        if(which_gate not in ["SWAP","SQRT", "RX", "RZ"]): # make everything real
+        if(which_gate not in ["SQRT", "RX", "RZ"]): # make everything real
             rbracket = "|"
             yvals = np.sqrt(np.real(np.conj(rhatvals)*rhatvals)); 
             
@@ -590,7 +616,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda"]): # incident kin
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend));
     plt.tight_layout();
     if(final_plots > 1): # save fig
         Jstring = "";

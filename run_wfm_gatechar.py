@@ -44,8 +44,8 @@ myTwoS = 1;
 n_mol_dof = (myTwoS+1)*(myTwoS+1); 
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
 Jval = float(sys.argv[1]);
-VB = 5.0*tl;
-V0 = 0.0*tl; # just affects title, not implemented physically
+Vend = 5.0*tl;
+VBar = 0.0*tl; # just affects title, not implemented physically
 the_ticks = [0.0,1.0]; # always positive since it is fidelity
 
 #### plot already existing data
@@ -116,9 +116,11 @@ if(final_plots == 10):
             axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
             if(gates[gatevali]=="conc"):
-                axes[gatevali].set_ylabel("$C(\mathbf{R}|\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+                axes[gatevali].set_ylabel("$C$");
             elif(gates[gatevali]=="overlap"):
-                axes[gatevali].set_ylabel("$\langle \\uparrow_e \downarrow_1 \\uparrow_2 |\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+                axes[gatevali].set_ylabel("$P_{swap}$");
+            elif(gates[gatevali]=="overlap_sf"):
+                axes[gatevali].set_ylabel("$P_{sf}$");
             else:
                 axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
                 axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
@@ -269,12 +271,10 @@ elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
 elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, as a function of Ki,
     if("lambda" in case): K_indep = False;
     else: K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/\lambda
-    extend = True; # more multiples of NBa/\lambda
-    if(extend): myxvals = 5*myxvals; 
 
     # axes
     gates = ["SQRT", "SWAP","I", "SeS12"];
-    if("conc" in case): gates = ["overlap","conc"];
+    if("conc" in case): gates = ["overlap","conc", "overlap_sf"];
     nrows, ncols = len(gates), 1;
     fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
     if(nrows==1): axes = [axes];
@@ -283,14 +283,9 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     # cases / other options
     if("_lambda" in case): K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
     else: K_indep = True;
-    extend = False; 
-    if("_extend" in case): extend = True; # plot further out multiples of 2kiaNB/pi
-    if(extend):
-        myxvals = 5*myxvals; 
-    ferromagnetic = False;
 
     # iter over barrier distance (colors)
-    NBvals = np.array([100]) #, 140, 500]);
+    NBvals = np.array([100, 140, 500]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -299,25 +294,26 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident wavenumber (x axis)
-        xmax = 1.1;
+        xmax = 1.5;
         Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl);  
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
+                                                is_psi_jsigma = False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for gatevali in range(len(gates)):
                 U_gate, dummy_ticks = get_U_gate(gates[gatevali],myTwoS);
-                Fvals_min[Kvali, NBvali, gatevali] = get_Fval(gates[gatevali], myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali]);                
+                Fvals_min[Kvali, NBvali, gatevali] = get_Fval(gates[gatevali], myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], the_espin=0);                
         #### end loop over Ki
 
         # plotting considerations
@@ -345,9 +341,11 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
             axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
             if(gates[gatevali]=="conc"):
-                axes[gatevali].set_ylabel("$C(\mathbf{R}|\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+                axes[gatevali].set_ylabel("$C$");
             elif(gates[gatevali]=="overlap"):
-                axes[gatevali].set_ylabel("$\langle \\uparrow_e \downarrow_1 \\uparrow_2 |\\uparrow_e \\uparrow_1 \downarrow_2 \\rangle)$");
+                axes[gatevali].set_ylabel("$P_{swap}$");
+            elif(gates[gatevali]=="overlap_sf"):
+                axes[gatevali].set_ylabel("$P_{sf}$");
             else:
                 axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (indep_vals[1],1.01),fontsize=myfontsize);
                 axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R},\mathbf{U})$",fontsize=myfontsize);
@@ -357,7 +355,6 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
 
             # save Fvals to .npy
             if(final_plots > 1):
-                assert(extend); # always save high resolution, high quality data only
                 xy_savename = "data/gate/"+case+"/"+gates[gatevali]+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
                 np.save(xy_savename + "_y.npy", Fvals_min[:,NBvali,gatevali]);
                 np.save(xy_savename + "_x.npy",indep_vals);
@@ -366,17 +363,17 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     #### end loop over NB
             
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False), fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend), fontsize=myfontsize);
     plt.tight_layout();
     if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=get_suptitle(myTwoS, Jval, VBar, Vend));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
         
 # compare different roots of swap at fixed NB, vs NBa/\lambda_i
-elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]):
+elif(case in ["roots_lambda", "roots_K"]):
     # different axes are different NB
     NBvals = np.array([100]) #,140,200,500]); # for the J=-0.2 case
     #NBvals = np.array([30, 38, 60, 200]); assert(Jval == -0.4); # for the J=-0.4 case
@@ -388,15 +385,11 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
     # cases / other options
     if(case=="roots_lambda"): K_indep = False; # whether to plot (ki*a)^2 or NBa/lambda on the x axis
     else: K_indep = True;
-    extend = False; 
-    if("_extend" in case): extend = True; # plot further out multiples of NBa/\lambda
-    if(extend): myxvals = 5*myxvals; 
-    ferromagnetic = False;
 
     # iter over roots
     # roots are functionally the color (replace NBval) and NBs are axes (replace gates)
     # but still order axes as Kvals, NBvals, roots
-    roots = np.array(["4","2","1","I"]); 
+    roots = np.array(["4","2","1","SeS12"]); 
     if(roots[-1] in ["SeS12", "I"]): mycolors[len(roots)-1] = "black";
     Fvals_min = np.empty((myxvals, len(NBvals),len(roots)),dtype=float); # avg fidelity 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -405,39 +398,27 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident wavenumber (x axis)
-        xmax = 1.1;
-        if(extend): xmax = 3*xmax;
+        xmax = 1.5;
         Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl);
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
-            
-            # FM leads = modify so only up-up hopping allowed
-            if(ferromagnetic): 
-                tnn[0] = np.zeros( (n_loc_dof,), dtype=float);
-                for sigmai in range(n_mol_dof): tnn[0][sigmai, sigmai] = -tl;
-                
-                if(False): # printing
-                    for jindex in [0,1,2,len(tnn)-3, len(tnn)-2,len(tnn)-1]:
-                        print("j = {:.0f} <-> j = {:.0f}".format(jindex, jindex+1));
-                        print(tnn[jindex]);
-                    assert False;
-            # new code < -------------- !!!!!!!!!!!!
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, False, is_Rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
+                                            is_psi_jsigma = False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for rootvali in range(len(roots)):
                 gatestr = "RZ"+roots[rootvali];
                 U_gate, dummy_ticks = get_U_gate(gatestr,myTwoS);
-                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], 0, ferromagnetic); 
+                Fvals_min[Kvali, NBvali, rootvali] = get_Fval(gatestr, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], the_espin=0); 
                        
         #### end loop over Ki
 
@@ -473,7 +454,6 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
 
             # save Fvals to .npy
             if(final_plots > 1):
-                assert(extend); # always save high resolution, high quality data only
                 xy_savename = "data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
                 np.save(xy_savename + "_y.npy", Fvals_min[:,NBvali,rootvali]);
                 np.save(xy_savename + "_x.npy",indep_vals);
@@ -483,10 +463,10 @@ elif(case in ["roots_lambda", "roots_K","roots_lambda_extend", "roots_K_extend"]
     #### end loop over NB
             
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False), fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend), fontsize=myfontsize);
     plt.tight_layout();
     if(final_plots > 1): # save title, don't show
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals, header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals, header=get_suptitle(myTwoS, Jval, VBar, Vend));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
