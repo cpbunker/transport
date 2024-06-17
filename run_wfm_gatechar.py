@@ -29,7 +29,7 @@ final_plots = int(sys.argv[3]);
 
 # fig standardizing
 myxvals = 29; myfigsize = (5/1.2,3/1.2); myfontsize = 14;
-if(final_plots): myxvals = 99; 
+if(final_plots): myxvals = 199; 
 mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
 accentcolors = ["black","red"];
 mymarkers = ["+","o","^","s","d","*","X","+"];
@@ -43,29 +43,82 @@ tl = 1.0;
 myTwoS = 1;
 n_mol_dof = (myTwoS+1)*(myTwoS+1); 
 n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
-Jval = float(sys.argv[1]);
-Vend = 5.0*tl;
-VBar = 0.0*tl; # just affects title, not implemented physically
+Jval = float(sys.argv[1]); # sd exchange
+Vq = 0.0#Jval/2; # onsite energy on qubits
+VBar = 0.000*tl; # on site energy in barrier region
+Vend = 5.0*tl; # wide band gap at far right end, never changes
 the_ticks = [0.0,1.0]; # always positive since it is fidelity
 
 #### plot already existing data
 if(final_plots == 10):
 
-    # title and colors
-    if(case in ["NB","kNB"]): which_color = "K";
-    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K"]): which_color = "NB";
+    # open corresponding itle file
+    if(case in ["NB","kNB"]): 
+        which_color = "K";
+    elif(case in ["VB_NB30","VB_NB100","VB_NB500"]): 
+        which_color = "x";
+    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "dimensionless_energy"]): 
+        which_color = "NB";
     whichval = int(sys.argv[4]);
     title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
     suptitle = open(title_and_colors,"r").read().splitlines()[0][1:];
+    
+    # array of numerical values corresponding to physical quantities eg NB,
+    # which we are representing on plots as different colored lines
     colorvals = np.loadtxt(title_and_colors,ndmin=1); 
     if(case in ["NB","kNB"]):
         which_color_list = np.arange(len(colorvals));
+    elif(case in ["VB_NB30","VB_NB100","VB_NB500"]):
+        XVAL_INT_CONVERSION = 100;
+        which_color_list = 1*colorvals.astype(int); 
+        colorvals = (1/XVAL_INT_CONVERSION)*colorvals;
     elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K"]):
         colorvals = colorvals.astype(int);
         which_color_list = 1*colorvals;
+        
+    if(case in ["dimensionless_energy"]):
+        print(colorvals);
+        del Jval;
+        gates = sys.argv[5:];
+        nrows, ncols = len(gates), 1;
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
+        if(nrows==1): axes = [axes];
+        fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
+        for gatevali in range(len(gates)):
 
+            # load and plot Fidelity
+            for colori in range(len(colorvals)):
+                # load data
+                yvals = np.load(("data/gate/gates_lambda/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(colorvals[colori,0], colorvals[colori,1]));
+                xvals = np.load(("data/gate/gates_lambda/"+gates[gatevali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(colorvals[colori,0], colorvals[colori,1]));
+                mymarkevery = (len(xvals)//3, len(xvals)//3);
+                
+                # maxima
+                indep_star = xvals[np.argmax(yvals)];
+                if(verbose):
+                    indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(yvals));
+                    print("\n"+gates[gatevali]+"\n",indep_comment);
+                
+                # determine label
+                mylabel = "$J =${:.4f}, $N_B = ${:.0f}".format(colorvals[colori,0], colorvals[colori,1]);
+                    
+                # plot
+                dl_energy_vals = xvals*(2*np.pi/colorvals[colori,1])*abs(1/colorvals[colori,0]);
+                axes[gatevali].plot(dl_energy_vals,yvals, label = mylabel, color=mycolors[colori], marker=mymarkers[1+colori], markevery=mymarkevery);
+                
+            #### end loop over colors (here fixed K or NB vals)
+
+            # plot formatting
+            axes[-1].set_xlabel("$\\frac{2\pi a}{\lambda_i} \\frac{t}{|J|} = \sqrt{\\frac{E+2t}{|J|}} \sqrt{\\frac{t}{|J|}}$",fontsize=myfontsize);
+            axes[gatevali].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
+            for tick in the_ticks:                     
+                axes[gatevali].axhline(tick,color='lightgray',linestyle='dashed');
+            axes[gatevali].annotate("$\mathbf{U}_{"+gates[gatevali]+"}$", (xvals[1],1.01),fontsize=myfontsize);
+            axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
+        #### end loop over gates
+        
     # iter over gates
-    if(case not in ["roots_lambda", "roots_K"]): 
+    elif(case not in ["roots_lambda", "roots_K", "VB_NB30","VB_NB100","VB_NB500"]): 
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
@@ -86,7 +139,7 @@ if(final_plots == 10):
                     indep_comment = "indep_star, fidelity(Kstar) = {:.8f}, {:.4f}".format(indep_star, np.max(yvals));
                     print("\n"+gates[gatevali]+"\n",indep_comment);
                 
-                # determine label and plot
+                # determine label
                 if(case in ["NB","kNB"]):
                     correct_Kpower = False;
                     for Kpower in range(-9,-1):
@@ -95,19 +148,22 @@ if(final_plots == 10):
                     else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(colorvals[colori]);
                 elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
-                axes[gatevali].plot(xvals,yvals, label = mylabel, color=mycolors[colori],marker=mymarkers[1+colori],markevery=mymarkevery);
+                    
+                # plot
+                axes[gatevali].plot(xvals,yvals, label = mylabel, color=mycolors[colori], marker=mymarkers[1+colori], markevery=mymarkevery);
+                
             #### end loop over colors (here fixed K or NB vals)
 
             # plot formatting
             
             # x axis
             if(case=="NB"):
-                axes[-1].set_xlabel('$N_B$',fontsize=myfontsize);
+                axes[-1].set_xlabel("$N_B$",fontsize=myfontsize);
             elif(case in ["gates_K", "conc_K"]):
-                axes[-1].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
-                axes[-1].set_xscale('log', subs = []);
+                axes[-1].set_xlabel("$k_i^2 a^2$",fontsize=myfontsize);
+                axes[-1].set_xscale("log", subs = []);
             elif(case in ["gates_lambda", "conc_lambda"]):
-                axes[-1].set_xlabel('$N_B a/\lambda_i $',fontsize=myfontsize);
+                axes[-1].set_xlabel("$N_B a/\lambda_i $",fontsize=myfontsize);
                 axes[gatevali].set_xlim(0,np.max(xvals));
             else: raise NotImplementedError;
             
@@ -126,7 +182,7 @@ if(final_plots == 10):
                 axes[gatevali].set_ylabel("$F_{avg}(\mathbf{R}, \mathbf{U})$",fontsize=myfontsize);
         #### end loop over gates
 
-    elif(case in ["roots_lambda", "roots_K"]): # data structure is different
+    else: # data structure is different
         if(case=="roots_K"): raise NotImplementedError;
         roots = sys.argv[5:]; # these are actually the colors, not colorvals
         if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
@@ -141,8 +197,21 @@ if(final_plots == 10):
                 # load data
                 yvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_y.npy").format(Jval, which_color_list[colori]));
                 xvals = np.load(("data/gate/"+case+"/"+roots[rootvali]+"_J{:.2f}_"+which_color+"{:.0f}_x.npy").format(Jval, which_color_list[colori]));
+                
+                # determine label
                 mymarkevery = (len(xvals)//3, len(xvals)//3);
-                mylabel = "$n = $"+roots[rootvali];
+                if(case in ["roots_lambda", "roots_K"]):
+                    mylabel = "$n = $"+roots[rootvali];
+                    annotate_string = "$N_B =${:.0f}";
+                    my_ylabel = "$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$";
+                    my_xlabel = "$N_B a /\lambda_i$";
+                elif(case in ["VB_NB30","VB_NB100","VB_NB500"]):
+                    mylabel = roots[rootvali];
+                    annotate_string = "$N_B a/\lambda_i =${:.2f}";
+                    my_ylabel = "";
+                    my_xlabel = "$V_B$";
+                
+                # plot
                 axes[colori].plot(xvals,yvals, label = mylabel, color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
                 
                 # maxima
@@ -155,15 +224,15 @@ if(final_plots == 10):
              # plot formatting
 
             # x axis
-            axes[-1].set_xlabel('$N_B a /\lambda_i$',fontsize=myfontsize);
+            axes[-1].set_xlabel(my_xlabel,fontsize=myfontsize);
             #axes[gatevali].set_xlim(0,np.max(xvals));
             
             # y axis
             #axes[colori].set_yticks(the_ticks);
             axes[colori].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
-            axes[colori].annotate("$N_B = {"+str(colorvals[colori])+"}$", (xvals[1],1.01),fontsize=myfontsize);
-            axes[colori].set_ylabel("$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$",fontsize=myfontsize);
+            axes[colori].annotate(annotate_string.format(colorvals[colori]), (xvals[1],1.01),fontsize=myfontsize);
+            axes[colori].set_ylabel(my_ylabel,fontsize=myfontsize);
         #### end loop over fixed NB vals
             
     # show
@@ -203,7 +272,7 @@ elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
             NBval = NBvals[NBvali];
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VB, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vq, VBar, Vend, NBval);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
@@ -259,11 +328,11 @@ elif(case in ["NB","kNB"]): # fidelities at fixed Ki, as a function of NB
     #### end loop over Ki
             
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+    fig.suptitle(get_suptitle(myTwoS, Jval, Vq, VBar));
     plt.tight_layout();
     if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_K{:.0f}_title.txt".format(Jval,len(Kvals)),knumbers*knumbers,header=get_suptitle(myTwoS, Jval, V0, VB, ferromagnetic, False));
+        np.savetxt("data/gate/"+case+"_ALL_J{:.2f}_K{:.0f}_title.txt".format(Jval,len(Kvals)),knumbers*knumbers,header=get_suptitle(myTwoS, Jval, Vq, VBar));
     else:
         axes[-1].legend();
         plt.show();
@@ -285,7 +354,7 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     else: K_indep = True;
 
     # iter over barrier distance (colors)
-    NBvals = np.array([100, 140, 500]);
+    NBvals = np.array([500]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -300,15 +369,15 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vq, VBar, Vend, NBval, verbose=0);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
             source[-1] = 1;
                     
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
-                                                is_psi_jsigma = False, is_Rhat = True, all_debug = False);
+            rhatvals[:,:,Kvali,NBvali] =wfm.kernel(hblocks,tnn,tnnn,tl,Energies[Kvali], source,
+                                    is_psi_jsigma = False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for gatevali in range(len(gates)):
@@ -363,17 +432,18 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     #### end loop over NB
             
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend), fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, Vq, VBar), fontsize=myfontsize);
     plt.tight_layout();
     if(final_plots > 1): # save fig and legend
         # title and color values
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=get_suptitle(myTwoS, Jval, VBar, Vend));
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals,header=get_suptitle(myTwoS, Jval, Vq, VBar));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
         
 # compare different roots of swap at fixed NB, vs NBa/\lambda_i
 elif(case in ["roots_lambda", "roots_K"]):
+
     # different axes are different NB
     NBvals = np.array([100]) #,140,200,500]); # for the J=-0.2 case
     #NBvals = np.array([30, 38, 60, 200]); assert(Jval == -0.4); # for the J=-0.4 case
@@ -404,7 +474,7 @@ elif(case in ["roots_lambda", "roots_K"]):
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vq, VBar, Vend, NBval);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
@@ -412,7 +482,7 @@ elif(case in ["roots_lambda", "roots_K"]):
                     
             # get reflection operator
             rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
-                                            is_psi_jsigma = False, is_Rhat = True, all_debug = False);
+                                         is_psi_jsigma = False, is_Rhat = True, all_debug = False);
 
              # iter over gates to get fidelity for each one
             for rootvali in range(len(roots)):
@@ -463,14 +533,16 @@ elif(case in ["roots_lambda", "roots_K"]):
     #### end loop over NB
             
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend), fontsize=myfontsize);
+    fig.suptitle(get_suptitle(myTwoS, Jval, Vq, VBar), fontsize=myfontsize);
     plt.tight_layout();
     if(final_plots > 1): # save title, don't show
-        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals, header=get_suptitle(myTwoS, Jval, VBar, Vend));
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Jval,NBvals[-1]),NBvals, header=get_suptitle(myTwoS, Jval, Vq, VBar));
     else:
         axes[-1].legend(loc="lower right");
         plt.show();
-        
+
+####################################################################################
+#### time dependent data      
 elif(case in ["direct","directJ"]):
     from scipy.linalg import expm as scipy_expm
 

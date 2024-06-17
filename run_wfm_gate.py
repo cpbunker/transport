@@ -77,21 +77,22 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
             raise Exception("i1 and i2 cannot overlap");
     return np.array(h_cicc, dtype=complex);
     
-def get_hblocks(TwoS, the_tl, the_J, the_Vend, the_NB,
-                is_Lbarrier = False, is_SRbarrier = False, is_V0 = False, is_Rbarrier = False,
-                bval = 0.0, the_offset = 0, verbose = 0):
+def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
+                is_Lbarrier = False, is_Rbarrier = False,
+                barrierval = 0.0, the_offset = 0, verbose = 0):
     '''
     '''
     the_nlocdof = 2*(TwoS+1)*(TwoS+1);
     cicc_indices = ([1], [2]);
     assert(the_NB > the_offset);
-    assert(np.sum([is_Lbarrier, is_SRbarrier, is_V0, is_Rbarrier]) in [0,1]); # max 1 of these on
+    assert(np.sum([is_Lbarrier, is_Rbarrier]) in [0,1]); # max 1 of these on
  
     # ciccarello type interaction 
     hblocks_cicc = h_cicc(TwoS, the_J, *cicc_indices);
-    if(is_SRbarrier): # change onsite energy of localized spins
-        for cicc_index in cicc_indices:
-            hblocks_cicc[cicc_index] += bval*np.eye(the_nlocdof);
+    
+    # change onsite energy of localized spins
+    for cicc_index in cicc_indices:
+        hblocks_cicc[cicc_index] += the_Vq*np.eye(the_nlocdof);
     if(verbose):
         print("hblocks_cicc = ");
         for block in hblocks_cicc: print(np.real(block));
@@ -104,9 +105,11 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vend, the_NB,
         tnn_all.append(-the_tl*np.eye(the_nlocdof));
     hblocks_all = np.array(hblocks_all,dtype=complex);
     hblocks_all[the_offset:the_offset+NC] += hblocks_cicc;
-    if(is_V0):
-        for j in range(the_offset+NC, len(hblocks_all)):
-            hblocks_all[j] += bval*np.eye(the_nlocdof);
+    
+    # add onsite enery in barrier region
+    barrier_region_js = np.arange(the_offset+NC, len(hblocks_all))
+    for j in barrier_region_js:
+        hblocks_all[j] += the_VB*np.eye(the_nlocdof);
 
     # hopping
     tnn_all = np.array(tnn_all[:-1]); # nearest neighbor hopping, length is 1 less than hblocks
@@ -114,11 +117,11 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vend, the_NB,
 
     # add barriers at junctions with leads
     if(is_Lbarrier):
-        hblocks_all[cicc_indices[0][0]] += bval*np.eye(the_nlocdof); # barrier at LL-SR junction
+        hblocks_all[cicc_indices[0][0]] += barrierval*np.eye(the_nlocdof); # barrier at LL-SR junction
     if(is_Rbarrier):
-        Rbarrier_size = 30;
+        Rbarrier_size = 30; raise NotImplementedError;
         for j in range(Rbarrier_size):
-            hblocks_all[-2-j] += bval*np.diag([0,0,0,0,1,1,1,1]);
+            hblocks_all[-2-j] += barrierval*np.diag([0,0,0,0,1,1,1,1]);
 
     # wide band gap at very end to force reflection
     hblocks_all[-1] = the_Vend*np.eye(the_nlocdof); # note = not += is used
@@ -132,6 +135,16 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vend, the_NB,
     
     # return
     return hblocks_all, tnn_all, tnnn_all;
+    
+def get_suptitle(TwoS, the_J, the_Vq, the_VB, is_FM = False, is_overt = False):
+    '''
+    '''
+    suptitle = "$s=${:.1f}, $J=${:.4f}, $V_q=${:.4f}, $V_B=${:.4f}".format(0.5*TwoS, the_J, the_Vq, the_VB);
+    if(is_overt): "$s=${:.1f}, $J/t=${:.4f}, $V_q/t=${:.4f}, $V_B/t=${:.4f}".format(0.5*TwoS, the_J, the_Vq, the_VB);
+    
+    # add-ons
+    if(is_FM): suptitle += " (FM leads)";
+    return suptitle;
     
 def get_U_gate(gate0, TwoS):
     '''
@@ -286,16 +299,6 @@ def get_Fval(gate0, TwoS, U, R, the_espin, is_FM = False):
     # return
     if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
     return np.real(the_trace);
-    
-def get_suptitle(TwoS, theJ, theVq, theVB, is_FM = False, is_overt = False):
-    '''
-    '''
-    suptitle = "$s=${:.1f}, $J=${:.2f}, $V_q=${:.1f}, $V_B=${:.1f}".format(0.5*TwoS, theJ, theVq, theVB);
-    if(is_overt): "$s=${:.1f}, $J/t=${:.2f}, $V_q/t=${:.1f}, $V_B/t=${:.1f}".format(0.5*TwoS, theJ, theVq, theVB);
-    
-    # add-ons
-    if(is_FM): suptitle += " (FM leads)";
-    return suptitle;
     
 def get_indep_vals(is_NB_fixed, is_K_indep, the_xvals, the_xmax, the_NB, the_tl):
     '''
