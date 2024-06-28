@@ -79,12 +79,13 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     
 def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
                 is_Lbarrier = False, is_Rbarrier = False,
-                barrierval = 0.0, the_offset = 0, verbose = 0):
+                barrierval = 0.0, the_offset = 0, the_dist = 1, verbose = 0):
     '''
     '''
     the_nlocdof = 2*(TwoS+1)*(TwoS+1);
-    cicc_indices = ([1], [2]);
+    cicc_indices = ([1], [1+the_dist]);
     assert(the_NB > the_offset);
+    assert(the_dist > 0);
     assert(np.sum([is_Lbarrier, is_Rbarrier]) in [0,1]); # max 1 of these on
  
     # ciccarello type interaction 
@@ -93,12 +94,12 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
     # change onsite energy of localized spins
     for cicc_index in cicc_indices:
         hblocks_cicc[cicc_index] += the_Vq*np.eye(the_nlocdof);
-    if(verbose):
+    if(verbose>1):
         print("hblocks_cicc = ");
         for block in hblocks_cicc: print(np.real(block));
 
     # place cicc interations in real space
-    NC = len(hblocks_cicc); assert(NC==3); # num sites in central region
+    NC = len(hblocks_cicc); # num sites in central region
     hblocks_all, tnn_all = [], []; # new empty array all the way to barrier, will add cicc later
     for _ in range(NC+the_NB):
         hblocks_all.append(0.0*np.eye(the_nlocdof));
@@ -126,13 +127,17 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
     # wide band gap at very end to force reflection
     hblocks_all[-1] = the_Vend*np.eye(the_nlocdof); # note = not += is used
     if(verbose):
-        print(np.real(hblocks_all[:,0,0]));
-        print(np.real(hblocks_all[:,-1,-1]));
+        print("^^^ hblocks = \n",np.real(hblocks_all[:,0,0]));
+        print("vvv hblocks = \n",np.real(hblocks_all[:,-1,-1]));
     
     # the diagonal term must be the same for all channels!
     for sigmai in range(the_nlocdof):
         assert(hblocks_all[0][sigmai, sigmai]==0.0);
-    
+
+    if(verbose>1):
+        print("hblocks_all = ");
+        for block in hblocks_all: print(np.real(block));
+            
     # return
     return hblocks_all, tnn_all, tnnn_all;
     
@@ -300,26 +305,32 @@ def get_Fval(gate0, TwoS, U, R, the_espin, is_FM = False):
     if(abs(np.imag(the_trace)) > 1e-10): print(the_trace); assert False;
     return np.real(the_trace);
     
-def get_indep_vals(is_NB_fixed, is_K_indep, the_xvals, the_xmax, the_NB, the_tl):
+def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, the_xmin = 0.0, the_dist = 0):
     '''
     '''
+    if(Kstring not in ["K", "lambda", "kd"]): raise ValueError;
     
     # most of the time, NB is fixed for a give color, axis, and only wavenumber changes on x axis
     if(is_NB_fixed):
-        if(is_K_indep):
+        if(Kstring == "K"):
             the_Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
             the_wavelengths = 2*np.pi/np.sqrt(np.logspace(the_Kpowers[0], the_Kpowers[-1], num=the_xvals));
-        else:
-            the_NBoverLambda = np.linspace(0.001, the_xmax - 0.001, the_xvals);
+        elif(Kstring == "lambda"):
+            the_NBoverLambda = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
             the_wavelengths = the_NB/the_NBoverLambda
+        elif(Kstring == "kd"):
+            #assert(the_dist > 0 and the_NB == 1);
+            the_kdoverpi = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
+            the_wavelengths = 2*the_dist/the_kdoverpi;
+            
         # dispersion
         the_Kvals = 2*the_tl - 2*the_tl*np.cos(2*np.pi/the_wavelengths);
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         the_Energies = the_Kvals - 2*the_tl; 
     
-        if(is_K_indep): the_indep_vals = 4*np.pi*np.pi/(the_wavelengths*the_wavelengths);
-        else: the_indep_vals = 1*the_NBoverLambda;
-        
+        if(Kstring == "K"): the_indep_vals = 4*np.pi*np.pi/(the_wavelengths*the_wavelengths);
+        elif(Kstring == "lambda"): the_indep_vals = 1*the_NBoverLambda;
+        elif(Kstring == "kd"): the_indep_vals = 1*the_kdoverpi;
         return the_Kvals, the_Energies, the_indep_vals;
         
     else: # change NB on the x axis
@@ -341,7 +352,7 @@ def get_indep_vals(is_NB_fixed, is_K_indep, the_xvals, the_xmax, the_NB, the_tl)
 if(__name__ == "__main__"):
 
     #### top level
-    np.set_printoptions(precision = 2, suppress = True);
+    np.set_printoptions(precision = 4, suppress = True);
     verbose = 1;
     case = sys.argv[2];
     final_plots = int(sys.argv[3]);
@@ -368,7 +379,8 @@ if(__name__ == "__main__"):
     n_loc_dof = 2*n_mol_dof; # electron is always spin-1/2
     Jval = float(sys.argv[1]);
     Vend = 5.0*tl;
-    VBar = 0.0*tl; # just affects title, not implemented physically
+    VBar = 0.0*tl;
+    Vqubits = 0.0*tl;
 
 if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance of the barrier NB on the x axis
     
@@ -411,7 +423,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
             NBval = NBvals[NBvali];
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vqubits, VBar, Vend, NBval, verbose=0);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
@@ -494,7 +506,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                     
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend));
+    fig.suptitle(get_suptitle(myTwoS, Jval, Vqubits, VBar));
     plt.tight_layout();
     if(final_plots > 1): # save fig
         Jstring = "";
@@ -515,8 +527,8 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
     fig.set_size_inches(ncols*7/2,nrows*3/2);
     
     # cases / other options
-    if("_lambda" in case): K_indep = False;
-    elif("_K" in case): K_indep = True; # whether to put ki^2 on x axis, alternatively NBa/lambda
+    if("_K" in case): K_indep = "K"; # whether to put ki^2 on x axis
+    elif("_lambda" in case): K_indep = "lambda"; # alternatively NBa/lambda
     if("swap" in case): which_gate = "SWAP";
     elif("conc" in case): which_gate = "conc";
     else: raise NotImplementedError;
@@ -524,22 +536,27 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
 
     # iter over fixed NB (colors)
     NBvals = np.array([100]);
+    Distval = 50;
+    if(Distval > 1 and K_indep == "lambda"): 
+        K_indep = "kd";NBvals = np.array([50,100,150,200,250,300]) 
     Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
 
         # set barrier distance
         NBval = int(NBvals[NBvali]); 
-        if(verbose): print("NB = ",NBval);
+        if(verbose): print(K_indep+": NB = ",NBval);
         
         # iter over incident wavenumber (x axis)
-        xmax = 1.5;
-        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl); 
+        xmax = 4.0;
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl, the_dist=Distval); 
+        print(Kvals);
+        
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc 
         for Kvali in range(len(Kvals)):
 
             # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vend, NBval, verbose=0);
+            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vqubits, VBar, Vend, NBval, the_dist=Distval, verbose=1);
 
             # define source, although it doesn't function as a b.c. since we return Rhat matrix
             source = np.zeros((n_loc_dof,));
@@ -576,18 +593,19 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
         for sourcei in range(len(elems_to_keep)):
             for sigmai in range(sourcei+1):
                 # formatting
-                if(myTwoS > 1): 
-                    axes[sourcei,sigmai].set_title(str(n_mol_dof*elecspin+elems_to_keep[sourcei])+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
+                if(myTwoS > 1): axes[sourcei,sigmai].set_title( str(n_mol_dof*elecspin+elems_to_keep[sourcei])+" $\\rightarrow$"+str(n_mol_dof*elecspin+elems_to_keep[sigmai]));
                 else: 
                     axes[sourcei,sigmai].set_title("$"+rbracket+"\langle"+ str(ylabels[4*elecspin+sourcei])+ "| \mathbf{R} |"+str(ylabels[4*elecspin+sigmai])+"\\rangle"+rbracket+"$")
                 axes[sourcei,sigmai].set_yticks(the_ticks);
                 axes[sourcei,sigmai].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
-                for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color='lightgray',linestyle='dashed');
-                if(K_indep): 
-                    axes[-1,sigmai].set_xlabel('$k_i^2 a^2$',fontsize=myfontsize);
-                    axes[-1,sigmai].set_xscale('log', subs = []);
-                else:
-                    axes[-1,sigmai].set_xlabel('$N_B a/\lambda_i$',fontsize=myfontsize);
+                for tick in the_ticks: axes[sourcei,sigmai].axhline(tick,color="lightgray",linestyle="dashed");
+                if(K_indep == "K"): 
+                    axes[-1,sigmai].set_xlabel("$k_i^2 a^2$",fontsize=myfontsize);
+                    axes[-1,sigmai].set_xscale("log", subs = []);
+                elif(K_indep == "lambda"):
+                    axes[-1,sigmai].set_xlabel("$N_B a/\lambda_i$",fontsize=myfontsize);
+                elif(K_indep == "kd"):
+                    axes[-1,sigmai].set_xlabel("$kd/\pi$")
  
                 # plot rhat (real part = solid, imag part = dashed)
                 axes[sourcei,sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+ elems_to_keep[sourcei], n_mol_dof*elecspin+ elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
@@ -619,7 +637,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, VBar, Vend));
+    fig.suptitle(get_suptitle(myTwoS, Jval, Vqubits, VBar)+", $d={:.0f}a$ ".format(Distval));
     plt.tight_layout();
     if(final_plots > 1): # save fig
         Jstring = "";

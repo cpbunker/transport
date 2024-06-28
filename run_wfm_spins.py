@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #### top level
-#np.set_printoptions(precision = 4, suppress = True);
+np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
 
 # fig standardizing
@@ -31,6 +31,7 @@ mypanels = ["(a)","(b)","(c)","(d)"];
 # constructing the hamiltonian
 def diag_ham(params, S) -> np.ndarray:
     '''
+    Eq (40) in PRA paper
     '''
     for el in params:
         if( not isinstance(el, float)): raise TypeError;
@@ -42,6 +43,7 @@ def diag_ham(params, S) -> np.ndarray:
     h += np.array([[ (1-2*S)*D + S*J12, (S-1/2)*DeltaD, 0],
                    [ (S-1/2)*DeltaD, (1-2*S)*D - S*J12, 0],
                    [ 0, 0, S*J12]]);
+                           
     h += (JK1/2)*np.array([[S-1/2,1/2, np.sqrt(S)],
                            [1/2,S-1/2,-np.sqrt(S)],
                            [np.sqrt(S),-np.sqrt(S),-S]]);
@@ -49,6 +51,17 @@ def diag_ham(params, S) -> np.ndarray:
                            [-1/2,S-1/2,np.sqrt(S)],
                            [np.sqrt(S),np.sqrt(S),-S]]);
     return h;
+    
+                   
+    # RAISING/LOWERING ONLY
+    h += (JK1/2)*np.array([[0,1/2, np.sqrt(S)],
+                           [1/2,0,-np.sqrt(S)],
+                           [np.sqrt(S),-np.sqrt(S),0]]);
+    h += (JK2/2)*np.array([[0,-1/2,np.sqrt(S)],
+                           [-1/2,0,np.sqrt(S)],
+                           [np.sqrt(S),np.sqrt(S),0]]);
+                           
+    return h; # <-------------- !!!!!!!!!!!
             
 #########################################################
 #### effects of Ki and Delta E
@@ -56,7 +69,7 @@ def diag_ham(params, S) -> np.ndarray:
 if True: # T+ at different Delta E by changing D
 
     # axes
-    ylabels = ["+","-","i"][:1];
+    ylabels = ["+","-","i"]#[:1];
     nplots = len(ylabels)+1;
     fig, axes = plt.subplots(nplots, sharex=True);
     if(nplots==1): axes = [axes];
@@ -64,14 +77,16 @@ if True: # T+ at different Delta E by changing D
 
     # tight binding params
     tl = 1.0;
-    Nval = 201;
-    JK = 6*np.pi*tl/(Nval-1); 
-    J12 = tl/100;
-    myspinS = 1;
+    Distval = 1;
+    JK =  6*np.pi*tl/Distval; 
+    J12 = 0*tl/100;
+    myspinS = 0.5;
     n_loc_dof = 3;
     source = np.zeros((n_loc_dof,));
     sourcei = n_loc_dof-1;
     source[sourcei] = 1.0;
+    Vend = 5.0; # <-------------- !!!!!!!!!!!!!!!!!!!
+    plot_Rvals = True;
 
     # energy of the incident electron
     K_indep = False; # what to put on x axis
@@ -80,20 +95,25 @@ if True: # T+ at different Delta E by changing D
         Kvals = np.logspace(*logKlims,myxvals, dtype = complex); # K > 0 always
         knumbers = np.arccos((Kvals-2*tl)/(-2*tl));
     else:
-        knumberlims = 0.1*(np.pi/(Nval-1)), 6.0*(np.pi/(Nval-1));
+        knumberlims = 0.1*(np.pi/Distval), 4.0*(np.pi/Distval);
         knumbers = np.linspace(knumberlims[0], knumberlims[1], myxvals, dtype=complex);
         Kvals = 2*tl - 2*tl*np.cos(knumbers);
-    print(knumbers);
+    if(Distval == 1): # special case
+        JK = -0.005;
+        knumberlims = 0.0001*(np.pi/Distval), 0.1*(np.pi/Distval);
+        knumbers = np.linspace(knumberlims[0], knumberlims[1], 10*myxvals, dtype=complex);
+        Kvals = 2*tl - 2*tl*np.cos(knumbers);
     
     # Evals should be order of D (0.1 meV for Mn to 1 meV for MnPc)
     Esplitvals = (-1)*np.array([0.0]) #,0.001,0.002,0.003,0.004]);
     Dvals = Esplitvals/(1-2*myspinS);
+    if(myspinS == 0.5): Dvals = np.zeros_like(Esplitvals);
     for Dvali in range(len(Dvals)):
         Dval = Dvals[Dvali];
 
         # construct hblocks
         hblocks, tnn = [], [];
-        impis = [1,Nval];
+        impis = [1,1+Distval];
         for j in range(2+impis[1]): # LL, imp 1, ... imp 2, RL
             # define all physical params
             JK1, JK2 = 0.0, 0.0;
@@ -102,10 +122,16 @@ if True: # T+ at different Delta E by changing D
             params = Dval, Dval, J12, JK1, JK2;
 
             # construct h_SR in |+>, |->, |i> basis
-            hSR_diag = diag_ham(params,myspinS);           
+            hSR_diag = diag_ham(params,myspinS); 
+            
+            # potential at end
+            if(j == impis[1]+1): # last one
+                hSR_diag = Vend*np.eye(n_loc_dof); # <----- !!!!!!!!
+            
+            # add to hblocks          
             hblocks.append(np.copy(hSR_diag));
             tnn.append( -tl*np.eye(n_loc_dof));
-            if(verbose > 3 and (j in impis)):
+            if(verbose > 3 and (j in impis or j in [0, impis[1]+1])):
                 print("\nj = {:.0f}, JK1 = {:.4f}, JK2 = {:.4f}".format(j, JK1, JK2));
                 print(" - ham:\n", hSR_diag);
                 print(" - DeltaE = ",Esplitvals[Dvali]);
@@ -133,33 +159,47 @@ if True: # T+ at different Delta E by changing D
             # get R, T coefs
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy , source,
                                 is_psi_jsigma = False, is_Rhat = False, all_debug = False);
-            Rvals[Kvali] = Rdum;
-            Tvals[Kvali] = Tdum;
+            Rvals[Kvali] = 1*Rdum;
+            Tvals[Kvali] = 1*Tdum;
 
         # plot
         if(K_indep): indep_vals = np.real(Kvals);
-        else: indep_vals = np.real(knumbers)/(np.pi/(Nval-1));
+        else: indep_vals = np.real(knumbers)/(np.pi/Distval);
+        # what to plot and what to label
         for axi in range(nplots):
-            # plot T_\sigma
-            if(axi in [0]): #np.array(range(n_loc_dof))):
-                axes[axi].plot(indep_vals, Tvals[:,axi], label="$\Delta E=${:.4f}".format(Esplitvals[Dvali]), color=mycolors[Dvali], marker=mymarkers[1+Dvali], markevery=mymarkevery, linewidth=mylinewidth);
+            # plot T_sigma or R_sigma
+            if((axi<(nplots-1)) and plot_Rvals): #np.array(range(n_loc_dof))):
+                vals_to_plot = Rvals[:,axi];
+                axes[axi].set_ylabel("$R_"+str(ylabels[axi])+"$");
+            elif((axi<(nplots-1)) and not plot_Rvals):
+                vals_to_plot = Tvals[:,axi];
                 axes[axi].set_ylabel("$T_"+str(ylabels[axi])+"$");
-                #axes[axi].set_ylim(0,0.2);
-            # plot \overline{p^2}
-            else: 
-                axes[axi].plot(indep_vals, np.sqrt(Tvals[:,0]*Tvals[:,2]), color=mycolors[Dvali], marker=mymarkers[1+Dvali], markevery=mymarkevery, linewidth=mylinewidth);
-                axes[axi].set_ylabel("$\overline{p^2}$");
-                #axes[axi].set_ylim(0,0.3);
+            # plot sum
+            else:
+                vals_to_plot = Tvals[:,0] + Tvals[:,1];
+                if(plot_Rvals): vals_to_plot = Rvals[:,0] + Rvals[:,1];
+                axes[axi].set_ylabel("$R_+ + R_-$");
+                Kstar = np.real(Kvals[np.argmax(vals_to_plot)]);
+                print("K* = {:.6f}".format(Kstar));
+                dimensionless_energy = abs(tl/JK)*abs(Kstar/JK);
+                
+            # plot
+            axes[axi].plot(indep_vals, vals_to_plot, 
+                  label="$\Delta E=${:.4f}".format(Esplitvals[Dvali]), 
+                  color=mycolors[Dvali], marker=mymarkers[1+Dvali], 
+                  markevery=mymarkevery, linewidth=mylinewidth);
+            #axes[axi].set_ylim(0,0.5);
+            
     # format
     if(K_indep):
         axes[-1].set_xlabel("$K_i/t$",fontsize=myfontsize);
         axes[-1].set_xscale("log", subs = []);
     else:
-        axes[-1].set_xlabel("$k_i (N-1)/\pi$", fontsize=myfontsize);
+        axes[-1].set_xlabel("$k_i d/\pi$", fontsize=myfontsize);
                 
     # show
-    axes[0].set_title("$s =${:.1f}, $N =${:.0f}, $J =${:.4f}".format(
-        myspinS, Nval, JK)+", $J_{12} =$"+"{:.4f}".format(J12));
+    axes[0].set_title("$s =${:.1f}, $d =${:.0f}$a$, $J =${:.3f}".format(
+        myspinS, Distval, JK)+", $V_R =${:.1f}, $DE =${:.4f}".format(Vend, dimensionless_energy));
                      
     plt.tight_layout();
     plt.show();

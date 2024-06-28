@@ -55,7 +55,7 @@ if(final_plots == 10):
     # open corresponding itle file
     if(case in ["NB","kNB"]): 
         which_color = "K";
-    elif(case in ["VB_NB30","VB_NB100","VB_NB500"]): 
+    elif(case in ["onsite_NB500","VB_NB500"]): 
         which_color = "x";
     elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "dimensionless_energy"]): 
         which_color = "NB";
@@ -68,7 +68,7 @@ if(final_plots == 10):
     colorvals = np.loadtxt(title_and_colors,ndmin=1); 
     if(case in ["NB","kNB"]):
         which_color_list = np.arange(len(colorvals));
-    elif(case in ["VB_NB30","VB_NB100","VB_NB500"]):
+    elif(case in ["onsite_NB500","VB_NB500"]):
         XVAL_INT_CONVERSION = 100;
         which_color_list = 1*colorvals.astype(int); 
         colorvals = (1/XVAL_INT_CONVERSION)*colorvals;
@@ -118,7 +118,7 @@ if(final_plots == 10):
         #### end loop over gates
         
     # iter over gates
-    elif(case not in ["roots_lambda", "roots_K", "VB_NB30","VB_NB100","VB_NB500"]): 
+    elif(case not in ["roots_lambda", "roots_K","onsite_NB500","VB_NB500"]): 
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
@@ -205,11 +205,12 @@ if(final_plots == 10):
                     annotate_string = "$N_B =${:.0f}";
                     my_ylabel = "$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$";
                     my_xlabel = "$N_B a /\lambda_i$";
-                elif(case in ["VB_NB30","VB_NB100","VB_NB500"]):
+                elif(case in ["onsite_NB500","VB_NB500"]):
                     mylabel = roots[rootvali];
                     annotate_string = "$N_B a/\lambda_i =${:.2f}";
                     my_ylabel = "";
-                    my_xlabel = "$V_B$";
+                    if("onsite" in case): my_xlabel = "$V_q$";
+                    elif("VB" in case): my_xlabel = "$V_B$";
                 
                 # plot
                 axes[colori].plot(xvals,yvals, label = mylabel, color=mycolors[rootvali],marker=mymarkers[1+rootvali],markevery=mymarkevery);
@@ -231,7 +232,7 @@ if(final_plots == 10):
             #axes[colori].set_yticks(the_ticks);
             axes[colori].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
-            axes[colori].annotate(annotate_string.format(colorvals[colori]), (xvals[1],1.01),fontsize=myfontsize);
+            axes[colori].annotate(annotate_string.format(colorvals[colori]), (xvals[len(xvals)*1//4],1.01),fontsize=myfontsize);
             axes[colori].set_ylabel(my_ylabel,fontsize=myfontsize);
         #### end loop over fixed NB vals
             
@@ -354,7 +355,7 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
     else: K_indep = True;
 
     # iter over barrier distance (colors)
-    NBvals = np.array([500]);
+    NBvals = np.array([1400]);
     #NBvals = np.array([1000,1400,1800]); assert(Jval==-0.02);
     Fvals_min = np.empty((myxvals, len(NBvals),len(gates)),dtype=float); # avg fidelity
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
@@ -363,8 +364,10 @@ elif(case in ["gates_lambda","gates_K","conc_lambda","conc_K"]): # at fixed NB, 
         if(verbose): print("NB = ",NBval); 
 
         # iter over incident wavenumber (x axis)
-        xmax = 1.5;
-        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl);  
+        xmax = 3.0;
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl,
+            the_xmin = 0.0);
+        print(indep_vals);
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         for Kvali in range(len(Kvals)):
 
