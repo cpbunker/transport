@@ -26,7 +26,7 @@ def h_cicc(TwoS, J, i1, i2, verbose=0) -> np.ndarray:
     - i2, list of sites for second spin-1/2
     '''
     if(not isinstance(i1, list) or not isinstance(i2, list)): raise TypeError;
-    assert(i1[0] == 1);
+    #assert(i1[0] == 1);
     if(not i1[-1] < i2[0]): raise Exception("i1 and i2 cannot overlap");
     NC = i2[-1]; # num sites in the central region
     mol_dof = (TwoS+1)*(TwoS+1);
@@ -83,10 +83,11 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
     '''
     '''
     the_nlocdof = 2*(TwoS+1)*(TwoS+1);
-    cicc_indices = ([1], [1+the_dist]);
+    cicc_indices = ([2], [2+the_dist]);
+    assert(cicc_indices[0][0]==2 and cicc_indices[1][0]-the_dist==2)
     assert(the_NB > the_offset);
     assert(the_dist > 0);
-    assert(np.sum([is_Lbarrier, is_Rbarrier]) in [0,1]); # max 1 of these on
+    #assert(np.sum([is_Lbarrier, is_Rbarrier]) in [0,1]); # max 1 of these on
  
     # ciccarello type interaction 
     hblocks_cicc = h_cicc(TwoS, the_J, *cicc_indices);
@@ -118,11 +119,11 @@ def get_hblocks(TwoS, the_tl, the_J, the_Vq, the_VB, the_Vend, the_NB,
 
     # add barriers at junctions with leads
     if(is_Lbarrier):
-        hblocks_all[cicc_indices[0][0]] += barrierval*np.eye(the_nlocdof); # barrier at LL-SR junction
+        hblocks_all[cicc_indices[0][0]-1] += barrierval*np.eye(the_nlocdof); # barrier at LL-SR junction
     if(is_Rbarrier):
-        Rbarrier_size = 30; raise NotImplementedError;
+        Rbarrier_size = 1 #30; raise NotImplementedError;
         for j in range(Rbarrier_size):
-            hblocks_all[-2-j] += barrierval*np.diag([0,0,0,0,1,1,1,1]);
+            hblocks_all[-2-j] += barrierval*np.eye(the_nlocdof);
 
     # wide band gap at very end to force reflection
     hblocks_all[-1] = the_Vend*np.eye(the_nlocdof); # note = not += is used
@@ -313,15 +314,15 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
     # most of the time, NB is fixed for a give color, axis, and only wavenumber changes on x axis
     if(is_NB_fixed):
         if(Kstring == "K"):
-            the_Kpowers = np.array([-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+            the_Kpowers = np.array([-1,-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
             the_wavelengths = 2*np.pi/np.sqrt(np.logspace(the_Kpowers[0], the_Kpowers[-1], num=the_xvals));
         elif(Kstring == "lambda"):
             the_NBoverLambda = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
             the_wavelengths = the_NB/the_NBoverLambda
         elif(Kstring == "kd"):
             #assert(the_dist > 0 and the_NB == 1);
-            the_kdoverpi = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
-            the_wavelengths = 2*the_dist/the_kdoverpi;
+            the_doverl = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
+            the_wavelengths = the_dist/the_doverl;
             
         # dispersion
         the_Kvals = 2*the_tl - 2*the_tl*np.cos(2*np.pi/the_wavelengths);
@@ -330,7 +331,7 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
     
         if(Kstring == "K"): the_indep_vals = 4*np.pi*np.pi/(the_wavelengths*the_wavelengths);
         elif(Kstring == "lambda"): the_indep_vals = 1*the_NBoverLambda;
-        elif(Kstring == "kd"): the_indep_vals = 1*the_kdoverpi;
+        elif(Kstring == "kd"): the_indep_vals = 1*the_doverl;
         return the_Kvals, the_Energies, the_indep_vals;
         
     else: # change NB on the x axis
@@ -362,7 +363,7 @@ if(__name__ == "__main__"):
 
     # fig standardizing
     myxvals = 29; 
-    if(final_plots): myxvals = 99;
+    if(final_plots): myxvals = 299;
     myfontsize = 14;
     mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
     accentcolors = ["black","red"];
@@ -536,9 +537,11 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
 
     # iter over fixed NB (colors)
     NBvals = np.array([100]);
-    Distval = 50;
+    Distval = 500;
     if(Distval > 1 and K_indep == "lambda"): 
-        K_indep = "kd";NBvals = np.array([50,100,150,200,250,300]) 
+        K_indep = "kd";
+        Jval = Jval*50/Distval;
+        NBvals = np.array([50])
     Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -548,23 +551,23 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
         if(verbose): print(K_indep+": NB = ",NBval);
         
         # iter over incident wavenumber (x axis)
-        xmax = 4.0;
+        xmax = 1.2;
         Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl, the_dist=Distval); 
-        print(Kvals);
-        
+
+        # construct hblocks from cicc-type spin ham
+        hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vqubits, VBar, Vend,
+                      NBval, the_dist=Distval, verbose=1);
+
+        # define source, although it doesn't function since we return Rhat matrix
+        source = np.zeros((n_loc_dof,));
+        source[-1] = 1;
+            
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc 
         for Kvali in range(len(Kvals)):
-
-            # construct hblocks from cicc-type spin ham
-            hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vqubits, VBar, Vend, NBval, the_dist=Distval, verbose=1);
-
-            # define source, although it doesn't function as a b.c. since we return Rhat matrix
-            source = np.zeros((n_loc_dof,));
-            source[-1] = 1;
             
             # get reflection operator
-            rhatvals[:,:,Kvali,NBvali] = wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source,
-                                            is_psi_jsigma = False, is_Rhat = True, all_debug = False);            
+            rhatvals[:,:,Kvali,NBvali]=wfm.kernel(hblocks,tnn,tnnn,tl, Energies[Kvali],
+            			source, is_psi_jsigma = False, is_Rhat = True, all_debug = False);            
 
             # fidelity w/r/t U_gate           
             Fvals_min[Kvali, NBvali] = get_Fval(which_gate, myTwoS, U_gate, rhatvals[:,:,Kvali,NBvali], elecspin); 
@@ -605,7 +608,7 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                 elif(K_indep == "lambda"):
                     axes[-1,sigmai].set_xlabel("$N_B a/\lambda_i$",fontsize=myfontsize);
                 elif(K_indep == "kd"):
-                    axes[-1,sigmai].set_xlabel("$kd/\pi$")
+                    axes[-1,sigmai].set_xlabel("$d/\lambda_i$")
  
                 # plot rhat (real part = solid, imag part = dashed)
                 axes[sourcei,sigmai].plot(indep_vals, np.real(yvals)[n_mol_dof*elecspin+ elems_to_keep[sourcei], n_mol_dof*elecspin+ elems_to_keep[sigmai],:,NBvali], label = "$N_B$ = {:.0f}".format(NBvals[NBvali]), color=mycolors[NBvali]);
@@ -617,6 +620,11 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                     for tick in the_ticks: axes[sigmai, sourcei].axhline(tick, color='lightgray', linestyle='dashed');
                     axes[sigmai,sourcei].set_title("$F_{avg}(\mathbf{R},\mathbf{U}_{"+which_gate+"})$");
                     axes[1,0].legend();
+                    # SAVE fidelity
+                    if(final_plots > 1):
+                        xy_savename = "data/gate/Dist{:.0f}/".format(Distval)+which_gate+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
+                        np.save(xy_savename+"_y.npy", Fvals_min[:,NBvali]);
+                        np.save(xy_savename+"_x.npy", indep_vals);
 
                 # plot reflection summed over final states (column, 2nd index)
                 if((sourcei in [1,2] and sigmai==0) and summed_columns):                    
@@ -637,15 +645,11 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
-    fig.suptitle(get_suptitle(myTwoS, Jval, Vqubits, VBar)+", $d={:.0f}a$ ".format(Distval));
+    my_suptitle = get_suptitle(myTwoS, Jval, Vqubits, VBar)+", $d={:.0f}a$ ".format(Distval);
+    fig.suptitle(my_suptitle);
     plt.tight_layout();
     if(final_plots > 1): # save fig
-        Jstring = "";
-        if(Jval != -0.2): Jstring ="J"+ str(int(abs(100*Jval)))+"_";
-        sstring = "";
-        if(myTwoS != 1): sstring = "2s"+str(int(myTwoS))+"_";
-        fname = "figs/gate/spin12_"+Jstring+sstring+case;
-        plt.savefig(fname+".pdf")
+        np.savetxt("data/gate/Dist{:.0f}/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Distval, Jval, NBvals[-1]), NBvals, header=my_suptitle);
     else:
         plt.show();
 

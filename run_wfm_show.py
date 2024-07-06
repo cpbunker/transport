@@ -4,7 +4,7 @@ from run_wfm_gate import get_hblocks, get_U_gate, get_Fval, get_suptitle, get_in
 
 import numpy as np
 import matplotlib.pyplot as plt
-np.set_printoptions(precision = 4, suppress = True);
+np.set_printoptions(precision = 5, suppress = True);
 
 import sys
 
@@ -151,7 +151,7 @@ if(case in ["onsite_NB100", "onsite_NB500", "onsite_NB100_show"]):
     else:
         plt.tight_layout();
         plt.show(); 
-
+        
 # change onsite energy in the barrier region
 elif(case in ["VB_NB100", "VB_NB500", "VB_NB100_show"]): 
 
@@ -165,7 +165,7 @@ elif(case in ["VB_NB100", "VB_NB500", "VB_NB100_show"]):
     
     # change onsite energies in barrier region to the right of the qubits
     VBvals = np.linspace(-0.0006, 0.000,199)# 399);
-    if(case=="VB_show"): 
+    if(case=="VB_NB100_show"): 
         assert(Jval == -0.2);
         VBvals=(1)*np.array([0.0, -0.0002, -0.0004, -0.0006, -0.0008, -0.00083, -0.00084, -0.0010]); 
     
@@ -271,6 +271,143 @@ elif(case in ["VB_NB100", "VB_NB500", "VB_NB100_show"]):
     if(final_plots > 1): # save fig and legend
         # title and color values
         np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_x{:.0f}_title.txt".format(Jval, XVAL_INT_CONVERSION*xvals[-1]),XVAL_INT_CONVERSION*xvals,header = suptitle);
+    else:
+        plt.tight_layout();
+        plt.show(); 
+
+# double barrier well with resonant level
+elif(case in ["well_NB30", "well_NB30_show"]): 
+
+    show = False; # whether to plot individual wavefunctions
+    if("_show" in case): show = True;
+    if("_NB30" in case): NBval = 30;
+    elif("_NB500" in case): NBval = 500;
+    else: raise NotImplementedError;
+    gate_strings = ["overlap", "conc", "overlap_sf", "I"];
+    gate_labels = ["$P_{swap}$", "$C$", "$P_{sf}$", "$F(\mathbf{I})$"];
+    
+    # iter over onsite energy in well (axes). Should be > 0
+    VBval = 1e-5#,1e-4,1e-3]);
+    Barrierval = 0.5;
+    Vend = 0*Vend;
+    NBvals = np.array([30,60,100])#,60,100,140,200]);
+    del NBval
+    
+    # figure and axes
+    nrows, ncols = len(NBvals), 1;
+    vs_fig, vs_axes = plt.subplots(nrows, ncols, sharex=True, sharey = True);
+    if(nrows==1): vs_axes = [vs_axes];
+    vs_fig.set_size_inches(ncols*myfigsize[0], nrows*myfigsize[1]);
+    
+    # return values
+    myxvals = 499;
+    Fvals = np.empty((myxvals, len(NBvals), len(gate_strings)), dtype=float);
+    
+    # iter over onsite energy in well (axes)
+    for NBvali in range(len(NBvals)):
+
+        # construct hblocks from cicc-type spin ham
+        # NB both left and right barrier are nonzero and same height
+        # NB both Vq and VB are in the well and so have same onsite energy
+        hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, VBval,
+              VBval, Vend, NBvals[NBvali], 
+              is_Lbarrier=True, is_Rbarrier=True, barrierval=Barrierval,
+              verbose=1);
+
+        # define source vector (boundary condition for incident wave)
+        source = np.zeros((n_loc_dof,));
+        source[n_mol_dof*elecspin + elems_to_keep[1]] = 1.0;
+        
+        # iter over incident KE (x axis)
+        xmax = -999;
+        Kvals, Energies, indep_vals = get_indep_vals(True,"K",myxvals, xmax, NBvals[NBvali], tl);
+        if(show):
+            assert(NBvals[NBvali]==30)
+            Kvals = np.array([0.008,0.016,0.033]);
+            Energies = Kvals -2*tl;
+            del indep_vals;
+            
+        # iter over incident KE (x axis) 
+        for Kvali in range(len(Kvals)):
+        
+            if(show): # get and plot real-space scattered wavefunction
+                fig, axes = plt.subplots(2, sharex = True);
+                print("K = {:.5f}, E = {:.5f}, E+2t = {:.5f}".format(Kvals[Kvali], Energies[Kvali], Energies[Kvali]+2*tl));
+                psi = wfm.kernel(hblocks,tnn,tnnn,tl, Energies[Kvali], source, 
+                         is_psi_jsigma = True, is_Rhat = False, all_debug = False);
+                   
+                # probability densities
+                jvals = np.arange(len(psi));
+                pdf = np.conj(psi)*psi;
+                if( np.max(abs(np.imag(pdf))) > 1e-10):
+                    print(np.max(abs(np.imag(pdf)))); assert False;
+                pdf = np.real(pdf);
+
+            # get ???
+            Rdum,Tdum=wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, 
+                     is_psi_jsigma = False, is_Rhat = False, all_debug = False);
+            Fvals[Kvali, NBvali, :] = Tdum[:len(gate_strings)];
+        
+            # evaluate Rhat by its fidelity w/r/t various gates (colors)
+            to_annotate = "";
+            for gatei in range(len(gate_strings)):
+                Uhat, dummy_ticks = get_U_gate(gate_strings[gatei], myTwoS);
+                #F_gs = get_Fval(gate_strings[gatei], myTwoS, Uhat, Rhat, elecspin);
+                #Fvals[Kvali, VBvali, gatei] = 1*F_gs;
+                #to_annotate += ","+gate_labels[gatei]+" = "+ "{:.4f}".format(F_gs);
+
+            if(show): # plot probability densities
+                axes[-1].annotate(to_annotate, (jvals[1],0.0));
+                for elecspin_index in range(len(axes)):
+                    for sigmai in range(n_mol_dof):
+                        axes[elecspin_index].plot(jvals, pdf[:,elecspin_index*n_mol_dof+ sigmai],
+                           label = "$\sigma = "+state_labels[elecspin_index*n_mol_dof+sigmai]+"$");
+                    axes[elecspin_index].legend();
+                    axes[elecspin_index].set_ylabel("$\langle j \sigma | \psi \\rangle$");
+
+                # format
+                axes[-1].set_xlabel("$j$");
+                axes[-1].set_xlim(0, np.max(jvals));
+                axes[-1].set_xticks([0, np.max(jvals)]);
+                axes[0].set_title("$V_w=${:.6f}, $N_B =${:.0f}, $K_i =${:.5f} ".format(VBval, NBvals[NBvali], Kvals[Kvali]));
+                plt.tight_layout();
+                plt.show();
+
+        # plot F vs onsite energies VB
+        for gatei in range(len(gate_strings)):
+            vs_axes[NBvali].plot(Kvals, Fvals[:,NBvali,gatei], label=str(gatei), color = mycolors[gatei]);        
+            # save Fvals to .npy
+            if(final_plots > 1):
+                pass;
+                
+        #### end loop over Kvals
+                
+        # format the vs Kvals plot
+        #vs_axes[NBvali].set_yticks(dummy_ticks);
+        vs_axes[NBvali].set_ylim(-0.1+dummy_ticks[0],0.1+dummy_ticks[-1]);
+        for tick in dummy_ticks: vs_axes[NBvali].axhline(tick,color="lightgray",linestyle="dashed");
+        vs_axes[NBvali].annotate("$N_B =${:.0f}".format(NBvals[NBvali]), (Kvals[-1],1.01), fontsize = myfontsize);
+        
+        # bound state energies
+        for nint in range(1,1+4):
+            Enint = VBval+((nint*np.pi)**2) *tl/((NBvals[NBvali]+1)**2);
+            lnint = 2*(NBvals[NBvali]+1)/nint;
+            print("En = {:.5f}, lambda_n = {:.0f}".format(Enint, lnint))
+            vs_axes[NBvali].axvline(Enint,linestyle="dashed",color="lightgray");
+    
+    #### end loop over axes
+
+    # format
+    vs_axes[-1].legend();
+    vs_axes[-1].set_xlabel("$K_i/t$");
+    vs_axes[-1].set_xscale("log", subs = []);
+    suptitle = "$s = ${:.1f}, $J =${:.4f}, $N_B =${:.0f}, $B =${:.2f}, Vend = {:.2f}".format(myTwoS/2, Jval, -999, Barrierval, Vend);
+    vs_axes[0].set_title(suptitle);
+
+    # show
+    if(final_plots > 1): # save fig and legend
+        # title and color values
+        np.savetxt("data/gate/"+case+"/ALL_J{:.2f}_x{:.0f}_title.txt".format(),header = suptitle);
     else:
         plt.tight_layout();
         plt.show(); 
