@@ -320,9 +320,9 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
             the_NBoverLambda = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
             the_wavelengths = the_NB/the_NBoverLambda
         elif(Kstring == "kd"):
-            #assert(the_dist > 0 and the_NB == 1);
-            the_doverl = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
-            the_wavelengths = the_dist/the_doverl;
+            assert(the_dist > 0);
+            the_dNBoverl = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
+            the_wavelengths = (the_NB+the_dist)/the_dNBoverl;
             
         # dispersion
         the_Kvals = 2*the_tl - 2*the_tl*np.cos(2*np.pi/the_wavelengths);
@@ -331,7 +331,7 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
     
         if(Kstring == "K"): the_indep_vals = 4*np.pi*np.pi/(the_wavelengths*the_wavelengths);
         elif(Kstring == "lambda"): the_indep_vals = 1*the_NBoverLambda;
-        elif(Kstring == "kd"): the_indep_vals = 1*the_doverl;
+        elif(Kstring == "kd"): the_indep_vals = 1*the_dNBoverl;
         return the_Kvals, the_Energies, the_indep_vals;
         
     else: # change NB on the x axis
@@ -519,7 +519,7 @@ if(__name__ == "__main__" and case in ["swap_NB","swap_NB_lambda"]): # distance 
     else:
         plt.show();
         
-elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_lambda"]): # incident kinetic energy or wavenumber on the x axis
+elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_lambda", "SeS12_lambda"]): # incident kinetic energy or wavenumber on the x axis
          # NB is now fixed !!!!
 
     # axes
@@ -532,16 +532,19 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
     elif("_lambda" in case): K_indep = "lambda"; # alternatively NBa/lambda
     if("swap" in case): which_gate = "SWAP";
     elif("conc" in case): which_gate = "conc";
+    elif("SeS12" in case): which_gate = "SeS12";
     else: raise NotImplementedError;
     U_gate, the_ticks = get_U_gate(which_gate, myTwoS);
+    Dist_on = True;
+    if(final_plots > 1): assert Dist_on;
 
     # iter over fixed NB (colors)
-    NBvals = np.array([100]);
-    Distval = 500;
-    if(Distval > 1 and K_indep == "lambda"): 
+    NBvals = np.array([200]);
+    if(Dist_on and K_indep == "lambda"): 
         K_indep = "kd";
-        Jval = Jval*50/Distval;
-        NBvals = np.array([50])
+        Totalval = NBvals[0];
+        Distvals = np.array([Totalval-1, 3*Totalval//4, Totalval//2, Totalval//4, 1], dtype=int);       
+        NBvals = Totalval - Distvals;
     Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
     for NBvali in range(len(NBvals)):
@@ -551,12 +554,12 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
         if(verbose): print(K_indep+": NB = ",NBval);
         
         # iter over incident wavenumber (x axis)
-        xmax = 1.2;
-        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl, the_dist=Distval); 
+        xmax = 1.6;
+        Kvals, Energies, indep_vals = get_indep_vals(True, K_indep, myxvals, xmax, NBval, tl, the_dist=Distvals[NBvali]); 
 
         # construct hblocks from cicc-type spin ham
         hblocks, tnn, tnnn = get_hblocks(myTwoS, tl, Jval, Vqubits, VBar, Vend,
-                      NBval, the_dist=Distval, verbose=1);
+                      NBval, the_dist=Distvals[NBvali], verbose=1);
 
         # define source, although it doesn't function since we return Rhat matrix
         source = np.zeros((n_loc_dof,));
@@ -621,8 +624,8 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                     axes[sigmai,sourcei].set_title("$F_{avg}(\mathbf{R},\mathbf{U}_{"+which_gate+"})$");
                     axes[1,0].legend();
                     # SAVE fidelity
-                    if(final_plots > 1):
-                        xy_savename = "data/gate/Dist{:.0f}/".format(Distval)+which_gate+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
+                    if(final_plots > 1 and Dist_on):
+                        xy_savename = "data/gate/Total{:.0f}/".format(Totalval)+which_gate+"_J{:.2f}_NB{:.0f}".format(Jval, NBval);
                         np.save(xy_savename+"_y.npy", Fvals_min[:,NBvali]);
                         np.save(xy_savename+"_x.npy", indep_vals);
 
@@ -645,11 +648,11 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
                     axes[0,sigmai+len(elems_to_keep)-1].set_title("$"+rbracket+"\langle"+str(1)+"| \mathbf{R} |"+str(1)+"\\rangle"+rbracket+" - "+rbracket+"\langle"+str(2)+"| \mathbf{R} |"+str(2)+"\\rangle"+rbracket+"$");
                          
     # show
-    my_suptitle = get_suptitle(myTwoS, Jval, Vqubits, VBar)+", $d={:.0f}a$ ".format(Distval);
+    my_suptitle = get_suptitle(myTwoS, Jval, Vqubits, VBar)+", $d+N_B a={:.0f}a$ ".format(Totalval);
     fig.suptitle(my_suptitle);
     plt.tight_layout();
-    if(final_plots > 1): # save fig
-        np.savetxt("data/gate/Dist{:.0f}/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Distval, Jval, NBvals[-1]), NBvals, header=my_suptitle);
+    if(final_plots > 1 and Dist_on): # save fig
+        np.savetxt("data/gate/Total{:.0f}/ALL_J{:.2f}_NB{:.0f}_title.txt".format(Totalval, Jval, NBvals[-1]), NBvals, header=my_suptitle);
     else:
         plt.show();
 

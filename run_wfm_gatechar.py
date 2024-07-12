@@ -57,7 +57,8 @@ if(final_plots == 10):
         which_color = "K";
     elif(case in ["onsite_NB500","VB_NB500"]): 
         which_color = "x";
-    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "dimensionless_energy", "Dist500"]): 
+    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "dimensionless_energy",
+                  "Total30","Total100","Total200"]): 
         which_color = "NB";
     whichval = int(sys.argv[4]);
     title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
@@ -72,7 +73,8 @@ if(final_plots == 10):
         XVAL_INT_CONVERSION = 100;
         which_color_list = 1*colorvals.astype(int); 
         colorvals = (1/XVAL_INT_CONVERSION)*colorvals;
-    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "Dist500"]):
+    elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K",
+                  "Total30","Total100","Total200"]):
         colorvals = colorvals.astype(int);
         which_color_list = 1*colorvals;
         
@@ -146,9 +148,15 @@ if(final_plots == 10):
                         if(abs(colorvals[colori] - 10.0**Kpower) < 1e-10): correct_Kpower = 1*Kpower;
                     if(correct_Kpower is not False): mylabel = "$k_i^2 a^2 = 10^{"+str(correct_Kpower)+"}$";
                     else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(colorvals[colori]);
-                elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "Dist500"]):
+                elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
-                    
+                elif(case in ["Total30","Total100","Total200"]):
+                    mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
+                    if("Total" in case):
+                        Totalval = int(case[5:]);
+                        axes[-1].set_xlabel("${:.0f}/\lambda_i $".format(Totalval),fontsize=myfontsize);
+                    else:
+                        axes[-1].set_xlabel("$d/\lambda_i $",fontsize=myfontsize);
                 # plot
                 axes[gatevali].plot(xvals,yvals, label = mylabel, color=mycolors[colori], marker=mymarkers[1+colori], markevery=mymarkevery);
                 
@@ -165,8 +173,8 @@ if(final_plots == 10):
             elif(case in ["gates_lambda", "conc_lambda"]):
                 axes[-1].set_xlabel("$N_B a/\lambda_i $",fontsize=myfontsize);
                 axes[gatevali].set_xlim(0,np.max(xvals));
-            elif(case in ["Dist500"]):
-                axes[-1].set_xlabel("$d/\lambda_i $",fontsize=myfontsize);
+            elif(case in ["Total30","Total100","Total200"]):
+                #axes[-1].set_xlabel("${:.0f}/\lambda_i $".format(Totalval),fontsize=myfontsize);
                 axes[gatevali].set_xlim(0,np.max(xvals));
             else: raise NotImplementedError;
             
