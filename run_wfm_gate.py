@@ -314,7 +314,7 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
     # most of the time, NB is fixed for a give color, axis, and only wavenumber changes on x axis
     if(is_NB_fixed):
         if(Kstring == "K"):
-            the_Kpowers = np.array([-1,-2,-3,-4,-5]); # incident kinetic energy/t = 10^Kpower
+            the_Kpowers = np.array([-2,-3,-4]); # incident kinetic energy/t = 10^Kpower
             the_wavelengths = 2*np.pi/np.sqrt(np.logspace(the_Kpowers[0], the_Kpowers[-1], num=the_xvals));
         elif(Kstring == "lambda"):
             the_NBoverLambda = np.linspace(the_xmin + 0.001, the_xmax - 0.001, the_xvals);
@@ -539,11 +539,11 @@ elif(__name__ == "__main__" and case in["swap_K","swap_lambda", "conc_K", "conc_
     if(final_plots > 1): assert Dist_on;
 
     # iter over fixed NB (colors)
-    NBvals = np.array([200]);
+    NBvals = np.array([500]);
     if(Dist_on and K_indep == "lambda"): 
         K_indep = "kd";
         Totalval = NBvals[0];
-        Distvals = np.array([Totalval-1, 3*Totalval//4, Totalval//2, Totalval//4, 1], dtype=int);       
+        Distvals = np.array([3*Totalval//4, Totalval//2, Totalval//4, 1], dtype=int);       
         NBvals = Totalval - Distvals;
     Fvals_min = np.empty((myxvals, len(NBvals)),dtype=float); 
     rhatvals = np.empty((n_loc_dof,n_loc_dof,myxvals,len(NBvals)),dtype=complex); # by  init spin, final spin, energy, NB
