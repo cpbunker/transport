@@ -346,7 +346,38 @@ def get_indep_vals(is_NB_fixed, Kstring, the_xvals, the_xmax, the_NB, the_tl, th
         # -2t < Energy < 2t, the argument of self energies, Green's funcs, etc
         the_Energies = the_Kvals - 2*the_tl; 
         
-        return the_Kvals, the_Energies, the_knumbers, the_Kpowers;   
+        return the_Kvals, the_Energies, the_knumbers, the_Kpowers;
+
+def lorentzian(x, x0, gamma):
+    '''
+    '''
+    return gamma*gamma/(gamma*gamma+(x-x0)*(x-x0));
+
+def lorentzian_fit(xpoints, ypoints, center_guess, center_dev, gamma_guess, gamma_dev, verbose=0):
+    '''
+    '''
+    from scipy.optimize import curve_fit as scipy_curve_fit
+    from scipy.optimize import Bounds as scipy_Bounds
+
+    # fit xy data points to lorentzian curve
+    params_guess = np.array([center_guess, gamma_guess]);
+    params_bounds = np.array([[center_guess-center_dev,gamma_guess-gamma_dev],
+                              [center_guess+center_dev,gamma_guess+gamma_dev]]);
+    params_fit, _ = scipy_curve_fit(lorentzian, xpoints, ypoints,
+                                    p0=params_guess, bounds=params_bounds, loss="linear");
+
+    # print results
+    if(verbose):
+        num_digits = 6;
+        formatter = "{:."+str(num_digits)+"f}";
+        print(("x0 in ["+formatter+","+formatter+"] -> "+formatter)
+              .format(params_bounds[0,0], params_bounds[1,0], params_fit[0]));
+        print(("Gamma in ["+formatter+","+formatter+"] -> "+formatter)
+              .format(params_bounds[0,1], params_bounds[1,1], params_fit[1]));
+
+    # curve from fit
+    return lorentzian(xpoints, *params_fit)
+    
            
 ############################################################################ 
 #### exec code

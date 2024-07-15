@@ -1,6 +1,6 @@
 from transport import wfm
 
-from run_wfm_gate import get_hblocks, get_U_gate, get_Fval, get_suptitle, get_indep_vals;
+from run_wfm_gate import get_hblocks, get_U_gate, get_Fval, get_suptitle, get_indep_vals, lorentzian_fit;
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -276,22 +276,22 @@ elif(case in ["VB_NB100", "VB_NB500", "VB_NB100_show"]):
         plt.show(); 
 
 # double barrier well with resonant level
-elif(case in ["well_NB30", "well_NB30_show"]): 
+elif(case in ["well", "well_show"]): 
 
     show = False; # whether to plot individual wavefunctions
     if("_show" in case): show = True;
     if("_NB30" in case): NBval = 30;
     elif("_NB500" in case): NBval = 500;
-    else: raise NotImplementedError;
+    else: pass #raise NotImplementedError;
     gate_strings = ["overlap", "conc", "overlap_sf", "I"];
     gate_labels = ["$P_{swap}$", "$C$", "$P_{sf}$", "$F(\mathbf{I})$"];
+    is_sqrt_K = True;
     
     # iter over onsite energy in well (axes). Should be > 0
-    VBval = 1e-5#,1e-4,1e-3]);
+    VBval = 1e-5;
     Barrierval = 0.5;
     Vend = 0*Vend;
-    NBvals = np.array([30,60,100])#,60,100,140,200]);
-    del NBval
+    NBvals = np.array([30,60,90])#,100,140,200]);
     
     # figure and axes
     nrows, ncols = len(NBvals), 1;
@@ -300,7 +300,7 @@ elif(case in ["well_NB30", "well_NB30_show"]):
     vs_fig.set_size_inches(ncols*myfigsize[0], nrows*myfigsize[1]);
     
     # return values
-    myxvals = 499;
+    myxvals = 999;
     Fvals = np.empty((myxvals, len(NBvals), len(gate_strings)), dtype=float);
     
     # iter over onsite energy in well (axes)
@@ -320,12 +320,16 @@ elif(case in ["well_NB30", "well_NB30_show"]):
         
         # iter over incident KE (x axis)
         xmax = -999;
-        Kvals, Energies, indep_vals = get_indep_vals(True,"K",myxvals, xmax, NBvals[NBvali], tl);
+        Kvals, Energies, _ = get_indep_vals(True,"K",myxvals, xmax, NBvals[NBvali], tl);
+        if(is_sqrt_K):
+            Kvals_sqrt = np.linspace( np.sqrt(Kvals[0]), np.sqrt(Kvals[-1]), myxvals);
+            Kvals = Kvals_sqrt*Kvals_sqrt;
+            Energies = Kvals - 2*tl;
+            del Kvals_sqrt;
         if(show):
             assert(NBvals[NBvali]==30)
             Kvals = np.array([0.008,0.016,0.033]);
             Energies = Kvals -2*tl;
-            del indep_vals;
             
         # iter over incident KE (x axis) 
         for Kvali in range(len(Kvals)):
@@ -343,10 +347,12 @@ elif(case in ["well_NB30", "well_NB30_show"]):
                     print(np.max(abs(np.imag(pdf)))); assert False;
                 pdf = np.real(pdf);
 
-            # get ???
+            # get transmission prob
             Rdum,Tdum=wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, 
                      is_psi_jsigma = False, is_Rhat = False, all_debug = False);
-            Fvals[Kvali, NBvali, :] = Tdum[:len(gate_strings)];
+                                                                # <--- !!!!
+            Fvals[Kvali, NBvali, :] = Tdum[:len(gate_strings)]; # <--- !!!!
+                                                                # <--- !!!!
         
             # evaluate Rhat by its fidelity w/r/t various gates (colors)
             to_annotate = "";
@@ -373,9 +379,34 @@ elif(case in ["well_NB30", "well_NB30_show"]):
                 plt.tight_layout();
                 plt.show();
 
+        # bound state energies
+        nEnergies = 4;
+        Hbound = wfm.Hmat(hblocks, tnn, tnnn)
+        Hbound = Hbound[1:-1,1:-1];
+        Ebound, _ = np.linalg.eigh(Hbound);
+        Ebound = Ebound + 2*tl;
+        if(is_sqrt_K): Ebound = np.sqrt(Ebound);
+        for En in Ebound[:n_loc_dof*nEnergies:n_loc_dof]:
+            print("En = {:.5f}".format(En));
+            vs_axes[NBvali].axvline(En,linestyle="dashed",color="lightgray");
+
         # plot F vs onsite energies VB
+        if(is_sqrt_K): indep_vals = np.sqrt(Kvals);
+        else: indep_vals = 1*Kvals;
         for gatei in range(len(gate_strings)):
-            vs_axes[NBvali].plot(Kvals, Fvals[:,NBvali,gatei], label=str(gatei), color = mycolors[gatei]);        
+            vs_axes[NBvali].plot(indep_vals, Fvals[:,NBvali,gatei], label=str(gatei), color = mycolors[gatei]);        
+            # fit to lorentzian
+            indep_x0_ind = np.argmin(abs(indep_vals-Ebound[0]));
+            x0_ind_bounds = [int(np.max([0, indep_x0_ind-myxvals//8])), int(np.min([myxvals-1, indep_x0_ind+myxvals//8]))];
+            xpoints_to_fit = indep_vals[x0_ind_bounds[0]:x0_ind_bounds[1]];
+            
+            sourcei = n_mol_dof*elecspin + elems_to_keep[1] # <---- !!!
+            
+            ypoints_to_fit = Fvals[:,NBvali,sourcei][x0_ind_bounds[0]:x0_ind_bounds[1]];
+            fitted = lorentzian_fit(xpoints_to_fit, ypoints_to_fit,
+                Ebound[0],Ebound[0]/2,Ebound[0]/(2*np.pi),Ebound[0]/(2*np.pi),verbose=1);
+            vs_axes[NBvali].plot(xpoints_to_fit, fitted, color="cornflowerblue",linestyle="dashed");
+            
             # save Fvals to .npy
             if(final_plots > 1):
                 pass;
@@ -386,22 +417,20 @@ elif(case in ["well_NB30", "well_NB30_show"]):
         #vs_axes[NBvali].set_yticks(dummy_ticks);
         vs_axes[NBvali].set_ylim(-0.1+dummy_ticks[0],0.1+dummy_ticks[-1]);
         for tick in dummy_ticks: vs_axes[NBvali].axhline(tick,color="lightgray",linestyle="dashed");
-        vs_axes[NBvali].annotate("$N_B =${:.0f}".format(NBvals[NBvali]), (Kvals[-1],1.01), fontsize = myfontsize);
-        
-        # bound state energies
-        for nint in range(1,1+4):
-            Enint = VBval+((nint*np.pi)**2) *tl/((NBvals[NBvali]+1)**2);
-            lnint = 2*(NBvals[NBvali]+1)/nint;
-            print("En = {:.5f}, lambda_n = {:.0f}".format(Enint, lnint))
-            vs_axes[NBvali].axvline(Enint,linestyle="dashed",color="lightgray");
+        vs_axes[NBvali].set_ylabel("$T$");
+        vs_axes[NBvali].annotate("$N_B =${:.0f}".format(NBvals[NBvali]), (indep_vals[-1],1.01), fontsize = myfontsize);
     
     #### end loop over axes
 
     # format
     vs_axes[-1].legend();
-    vs_axes[-1].set_xlabel("$K_i/t$");
-    vs_axes[-1].set_xscale("log", subs = []);
-    suptitle = "$s = ${:.1f}, $J =${:.4f}, $N_B =${:.0f}, $B =${:.2f}, Vend = {:.2f}".format(myTwoS/2, Jval, -999, Barrierval, Vend);
+    vs_axes[-1].set_xlim(np.min(indep_vals), np.max(indep_vals));
+    if(is_sqrt_K):
+        vs_axes[-1].set_xlabel("$\sqrt{K_i/t}$");
+    else:
+        vs_axes[-1].set_xlabel("$K_i/t$");
+        vs_axes[-1].set_xscale("log", subs = []);
+    suptitle = "$s = ${:.1f}, $J =${:.4f}, $B =${:.2f}, Vend = {:.2f}".format(myTwoS/2, Jval, Barrierval, Vend);
     vs_axes[0].set_title(suptitle);
 
     # show
