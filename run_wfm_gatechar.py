@@ -58,7 +58,7 @@ if(final_plots == 10):
     elif(case in ["onsite_NB500","VB_NB500"]): 
         which_color = "x";
     elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K", "dimensionless_energy",
-                  "Dist30","Dist40","Dist50","Total80","Total160","Total200","Total500"]): 
+                   "Dist200","Dist500","Total80","Total160","Total200","Total500"]): 
         which_color = "NB";
     whichval = int(sys.argv[4]);
     title_and_colors = ("data/gate/"+case+"/ALL_J{:.2f}_"+which_color+"{:.0f}_title.txt").format(Jval,whichval);
@@ -74,7 +74,7 @@ if(final_plots == 10):
         which_color_list = 1*colorvals.astype(int); 
         colorvals = (1/XVAL_INT_CONVERSION)*colorvals;
     elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K", "roots_lambda", "roots_K",
-                  "Dist30","Dist40","Dist50","Total80","Total160","Total200","Total500"]):
+                  "Dist200","Dist500","Total80","Total160","Total200","Total500"]):
         colorvals = colorvals.astype(int);
         which_color_list = 1*colorvals;
         
@@ -123,8 +123,10 @@ if(final_plots == 10):
     elif(case not in ["roots_lambda", "roots_K","onsite_NB500","VB_NB500"]): 
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
+        #ncols, nrows = nrows, ncols;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-        if(nrows==1): axes = [axes];
+        #if(len(axes)==1): 
+        axes = [axes];
         fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
         for gatevali in range(len(gates)):
 
@@ -150,7 +152,7 @@ if(final_plots == 10):
                     else: mylabel = "$k_i^2 a^2 = {:.6f} $".format(colorvals[colori]);
                 elif(case in ["gates_lambda", "gates_K", "conc_lambda", "conc_K"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
-                elif(case in ["Dist30","Dist40","Dist50","Total80","Total160","Total200","Total500"]):
+                elif(case in ["Dist200","Dist500","Total80","Total160","Total200","Total500"]):
                     mylabel = "$N_B = ${:.0f}".format(colorvals[colori]);
                     if("Total" in case):
                         Totalval = int(case[5:]);
@@ -173,7 +175,7 @@ if(final_plots == 10):
             elif(case in ["gates_lambda", "conc_lambda"]):
                 axes[-1].set_xlabel("$N_B a/\lambda_i $",fontsize=myfontsize);
                 axes[gatevali].set_xlim(0,np.max(xvals));
-            elif(case in ["Dist30","Dist40","Dist50","Total80","Total160","Total200","Total500"]):
+            elif(case in ["Dist200","Dist500","Total80","Total160","Total200","Total500"]):
                 #axes[-1].set_xlabel("${:.0f}/\lambda_i $".format(Totalval),fontsize=myfontsize);
                 axes[gatevali].set_xlim(0,np.max(xvals));
             else: raise NotImplementedError;
@@ -195,6 +197,7 @@ if(final_plots == 10):
 
     else: # data structure is different
         if(case=="roots_K"): raise NotImplementedError;
+        root_labels_dict = {"conc":"$C$", "overlap":"$P_{swap}$", "overlap_sf":"$P_{sf}$"}
         roots = sys.argv[5:]; # these are actually the colors, not colorvals
         if(roots[-1] == "SeS12"): mycolors[len(roots)-1] = "black";
         nrows, ncols = np.shape(colorvals)[0], 1;
@@ -217,7 +220,7 @@ if(final_plots == 10):
                     my_ylabel = "$F_{avg}[\mathbf{R}, (\mathbf{U}_{SWAP})^{1/n}]$";
                     my_xlabel = "$N_B a /\lambda_i$";
                 elif(case in ["onsite_NB500","VB_NB500"]):
-                    mylabel = roots[rootvali];
+                    mylabel = root_labels_dict[roots[rootvali]];
                     annotate_string = "$N_B a/\lambda_i =${:.2f}";
                     my_ylabel = "";
                     if("onsite" in case): my_xlabel = "$V_q$";
@@ -243,7 +246,7 @@ if(final_plots == 10):
             #axes[colori].set_yticks(the_ticks);
             axes[colori].set_ylim(-0.1+the_ticks[0],0.1+the_ticks[-1]);
             for tick in the_ticks: axes[colori].axhline(tick,color='lightgray',linestyle='dashed');
-            axes[colori].annotate(annotate_string.format(colorvals[colori]), (xvals[len(xvals)*1//4],1.01),fontsize=myfontsize);
+            axes[colori].annotate(annotate_string.format(colorvals[colori]), (xvals[1],0.80),fontsize=myfontsize);
             axes[colori].set_ylabel(my_ylabel,fontsize=myfontsize);
         #### end loop over fixed NB vals
             

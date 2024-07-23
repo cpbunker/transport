@@ -283,15 +283,13 @@ elif(case in ["well", "well_show"]):
     if("_NB30" in case): NBval = 30;
     elif("_NB500" in case): NBval = 500;
     else: pass #raise NotImplementedError;
-    gate_strings = ["overlap", "conc", "overlap_sf", "I"];
-    gate_labels = ["$P_{swap}$", "$C$", "$P_{sf}$", "$F(\mathbf{I})$"];
-    is_sqrt_K = True;
+    is_sqrt_K = False#True;
     
     # iter over onsite energy in well (axes). Should be > 0
     VBval = 1e-5;
     Barrierval = 0.5;
     Vend = 0*Vend;
-    NBvals = np.array([30,60,90])#,100,140,200]);
+    NBvals = np.array([60,70,80,90,100,110])
     
     # figure and axes
     nrows, ncols = len(NBvals), 1;
@@ -301,7 +299,7 @@ elif(case in ["well", "well_show"]):
     
     # return values
     myxvals = 999;
-    Fvals = np.empty((myxvals, len(NBvals), len(gate_strings)), dtype=float);
+    Tvals = np.empty((myxvals, len(NBvals), n_loc_dof), dtype=float); # transmission prob
     
     # iter over onsite energy in well (axes)
     for NBvali in range(len(NBvals)):
@@ -350,20 +348,9 @@ elif(case in ["well", "well_show"]):
             # get transmission prob
             Rdum,Tdum=wfm.kernel(hblocks, tnn, tnnn, tl, Energies[Kvali], source, 
                      is_psi_jsigma = False, is_Rhat = False, all_debug = False);
-                                                                # <--- !!!!
-            Fvals[Kvali, NBvali, :] = Tdum[:len(gate_strings)]; # <--- !!!!
-                                                                # <--- !!!!
-        
-            # evaluate Rhat by its fidelity w/r/t various gates (colors)
-            to_annotate = "";
-            for gatei in range(len(gate_strings)):
-                Uhat, dummy_ticks = get_U_gate(gate_strings[gatei], myTwoS);
-                #F_gs = get_Fval(gate_strings[gatei], myTwoS, Uhat, Rhat, elecspin);
-                #Fvals[Kvali, VBvali, gatei] = 1*F_gs;
-                #to_annotate += ","+gate_labels[gatei]+" = "+ "{:.4f}".format(F_gs);
+            Tvals[Kvali, NBvali, :] = Tdum[:]; 
 
             if(show): # plot probability densities
-                axes[-1].annotate(to_annotate, (jvals[1],0.0));
                 for elecspin_index in range(len(axes)):
                     for sigmai in range(n_mol_dof):
                         axes[elecspin_index].plot(jvals, pdf[:,elecspin_index*n_mol_dof+ sigmai],
@@ -393,16 +380,16 @@ elif(case in ["well", "well_show"]):
         # plot F vs onsite energies VB
         if(is_sqrt_K): indep_vals = np.sqrt(Kvals);
         else: indep_vals = 1*Kvals;
-        for gatei in range(len(gate_strings)):
-            vs_axes[NBvali].plot(indep_vals, Fvals[:,NBvali,gatei], label=str(gatei), color = mycolors[gatei]);        
+        for sigmai in range(elecspin*n_mol_dof, (elecspin+1)*n_mol_dof):
+            vs_axes[NBvali].plot(indep_vals, Tvals[:,NBvali,sigmai], label="$\sigma =${:.0f}".format(sigmai), color = mycolors[sigmai]);        
             # fit to lorentzian
             indep_x0_ind = np.argmin(abs(indep_vals-Ebound[0]));
             x0_ind_bounds = [int(np.max([0, indep_x0_ind-myxvals//8])), int(np.min([myxvals-1, indep_x0_ind+myxvals//8]))];
             xpoints_to_fit = indep_vals[x0_ind_bounds[0]:x0_ind_bounds[1]];
             
-            sourcei = n_mol_dof*elecspin + elems_to_keep[1] # <---- !!!
+            #sourcei = n_mol_dof*elecspin + elems_to_keep[1] # <---- !!!
             
-            ypoints_to_fit = Fvals[:,NBvali,sourcei][x0_ind_bounds[0]:x0_ind_bounds[1]];
+            ypoints_to_fit = Tvals[:,NBvali,sigmai][x0_ind_bounds[0]:x0_ind_bounds[1]];
             fitted = lorentzian_fit(xpoints_to_fit, ypoints_to_fit,
                 Ebound[0],Ebound[0]/2,Ebound[0]/(2*np.pi),Ebound[0]/(2*np.pi),verbose=1);
             vs_axes[NBvali].plot(xpoints_to_fit, fitted, color="cornflowerblue",linestyle="dashed");
@@ -414,8 +401,9 @@ elif(case in ["well", "well_show"]):
         #### end loop over Kvals
                 
         # format the vs Kvals plot
+        dummy_ticks = [0.0,1.0];
         #vs_axes[NBvali].set_yticks(dummy_ticks);
-        vs_axes[NBvali].set_ylim(-0.1+dummy_ticks[0],0.1+dummy_ticks[-1]);
+        vs_axes[NBvali].set_ylim(-0.1,0.1+dummy_ticks[-1]);
         for tick in dummy_ticks: vs_axes[NBvali].axhline(tick,color="lightgray",linestyle="dashed");
         vs_axes[NBvali].set_ylabel("$T$");
         vs_axes[NBvali].annotate("$N_B =${:.0f}".format(NBvals[NBvali]), (indep_vals[-1],1.01), fontsize = myfontsize);

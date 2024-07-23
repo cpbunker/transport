@@ -14,10 +14,10 @@ Nupdates = int(sys.argv[3]);
 datafiles = sys.argv[4:];
 
 # plotting
-obs1, color1, ticks1, linewidth1, fontsize1 = "Sdz_", "darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
-obs2, color2 = "occ_", "cornflowerblue";
-obs3, color3 = "sz_", "darkblue";
-obs4, color4, ticks4 = "pur_", "gray", (0.0,0.5,1.0);
+obs1, factor1, color1, ticks1, linewidth1, fontsize1 = "Sdz_", 2,"darkred", (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
+obs2, factor2, color2 = "occ_", 1, "cornflowerblue";
+obs3, factor3, color3 = "sz_", 2, "darkblue";
+obs4, factor4, color4, ticks4 = "pur_", -2, "gray", (0.0,0.5,1.0);
 num_xticks = 4;
 datamarkers = ["s","^","d","*"];
 
@@ -75,7 +75,7 @@ if(case in [1,2]): # observable as a function of time
 
     # impurity purity vs time
     if plot_purity: # plot purity
-        label4 = "$||$";
+        label4 = "$|\mathbf{S}_d|$";
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
@@ -252,60 +252,75 @@ if(case in [10]): # animate time evol
 
     # set up impurity spin animation
     xds = np.load(datafile+"_arrays/"+obs1+"xjs_time{:.2f}.npy".format(time0));
-    yds = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time0));
-    impurity_sz, = ax.plot(xds, yds, marker="s", color=color1, markersize=linewidth1**2);
-    ax.set_ylabel("$2 \langle S_d^z \\rangle /\hbar$", color=color1, fontsize=fontsize1);
+    yds = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time0));
+    impurity_sz, = ax.plot(xds, factor1*yds, marker="s", color=color1, markersize=linewidth1**2);
+    ax.set_ylabel("${:.0f}\langle S_d^z \\rangle /\hbar$".format(factor1), color=color1, fontsize=fontsize1);
     time_annotation = ax.annotate("Time = {:.2f}".format(time0), (0.0,-0.96),fontsize=fontsize1);
 
     # set up charge density animation
     xjs = np.load(datafile+"_arrays/"+obs2+"xjs_time{:.2f}.npy".format(time0));
     yjs = np.load(datafile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(time0));
-    charge_density = ax.fill_between(xjs, yjs, color=color2);
+    charge_density = ax.fill_between(xjs, factor2*yjs, color=color2);
     ax2 = ax.twinx();
     ax2.set_yticks([]);
-    ax2.set_ylabel("$\langle n_j \\rangle$", color=color2, fontsize=fontsize1);
+    ax2.set_ylabel("${:.0f}\langle n_j \\rangle$".format(factor2), color=color2, fontsize=fontsize1);
 
     # set up deloc spin animation
     xjs_3 = np.load(datafile+"_arrays/"+obs3+"xjs_time{:.2f}.npy".format(time0));
-    yjs_3 = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time0));
-    spin_density, = ax.plot(xjs_3, yjs_3, marker="o", color=color3);
+    yjs_3 = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time0));
+    spin_density, = ax.plot(xjs_3, factor3*yjs_3, marker="o", color=color3);
     ax3 = ax.twinx();
     ax3.yaxis.set_label_position("left");
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
-    ax3.set_ylabel("$2 \langle s_j^z \\rangle /\hbar$", color=color3, fontsize=fontsize1);
+    ax3.set_ylabel("${:.0f}\langle s_j^z \\rangle /\hbar$".format(factor3), color=color3, fontsize=fontsize1);
 
     # plot (S1+S2)^2 /2
-    obs4, color4, label4 = "S2_", "black", "$\langle (\mathbf{S}_d + \mathbf{S}_{d+1})^2 \\rangle$";
-    xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
-    yds_4 = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
-    S2, = ax.plot(xds_4,yds_4,marker="^",color=color4);
-    ax4 = ax.twinx();
-    ax4.yaxis.set_label_position("right");
-    ax4.spines.right.set_position(("axes", 1.05));
-    ax4.spines.right.set(alpha=0.0);
-    ax4.set_yticks([])
-    ax4.set_ylabel(label4, color=color4, fontsize=fontsize1);
+    try:
+        obs4, factor4, color4 = "S2_", 0.5, "black";
+        label4 = "{:.1f}".format(factor4)+"$\langle (\mathbf{S}_d + \mathbf{S}_{d+1})^2 \\rangle$";
+        xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
+        yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
+        S2, = ax.plot(xds_4,factor4*yds_4,marker="^",color=color4);
+        ax4 = ax.twinx();
+        ax4.yaxis.set_label_position("right");
+        ax4.spines.right.set_position(("axes", 1.05));
+        ax4.spines.right.set(alpha=0.0);
+        ax4.set_yticks([])
+        ax4.set_ylabel(label4, color=color4, fontsize=fontsize1);
+    # plot purity
+    except:
+        obs4, factor4, color4 = "pur_", -2, "gray";
+        label4 = "{:.0f}".format(factor4)+"$|\mathbf{S}_d|$";
+        xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
+        yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
+        S2, = ax.plot(xds_4, factor4*yds_4,marker="^",color=color4);
+        ax4 = ax.twinx();
+        ax4.yaxis.set_label_position("right");
+        ax4.spines.right.set_position(("axes", 1.05));
+        ax4.spines.right.set(alpha=0.0);
+        ax4.set_yticks([])
+        ax4.set_ylabel(label4, color=color4, fontsize=fontsize1);
 
     # time evolve observables
     plt.tight_layout();
     def time_evolution(time):
         # impurity spin
-        yds_t = 2*np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time));
-        impurity_sz.set_ydata(yds_t);
+        yds_t = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(time));
+        impurity_sz.set_ydata(factor1*yds_t);
         time_annotation.set_text("Time = {:.2f}".format(time));
         # charge density
         yjs_t = np.load(datafile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(time));
         ax.collections.clear();
-        charge_density_update = ax.fill_between(xjs, yjs_t, color=color2)
+        charge_density_update = ax.fill_between(xjs, factor2*yjs_t, color=color2)
         charge_density.update_from(charge_density_update);
         # spin density
-        yjs_3_t = 2*np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time));
-        spin_density.set_ydata(yjs_3_t);
+        yjs_3_t = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(time));
+        spin_density.set_ydata(factor3*yjs_3_t);
         # (S1+S2)^2 / 2
-        yds_4_t = (1/2)*np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
-        S2.set_ydata(yds_4_t);
+        yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
+        S2.set_ydata(factor4*yds_4_t);
 
     # animate
     if(Nupdates > 0): interval = 1000*(10/Nupdates); # so total animation time is 10 sec
