@@ -54,7 +54,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
-        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.4f}$t_l$, $J_z = ${:.4f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
