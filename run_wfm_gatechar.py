@@ -123,10 +123,9 @@ if(final_plots == 10):
     elif(case not in ["roots_lambda", "roots_K","onsite_NB500","VB_NB500"]): 
         gates = sys.argv[5:];
         nrows, ncols = len(gates), 1;
-        #ncols, nrows = nrows, ncols;
+        ncols, nrows = nrows, ncols;
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True);
-        #if(len(axes)==1): 
-        axes = [axes];
+        if(len(axes)==1): axes = [axes];
         fig.set_size_inches(ncols*myfigsize[0],nrows*myfigsize[1]);
         for gatevali in range(len(gates)):
 
@@ -167,17 +166,19 @@ if(final_plots == 10):
             # plot formatting
             
             # x axis
+            if(ncols > nrows): xaxis_index = 1*gatevali;
+            else: xaxis_index = -1;
             if(case=="NB"):
-                axes[-1].set_xlabel("$N_B$",fontsize=myfontsize);
+                axes[xaxis_index].set_xlabel("$N_B$",fontsize=myfontsize);
             elif(case in ["gates_K", "conc_K"]):
-                axes[-1].set_xlabel("$k_i^2 a^2$",fontsize=myfontsize);
-                axes[-1].set_xscale("log", subs = []);
+                axes[xaxis_index].set_xlabel("$k_i^2 a^2$",fontsize=myfontsize);
+                axes[xaxis_index].set_xscale("log", subs = []);
             elif(case in ["gates_lambda", "conc_lambda"]):
-                axes[-1].set_xlabel("$N_B a/\lambda_i $",fontsize=myfontsize);
-                axes[gatevali].set_xlim(0,np.max(xvals));
+                axes[xaxis_index].set_xlabel("$N_B a/\lambda_i $",fontsize=myfontsize);
+                axes[xaxis_index].set_xlim(0,np.max(xvals));
             elif(case in ["Dist200","Dist500","Total80","Total160","Total200","Total500"]):
-                #axes[-1].set_xlabel("${:.0f}/\lambda_i $".format(Totalval),fontsize=myfontsize);
-                axes[gatevali].set_xlim(0,np.max(xvals));
+                axes[xaxis_index].set_xlabel("${:.0f}/\lambda_i $".format(Totalval),fontsize=myfontsize);
+                axes[xaxis_index].set_xlim(0,np.max(xvals));
             else: raise NotImplementedError;
             
             # y axis

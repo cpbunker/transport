@@ -86,17 +86,20 @@ if(case in [1,2]): # observables vs time
 
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
+    factor3 = factor3/Ne; # sum normalization
     yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
-    yjavg_vs_time = np.sum(yjs_vs_time, axis=1)/Ne;
-    ax.plot(times, factor3*yjavg_vs_time,color=color3);
+    yjsum_vs_time = np.sum(yjs_vs_time, axis=1);
+    ax.plot(times, factor3*yjsum_vs_time,color=color3);
     ax3 = ax.twinx();
     ax3.yaxis.set_label_position("left");
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
-    ax3.set_yticks([])
-    ax3.set_ylabel("{:.0f}".format(factor3)+"$\overline{ \langle s_j^z \\rangle} /\hbar$", color=color3, fontsize=fontsize1);
+    ax3.set_yticks([]);
+    label3 = "$\\frac{1}{N_e} \sum_j  2\langle s_j^z \\rangle /\hbar $";
+    print(obs3,"-->",label3);
+    ax3.set_ylabel(label3, color=color3, fontsize=fontsize1);
 
     if(plot_S2): # plot S^2
         obs4, factor4, color4 = "S2_", 0.5, "black";
@@ -136,7 +139,6 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     fig, ax = plt.subplots();
     ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
     ax.set_title( open(datafiles[0]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
-    ticks1 = (0.0,0.5,1.0);
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     params = json.load(open(datafiles[0]+".txt"));
     if(len(datafiles) == 2): assert("triplet" in datafiles[0] and "singlet" in datafiles[1]);
@@ -152,10 +154,14 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
 
     #### iter over triplet/singlet
     for dfile in datafiles:
-        if("triplet" in dfile): mylinestyle = "solid";
-        else: mylinestyle = "dashed";
+        if("singlet" in dfile): mylinestyle = "dashed"; ticks1 = (0.0,0.5,1.0);
+        elif("triplet" in dfile): mylinestyle = "solid"; ticks1 = (0.0,0.5,1.0);
+        else: mylinestyle = "solid"; ticks1 = (-1.0,-0.5,0.0,0.5,1.0);
         print(">>>",mylinestyle,"=",dfile)
 
+        # which imps to get data for
+        which_imp = 0;
+        assert(which_imp == 0);
         assert(params["NFM"] == 2);
         Nbuffer = 0;
         if("Nbuffer" in params.keys()): Nbuffer = params["Nbuffer"];
@@ -191,7 +197,7 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
             purds_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-        ax.plot(times, factor4*purds_vs_time[:,0],color=color4, linestyle=mylinestyle);
+        ax.plot(times, factor4*purds_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
 
     # formatting
     ax3 = ax.twinx();

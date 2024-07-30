@@ -430,10 +430,9 @@ def get_concurrence(eris_or_driver, whichsites, symm_block, add_ident, block, ve
 def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
     '''
     Concurrence is defined by Eqs 4 and 7 of https://doi.org/10.1103/PhysRevLett.80.2245
-    It involes taking the complex conjugate of the coefficients of the ket |\psi> (this 
+    It involves taking the complex conjugate of the coefficients of the ket |\psi> (this 
     is NOT the same as taking the bra, which complex conjugates the coefficients AND takes
-    the basis states from kets to bras). As far as I can tell, complex conjugating the ket
-    coefficients is possible only in pyblock3, not block2
+    the basis states from kets to bras). 
     C=1 is maximal entanglement
     
     Sums expectation values across TwoSz=+2, 0, -2 symmetry blocks to find concurrence
@@ -461,12 +460,13 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
             psi_star = eris_or_driver.copy_mps(psi, tag="PSI-STAR");
             psi_star.conjugate(); # in-place
             mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
-            # since complex conjugation of the state is not required, we can use
-            # the normal block2 construction for determining the expectation value of an MPO
+            # use normal block2 construction for determining the expectation value of an MPO
             norm = eris_or_driver.expectation(psi, eris_or_driver.get_identity_mpo(), psi);
-            sterms.append(eris_or_driver.expectation(psi, mpo, psi_star)/norm)
-    print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
+            sterms.append(eris_or_driver.expectation(psi, mpo, psi_star)/norm);
+       
+    # return
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    print(sterms, "-> {:.6f}+{:.6f}j -> {:.6f}".format(np.real(sum(sterms)), np.imag(sum(sterms))), ret);
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
     
@@ -499,8 +499,9 @@ def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3=Fals
             # the normal block2 construction for determining the expectation value of an MPO
             sterms.append( compute_obs(psi, mpo, eris_or_driver)); # already/norm
 
-    #print(sterms, "-> {:.6f}+{:.6f}j".format(np.real(sum(sterms)), np.imag(sum(sterms))))
+    # return
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
+    print(sterms, "-> {:.6f}+{:.6f}j -> {:.6f}".format(np.real(sum(sterms)), np.imag(sum(sterms))), ret);
     if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
     return np.real(ret);
 
