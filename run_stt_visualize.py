@@ -24,7 +24,7 @@ def get_ylabel(the_obs, the_factor, dstring="d"):
     elif(the_obs=="sz_"): ret = "${:.0f}\langle s_j^z \\rangle /\hbar$".format(the_factor);
     elif(the_obs=="pur_"): ret = "{:.0f}".format(the_factor)+"$|\mathbf{S}_"+dstring+"|$";
     elif(the_obs=="pconc_"): ret = "{:.0f}".format(the_factor)+"$pC_{"+dstring+", "+dstring+"+1}$";
-    elif(the_obs=="pconc_"): ret = "{:.0f}".format(the_factor)+"$ C_{"+dstring+", "+dstring+"+1}$";
+    elif(the_obs== "conc_"): ret = "{:.0f}".format(the_factor)+"$ C_{"+dstring+", "+dstring+"+1}$";
     elif(the_obs=="S2_"): ret = "{:.1f}".format(the_factor)+"$\langle (\mathbf{S}_"+dstring+" + \mathbf{S}_{"+dstring+"+1})^2 \\rangle/\hbar^2$";
     else: print(the_obs); raise NotImplementedError;
     print(the_obs,"-->",ret);
@@ -69,9 +69,11 @@ if(case in [1,2]): # observables vs time
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = time0 + ti*tupdate;
-    time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
-    ax.set_xticks(time_ticks);
-    ax.set_xlim((times[0], times[-1]));
+    try:
+        time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
+        ax.set_xticks(time_ticks);
+        ax.set_xlim((times[0], times[-1]));
+    except: pass;
 
     # impurity spin vs time
     Nbuffer = 0;
@@ -116,7 +118,7 @@ if(case in [1,2]): # observables vs time
             purds_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.fill_between(times, factor4*purds_vs_time[:,which_imp],color=color4);
     else: # plot pseudo-concurrence
-        obs4, factor4, color4 = "pconc_", 1, "black";
+        obs4, factor4, color4 = "conc_", 1, "black";
         label4 = get_ylabel(obs4, factor4, dstring=which_imp);
         purds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
@@ -323,6 +325,8 @@ if(case in [10]): # animate time evol
     # plot (S1+S2)^2 /2
     try:
         obs4, factor4, color4, mark4 = "S2_", 0.5, "black", "^";
+        #obs4, factor4, color4, mark4 = "pconc_", 1, "black", "^";
+        #obs4, factor4, color4, mark4 = "conc_", 1, "black", "^";
         xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(time0));
         yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time0));
     # plot purity

@@ -47,7 +47,6 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
 
     # unpack
     sys_type = params_dict["sys_type"];
-    plot_fig = params_dict["plot"];
     NL, NR = params_dict["NL"], params_dict["NR"];
     Nbuffer, NFM = 0, 1;
     if(sys_type=="STT"):
@@ -56,9 +55,9 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_","pur_","pconc_", "S2_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[1.0,0.0],[2.0,0.0]];
+        obs_strs = ["occ_","sz_","Sdz_","pur_", "S2_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[0.5,0.0],[2.0,0.0]];
     elif(sys_type=="SIAM"):
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
         NFM, Ne = 1, (NL+1+NR)//2;
@@ -95,7 +94,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
 
             # save DMRG data
-            if(not plot_fig):
+            if(not params_dict["plot"]):
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
                 np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
 
@@ -108,7 +107,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title(title_str);
     plt.tight_layout();
-    if(plot_fig): plt.show() #pass #plt.show();
+    if(params_dict["plot"]): plt.show() #pass #plt.show();
     else:
         np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
