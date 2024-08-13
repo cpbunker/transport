@@ -283,7 +283,7 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
 
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     
-def get_S2(eris_or_driver, whichsites, block, verbose=0):
+def get_S2(eris_or_driver, whichsites, fermion, block, verbose=0):
     '''
     '''
     assert(block);
@@ -291,10 +291,20 @@ def get_S2(eris_or_driver, whichsites, block, verbose=0):
 
     # construct
     which1, which2 = whichsites;
-    for jpair in [[which1,which1], [which1,which2], [which2,which1], [which2,which2]]:
-        builder.add_term("ZZ",jpair,1.0);
-        builder.add_term("PM",jpair,0.5);
-        builder.add_term("MP",jpair,0.5);
+    if(fermion): # between fermions on two sites
+        for jpair in [[which1,which1,which1,which1], [which1,which1,which2,which2], [which2,which2,which1,which1], [which2,which2,which2,which2]]:
+            builder.add_term("cdcd", jpair, 0.25);
+            builder.add_term("cdCD", jpair,-0.25);
+            builder.add_term("CDcd", jpair,-0.25);
+            builder.add_term("CDCD", jpair, 0.25);
+            builder.add_term("cDCd", jpair, 0.5);
+            builder.add_term("CdcD", jpair, 0.5);
+
+    else: # between two impurities
+        for jpair in [[which1,which1], [which1,which2], [which2,which1], [which2,which2]]:
+            builder.add_term("ZZ",jpair,1.0);
+            builder.add_term("PM",jpair,0.5);
+            builder.add_term("MP",jpair,0.5);
 
     # return
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
@@ -580,40 +590,111 @@ def reblock(mat):
                     new_mat[ini,inj,outi,outj] = mat[outi,outj,ini,inj];
     return utils.mat_4d_to_2d(new_mat);
 
-def H_wrapper(params_dict, sys_type, time, scratch_dir, verbose=0):
+def H_fermion_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
-    Wrapper that allows calling builder/polarizer Ham constructor for MULTIPLE system types,
-    eg, STT, SIAM, etc.
-
-    Args:
-    params_dict, a dictionary with all the physical params. Its correspondence with sys_type is
-        automatically checked
-    sys_type, a string telling what kind of 1D system we are choosing
-    time, int in 0 or 1, whether to include initial state prep Ham ("polarizing"
-    Ham at time<0) or not (time>0)
-    scratch_dir, path to where to save MPS info
     '''
+    assert(params_dict["sys_type"]=="fermion");
 
-    if(sys_type=="STT"):
-        needed_keys = ["Jsd","Jx","Jz"];
-        H_constructor = H_STT_builder;
-        H_add = H_STT_polarizer;
-    elif(sys_type=="SIAM"):
-        needed_keys = ["U","Vg","Vb"];
-        H_constructor = H_SIAM_builder;
-        H_add = H_SIAM_polarizer;
+    # load data from json
+    tl, Vg, U = params_dict["tl"], params_dict["Vg"], params_dict["U"];
+    Nsites, Ne, TwoSz = params_dict["Nsites"], params_dict["Ne"], params_dict["TwoSz"];
+
+    # classify site indices (spin not included)
+    # right now just the first two have elec-elec exchange J between them!
+    Ncent = params_dict["Ncent"];
+    assert(Nsites >= Ncent);
+    central_sites = np.arange(0,Ncent);
+    rlead_sites = np.arange(Ncent,Nsites);
+    all_sites = np.arange(Nsites);
+    print(central_sites,"\n", rlead_sites,"\n",all_sites);
+
+    # construct ExprBuilder
+    if(block):
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+        else: raise NotImplementedError;
+        builder = driver.expr_builder();
+        print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+    else:       # <---------- change dtype to complex ?
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
+        
+    # j <-> j+1 hopping everywhere
+    for j in all_sites[:-1]:
+        if(block):
+            builder.add_term("cd",[j,j+1],-tl); 
+            builder.add_term("CD",[j,j+1],-tl);
+            builder.add_term("cd",[j+1,j],-tl);
+            builder.add_term("CD",[j+1,j],-tl);
+        else:
+            raise NotImplementedError;
+
+    # Vg and U everywhere
+    for j in all_sites:
+        if(block):
+            builder.add_term("cd",[j,j], Vg);
+            builder.add_term("CD",[j,j], Vg);
+            builder.add_term("cdCD",[j,j,j,j], U);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vg;
+            h1e[nloc*j+1,nloc*j+1] += Vg;
+            assert(U==0.0);
+
+    if(block): return driver, builder;
+    else: return h1e, g2e;
+
+def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
+    '''
+    '''
+    assert(params_dict["sys_type"]=="fermion");
+
+    # load data from json
+    Be = params_dict["Be"];
+    Nsites, Ne, TwoSz = params_dict["Nsites"], params_dict["Ne"], params_dict["TwoSz"];
+
+    # classify site indices (spin not included)
+    Ncent = params_dict["Ncent"];
+    assert(Nsites >= Ncent);
+    central_sites = np.arange(0,Ncent);
+    rlead_sites = np.arange(Ncent,Nsites);
+    all_sites = np.arange(Nsites);
+
+    # unpack ExprBuilder
+    if(block):
+        driver, builder = to_add_to;
+        if(driver.n_sites != Nsites): raise ValueError;
     else:
-        raise Exception("System type = "+sys_type+" not supported");
+        h1e, g2e = to_add_to;
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        if(len(h1e) != Nspinorbs): raise ValueError;
 
-    # check compatibility
-    for key in needed_keys:
-        if(key not in params_dict.keys()):
-            raise KeyError("params_dict missing "+key);
+    # B field everywhere --------> ASSUMED IN THE Z
+    for j in all_sites:
+        if(block):
+            builder.add_term("cd",[j,j],-Be/2);
+            builder.add_term("CD",[j,j], Be/2);
+        else:
+            raise NotImplementedError;
 
-    # construct
-    H_t = H_constructor(params_dict, scratch_dir=scratch_dir, verbose=verbose); # all times
-    if(time==0): H_t = H_add(params_dict, H_t, verbose=verbose); # time<=0 only;
-    return H_t;
+    # special case initialization
+    if("Be_first" in params_dict.keys()): # B field that targets 1st site only
+        Be_first = params_dict["Be_first"];
+        j = all_sites[0];
+        if(block):
+            builder.add_term("cd",[j], (-1/2)*(Be_first-Be));
+            builder.add_term("CD",[j], ( 1/2)*(Be_first-Be));
+        else:
+            raise NotImplementedError;
+
+    # return
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize());
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
 
 def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
@@ -635,6 +716,7 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
 
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
+    assert(params_dict["sys_type"]=="SIAM");
 
     # load data from json
     tl, th, Vg, U, Vb = params_dict["tl"], params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
@@ -740,6 +822,7 @@ def H_SIAM_polarizer(params_dict, to_add_to, block, verbose=0):
 
     Returns: a tuple of DMRGDriver, MPO
     '''
+    assert(params_dict["sys_type"]=="SIAM");
     
     # load data from json
     tl, th, Vg, U, Vb = params_dict["tl"], params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
@@ -805,6 +888,7 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
+    assert(params_dict["sys_type"]=="SIETS");
 
     # load data from json
     tl, th, Jz, Jx, Jsd, Delta, Vb = params_dict["tl"], params_dict["th"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"], params_dict["Delta"], params_dict["Vb"];
@@ -1050,6 +1134,7 @@ def H_SIETS_polarizer(params_dict, to_add_to, block, verbose=0):
         
     Returns: a tuple of DMRGDriver, MPO
     '''
+    assert(params_dict["sys_type"]=="SIETS");
 
     # load data from json
     Jsd, BFM, Vb, th = params_dict["Jsd"], params_dict["BFM"], params_dict["Vb"], params_dict["th"];
@@ -1159,6 +1244,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     Returns: a tuple of DMRGDriver, ExprBuilder objects
     '''
     if(not block): raise NotImplementedError;
+    assert(params_dict["sys_type"]=="STT");
 
     # load data from json
     tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
@@ -1327,6 +1413,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     Returns: a tuple of DMRGDriver, MPO
     '''
     if(not block): raise NotImplementedError;
+    assert(params_dict["sys_type"]=="STT");
 
     # load data from json
     Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
