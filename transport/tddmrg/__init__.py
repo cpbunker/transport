@@ -17,7 +17,7 @@ import numpy as np
 ##########################################################################################################
 #### driver of time propagation
 
-def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbose=0):
+def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_name, verbose=0):
     '''
     '''
     assert(params_dict["te_type"]=="tdvp");
@@ -40,12 +40,12 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, save_name, verbo
         if(params_dict["te_type"] == "tdvp"): krylov_subspace = 40;
         tevol_mps_inst = driver_inst.td_dmrg(mpo_inst, tevol_mps_inst, 
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
-                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],krylov_subspace_size=krylov_subspace,
-                final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
+                bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],
+                krylov_subspace_size=krylov_subspace,final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
 
         # observables
         check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time, True);
-        plot.snapshot_bench(tevol_mps_inst, driver_inst, params_dict, save_name, total_time, True);
+        if(plot_func is not None): plot_func(tevol_mps_inst, driver_inst, params_dict, save_name, total_time, True);
 
 ################################################################################
 #### observables
@@ -596,17 +596,21 @@ def H_fermion_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     assert(params_dict["sys_type"]=="fermion");
 
     # load data from json
-    tl, Vg, U = params_dict["tl"], params_dict["Vg"], params_dict["U"];
-    Nsites, Ne, TwoSz = params_dict["Nsites"], params_dict["Ne"], params_dict["TwoSz"];
+    tl, Jsd, Jz, Jx = params_dict["tl"], params_dict["Jsd"], params_dict["Jz"], params_dict["Jx"];
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+
+    # fermionic sites and spin
+    Nsites = NL+2*NFM+NR; # ALL sites now fermion sites
+    Ne_jsites, TwoSz = params_dict["Ne"], params_dict["TwoSz"]; #Ne param gives # of *j site fermions*
+    Ne = Ne_jsites + NFM; # we assume NFM sites (d sites) are all singly filled
 
     # classify site indices (spin not included)
-    # right now just the first two have elec-elec exchange J between them!
-    Ncent = params_dict["Ncent"];
-    assert(Nsites >= Ncent);
-    central_sites = np.arange(0,Ncent);
-    rlead_sites = np.arange(Ncent,Nsites);
-    all_sites = np.arange(Nsites);
-    print(central_sites,"\n", rlead_sites,"\n",all_sites);
+    llead_j = np.arange(NL);
+    central_j = np.arange(NL,NL+2*NFM,2);
+    central_d = central_j + 1;
+    rlead_j = np.arange(NL+2*NFM,Nsites);
+    all_j = np.append(llead_j,np.append(central_j, rlead_j));
+    print(llead_j,"\n", rlead_j,"\n",all_j);
 
     # construct ExprBuilder
     if(block):
@@ -622,25 +626,38 @@ def H_fermion_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
         
     # j <-> j+1 hopping everywhere
-    for j in all_sites[:-1]:
+    for whichj in range(len(all_j[:-1])):
         if(block):
-            builder.add_term("cd",[j,j+1],-tl); 
-            builder.add_term("CD",[j,j+1],-tl);
-            builder.add_term("cd",[j+1,j],-tl);
-            builder.add_term("CD",[j+1,j],-tl);
+            builder.add_term("cd",[all_j[whichj],all_j[whichj+1]],-tl); 
+            builder.add_term("CD",[all_j[whichj],all_j[whichj+1]],-tl);
+            builder.add_term("cd",[all_j[whichj+1],all_j[whichj]],-tl);
+            builder.add_term("CD",[all_j[whichj+1],all_j[whichj]],-tl);
         else:
             raise NotImplementedError;
 
-    # Vg and U everywhere
-    for j in all_sites:
-        if(block):
-            builder.add_term("cd",[j,j], Vg);
-            builder.add_term("CD",[j,j], Vg);
-            builder.add_term("cdCD",[j,j,j,j], U);
-        else:
-            h1e[nloc*j+0,nloc*j+0] += Vg;
-            h1e[nloc*j+1,nloc*j+1] += Vg;
-            assert(U==0.0);
+    # Heisenberg exchange btwn adjacent central_d
+    for whichd in range(len(central_d[:-1])):
+        thisd, nextd = central_d[whichd], central_d[whichd+1];
+        # z terms
+        builder.add_term("cdcd",[thisd,thisd,nextd,nextd],-Jz/4);
+        builder.add_term("cdCD",[thisd,thisd,nextd,nextd], Jz/4);
+        builder.add_term("CDcd",[thisd,thisd,nextd,nextd], Jz/4);
+        builder.add_term("CDCD",[thisd,thisd,nextd,nextd],-Jz/4);
+        # plus minus terms
+        builder.add_term("cDCd",[thisd,thisd,nextd,nextd],-Jx/2);
+        builder.add_term("CdcD",[thisd,thisd,nextd,nextd],-Jx/2);
+
+    # sd exchange btwn itinerant charge density on site j and singly occupied site d
+    for whichj in range(len(central_j)):
+        thisj, thisd = central_j[whichj], central_d[whichj];
+        # z terms
+        builder.add_term("cdcd",[thisj,thisj,thisd,thisd],-Jsd/4);
+        builder.add_term("cdCD",[thisj,thisj,thisd,thisd], Jsd/4);
+        builder.add_term("CDcd",[thisj,thisj,thisd,thisd], Jsd/4);
+        builder.add_term("CDCD",[thisj,thisj,thisd,thisd],-Jsd/4);
+        # plus minus terms
+        builder.add_term("cDCd",[thisj,thisj,thisd,thisd],-Jsd/2);
+        builder.add_term("CdcD",[thisj,thisj,thisd,thisd],-Jsd/2);
 
     if(block): return driver, builder;
     else: return h1e, g2e;
@@ -651,17 +668,20 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
     assert(params_dict["sys_type"]=="fermion");
 
     # load data from json
-    Be = params_dict["Be"];
-    Nsites, Ne, TwoSz = params_dict["Nsites"], params_dict["Ne"], params_dict["TwoSz"];
+    NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
+
+    # fermionic sites and spin
+    Nsites = NL+2*NFM+NR; # ALL sites now fermion sites
 
     # classify site indices (spin not included)
-    Ncent = params_dict["Ncent"];
-    assert(Nsites >= Ncent);
-    central_sites = np.arange(0,Ncent);
-    rlead_sites = np.arange(Ncent,Nsites);
-    all_sites = np.arange(Nsites);
-
-    # unpack ExprBuilder
+    conf_j = np.arange(Nconf);
+    llead_j = np.arange(NL);
+    central_j = np.arange(NL,NL+2*NFM,2);
+    central_d = central_j + 1;
+    rlead_j = np.arange(NL+2*NFM,Nsites);
+    all_j = np.append(llead_j,np.append(central_j, rlead_j));
+    
+    # unpack builder
     if(block):
         driver, builder = to_add_to;
         if(driver.n_sites != Nsites): raise ValueError;
@@ -671,21 +691,76 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
         Nspinorbs = nloc*Nsites;
         if(len(h1e) != Nspinorbs): raise ValueError;
 
-    # B field everywhere --------> ASSUMED IN THE Z
-    for j in all_sites:
+    # weak hopping between d sites nd j sites to prevent local minima
+    if("weak_t" in params_dict.keys()):
+        weak_t = params_dict["weak_t"];
+        for whichj in range(len(central_j)):
+            thisj, thisd = central_j[whichj], central_d[whichj];
+            if(block):
+                builder.add_term("cd", [thisj, thisd], -weak_t);
+                builder.add_term("CD", [thisj, thisd], -weak_t);
+            else:
+                raise NotImplementedError;
+
+    # ARTIFICIAL Vg and U ensure single occ on d sites
+    Vg_art, U_art = params_dict["Vg_art"], params_dict["U_art"];
+    for d in central_d:
         if(block):
-            builder.add_term("cd",[j,j],-Be/2);
-            builder.add_term("CD",[j,j], Be/2);
+            builder.add_term("cd",[d,d], Vg_art);
+            builder.add_term("CD",[d,d], Vg_art);
+            builder.add_term("cdCD",[d,d,d,d], U_art);
+        else:
+            h1e[nloc*j+0,nloc*j+0] += Vg_art;
+            h1e[nloc*j+1,nloc*j+1] += Vg_art;
+            assert(U_art==0.0);
+
+    # B field on the d sites ----------> ASSUMED IN THE Z
+    if("BFM" in params_dict.keys()):
+        BFM = params_dict["BFM"];
+        for d in central_d:
+            if(block):
+                builder.add_term("cd",[d,d],-BFM/2);
+                builder.add_term("CD",[d,d], BFM/2);
+            else:
+                raise NotImplementedError;
+
+    # B field that targets 1st d site only
+    if("BFM_first" in params_dict.keys()):
+        BFM_first = params_dict["BFM_first"];
+        d = central_d[0];
+        if(block):
+            builder.add_term("cd",[d,d], (-1/2)*(BFM_first-BFM));
+            builder.add_term("CD",[d,d], ( 1/2)*(BFM_first-BFM));
         else:
             raise NotImplementedError;
 
-    # special case initialization
-    if("Be_first" in params_dict.keys()): # B field that targets 1st site only
-        Be_first = params_dict["Be_first"];
-        j = all_sites[0];
+    # potential in the confined region
+    if("Vconf" in params_dict.keys()):
+        Vconf = params_dict["Vconf"];
+        for j in conf_j:
+            if(block):
+                builder.add_term("cd",[j,j],-Vconf);
+                builder.add_term("CD",[j,j],-Vconf);
+            else:
+                raise NotImplementedError;
+
+    # B field in the confined region ----------> ASSUMED IN THE Z
+    if("Be" in params_dict.keys()):
+        Be = params_dict["Be"];
+        for j in conf_j:
+            if(block):
+                builder.add_term("cd",[j,j],-Be/2);
+                builder.add_term("CD",[j,j], Be/2);
+            else:
+                raise NotImplementedError;
+
+    # B field on the j that couples to the first localized spin
+    if("Bsd" in params_dict.keys()): 
+        Bsd = params_dict["Bsd"];
+        j = central_j[0];
         if(block):
-            builder.add_term("cd",[j], (-1/2)*(Be_first-Be));
-            builder.add_term("CD",[j], ( 1/2)*(Be_first-Be));
+            builder.add_term("cd",[j,j],-Bsd/2);
+            builder.add_term("CD",[j,j], Bsd/2);
         else:
             raise NotImplementedError;
 
