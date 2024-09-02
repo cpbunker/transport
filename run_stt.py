@@ -50,15 +50,35 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
         print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
         # (S1+S2)^2
-        S2_mpo = tddmrg.get_S2(eris_or_driver, the_sites, block);
+        S2_mpo = tddmrg.get_S2(eris_or_driver, the_sites, True, block);
         S2_dmrg = tddmrg.compute_obs(psi, S2_mpo, eris_or_driver);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
         # concurrence between 
-        C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
-        print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
+        #C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
+        #print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
         # pseudo concurrence between 
-        pC_dmrg = tddmrg.pseudoconcurrence_wrapper(psi, eris_or_driver, the_sites, block);
-        print("<pC"+str(the_sites)+">= {:.6f}".format(pC_dmrg));
+        #pC_dmrg = tddmrg.pseudoconcurrence_wrapper(psi, eris_or_driver, the_sites, block);
+        #print("<pC"+str(the_sites)+">= {:.6f}".format(pC_dmrg));
+
+    if False: # get orbital entropies -> mutual information
+
+        ###### ******************** ###########
+        ###### throws an error if   ###########
+        ###### custom operators are ###########
+        ###### are defined          ###########
+        odm1 = eris_or_driver.get_orbital_entropies(psi, orb_type=1); 
+        odm2 = eris_or_driver.get_orbital_entropies(psi, orb_type=2);
+        minfo = 0.5 * (odm1[:, None] + odm1[None, :] - odm2) * (1 - np.identity(len(odm1))); # (-1) * 2013 Reiher Eq (3)
+                                                                    # so more entangled is larger number, up to max log(4)
+        print("ODM1 =\n", odm1[dsite_mask]);
+        print("ODM2 =");
+        for site in range(Nsites):
+            if(dsite_mask[site]):
+                print(odm2[site][dsite_mask], " d = {:.0f}".format(site));
+        print("MI = (max = {:.6f})".format(np.log(2)));
+        for site in range(Nsites):
+            if(dsite_mask[site]):
+                print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
                            
 ##################################################################################
 #### run code
@@ -134,6 +154,6 @@ plot.snapshot_bench(gdstate_mps_inst, H_driver,
 H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
 tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,
-                  gdstate_mps_inst,check_observables,json_name,verbose=2) # set to 2 to see mmps
+                  gdstate_mps_inst,check_observables,tddmrg.plot.snapshot_bench,json_name,verbose=2) # set to 2 to see mmps
 
 

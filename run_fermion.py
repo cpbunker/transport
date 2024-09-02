@@ -44,16 +44,16 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     all_j = np.append(np.arange(params_dict["NL"]), np.append(central_j, np.arange(central_d[-1]+1, central_d[-1]+1+params_dict["NR"])));
 
     # central d site (localized spin) observables
-    for d in np.append(central_d, all_j):
+    for d in all_j: # np.append(central_d, all_j):
         occ_mpo = tddmrg.get_occ(eris_or_driver, d, block);
         occ_dmrg = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
         print("<occ  d={:.0f}> = {:.6f}".format(d, occ_dmrg));
         sz_mpo = tddmrg.get_sz(eris_or_driver, d, block);
         sz_dmrg = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
-        print("<sz   d={:.0f}> = {:.6f}".format(d, sz_dmrg));
+        #print("<sz   d={:.0f}> = {:.6f}".format(d, sz_dmrg));
         sz2_mpo = tddmrg.get_sz2(eris_or_driver, d, block);
         sz2_dmrg = tddmrg.compute_obs(psi, sz2_mpo, eris_or_driver);
-        print("<sz^2 d={:.0f}> = {:.6f} (Need 0.25 for localization)".format(d, sz2_dmrg));
+        #print("<sz^2 d={:.0f}> = {:.6f} (Need 0.25 for localization)".format(d, sz2_dmrg));
 
     # (S1+S2)^2
     S2_mpo = tddmrg.get_S2(eris_or_driver, central_d[:2], fermion=True, block=block);

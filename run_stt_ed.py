@@ -38,8 +38,8 @@ def snapshot(state,the_H,nsites,time, the_sites,plot=False):
     print("Time = {:.2f}".format(time));
     print("Total energy (ED) = {:.6f}".format(np.dot(np.conj(state),np.matmul(the_H, state))));
     for sitei in range(len(the_sites)):
-        print("Site {:.0f} <n> (ED) = {:.6f}".format(the_sites[sitei],occs[sitei])); 
-        print("Site {:.0f} <Sz> (ED) = {:.6f}".format(the_sites[sitei],szs[sitei]));
+        print("Site {:.0f} <n>  (ED) = {:.6f}".format(the_sites[sitei],occs[sitei])); 
+        #print("Site {:.0f} <sz> (ED) = {:.6f}".format(the_sites[sitei],szs[sitei]));
     print("Summed occ (ED) = {:.6f}".format(np.sum(occs)));
     print("Summed sz (ED) = {:.6f}".format(np.sum(szs)));
     

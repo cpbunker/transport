@@ -1,8 +1,9 @@
 {
-"tl":1e-2, "Vconf":0.0, "Be":0.0, "BFM": -100.0, "Bsd":100.0,
+"sys_type":"STT",
+"tl":1e-2, "Vconf":0.0, "Be":0.0, "BFM":100.0, "Bsd":-100.0,
 "Jz":0.0, "Jx":0.0, "Jsd":1.5708,
-"NL":2, "NFM":1, "NR":2, "Nconf":0, "Ne":1,"TwoSz":0,"TwoSd":1,
-"symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[2,2],"plot":1,
-"bdim_0":[60,70,80,90,90],"bdim_t":[100], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"rk4",
-"time_step":0.1, "Nupdates":10, "tupdate":0.4
+"NL":2, "NFM":2, "NR":2, "Nconf":2, "Ne":1,"TwoSz":1,"TwoSd":1,
+"symmetry":"Sz","spin_strs":["cd","CD"], "ex_sites":[2,3],"plot":1,
+"bdim_0":[60,70,80,90,90],"bdim_t":[100], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
+"time_step":0.1, "Nupdates":8, "tupdate":0.5
 }

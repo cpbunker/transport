@@ -286,7 +286,8 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
 def get_S2(eris_or_driver, whichsites, fermion, block, verbose=0):
     '''
     '''
-    assert(block);
+    if(not block): raise NotImplementedError;
+    assert(not(whichsites[0] == whichsites[1])); # sites have to be distinct
     builder = eris_or_driver.expr_builder();
 
     # construct
@@ -308,16 +309,6 @@ def get_S2(eris_or_driver, whichsites, fermion, block, verbose=0):
 
     # return
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
-    
-def S2_wrapper(psi, eris_or_driver, whichsites, block):
-    '''
-    '''
-    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
-    
-    op = get_S2(eris_or_driver, whichsites, block);
-    ret = compute_obs(psi, op, eris_or_driver);
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
-    return np.real(ret);
 
 def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
@@ -733,6 +724,24 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("CD",[d,d], ( 1/2)*(BFM_first-BFM));
         else:
             raise NotImplementedError;
+
+    # t<0 term to entangle localized spins (in triplet if positive term)
+    if("Bent" in params_dict.keys()): 
+        assert(len(central_d)==2);
+        Bent = params_dict["Bent"];
+        for whichd in range(len(central_d[:-1])):
+            thisd, nextd = central_d[whichd], central_d[whichd+1];
+            if(block):
+                # z z terms
+                builder.add_term("cdcd",[thisd,thisd,nextd,nextd],-Bent/4);
+                builder.add_term("cdCD",[thisd,thisd,nextd,nextd], Bent/4);
+                builder.add_term("CDcd",[thisd,thisd,nextd,nextd], Bent/4);
+                builder.add_term("CDCD",[thisd,thisd,nextd,nextd],-Bent/4);
+                # plus minus terms
+                builder.add_term("cDCd",[thisd,thisd,nextd,nextd],-Bent/2);
+                builder.add_term("CdcD",[thisd,thisd,nextd,nextd],-Bent/2);
+            else:
+                raise NotImplementedError;
 
     # potential in the confined region
     if("Vconf" in params_dict.keys()):
