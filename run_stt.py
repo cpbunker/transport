@@ -12,6 +12,7 @@ angular momentum on the localized spins, exerting spin transfer torque (STT).
 from transport import tddmrg
 from transport.tddmrg import plot
 
+from pyblock2.driver import core
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -23,6 +24,8 @@ print(">>> PWD: ",os.getcwd());
 
 ##################################################################################
 #### wrappers
+
+from run_fermion import get_orbital_entropies_use_npdm
 
 def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block):
     '''
@@ -40,6 +43,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     print("WF norm = {:.6f}".format(check_norm));
 
     # impurity Sz and concurrence
+    Nsites = params_dict["Nsites"];
     the_sites = params_dict["ex_sites"];
     if(the_sites):
         # site spins
@@ -70,15 +74,21 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         odm2 = eris_or_driver.get_orbital_entropies(psi, orb_type=2);
         minfo = 0.5 * (odm1[:, None] + odm1[None, :] - odm2) * (1 - np.identity(len(odm1))); # (-1) * 2013 Reiher Eq (3)
                                                                     # so more entangled is larger number, up to max log(4)
-        print("ODM1 =\n", odm1[dsite_mask]);
-        print("ODM2 =");
-        for site in range(Nsites):
-            if(dsite_mask[site]):
-                print(odm2[site][dsite_mask], " d = {:.0f}".format(site));
-        print("MI = (max = {:.6f})".format(np.log(2)));
-        for site in range(Nsites):
-            if(dsite_mask[site]):
-                print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
+
+    else: # code for orbital entropies given custom operators
+        odm1 = get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1);
+
+    # show results
+    thesite_mask = [True if site in the_sites else False for site in range(Nsites)];
+    print("ODM1 =\n", odm1[dsite_mask]);
+    print("ODM2 =");
+    for site in range(Nsites):
+        if(dsite_mask[site]):
+            print(odm2[site][dsite_mask], " d = {:.0f}".format(site));
+    print("MI = (max = {:.6f})".format(np.log(2)));
+    for site in range(Nsites):
+        if(dsite_mask[site]):
+            print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
                            
 ##################################################################################
 #### run code
