@@ -3,6 +3,7 @@
 "tl":1.0, 
 "Jsd":0.0, "Jz":1.57, "Jx":1.57,
 "Vg_art":-20.0, "U_art":50.0, 
+"Be":0.0, "BFM":0.0,
 "NL":2, "Nconf":1, "NFM":2, "NR":2, "Ne":0, "TwoSz":0,
 "symmetry":"Sz","plot":0,
 "bdim_0":[60,70,80,90,90],"bdim_t":[100], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",

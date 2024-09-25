@@ -59,6 +59,31 @@ def compute_obs(psi, mpo_inst, driver, conj=False):
     impo = driver.get_identity_mpo();
     return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
 
+def get_occsigma(eris_or_driver, whichsite, sigma, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIs) representing the spin occupancy of site whichsite
+    '''
+    if(block): builder = eris_or_driver.expr_builder();
+    else:
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        if(sigma==0): builder.add_term("cd",[whichsite,whichsite],1.0);
+        elif(sigma==1): builder.add_term("CD",[whichsite,whichsite],1.0);
+        else: raise ValueError("sigma");
+    else:
+        if(sigma==0): h1e[nloc*whichsite+0,nloc*whichsite+0] += 1.0;
+        elif(sigma==1): h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
+        else: raise ValueError("sigma");
+
+    # return
+
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
 def get_occ(eris_or_driver, whichsite, block, verbose=0):
     '''
     Constructs an operator (either MPO or ERIs) representing the occupancy of site whichsite
@@ -81,9 +106,107 @@ def get_occ(eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
+def get_occupoccdown(eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Constructs an operator (either MPO or ERIS) for n_up * n_down
+    '''
+    if(block): builder = eris_or_driver.expr_builder();
+    else:
+        Nspinorbs = len(eris_or_driver.h1e[0]);
+        nloc = 2;
+        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
+
+    # construct
+    if(block):
+        builder.add_term("cdCD",[whichsite,whichsite,whichsite,whichsite],1.0);
+    else:
+        raise NotImplementedError;
+
+    # return
+    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
+
+def get_Om(m):
+    '''
+    Theory: White 2006 (https://doi.org/10.1016/j.chemphys.2005.10.018) Table II
+    '''
+    if(not isinstance(m, int)): raise TypeError;
+    Om_dict = { # each m -> tuple of [expressions] [coefficients]
+            1: (["", "cd", "CD", "cdCD"],[1,-1,-1,1]),
+            6: (["CD", "cdCD"], [1,-1]),
+            11:(["cd", "cdCD"], [1,-1]),
+            16:(["cdCD"],[1])
+            };
+
+    return Om_dict[m];
+
+def oneorb_entropies_wrapper(psi, eris_or_driver, block):
+    '''
+    Compute the one-orbital reduced density matrix and extract the von Neumann entropy, for all *fermionic* orbitals
+
+    Theory: White 2006 (https://doi.org/10.1016/j.chemphys.2005.10.018) Table II
+    '''
+    if(core.SymmetryTypes.SZ not in eris_or_driver.bw.symm_type): raise TypeError;
+
+    # return value
+    ents = np.zeros((eris_or_driver.n_sites,),dtype=float)
+
+    # iter over sites
+    for sitei in range(eris_or_driver.n_sites): # <--- *fermionic* orbitals
+
+        # one-orbital reduced density matrix for this site
+        # O(m) operators chosen come from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 2
+        oneorb_rdm = np.zeros((4,4),dtype=float);
+        oneorb_Oms = [1,6,11,16]; 
+
+        # one orbital reduced density matrix is *diagonal*
+        for diagi in range(len(oneorb_rdm)):
+
+            # diagonal one-orb RDM elements are expectation values of fermionic operators
+            # to get MPO for these expectation values, need to know expression, site, coefficient
+            # get_Om gives list of expressions and coeffcients
+            expressions, coefs = get_Om(oneorb_Oms[diagi]);
+            expect_builder = eris_or_driver.expr_builder();
+            for termi in range(len(expressions)):
+                expect_builder.add_term(expressions[termi], [sitei]*len(expressions[termi]), coefs[termi]);
+            expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
+            expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
+
+            # clean up numerical instabilities that lead log -> nan
+            if(abs(np.imag(expect_val)) > 1e-10): raise ValueError;
+            else: expect_val = np.real(expect_val);
+            if(expect_val<0.0):
+                if(abs(expect_val)<1e-10): expect_val = abs(expect_val); # eliminate log problems
+                else: print("rho[",diagi,diagi,"] = ", expect_val); raise ValueError;
+
+            oneorb_rdm[diagi,diagi] = expect_val;
+
+        # get non Neumann entropy from one orb rdm
+        ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+
+    return ents;
+
+def twoorb_entropies_wrapper(psi, eris_or_driver, block):
+    '''
+    Compute the two-orbital reduced density matrix and extract the von Neumann entropy
+    Pairs computed must be *nearest-neighbor fermionic* sites
+    '''
+    if(core.SymmetryTypes.SZ not in eris_or_driver.bw.symm_type): raise TypeError;
+
+    # return value
+    ents = np.full((eris_or_driver.n_sites,eris_or_driver.n_sites), np.nan, dtype=float); # 
+
+    # iter over nearest neighbor site pairs
+    for sitei in range(eris_or_driver.n_sites - 1):
+        sitej = sitei + 1; # enforces nearest neighbor
+
+        # two-orbital reduced density matrix for (sitei, sitej) pair
+        # expressions from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 3
+
 def get_onehop(eris_or_driver, whichsite, block, verbose=0):
     '''
     '''
+    raise NotImplementedError
     if(block): builder = eris_or_driver.expr_builder()
     else:
         Nspinorbs = len(eris_or_driver.h1e[0]);
@@ -105,46 +228,6 @@ def get_onehop(eris_or_driver, whichsite, block, verbose=0):
     # return
     if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-
-
-def get_occ2(eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or ERIs) representing n^2
-    '''
-    raise NotImplementedError
-    if(block): builder = eris_or_driver.expr_builder()
-    else:
-        Nspinorbs = len(eris_or_driver.h1e[0]);
-        nloc = 2;
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cdcd",[whichsite,whichsite],1.0);
-        builder.add_term("cdCD",[whichsite,whichsite],1.0);
-        builder.add_term("CDcd",[whichsite,whichsite],1.0);
-        builder.add_term("CDCD",[whichsite,whichsite],1.0);
-    else:
-        # g_pqrs a_p^+ a_q a_r^+ a_s
-        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-        # switch particle labels
-        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        g2e[nloc*whichsite+0,nloc*whichsite+0,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-        g2e[nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-
-        # - delta_qr a_p^+ a_s
-        h1e[nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        h1e[nloc*whichsite+0,nloc*whichsite+1] += 1.0;
-        h1e[nloc*whichsite+1,nloc*whichsite+0] += 1.0;
-        h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);   
 
 def get_sz(eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -209,7 +292,7 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
 
 def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
     '''
-    Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite
+    Constructs an operator (either MPO or ERIs) representing <Sx>,<Sx^2>,<Sy>, or <Sy^2> of site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else: 
@@ -601,7 +684,6 @@ def H_fermion_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     central_d = central_j + 1;
     rlead_j = np.arange(NL+2*NFM,Nsites);
     all_j = np.append(llead_j,np.append(central_j, rlead_j));
-    print(llead_j,"\n", rlead_j,"\n",all_j);
 
     # construct ExprBuilder
     if(block):
@@ -706,14 +788,13 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
             assert(U_art==0.0);
 
     # B field on the d sites ----------> ASSUMED IN THE Z
-    if("BFM" in params_dict.keys()):
-        BFM = params_dict["BFM"];
-        for d in central_d:
-            if(block):
-                builder.add_term("cd",[d,d],-BFM/2);
-                builder.add_term("CD",[d,d], BFM/2);
-            else:
-                raise NotImplementedError;
+    BFM = params_dict["BFM"];
+    for d in central_d:
+        if(block):
+            builder.add_term("cd",[d,d],-BFM/2);
+            builder.add_term("CD",[d,d], BFM/2);
+        else:
+            raise NotImplementedError;
 
     # B field that targets 1st d site only
     if("BFM_first" in params_dict.keys()):
@@ -754,14 +835,13 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
                 raise NotImplementedError;
 
     # B field in the confined region ----------> ASSUMED IN THE Z
-    if("Be" in params_dict.keys()):
-        Be = params_dict["Be"];
-        for j in conf_j:
-            if(block):
-                builder.add_term("cd",[j,j],-Be/2);
-                builder.add_term("CD",[j,j], Be/2);
-            else:
-                raise NotImplementedError;
+    Be = params_dict["Be"];
+    for j in conf_j:
+        if(block):
+            builder.add_term("cd",[j,j],-Be/2);
+            builder.add_term("CD",[j,j], Be/2);
+        else:
+            raise NotImplementedError;
 
     # B field on the j that couples to the first localized spin
     if("Bsd" in params_dict.keys()): 

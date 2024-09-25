@@ -23,6 +23,80 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
+def get_oneorb_entropies(psi, eris_or_driver, block):
+    '''
+    '''
+    assert(core.SymmetryTypes.SZ in eris_or_driver.bw.symm_type);
+
+    impo = eris_or_driver.get_identity_mpo();
+    impo_result = tddmrg.compute_obs(psi, impo, eris_or_driver);
+    print("impo result = {:.4f}".format(impo_result));
+
+    nbuilder = eris_or_driver.expr_builder();
+    nbuilder.add_term("", [], 1.0);
+    nmpo = eris_or_driver.get_mpo(nbuilder.finalize());
+    nmpo_result = tddmrg.compute_obs(psi, nmpo, eris_or_driver);
+    print("nmpo result = {:.4f}".format(nmpo_result));
+    assert False
+    # return value
+    ents = np.zeros((eris_or_driver.n_sites,))
+
+    # iter over sites
+    for sitei in range(eris_or_driver.n_sites):
+
+        # single-orbital reduced density matrix for this site
+        # expressions from 2006 White (https://doi.org/10.1016/j.chemphys.2005.10.018) Table II
+        oneorb_rdm = np.zeros((4,4),dtype=float);
+
+        # <0|rho_p|0> = <1-n_up - n_down + nup*ndown>    
+        coefs_00 = [1,-1,-1,1];
+        mpos_00 = [eris_or_driver.get_identity_mpo(), 
+                   tddmrg.get_occsigma(eris_or_driver, sitei, 0, block), 
+                   tddmrg.get_occsigma(eris_or_driver, sitei, 1, block), 
+                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block)]  
+        for termi in range(len(mpos_00)):
+            term = coefs_00[termi]*tddmrg.compute_obs(psi, mpos_00[termi], eris_or_driver);
+            if(abs(np.imag(term)) > 1e-10): raise ValueError;
+            oneorb_rdm[0,0] += np.real(term);
+
+        # <up|rho_p|up> = <n_up - n_up*n_down>
+        coefs_11 = [1,-1];
+        mpos_11 = [tddmrg.get_occsigma(eris_or_driver, sitei, 0, block),
+                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block)];
+        for termi in range(len(mpos_11)):
+            term = coefs_11[termi]*tddmrg.compute_obs(psi, mpos_11[termi], eris_or_driver);
+            if(abs(np.imag(term)) > 1e-10): raise ValueError;
+            oneorb_rdm[1,1] += np.real(term);
+
+        # <down|rho_p|down> =
+        coefs_22 = [1,-1];
+        mpos_22 = [tddmrg.get_occsigma(eris_or_driver, sitei, 1, block),
+                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block) ];
+        for termi in range(len(mpos_22)):
+            term = coefs_22[termi]*tddmrg.compute_obs(psi, mpos_22[termi], eris_or_driver);
+            if(abs(np.imag(term)) > 1e-10): raise ValueError;
+            oneorb_rdm[2,2] += np.real(term);
+
+        # <2|rho_p|2> = <n_up*n_down>
+        coefs_33 = [1];
+        mpos_33 = [tddmrg.get_occupoccdown(eris_or_driver, sitei, block)];
+        for termi in range(len(mpos_33)):
+            term = coefs_33[termi]*tddmrg.compute_obs(psi, mpos_33[termi], eris_or_driver);
+            if(abs(np.imag(term)) > 1e-10): raise ValueError;
+            oneorb_rdm[3,3] += np.real(term);
+
+        # clean up numerical instabilities that lead log -> nan
+        for diagi in range(len(oneorb_rdm)):
+            if(oneorb_rdm[diagi,diagi]<0):
+                if(abs(oneorb_rdm[diagi,diagi])<1e-10): oneorb_rdm[diagi,diagi] = abs(oneorb_rdm[diagi,diagi]); # eliminate log problems
+                else: print("rho[",diagi,diagi,"] = ", oneorb_rdm[diagi,diagi]); raise ValueError;
+
+        # get non Neumann entropy from one orb rdm
+        ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+
+    return ents;
+            
+
 def get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1, verbose=0):
     '''
     replace block2.driver.core.get_orbital_entropies_use_npdm(self, ket, orb_type=1, iprint=0) method
@@ -55,18 +129,19 @@ def get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1, verbose=0):
     print("rrdms = ", np.shape(rrdms));
 
     # N-particle density matrices
-    npdms = eris_or_driver.get_npdm(
-        psicopy,
-        npdm_expr=[k for (k, _), _ in exprs.items()], # op string part of keys of expressions dictionary
-        pdm_type=[len(k) // 2 for (k, _), _ in exprs.items()], # fermion number of the op string (1 for cd, 2 for cdCD, etc)
-        mask=[list(m) for (_, m), _ in exprs.items()],# quantum number part of keys of expressions dictionary, each converted tuple->list
-        iprint=verbose)
-    print("pdm_type = ",[len(k) // 2 for (k, _), _ in exprs.items()])
-    print("npdm_expr = ", [k for (k, _), _ in exprs.items()])
+    my_pdm_type=[len(k) // 2 for (k, _), _ in exprs.items()] # fermion number of the op string (1 for cd, 2 for cdCD, etc)
+    my_npdm_expr=[k for (k, _), _ in exprs.items()] # op string part of keys of expressions dictionary
+    my_mask=[list(m) for (_, m), _ in exprs.items()] # quantum number part of keys of expressions dictionary, each converted tuple->list
+    npdms = eris_or_driver.get_npdm(psicopy,pdm_type=my_pdm_type,npdm_expr=my_npdm_expr,mask=my_mask,iprint=verbose);
+    #print("pdm_type = ",my_pdm_type)
+    #print("npdm_expr = ",my_pdm_expr)
     #print("mask = ", [list(m) for (_, m), _ in exprs.items()])
     print("npdms = ", np.shape(npdms))
-    for el in npdms: print(np.shape(el))
-
+    print("pdm_type | npdm_expr | mask          | npdm ");
+    for eli in range(len(npdms)): 
+        print(str(my_pdm_type[eli])+" "*9, my_npdm_expr[eli]+" "*(11-len(my_npdm_expr[eli])),
+                str(my_mask[eli])+" "*(14-len(str(my_mask[eli]))), type(npdms[eli]), np.shape(npdms[eli]))
+    assert False
     # iter over all npdms (1<->1 with the expressions)
     # NB there are 4 (36) expressions for orb_type=1(2), regardless of Ne or Nsites
     ix_info_dict = {}
@@ -137,22 +212,31 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     central_j = central_d - 1;
     all_j = np.append(np.arange(params_dict["NL"]), np.append(central_j, np.arange(central_d[-1]+1, central_d[-1]+1+params_dict["NR"])));
 
-    # central d site (localized spin) observables
-    for d in all_j: # np.append(central_d, all_j):
-        occ_mpo = tddmrg.get_occ(eris_or_driver, d, block);
+    # itinerant e's
+    for j in all_j: 
+        occ_mpo = tddmrg.get_occ(eris_or_driver, j, block);
         occ_dmrg = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
-        print("<occ  d={:.0f}> = {:.6f}".format(d, occ_dmrg));
+        print("<occ  j={:.0f}> = {:.6f}".format(j, occ_dmrg));
+
+    # central d site (localized spin) observables
+    for d in central_d:
         sz_mpo = tddmrg.get_sz(eris_or_driver, d, block);
         sz_dmrg = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
         #print("<sz   d={:.0f}> = {:.6f}".format(d, sz_dmrg));
         sz2_mpo = tddmrg.get_sz2(eris_or_driver, d, block);
         sz2_dmrg = tddmrg.compute_obs(psi, sz2_mpo, eris_or_driver);
+        print("<sz   d={:.0f}> = {:.6f}, <sz^2 d={:.0f}> = {:.6f}".format(d, sz_dmrg, d, sz2_dmrg), "(-> 0.25 means localization)");
         #print("<sz^2 d={:.0f}> = {:.6f} (Need 0.25 for localization)".format(d, sz2_dmrg));
 
     # (S1+S2)^2
     S2_mpo = tddmrg.get_S2(eris_or_driver, central_d[:2], fermion=True, block=block);
     S2_dmrg = tddmrg.compute_obs(psi, S2_mpo, eris_or_driver);
     print("<(S1+S2)^2>= {:.6f}".format(S2_dmrg));
+
+    # one orbital von Neumann entropies
+    ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, block);
+    print("ents1 =\n",ents1);
+    return
 
     # orbital entanglement
     which_mis = 1*central_d;
