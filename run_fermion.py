@@ -235,33 +235,26 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 
     # one orbital von Neumann entropies
     ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, block);
-    print("ents1 =\n",ents1);
-    return
+    ents2 = tddmrg.twoorb_entropies_wrapper(psi, eris_or_driver, block);
 
-    # orbital entanglement
+    # mutual information. Use convention that MI[p,q] >= 0, ie 2006 White Eq (8)
+    # NB same as (-1) * 2013 Reiher Eq (13)
+    minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); 
+
+    #vresults
     which_mis = 1*central_d;
     if("Bsd" in params_dict.keys()): which_mis = [central_j[0], central_d[0]];
-    dsite_mask = [True if site in which_mis else False for site in range(Nsites)];
-    if(False): # get orbital entropies -> mutual information
-        odm1 = eris_or_driver.get_orbital_entropies(psi, orb_type=1);
-        odm2 = eris_or_driver.get_orbital_entropies(psi, orb_type=2);
-    else: # code for orbital entropies given custom operators
-        odm2 = get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=2);
-        odm1 = get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1);
-
-    # show results
-    minfo = 0.5 * (odm1[:, None] + odm1[None, :] - odm2) * (1 - np.identity(len(odm1))); # (-1) * 2013 Reiher Eq (3)
-    print("ODM1 =\n", odm1[dsite_mask]);
+    dsite_mask = np.array([True if site in which_mis else False for site in range(Nsites)]);
+    # dsite_mask = np.ones_like(dsite_mask);
+    print("ODM1 =\n", ents1[dsite_mask]);
     print("ODM2 =");
     for site in range(Nsites):
         if(dsite_mask[site]):
-            print(odm2[site][dsite_mask], " d = {:.0f}".format(site));
+            print(ents2[site][dsite_mask], " d = {:.0f}".format(site));
     print("MI = (max = {:.6f})".format(np.log(2)));
     for site in range(Nsites):
         if(dsite_mask[site]):
             print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
-    assert False
-
 
 ##################################################################################
 #### run code
@@ -269,7 +262,7 @@ if(__name__ == "__main__"):
 
     # top level
     verbose = 2; assert verbose in [1,2,3];
-    np.set_printoptions(precision = 4, suppress = True);
+    np.set_printoptions(precision = 6, suppress = True);
     json_name = sys.argv[1];
     params = json.load(open(json_name)); print(">>> Params = ",params);
     is_block = True;
