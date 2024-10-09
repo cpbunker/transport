@@ -12,7 +12,7 @@ from transport.tdfci import utils
 from pyblock2.driver import core
 from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
-
+import time
     
 ##########################################################################################################
 #### driver of time propagation
@@ -31,9 +31,10 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_
     # time evolve with repeated snapshots
     tevol_mps_inst = psi;
     for timei in range(Nupdates):
-        if(timei in [0]): the_verbose=verbose;
+        if(False): pass; #timei in [0]): the_verbose=verbose;
         else: the_verbose=0; # ensures verbosity only on initial time steps
         total_time += time_update;
+        evol_time0 = time.time()
 
         # time evol
         krylov_subspace = 20; # default
@@ -42,10 +43,18 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_
                 delta_t=complex(0,time_step), target_t=complex(0,time_update),
                 bond_dims=params_dict["bdim_t"], cutoff=params_dict["cutoff"], te_type=params_dict["te_type"],
                 krylov_subspace_size=krylov_subspace,final_mps_tag=str(int(100*total_time)), iprint=the_verbose);
+        evol_time1 = time.time();
+        print("\n>>>> Evol CPU time = {:.1f} min\n".format((evol_time1-evol_time0)/60));
 
         # observables
+        check_time0 = time.time();
         check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time, True);
+        check_time1 = time.time();
+        print("\n>>>> Observables CPU time = {:.1f} min\n".format((check_time1-check_time0)/60));
+
+        # plot and/or save observables
         if(plot_func is not None): plot_func(tevol_mps_inst, driver_inst, params_dict, save_name, total_time, True);
+    return;
 
 ################################################################################
 #### observables
@@ -58,32 +67,6 @@ def compute_obs(psi, mpo_inst, driver, conj=False):
 
     impo = driver.get_identity_mpo();
     return driver.expectation(psi, mpo_inst, psi)/driver.expectation(psi, impo, psi);
-
-def get_occsigma(eris_or_driver, whichsite, sigma, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or ERIs) representing the spin occupancy of site whichsite
-    '''
-    raise NotImplementedError
-    if(block): builder = eris_or_driver.expr_builder();
-    else:
-        Nspinorbs = len(eris_or_driver.h1e[0]);
-        nloc = 2;
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        if(sigma==0): builder.add_term("cd",[whichsite,whichsite],1.0);
-        elif(sigma==1): builder.add_term("CD",[whichsite,whichsite],1.0);
-        else: raise ValueError("sigma");
-    else:
-        if(sigma==0): h1e[nloc*whichsite+0,nloc*whichsite+0] += 1.0;
-        elif(sigma==1): h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-        else: raise ValueError("sigma");
-
-    # return
-
-    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
 def get_occ(eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -102,27 +85,6 @@ def get_occ(eris_or_driver, whichsite, block, verbose=0):
     else:
         h1e[nloc*whichsite+0,nloc*whichsite+0] += 1.0;
         h1e[nloc*whichsite+1,nloc*whichsite+1] += 1.0;
-
-    # return
-    if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
-    else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
-
-def get_occupoccdown(eris_or_driver, whichsite, block, verbose=0):
-    '''
-    Constructs an operator (either MPO or ERIS) for n_up * n_down
-    '''
-    raise NotImplementedError
-    if(block): builder = eris_or_driver.expr_builder();
-    else:
-        Nspinorbs = len(eris_or_driver.h1e[0]);
-        nloc = 2;
-        h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=float), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=float);
-
-    # construct
-    if(block):
-        builder.add_term("cdCD",[whichsite,whichsite,whichsite,whichsite],1.0);
-    else:
-        raise NotImplementedError;
 
     # return
     if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
@@ -199,7 +161,7 @@ def oneorb_entropies_wrapper(psi, eris_or_driver, block):
 
     return ents;
 
-def twoorb_entropies_wrapper(psi, eris_or_driver, block):
+def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
     '''
     Compute the two-orbital reduced density matrix and extract the von Neumann entropy
     Pairs computed must be *nearest-neighbor fermionic* sites
@@ -244,101 +206,103 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, block):
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,False,True ,True ],
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ]]);
 
-    # iter over nearest neighbor site pairs
-    for sitei in range(eris_or_driver.n_sites - 1):
-        sitej = sitei + 1; # enforces nearest neighbor
+    # we get whichsites paired withh ALL OTHERS but no pairs where neither are whichsites
+    site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
+    for sitei in range(eris_or_driver.n_sites):
+        if(site_mask[sitei]): jsites_iter = np.append(np.arange(0,sitei), np.arange(sitei+1,eris_or_driver.n_sites));
+        else: jsites_iter = []; # skip these: sitejs with mask=True will be recovered when we do ents[sitei, sitej] = ents[sitej, sitei]
+        for sitej in jsites_iter:
 
-        # two-orbital reduced density matrix for (sitei, sitej) pair
-        twoorb_rdm = np.zeros((len(twoorb_Oms),len(twoorb_Oms)),dtype=complex); # reduced density matrix elements are in general complex
+            # two-orbital reduced density matrix for (sitei, sitej) pair
+            twoorb_rdm = np.zeros((len(twoorb_Oms),len(twoorb_Oms)),dtype=complex); # reduced density matrix elements are in general complex
 
-        # expressions from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 3
-        for rowi in range(len(twoorb_Oms)):
-            #for coli in range(rowi+1): # only do lower half triangle, then use symmetry
-            for coli in range(len(twoorb_Oms)):
-                Om_On = twoorb_Oms[rowi, coli];
-                if(not np.any(Om_On)): pass; # this matrix element is always zero
-                else: # Om_On is a tuple of integers telling which Om, On operator expressions to use
-                    if(twoorb_Oms_flags[rowi,coli] == True):
-                        Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                        On_exprs, On_coefs = get_Om(Om_On[1]);
-                    else: # instead of taking <O(m)O(n)> we use the complex conjugate of the transposed matrix element
-                        Om_On = twoorb_Oms[coli,rowi]; #<--- Here is where we call for transposed matrix element
-                        assert(twoorb_Oms_flags[coli,rowi]==True); # otherwise neither is correct!
-                        Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                        On_exprs, On_coefs = get_Om(Om_On[1]);
+            # expressions from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 3
+            for rowi in range(len(twoorb_Oms)):
+                #for coli in range(rowi+1): # only do lower half triangle, then use symmetry
+                for coli in range(len(twoorb_Oms)):
+                    Om_On = twoorb_Oms[rowi, coli];
+                    if(not np.any(Om_On)): pass; # this matrix element is always zero
+                    else: # Om_On is a tuple of integers telling which Om, On operator expressions to use
+                        if(twoorb_Oms_flags[rowi,coli] == True):
+                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
+                            On_exprs, On_coefs = get_Om(Om_On[1]);
+                        else: # instead of taking <O(m)O(n)> we use the complex conjugate of the transposed matrix element
+                            Om_On = twoorb_Oms[coli,rowi]; #<--- Here is where we call for transposed matrix element
+                            assert(twoorb_Oms_flags[coli,rowi]==True); # otherwise neither is correct!
+                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
+                            On_exprs, On_coefs = get_Om(Om_On[1]);
 
-                    # distribute two lists of expressions into one
-                    combo_exprs = []
-                    combo_coefs = [];
-                    combo_sites = [];
-                    for Omi in range(len(Om_exprs)):
-                        for Oni in range(len(On_exprs)):
-                            combo_exprs.append(Om_exprs[Omi] + On_exprs[Oni]);
-                            combo_coefs.append(Om_coefs[Omi] * On_coefs[Oni]);
-                            combo_sites.append( [sitei]*len(Om_exprs[Omi]) + [sitej]*len(On_exprs[Oni]));
+                        # distribute two lists of expressions into one
+                        combo_exprs = []
+                        combo_coefs = [];
+                        combo_sites = [];
+                        for Omi in range(len(Om_exprs)):
+                            for Oni in range(len(On_exprs)):
+                                combo_exprs.append(Om_exprs[Omi] + On_exprs[Oni]);
+                                combo_coefs.append(Om_coefs[Omi] * On_coefs[Oni]);
+                                combo_sites.append( [sitei]*len(Om_exprs[Omi]) + [sitej]*len(On_exprs[Oni]));
 
-                    # expectation value
-                    expect_builder = eris_or_driver.expr_builder();
-                    for termi in range(len(combo_exprs)):
-                        #print(termi, combo_exprs[termi], combo_sites[termi], combo_coefs[termi]);
-                        expect_builder.add_term(combo_exprs[termi], combo_sites[termi], combo_coefs[termi]);
-                    expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
-                    expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
-                    if(twoorb_Oms_flags[rowi,coli] == False):
-                        twoorb_rdm[rowi, coli] = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
+                        # expectation value
+                        expect_builder = eris_or_driver.expr_builder();
+                        for termi in range(len(combo_exprs)):
+                            #print(termi, combo_exprs[termi], combo_sites[termi], combo_coefs[termi]);
+                            expect_builder.add_term(combo_exprs[termi], combo_sites[termi], combo_coefs[termi]);
+                        expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
+                        expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
+                        if(twoorb_Oms_flags[rowi,coli] == False):
+                            twoorb_rdm[rowi, coli] = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
+                        else:
+                            twoorb_rdm[rowi, coli] = expect_val;
+
+            # clean up numerical instabilities
+            for rowi in range(len(twoorb_Oms)):
+                for coli in range(len(twoorb_Oms)):
+                    Om_On = twoorb_Oms[rowi, coli];
+                    if(not np.any(Om_On)): pass; # this matrix element is always zero
                     else:
-                        twoorb_rdm[rowi, coli] = expect_val;
+                        # diagonal elements must be real
+                        if(rowi == coli):
+                            if(abs(np.imag(twoorb_rdm[rowi, coli])) > 1e-10): 
+                                print("\n########################### rho_ij diag not real! #############################\n");
+                                print("<{:.0f}|rho_ij|{:.0f}> --> O({:.0f}) O({:.0f})".format(rowi, coli, *Om_On));
+                                print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(rowi, coli, np.real(twoorb_rdm[rowi, coli]), np.imag(twoorb_rdm[rowi, coli]))); raise ValueError;
+                        # upper half triangle elements must be complex conjugate of lower half
+                        if(coli>rowi):
+                            if(abs(np.real(twoorb_rdm[rowi,coli]) - np.real(twoorb_rdm[coli,rowi]))>1e-10 or abs(np.imag(twoorb_rdm[rowi,coli]) + np.imag(twoorb_rdm[coli,rowi]))>1e-10):
+                                #if(abs(np.imag(twoorb_rdm[rowi, coli]))>1e-1):
+                                print("\n########################### rho_ij not Hermitian! #############################\n");
+                                print("<{:.0f}|rho_ij|{:.0f}> --> O({:.0f}) O({:.0f})".format(rowi, coli, *Om_On));
+                                print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(rowi, coli, np.real(twoorb_rdm[rowi, coli]), np.imag(twoorb_rdm[rowi, coli]))); 
+                                print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(coli, rowi, np.real(twoorb_rdm[coli,rowi]), np.imag(twoorb_rdm[coli, rowi]))); 
+                                for eigval in np.linalg.eig(twoorb_rdm)[0]: print(eigval);
+                                raise ValueError;
 
-        # clean up numerical instabilities
-        for rowi in range(len(twoorb_Oms)):
-            for coli in range(len(twoorb_Oms)):
-                Om_On = twoorb_Oms[rowi, coli];
-                if(not np.any(Om_On)): pass; # this matrix element is always zero
-                else:
-                    # diagonal elements must be real
-                    if(rowi == coli):
-                        if(abs(np.imag(twoorb_rdm[rowi, coli])) > 1e-10): 
-                            print("\n########################### rho_ij diag not real! #############################\n");
-                            print("<{:.0f}|rho_ij|{:.0f}> --> O({:.0f}) O({:.0f})".format(rowi, coli, *Om_On));
-                            print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(rowi, coli, np.real(twoorb_rdm[rowi, coli]), np.imag(twoorb_rdm[rowi, coli]))); raise ValueError;
-                    # upper half triangle elements must be complex conjugate of lower half
-                    if(coli>rowi):
-                        if(abs(np.real(twoorb_rdm[rowi,coli]) - np.real(twoorb_rdm[coli,rowi]))>1e-10 or abs(np.imag(twoorb_rdm[rowi,coli]) + np.imag(twoorb_rdm[coli,rowi]))>1e-10):
-                            #if(abs(np.imag(twoorb_rdm[rowi, coli]))>1e-1):
-                            print("\n########################### rho_ij not Hermitian! #############################\n");
-                            print("<{:.0f}|rho_ij|{:.0f}> --> O({:.0f}) O({:.0f})".format(rowi, coli, *Om_On));
-                            print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(rowi, coli, np.real(twoorb_rdm[rowi, coli]), np.imag(twoorb_rdm[rowi, coli]))); 
-                            print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(coli, rowi, np.real(twoorb_rdm[coli,rowi]), np.imag(twoorb_rdm[coli, rowi]))); 
-                            for eigval in np.linalg.eig(twoorb_rdm)[0]: print(eigval);
-                            raise ValueError;
+            # diagonalize two orb rdm
+            #print("before diagonalization:\n",twoorb_rdm[6:10,6:10]);
+            twoorb_eigvals, _ = np.linalg.eigh(twoorb_rdm); # these will all be real
 
-        # diagonalize two orb rdm
-        #print("before diagonalization:\n",twoorb_rdm[6:10,6:10]);
-        twoorb_eigvals, _ = np.linalg.eigh(twoorb_rdm); # these will all be real
-
-        # clean up numerical instabilities in eigvals
-        for eigi in range(len(twoorb_eigvals)): 
-            if(twoorb_eigvals[eigi]<0):
-                if(abs(twoorb_eigvals[eigi])<1e-10): twoorb_eigvals[eigi] = abs(twoorb_eigvals[eigi]); # eliminate log(-x)=nan
-                else: print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(eigi,eigi, np.real(twoorb_eigvals[eigi]), np.imag(twoorb_eigvals[eigi]))); raise ValueError;
-            elif(twoorb_eigvals[eigi]==0): twoorb_eigvals[eigi] = np.exp(-100); # replace log(0.0)=-inf with log(e^-100)=-100
+            # clean up numerical instabilities in eigvals
+            for eigi in range(len(twoorb_eigvals)): 
+                if(twoorb_eigvals[eigi]<0):
+                    if(abs(twoorb_eigvals[eigi])<1e-10): twoorb_eigvals[eigi] = abs(twoorb_eigvals[eigi]); # eliminate log(-x)=nan
+                    else: print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(eigi,eigi, np.real(twoorb_eigvals[eigi]), np.imag(twoorb_eigvals[eigi]))); raise ValueError;
+                elif(twoorb_eigvals[eigi]==0): twoorb_eigvals[eigi] = np.exp(-100); # replace log(0.0)=-inf with log(e^-100)=-100
 
                                                                     # <---- maybe change e^-100 above
-        del twoorb_rdm;
-        if False:
-            print("after diagonalization:");
-            for eigi in range(len(twoorb_eigvals)): print(twoorb_eigvals[eigi]);
-            print("after log(rho):");
-            for eigi in range(len(twoorb_eigvals)): print(np.log(twoorb_eigvals[eigi]));
-            print("after multiplication:");
-            for eigi in range(len(twoorb_eigvals)): print(-twoorb_eigvals[eigi]*np.log(twoorb_eigvals[eigi]));
-        # finish cleaning up numerical instabilities
+            del twoorb_rdm;
+            if False:
+                print("after diagonalization:");
+                for eigi in range(len(twoorb_eigvals)): print(twoorb_eigvals[eigi]);
+                print("after log(rho):");
+                for eigi in range(len(twoorb_eigvals)): print(np.log(twoorb_eigvals[eigi]));
+                print("after multiplication:");
+                for eigi in range(len(twoorb_eigvals)): print(-twoorb_eigvals[eigi]*np.log(twoorb_eigvals[eigi]));
+            # finish cleaning up numerical instabilities
 
-        # get non Neumann entropy
-        ents[sitei, sitej] = np.dot( -twoorb_eigvals, np.log(twoorb_eigvals)); # = trace since 2orb_rdm is diag
-        ents[sitej, sitei] = 1*ents[sitei, sitej]; # symmetrize
-        #print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
-        #if(sitej == len(ents) - 1): assert False;
+            # get non Neumann entropy
+            ents[sitei, sitej] = np.dot( -twoorb_eigvals, np.log(twoorb_eigvals)); # = trace since 2orb_rdm is diag
+            ents[sitej, sitei] = 1*ents[sitei, sitej]; # symmetrize
+            print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
 
     return ents;
 

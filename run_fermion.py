@@ -23,79 +23,6 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-def get_oneorb_entropies(psi, eris_or_driver, block):
-    '''
-    '''
-    assert(core.SymmetryTypes.SZ in eris_or_driver.bw.symm_type);
-
-    impo = eris_or_driver.get_identity_mpo();
-    impo_result = tddmrg.compute_obs(psi, impo, eris_or_driver);
-    print("impo result = {:.4f}".format(impo_result));
-
-    nbuilder = eris_or_driver.expr_builder();
-    nbuilder.add_term("", [], 1.0);
-    nmpo = eris_or_driver.get_mpo(nbuilder.finalize());
-    nmpo_result = tddmrg.compute_obs(psi, nmpo, eris_or_driver);
-    print("nmpo result = {:.4f}".format(nmpo_result));
-    assert False
-    # return value
-    ents = np.zeros((eris_or_driver.n_sites,))
-
-    # iter over sites
-    for sitei in range(eris_or_driver.n_sites):
-
-        # single-orbital reduced density matrix for this site
-        # expressions from 2006 White (https://doi.org/10.1016/j.chemphys.2005.10.018) Table II
-        oneorb_rdm = np.zeros((4,4),dtype=float);
-
-        # <0|rho_p|0> = <1-n_up - n_down + nup*ndown>    
-        coefs_00 = [1,-1,-1,1];
-        mpos_00 = [eris_or_driver.get_identity_mpo(), 
-                   tddmrg.get_occsigma(eris_or_driver, sitei, 0, block), 
-                   tddmrg.get_occsigma(eris_or_driver, sitei, 1, block), 
-                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block)]  
-        for termi in range(len(mpos_00)):
-            term = coefs_00[termi]*tddmrg.compute_obs(psi, mpos_00[termi], eris_or_driver);
-            if(abs(np.imag(term)) > 1e-10): raise ValueError;
-            oneorb_rdm[0,0] += np.real(term);
-
-        # <up|rho_p|up> = <n_up - n_up*n_down>
-        coefs_11 = [1,-1];
-        mpos_11 = [tddmrg.get_occsigma(eris_or_driver, sitei, 0, block),
-                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block)];
-        for termi in range(len(mpos_11)):
-            term = coefs_11[termi]*tddmrg.compute_obs(psi, mpos_11[termi], eris_or_driver);
-            if(abs(np.imag(term)) > 1e-10): raise ValueError;
-            oneorb_rdm[1,1] += np.real(term);
-
-        # <down|rho_p|down> =
-        coefs_22 = [1,-1];
-        mpos_22 = [tddmrg.get_occsigma(eris_or_driver, sitei, 1, block),
-                   tddmrg.get_occupoccdown(eris_or_driver, sitei, block) ];
-        for termi in range(len(mpos_22)):
-            term = coefs_22[termi]*tddmrg.compute_obs(psi, mpos_22[termi], eris_or_driver);
-            if(abs(np.imag(term)) > 1e-10): raise ValueError;
-            oneorb_rdm[2,2] += np.real(term);
-
-        # <2|rho_p|2> = <n_up*n_down>
-        coefs_33 = [1];
-        mpos_33 = [tddmrg.get_occupoccdown(eris_or_driver, sitei, block)];
-        for termi in range(len(mpos_33)):
-            term = coefs_33[termi]*tddmrg.compute_obs(psi, mpos_33[termi], eris_or_driver);
-            if(abs(np.imag(term)) > 1e-10): raise ValueError;
-            oneorb_rdm[3,3] += np.real(term);
-
-        # clean up numerical instabilities that lead log -> nan
-        for diagi in range(len(oneorb_rdm)):
-            if(oneorb_rdm[diagi,diagi]<0):
-                if(abs(oneorb_rdm[diagi,diagi])<1e-10): oneorb_rdm[diagi,diagi] = abs(oneorb_rdm[diagi,diagi]); # eliminate log problems
-                else: print("rho[",diagi,diagi,"] = ", oneorb_rdm[diagi,diagi]); raise ValueError;
-
-        # get non Neumann entropy from one orb rdm
-        ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
-
-    return ents;
-            
 
 def get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1, verbose=0):
     '''
@@ -235,7 +162,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 
     # one orbital von Neumann entropies
     ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, block);
-    ents2 = tddmrg.twoorb_entropies_wrapper(psi, eris_or_driver, block);
+    ents2 = tddmrg.twoorb_entropies_wrapper(psi, eris_or_driver, central_d, block);
 
     # mutual information. Use convention that MI[p,q] >= 0, ie 2006 White Eq (8)
     # NB same as (-1) * 2013 Reiher Eq (13)
@@ -245,7 +172,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     which_mis = 1*central_d;
     if("Bsd" in params_dict.keys()): which_mis = [central_j[0], central_d[0]];
     dsite_mask = np.array([True if site in which_mis else False for site in range(Nsites)]);
-    # dsite_mask = np.ones_like(dsite_mask);
+    dsite_mask = np.ones_like(dsite_mask);
     print("ODM1 =\n", ents1[dsite_mask]);
     print("ODM2 =");
     for site in range(Nsites):
