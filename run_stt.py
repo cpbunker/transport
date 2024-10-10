@@ -25,8 +25,6 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-from run_fermion import get_orbital_entropies_use_npdm
-
 def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block):
     '''
     Print update on selected observables
@@ -42,53 +40,53 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     check_norm = eris_or_driver.expectation(psi, impo, psi)
     print("WF norm = {:.6f}".format(check_norm));
 
-    # impurity Sz and concurrence
-    Nsites = params_dict["Nsites"];
-    the_sites = params_dict["ex_sites"];
-    if(the_sites):
-        # site spins
-        s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[0], block);
-        gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
-        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[0],gd_s0_dmrg));
-        sdot_mpo = tddmrg.get_Sd_mu(eris_or_driver, the_sites[1], block);
-        gd_sdot_dmrg = tddmrg.compute_obs(psi, sdot_mpo, eris_or_driver);
-        print("<Sz d={:.0f}> = {:.6f}".format(the_sites[1], gd_sdot_dmrg));
+    # divide sites                              
+    Nsites = params_dict["NL"] + params_dict["NFM"] + params_dict["NR"];      
+    central_j = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
+    all_j = np.arange(0, Nsites);
+
+    # impurity Sz 
+    if(np.any(central_j)):
+        for dsite in central_j: # site spins
+            s0_mpo = tddmrg.get_Sd_mu(eris_or_driver, dsite, block);
+            gd_s0_dmrg = tddmrg.compute_obs(psi, s0_mpo, eris_or_driver);
+            print("<Sz d={:.0f}> = {:.6f}".format(dsite, gd_s0_dmrg));
+    if(len(central_j)==2):
         # (S1+S2)^2
-        S2_mpo = tddmrg.get_S2(eris_or_driver, the_sites, True, block);
+        S2_mpo = tddmrg.get_S2(eris_or_driver, central_j, False, block);
         S2_dmrg = tddmrg.compute_obs(psi, S2_mpo, eris_or_driver);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
-        # concurrence between 
-        #C_dmrg = tddmrg.concurrence_wrapper(psi, eris_or_driver, the_sites, block);
-        #print("<C"+str(the_sites)+"> = {:.6f}".format(C_dmrg));
-        # pseudo concurrence between 
-        #pC_dmrg = tddmrg.pseudoconcurrence_wrapper(psi, eris_or_driver, the_sites, block);
-        #print("<pC"+str(the_sites)+">= {:.6f}".format(pC_dmrg));
 
-    if False: # get orbital entropies -> mutual information
+    if True: # get orbital entropies -> mutual information
 
         ###### ******************** ###########
         ###### throws an error if   ###########
         ###### custom operators are ###########
         ###### are defined          ###########
-        odm1 = eris_or_driver.get_orbital_entropies(psi, orb_type=1); 
-        odm2 = eris_or_driver.get_orbital_entropies(psi, orb_type=2);
-        minfo = 0.5 * (odm1[:, None] + odm1[None, :] - odm2) * (1 - np.identity(len(odm1))); # (-1) * 2013 Reiher Eq (3)
+        ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, central_j, np.ones_like(central_j), block);
+        ents2 = tddmrg.twoorb_entropies_impurity(psi, eris_or_driver, central_j, block);
+        #ents1 = eris_or_driver.get_orbital_entropies(psi, orb_type=1); 
+        #ents2 = eris_or_driver.get_orbital_entropies(psi, orb_type=2);
+    else: # code for orbital entropies given custom operators
+        ents1 = get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1);
+
+    # mutual information
+    minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
                                                                     # so more entangled is larger number, up to max log(4)
 
-    else: # code for orbital entropies given custom operators
-        odm1 = get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1);
-
     # show results
-    thesite_mask = [True if site in the_sites else False for site in range(Nsites)];
-    print("ODM1 =\n", odm1[dsite_mask]);
+    dsite_mask = [True if site in central_j else False for site in range(Nsites)];
+    print("ODM1 =\n", ents1[dsite_mask]);
     print("ODM2 =");
     for site in range(Nsites):
         if(dsite_mask[site]):
-            print(odm2[site][dsite_mask], " d = {:.0f}".format(site));
+            print(ents2[site][dsite_mask], " d = {:.0f}".format(site));
     print("MI = (max = {:.6f})".format(np.log(2)));
     for site in range(Nsites):
         if(dsite_mask[site]):
             print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
+
+    return;
                            
 ##################################################################################
 #### run code

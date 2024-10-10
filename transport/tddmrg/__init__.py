@@ -90,11 +90,19 @@ def get_occ(eris_or_driver, whichsite, block, verbose=0):
     if(block): return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff);
 
-def get_Om(m):
+def get_Om(m, is_impurity):
     '''
     Theory: White 2006 (https://doi.org/10.1016/j.chemphys.2005.10.018) Table II
     '''
-    Om_dict = { # each m -> tuple of [expressions] [coefficients]
+    if(is_impurity):
+        Om_dict = {
+            6: (["MP"],[1]),
+            7: (["M"],[1]),
+            10:(["P"],[1]),
+            11:(["PM"],[1]),
+            };
+    else:
+        Om_dict = { # each m -> tuple of [expressions] [coefficients]
             1: (["", "cd", "CD", "cdCD"],[1,-1,-1,1]),
             2: (["D", "cdD"], [1,-1]),
             3: (["d", "CDd"], [1,-1]),
@@ -115,7 +123,7 @@ def get_Om(m):
 
     return Om_dict[m];
 
-def oneorb_entropies_wrapper(psi, eris_or_driver, block):
+def oneorb_entropies_wrapper(psi, eris_or_driver, whichsites, sites_are_imps, block):
     '''
     Compute the one-orbital reduced density matrix and extract the von Neumann entropy, for all *fermionic* orbitals
 
@@ -124,15 +132,25 @@ def oneorb_entropies_wrapper(psi, eris_or_driver, block):
     if(core.SymmetryTypes.SZ not in eris_or_driver.bw.symm_type): raise TypeError;
 
     # return value
-    ents = np.zeros((eris_or_driver.n_sites,),dtype=float)
+    ents = np.full((eris_or_driver.n_sites,),np.inf,dtype=float);
+
+    # identify the sites in whichsites and whether or not they are classified as singly-occupied 'impurity sites' rather than molecular orbitals
+    site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
+    sites_are_imps_expanded = np.zeros_like(site_mask);
+    for listindex in range(len(whichsites)):
+        sites_are_imps_expanded[whichsites[listindex]] = sites_are_imps[listindex];
 
     # iter over sites
-    for sitei in range(eris_or_driver.n_sites): # <--- *fermionic* orbitals
+    for sitei in np.arange(eris_or_driver.n_sites)[site_mask]: 
 
         # one-orbital reduced density matrix for this site
         # O(m) operators chosen come from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 2
-        oneorb_rdm = np.zeros((4,4),dtype=float);
-        oneorb_Oms = [1,6,11,16]; 
+        if(sites_are_imps_expanded[sitei]):
+            oneorb_rdm = np.zeros((2,2),dtype=float);
+            oneorb_Oms = [6,11];
+        else: # molecular orbitals
+            oneorb_rdm = np.zeros((4,4),dtype=float);
+            oneorb_Oms = [1,6,11,16]; 
 
         # one orbital reduced density matrix is *diagonal*
         for diagi in range(len(oneorb_rdm)):
@@ -140,7 +158,7 @@ def oneorb_entropies_wrapper(psi, eris_or_driver, block):
             # diagonal one-orb RDM elements are expectation values of fermionic operators
             # to get MPO for these expectation values, need to know expression, site, coefficient
             # get_Om gives list of expressions and coeffcients
-            expressions, coefs = get_Om(oneorb_Oms[diagi]);
+            expressions, coefs = get_Om(oneorb_Oms[diagi], sites_are_imps_expanded[sitei]);
             expect_builder = eris_or_driver.expr_builder();
             for termi in range(len(expressions)):
                 expect_builder.add_term(expressions[termi], [sitei]*len(expressions[termi]), coefs[termi]);
@@ -355,15 +373,13 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
     singly_occupied_mask = np.array([False, False, False, False, False, True, False, True, True, False, True, False, False, False, False, False]);
     twoorb_Oms = twoorb_Oms[singly_occupied_mask][:,singly_occupied_mask];
     twoorb_Oms_flags = twoorb_Oms_flags[singly_occupied_mask][:,singly_occupied_mask];
-    print(twoorb_Oms)
-    print(twoorb_Oms_flags)
-    assert False
     
     # only get entropy between sites both in whichsites
     for sitei in range(eris_or_driver.n_sites):
         site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
-        site_mask[sitei] = False;
-        if(site_mask[sitei]): jsites_iter = np.arange(0, eris_or_driver.n_sites)[site_mask];
+        if(site_mask[sitei]): 
+            site_mask[sitei] = False;
+            jsites_iter = np.arange(0, eris_or_driver.n_sites)[site_mask];
         else: jsites_iter = []; # skip these: sitejs with mask=True will be recovered when we do ents[sitei, sitej] = ents[sitej, sitei]
         for sitej in jsites_iter:
 
@@ -377,8 +393,10 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                     if(not np.any(Om_On)): pass; # this matrix element is always zero
                     else: # Om_On is a tuple of integers telling which Om, On operator expressions to use
                         if(twoorb_Oms_flags[rowi,coli] == True):
-                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                            On_exprs, On_coefs = get_Om(Om_On[1]);
+                            Om_exprs, Om_coefs = get_Om(Om_On[0],True);
+                            On_exprs, On_coefs = get_Om(Om_On[1], True); # <-- impurity assumption
+                                                                         # <-- !!!!!
+
                         else: # instead of taking <O(m)O(n)> we use the complex conjugate of the transposed matrix element
                             assert False
                             Om_On = twoorb_Oms[coli,rowi]; #<--- Here is where we call for transposed matrix element
@@ -404,9 +422,10 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                         expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
                         expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
                         if(twoorb_Oms_flags[rowi,coli] == False):
-                            twoorb_rdm[rowi, coli] = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
-                        else:
-                            twoorb_rdm[rowi, coli] = expect_val;
+                            assert False;
+                            expect_val = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
+                        twoorb_rdm[rowi, coli] = expect_val;
+                        twoorb_rdm[coli, rowi] = np.conj(expect_val); # fill in upper half triangle of rdm with complex conjugate of lower half
 
             # clean up numerical instabilities
             for rowi in range(len(twoorb_Oms)):
@@ -457,7 +476,7 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
             ents[sitei, sitej] = np.dot( -twoorb_eigvals, np.log(twoorb_eigvals)); # = trace since 2orb_rdm is diag
             ents[sitej, sitei] = 1*ents[sitei, sitej]; # symmetrize
             print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
-    assert False
+
     return ents;
 
 def get_sz(eris_or_driver, whichsite, block, verbose=0):

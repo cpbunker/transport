@@ -23,100 +23,8 @@ print(">>> PWD: ",os.getcwd());
 ##################################################################################
 #### wrappers
 
-
-def get_orbital_entropies_use_npdm(eris_or_driver, psi, orb_type=1, verbose=0):
-    '''
-    replace block2.driver.core.get_orbital_entropies_use_npdm(self, ket, orb_type=1, iprint=0) method
-    with get_npdm usage customized
-
-    Returns:
-    ents : np.ndarray[float]
-        When ``orb_type == 1``, this is ``ndim == 1`` vector containing the 1-orbital entropies.
-        When ``orb_type == 2``, this is ``ndim == 2`` matrix containing the 2-orbital entropies.
-    '''
-    assert(core.SymmetryTypes.SZ in eris_or_driver.bw.symm_type);
-
-    # return value
-    ents = np.zeros((eris_or_driver.n_sites,) * orb_type)
-    psicopy = psi.deep_copy(psi.info.tag + "@ORB-ENT-TMP")
-    print("ents = ",np.shape(ents));
-
-    # expressions ???
-    myOE = core.OrbitalEntropy()
-    if orb_type == 1:
-        exprs, nx = myOE.get_one_orb_rdm_exprs(is_sgf=False)
-    else:
-        exprs, nx = myOE.get_two_orb_rdm_exprs(is_sgf=False)
-    print("exprs = ",type(exprs), len(exprs))
-    print(exprs.keys())
-    print("nx = ", np.shape(nx));
-
-    # ??? density matrices
-    rrdms = np.zeros(ents.shape + (nx,),dtype=complex if core.SymmetryTypes.CPX in eris_or_driver.bw.symm_type else float,)
-    print("rrdms = ", np.shape(rrdms));
-
-    # N-particle density matrices
-    my_pdm_type=[len(k) // 2 for (k, _), _ in exprs.items()] # fermion number of the op string (1 for cd, 2 for cdCD, etc)
-    my_npdm_expr=[k for (k, _), _ in exprs.items()] # op string part of keys of expressions dictionary
-    my_mask=[list(m) for (_, m), _ in exprs.items()] # quantum number part of keys of expressions dictionary, each converted tuple->list
-    npdms = eris_or_driver.get_npdm(psicopy,pdm_type=my_pdm_type,npdm_expr=my_npdm_expr,mask=my_mask,iprint=verbose);
-    #print("pdm_type = ",my_pdm_type)
-    #print("npdm_expr = ",my_pdm_expr)
-    #print("mask = ", [list(m) for (_, m), _ in exprs.items()])
-    print("npdms = ", np.shape(npdms))
-    print("pdm_type | npdm_expr | mask          | npdm ");
-    for eli in range(len(npdms)): 
-        print(str(my_pdm_type[eli])+" "*9, my_npdm_expr[eli]+" "*(11-len(my_npdm_expr[eli])),
-                str(my_mask[eli])+" "*(14-len(str(my_mask[eli]))), type(npdms[eli]), np.shape(npdms[eli]))
-    assert False
-    # iter over all npdms (1<->1 with the expressions)
-    # NB there are 4 (36) expressions for orb_type=1(2), regardless of Ne or Nsites
-    ix_info_dict = {}
-    for ((_, m), exprvalue), npdm in zip(exprs.items(), npdms):
-        for ix, fsign in exprvalue: # values of exprs dictionary represent ???
-                                # 0 <= ix < 4(36) for orb_type=1(2) goes over all fermionic strings
-                                # fsign = +1 or -1 always
-            if(ix not in ix_info_dict): ix_info_dict[ix]=1;
-            else: ix_info_dict[ix] += 1;
-
-            # update rrdms
-            if orb_type == 1:
-                rrdms[..., ix] += npdm * fsign # <-- we are modifying all sites at once!
-            elif orb_type == 2:
-                if len(set(m)) == 0:
-                    rrdms[..., ix] += npdm[None, None] * fsign
-                elif len(set(m)) == 1 and m[0] == 0:
-                    rrdms[..., ix] += npdm[:, None] * fsign
-                elif len(set(m)) == 1 and m[0] == 1:
-                    rrdms[..., ix] += npdm[None, :] * fsign
-                else:
-                    rrdms[..., ix] += npdm * fsign
-
-    ix_info_dict = dict(sorted(ix_info_dict.items()))
-    print("********")
-    print("shape rrdms[...,ix] = ",np.shape(rrdms[...,0])) # recall npdms[index] can have shapes (), (nsites,) for orb_type=1
-                                   # and shapes (), (nsites,), (nsites,nsites) for orb_type=2
-    print("********")
-
-    # get the entanglements
-    if orb_type == 1:
-        for i in range(eris_or_driver.n_sites):
-            ld = np.array(rrdms[i])
-            ld[np.abs(ld) < 1e-14] = 0
-            ld = ld[ld != 0]
-            ent = float(np.sum(-ld * np.log(ld)).real)
-            ents[i] = ent
-    elif orb_type == 2:
-        for i in range(eris_or_driver.n_sites):
-            for j in range(eris_or_driver.n_sites):
-                ld = np.array(rrdms[i, j])
-                myOE = core.OrbitalEntropy()
-                ld = myOE.get_two_orb_rdm_eigvals(ld, diag_only=i == j)
-                ld[np.abs(ld) < 1e-14] = 0
-                ld = ld[ld != 0]
-                ent = float(np.sum(-ld * np.log(ld)).real)
-                ents[i, j] = ent
-    return ents;
+def get_orbital_entropies_use_npdm():
+    raise NotImplementedError;
 
 def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block):
     '''
@@ -161,27 +69,29 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     print("<(S1+S2)^2>= {:.6f}".format(S2_dmrg));
 
     # one orbital von Neumann entropies
-    ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, block);
-    ents2 = tddmrg.twoorb_entropies_wrapper(psi, eris_or_driver, central_d, block);
+    ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, central_d, np.ones_like(central_d), block);
+    ents2 = tddmrg.twoorb_entropies_impurity(psi, eris_or_driver, central_d, block);
 
     # mutual information. Use convention that MI[p,q] >= 0, ie 2006 White Eq (8)
     # NB same as (-1) * 2013 Reiher Eq (13)
     minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); 
 
-    #vresults
+    # results
     which_mis = 1*central_d;
     if("Bsd" in params_dict.keys()): which_mis = [central_j[0], central_d[0]];
     dsite_mask = np.array([True if site in which_mis else False for site in range(Nsites)]);
-    dsite_mask = np.ones_like(dsite_mask);
     print("ODM1 =\n", ents1[dsite_mask]);
     print("ODM2 =");
     for site in range(Nsites):
         if(dsite_mask[site]):
             print(ents2[site][dsite_mask], " d = {:.0f}".format(site));
     print("MI = (max = {:.6f})".format(np.log(2)));
+    dsite_mask = np.array([True if site in which_mis else False for site in range(Nsites)]);
     for site in range(Nsites):
         if(dsite_mask[site]):
             print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
+
+    return;
 
 ##################################################################################
 #### run code
