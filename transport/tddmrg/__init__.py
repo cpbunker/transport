@@ -31,7 +31,7 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_
     # time evolve with repeated snapshots
     tevol_mps_inst = psi;
     for timei in range(Nupdates):
-        if(False): pass; #timei in [0]): the_verbose=verbose;
+        if(timei in [0]): the_verbose=verbose;
         else: the_verbose=0; # ensures verbosity only on initial time steps
         total_time += time_update;
         evol_time0 = time.time()
@@ -323,7 +323,7 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
 
     return ents;
 
-def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
+def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, are_all_impurities, block):
     '''
     Compute the two-orbital reduced density matrix and extract the von Neumann entropy
 
@@ -331,6 +331,7 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
     whichsites tells us all such states
     '''
     if(core.SymmetryTypes.SZ not in eris_or_driver.bw.symm_type): raise TypeError;
+    assert(are_all_impurities);
 
     # return value
     ents = np.full((eris_or_driver.n_sites,eris_or_driver.n_sites), np.inf, dtype=float); # 
@@ -371,16 +372,17 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ]]);
     #TRUNCATE above to singly-occupied basis states only!
     singly_occupied_mask = np.array([False, False, False, False, False, True, False, True, True, False, True, False, False, False, False, False]);
-    twoorb_Oms = twoorb_Oms[singly_occupied_mask][:,singly_occupied_mask];
-    twoorb_Oms_flags = twoorb_Oms_flags[singly_occupied_mask][:,singly_occupied_mask];
+    if(are_all_impurities):
+        twoorb_Oms = twoorb_Oms[singly_occupied_mask][:,singly_occupied_mask];
+        twoorb_Oms_flags = twoorb_Oms_flags[singly_occupied_mask][:,singly_occupied_mask];
     
     # only get entropy between sites both in whichsites
+    site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
     for sitei in range(eris_or_driver.n_sites):
-        site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
         if(site_mask[sitei]): 
-            site_mask[sitei] = False;
             jsites_iter = np.arange(0, eris_or_driver.n_sites)[site_mask];
-        else: jsites_iter = []; # skip these: sitejs with mask=True will be recovered when we do ents[sitei, sitej] = ents[sitej, sitei]
+            jsites_iter = jsites_iter[jsites_iter < sitei]; # just do j<i and use ents2[j,i] = ents2[i,j]
+        else: jsites_iter = []; 
         for sitej in jsites_iter:
 
             # two-orbital reduced density matrix for (sitei, sitej) pair
@@ -393,16 +395,15 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                     if(not np.any(Om_On)): pass; # this matrix element is always zero
                     else: # Om_On is a tuple of integers telling which Om, On operator expressions to use
                         if(twoorb_Oms_flags[rowi,coli] == True):
-                            Om_exprs, Om_coefs = get_Om(Om_On[0],True);
-                            On_exprs, On_coefs = get_Om(Om_On[1], True); # <-- impurity assumption
-                                                                         # <-- !!!!!
+                            Om_exprs, Om_coefs = get_Om(Om_On[0], are_all_impurities);
+                            On_exprs, On_coefs = get_Om(Om_On[1], are_all_impurities); # <-- impurity assumption
 
                         else: # instead of taking <O(m)O(n)> we use the complex conjugate of the transposed matrix element
-                            assert False
+                            assert(not are_all_impurities);
                             Om_On = twoorb_Oms[coli,rowi]; #<--- Here is where we call for transposed matrix element
                             assert(twoorb_Oms_flags[coli,rowi]==True); # otherwise neither is correct!
-                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                            On_exprs, On_coefs = get_Om(Om_On[1]);
+                            Om_exprs, Om_coefs = get_Om(Om_On[0], are_all_impurities);
+                            On_exprs, On_coefs = get_Om(Om_On[1], are_all_impurities);
 
                         # distribute two lists of expressions into one
                         combo_exprs = []
@@ -422,7 +423,7 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                         expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
                         expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
                         if(twoorb_Oms_flags[rowi,coli] == False):
-                            assert False;
+                            assert(not are_all_impurities);
                             expect_val = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
                         twoorb_rdm[rowi, coli] = expect_val;
                         twoorb_rdm[coli, rowi] = np.conj(expect_val); # fill in upper half triangle of rdm with complex conjugate of lower half
@@ -461,7 +462,6 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
                     else: print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(eigi,eigi, np.real(twoorb_eigvals[eigi]), np.imag(twoorb_eigvals[eigi]))); raise ValueError;
                 elif(twoorb_eigvals[eigi]==0): twoorb_eigvals[eigi] = np.exp(-100); # replace log(0.0)=-inf with log(e^-100)=-100
 
-                                                                    # <---- maybe change e^-100 above
             del twoorb_rdm;
             if False:
                 print("after diagonalization:");
@@ -478,6 +478,39 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, block):
             print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
 
     return ents;
+
+def mutual_info_wrapper(psi, eris_or_driver, whichsites, are_all_impurities, block, verbose=0):
+    '''
+    Get the mutual information between two sites, from their shared two-orbital von Neumann entropy and individual one-orbital von Neumann entropies
+
+    Like S2_wrapper, this is designed as a pairwise observable between two impurity sites, but can be used on two molecular orbitals also
+    
+    Mutual information is a measure of entanglement.
+    For two impurity sites, max entanglement is MI=ln(2)
+    For two molecular orbitals, max entanglement is MI=ln(4)
+    In both cases, min entanglement is MI=0
+    '''
+    if(not block): raise NotImplementedError;
+    if(len(whichsites) != 2): raise ValueError; # like (S1+S2)^2, for now stick to pairwise impurities
+    assert(not(whichsites[0] == whichsites[1])); # sites have to be distinct
+    if(not isinstance(are_all_impurities, bool)): raise TypeError;
+
+    # whether to treat all sites as impurity sites or molecular orbitals
+    # NB oneorb_entropies wrapper can treat separate sites as impurity/mol orb separately
+    # but the rest of the code lacks this functionality for now
+    if(are_all_impurities): sites_are_imps = np.ones_like(whichsites, dtype=int);
+    else: sites_are_imps = np.zeros_like(whichsites, dtype=int);
+    site_mask = [True if site in whichsites else False for site in range(eris_or_driver.n_sites)];
+    
+    # von Neumann entropies, 1 orbital and 2 orbitals
+    ents1 = oneorb_entropies_wrapper(psi, eris_or_driver, whichsites, sites_are_imps, block);
+    ents2 = twoorb_entropies_impurity(psi, eris_or_driver, whichsites, are_all_impurities, block);
+
+    # mutual information
+    minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+    minfo = minfo[site_mask][:,site_mask];
+    assert(len(minfo)==2);
+    return minfo[0,1]; # off diagonal
 
 def get_sz(eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -616,16 +649,21 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
 
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     
-def get_S2(eris_or_driver, whichsites, fermion, block, verbose=0):
+def S2_wrapper(psi, eris_or_driver, whichsites, is_impurity, block, verbose=0):
     '''
+    Build MPO and get expect val for the pairwise observable (S1+S2)^2
+
+    Typically the pair of spins will be impurity sites rather than molecular orbitals, but both options are supported as long as each spin is same category
     '''
     if(not block): raise NotImplementedError;
+    if(len(whichsites) != 2): raise ValueError; # (S1+S2)^2 is a pairwise observable
     assert(not(whichsites[0] == whichsites[1])); # sites have to be distinct
+    if(not isinstance(is_impurity, bool)): raise TypeError;
     builder = eris_or_driver.expr_builder();
 
     # construct
     which1, which2 = whichsites;
-    if(fermion): # between fermions on two sites
+    if(not is_impurity): # between fermions on two molecular orbitals
         for jpair in [[which1,which1,which1,which1], [which1,which1,which2,which2], [which2,which2,which1,which1], [which2,which2,which2,which2]]:
             builder.add_term("cdcd", jpair, 0.25);
             builder.add_term("cdCD", jpair,-0.25);
@@ -641,7 +679,10 @@ def get_S2(eris_or_driver, whichsites, fermion, block, verbose=0):
             builder.add_term("MP",jpair,0.5);
 
     # return
-    return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    mpo = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    ret = compute_obs(psi, mpo, eris_or_driver);
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
+    return np.real(ret);
 
 def purity_wrapper(psi,eris_or_driver, whichsite, block):
     '''
@@ -654,7 +695,7 @@ def purity_wrapper(psi,eris_or_driver, whichsite, block):
         sterms.append( compute_obs(psi, op, eris_or_driver));
     purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
     ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
 def get_chirality(eris_or_driver, whichsites, block, symm_block, verbose=0):
@@ -725,7 +766,7 @@ def chirality_wrapper(psi,eris_or_driver, whichsites, block):
         op = get_chirality(eris_or_driver, whichsites, block, sblock);
         sterms.append( compute_obs(psi, op, eris_or_driver));
     ret = np.sum(sterms);
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
 def get_concurrence(eris_or_driver, whichsites, symm_block, add_ident, block, verbose=0):
@@ -800,34 +841,9 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
        
     # return
     ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
     
-def pseudoconcurrence_wrapper(psi,eris_or_driver, whichsites, block):
-    '''
-    I call this the "pseudo-concurrence", meaning we construct the same \sigma_y^1 \otimes \sigma_y^2 
-    MPO as in the concurrence above, but we do not take the complex conjugate of the ket coefficients
-    anymore (thus we do not have to use pyblock3 at all!)
-    In other words this is just a normal expectation value of the operator produced by get_concurrence
-    Pseudoconcurrence only measures entanglement when all the ket coefficients are real valued!
-    '''
-    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
-    raise NotImplementedError; # not physically meaningful
-    
-    # exp vals across symmetry blocks
-    sblocks = [-2,0,2];
-    sterms = [];
-    for sblock in sblocks:
-        mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
-        # since complex conjugation of the state is not required, we can use
-        # the normal block2 construction for determining the expectation value of an MPO
-        sterms.append( compute_obs(psi, mpo, eris_or_driver)); # already/norm
-
-    # return
-    ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
-    return np.real(ret);
-
 def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
     '''
     MPO for particle current from whichsites[0] to whichsites[1]
@@ -885,6 +901,8 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
         pcurrent_left += left_val;
 
     # right part
+    print("\n>>> SKIPPING PCURRENT RIGHT\n>>> SKIPPING PCURRENT RIGHT\n");
+    assert False;
     #pcurrent_right = 0.0;
     #for spin in [0,1]:
     #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
@@ -893,7 +911,7 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
 
     # average
     ret = complex(1,0)*(pcurrent_left); # must add  e/\hbar * th/Vb later
-    if(abs(np.imag(ret)) > 1e-12): print(ret); raise ValueError;
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
 ##########################################################################################################

@@ -64,8 +64,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         #print("<sz^2 d={:.0f}> = {:.6f} (Need 0.25 for localization)".format(d, sz2_dmrg));
 
     # (S1+S2)^2
-    S2_mpo = tddmrg.get_S2(eris_or_driver, central_d[:2], fermion=True, block=block);
-    S2_dmrg = tddmrg.compute_obs(psi, S2_mpo, eris_or_driver);
+    S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, central_d[:2], is_impurity=False, block=block);
     print("<(S1+S2)^2>= {:.6f}".format(S2_dmrg));
 
     # one orbital von Neumann entropies
