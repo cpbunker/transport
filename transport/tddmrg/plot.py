@@ -54,8 +54,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         Jsd, Jx, Jz = params_dict["Jsd"], params_dict["Jx"], params_dict["Jz"];
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
-        if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
-        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(Jsd)+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(Jx, Jz, Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_", "S2_", "MI_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
@@ -129,9 +128,9 @@ def snapshot_fromdata(loadname, time, sys_type):
     
     # plot charge and spin vs site
     if(sys_type == "STT"):
-        obs_strs = ["occ_","sz_","Sdz_","pur_", "S2_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$|\mathbf{S}_d|$","$pC_{d,d+1}$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $"];
-        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[2.0,0.0]];
+        obs_strs = ["occ_", "sz_", "Sdz_", "S2_", "MI_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
+        axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[2.0,0.0],[np.log(2),0.0]];
     elif(sys_type == "SIAM"):
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];

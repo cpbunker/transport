@@ -2,4 +2,4 @@ block_scratch/*
 slurm/*
 tex.py
 singlet/*
-pdm_example.py
+data/siets

@@ -49,11 +49,13 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_
         # observables
         check_time0 = time.time();
         check_func(params_dict,tevol_mps_inst,driver_inst,mpo_inst,total_time, True);
-        check_time1 = time.time();
-        print("\n>>>> Observables CPU time = {:.1f} min\n".format((check_time1-check_time0)/60));
 
         # plot and/or save observables
-        if(plot_func is not None): plot_func(tevol_mps_inst, driver_inst, params_dict, save_name, total_time, True);
+        if(plot_func != None): plot_func(tevol_mps_inst, driver_inst, params_dict, save_name, total_time,True);
+        
+        check_time1 = time.time();
+        print("\n>>>> Observables CPU time = {:.1f} min\n".format((check_time1-check_time0)/60));
+        
     return;
 
 ################################################################################
