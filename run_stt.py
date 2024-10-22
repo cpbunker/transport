@@ -56,24 +56,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, central_j[:2], is_impurity=True, block=block);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
 
-    if False: # get orbital entropies -> mutual information
-        ents1 = tddmrg.oneorb_entropies_wrapper(psi, eris_or_driver, central_j, np.ones_like(central_j), block);
-        ents2 = tddmrg.twoorb_entropies_impurity(psi, eris_or_driver, central_j, block);
-        minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
-
-        # show results
-        dsite_mask = [True if site in central_j else False for site in range(Nsites)];
-        print("ODM1 =\n", ents1[dsite_mask]);
-        print("ODM2 =");
-        for site in range(Nsites):
-            if(dsite_mask[site]):
-                print(ents2[site][dsite_mask], " d = {:.0f}".format(site));
-        print("MI = (max = {:.6f})".format(np.log(2)));
-        for site in range(Nsites):
-            if(dsite_mask[site]):
-                print(minfo[site][dsite_mask], " d = {:.0f}".format(site));
-
-    else: # code for orbital entropies given custom operators
+        # mutual info
         minfo = tddmrg.mutual_info_wrapper(psi, eris_or_driver, central_j, True, block);
         print("MI[{:.0f},{:.0f}] = {:.6f} (max = {:.6f})".format(*central_j[:2], minfo, np.log(2)));
 

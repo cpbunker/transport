@@ -15,7 +15,7 @@ def get_fname(the_path, the_obs, the_xy, the_time):
     '''
     return the_path+"_arrays/"+the_obs+the_xy+"js_time{:.2f}.npy".format(the_time)
 
-def get_ylabel(the_obs, the_factor, dstring="d"):
+def get_ylabel(the_obs, the_factor, dstring="d", ddt=False):
     '''
     '''
     if(isinstance(dstring, int)): 
@@ -32,6 +32,11 @@ def get_ylabel(the_obs, the_factor, dstring="d"):
     elif(the_obs=="S2_"): ret = "{:.1f}".format(the_factor)+"$\langle (\mathbf{S}_"+dstring+" + \mathbf{S}_{"+dstringp1+"})^2 \\rangle/\hbar^2$";
     elif(the_obs=="MI_"): ret = "$\\frac{1}{\ln(2)}MI["+dstring+", "+dstringp1+"]$";
     else: print(the_obs); raise NotImplementedError;
+    
+    # time derivatives
+    if(ddt): ret = "$\\frac{d}{dt}$"+ret;
+    
+    # return
     print(the_obs,"-->",ret);
     return ret;
 
@@ -219,8 +224,103 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     plt.tight_layout();
     plt.show();
     
-elif(case in [5,6]): # left lead, SR, right lead occupancy as a function of time
-    if(case in [6]): difference=True;
+if(case in [5,6]): # observables RATES OF CHANGE vs time, for two data sets side by side
+
+    # axes
+    fig, ax = plt.subplots();
+    params = json.load(open(datafiles[0]+".txt"));
+    if(case in [6]): plot_S2 = True;
+    else: plot_S2 = False; 
+    Jflow = True;    
+
+    #### iter over triplet/singlet
+    for dfile in datafiles:
+        if("singlet" in dfile): mylinestyle = "dashed";
+        elif("triplet" in dfile): mylinestyle = "solid";
+        print("\n>>>",mylinestyle,"=",dfile);
+        
+        # time evolution params
+        params = json.load(open(dfile+".txt"));
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        print("\nUpdate time = {:.2f}".format(params["tupdate"]));
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+
+        # which imps to get data for
+        which_imp = 0;
+        assert(which_imp == 0);
+        assert(params["NFM"] == 2); # number of d sites
+        Nconf = params["Nconf"];
+        Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
+        
+        # incoming electron flow rate = dn_conf / dt
+        label2 = "$ \left| \\frac{d}{dt} n_{conf} \\right|$";
+        if(Jflow): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+        print(obs2,"-->",label2);
+        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
+        for ti in range(len(times)):
+            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+        yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
+        
+        # normalize by max flow rate
+        Jflow = 1.0;
+        if(Jflow): Jflow = max(abs(np.gradient(factor2*yjC_vs_time, times))); # time scale normalized
+        ax.plot(times, abs(np.gradient(factor2*yjC_vs_time, times))/Jflow, color=color2, linestyle=mylinestyle);
+
+        # COMBINED impurity z spin vs time, time scale normalized by Jflow
+        obs1, factor1, color1 = "Sdz_", 1, "darkred";
+        label1 = "$\\frac{d}{dt} \langle S_1^z + S_2^z \\rangle /\hbar$";
+        if(Jflow): label1 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+        print(obs1,"-->",label1);
+        yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        for ti in range(len(times)):
+            yds_vs_time[ti] = np.load(dfile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
+        yds_summed = np.sum(yds_vs_time, axis=1);
+        ax.plot(times,np.gradient(yds_summed, times)/Jflow,color=color1, linestyle=mylinestyle);
+        ax.set_ylabel(label1, color=color1, fontsize=fontsize1);
+    
+        # (S1 + S2)^2
+        if(plot_S2):
+            obs4, factor4, color4 = "S2_", 0.5, "black";
+            label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=True);
+            if(Jflow): label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+            S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+            for ti in range(len(times)):
+                S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+            ax.plot(times, np.gradient(factor4*S2_vs_time[:,which_imp], times)/Jflow, color=color4, linestyle=mylinestyle);
+        else: # plot mutual info
+            obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
+            label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=True);
+            if(Jflow): label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+            S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+            for ti in range(len(times)):
+                S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+            ax.plot(times, np.gradient(factor4*S2_vs_time[:,which_imp],times)/Jflow, color=color4, linestyle=mylinestyle);
+        
+    # formatting
+    ax3 = ax.twinx();
+    ax3.yaxis.set_label_position("left");
+    ax3.spines.left.set_position(("axes", -0.2));
+    ax3.spines.left.set(alpha=0.0);
+    ax3.set_yticks([])
+    # label later -> on right side
+    ax4 = ax.twinx();
+    ax4.yaxis.set_label_position("right");
+    ax4.spines.right.set_position(("axes", 1.0));
+    ax4.spines.right.set(alpha=1.0);
+    ax4.set_yticks([])
+    ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # labels (S1+S2)^2 on left
+    ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt on right
+    ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
+    ax.set_title( open(datafiles[0]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+
+    # show
+    plt.tight_layout();
+    plt.show();
+    
+elif(case in [7,8]): # left lead, SR, right lead occupancy as a function of time
+    if(case in [8]): difference=True;
     else: difference = False;
     
     # axes
@@ -242,7 +342,7 @@ elif(case in [5,6]): # left lead, SR, right lead occupancy as a function of time
             times[ti] = (update0 + ti)*tupdate;
             
         # occ vs time
-        NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
+        NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
         Nsites = NL+NFM+NR; 
         yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
         for ti in range(len(times)):
@@ -250,8 +350,13 @@ elif(case in [5,6]): # left lead, SR, right lead occupancy as a function of time
 
         # break up occupancies
         yjL_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1);
+        yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
         yjSR_vs_time = np.sum(yjs_vs_time[:,NL:NL+NFM], axis=1);
         yjR_vs_time = np.sum(yjs_vs_time[:,NL+NFM:], axis=1);
+        
+        yjSR_vs_time = 1*yjC_vs_time; # <----- !!!
+                                      # <----- !!!
+                                      
         if(difference): # only plot change in occupancy
             print("LL n(0) = {:.4f}".format(yjL_vs_time[0]));
             yjL_vs_time = yjL_vs_time - yjL_vs_time[0];
@@ -335,21 +440,23 @@ if(case in [10,11]): # animate time evol
     ax3.set_yticks([])
     ax3.set_ylabel(get_ylabel(obs3, factor3), color=color3, fontsize=fontsize1);
 
-    if(plot_S2): # plot (S1+S2)^2 /2
-        obs4, factor4, color4, mark4 = "S2_", 0.5, "black", "^";
-        xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(update0*tupdate));
-        yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(update0*tupdate));
-    else: # plot mutual information
-        obs4, factor4, color4, mark4 = "MI_", 1/np.log(2), "black", "^";
-        xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(update0*tupdate));
-        yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(update0*tupdate));
-    S2, = ax.plot(xds_4, factor4*yds_4,marker=mark4,color=color4);
-    ax4 = ax.twinx();
-    ax4.yaxis.set_label_position("right");
-    ax4.spines.right.set_position(("axes", 1.05));
-    ax4.spines.right.set(alpha=0.0);
-    ax4.set_yticks([])
-    ax4.set_ylabel(get_ylabel(obs4, factor4), color=color4, fontsize=fontsize1);
+    # pairwise observable
+    if(params["NFM"]>1):
+        if(plot_S2): # plot (S1+S2)^2 /2
+            obs4, factor4, color4, mark4 = "S2_", 0.5, "black", "^";
+            xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(update0*tupdate));
+            yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(update0*tupdate));
+        else: # plot mutual information
+            obs4, factor4, color4, mark4 = "MI_", 1/np.log(2), "black", "^";
+            xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(update0*tupdate));
+            yds_4 = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(update0*tupdate));
+        S2, = ax.plot(xds_4, factor4*yds_4,marker=mark4,color=color4);
+        ax4 = ax.twinx();
+        ax4.yaxis.set_label_position("right");
+        ax4.spines.right.set_position(("axes", 1.05));
+        ax4.spines.right.set(alpha=0.0);
+        ax4.set_yticks([])
+        ax4.set_ylabel(get_ylabel(obs4, factor4), color=color4, fontsize=fontsize1);
 
     # time evolve observables
     plt.tight_layout();

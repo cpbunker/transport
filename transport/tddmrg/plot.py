@@ -59,6 +59,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         obs_strs = ["occ_","sz_","Sdz_", "S2_", "MI_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[2.0,0.0],[np.log(2),0.0]];
+        if(params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
+            obs_strs, ylabels, axlines = obs_strs[:-2], ylabels[:-2], axlines[:-2];
     elif(sys_type=="SIAM"):
         is_impurity = False;
         th, Vg, U, Vb = params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
