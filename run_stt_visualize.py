@@ -53,6 +53,7 @@ obs1, factor1, color1, mark1, = "Sdz_", 2,"darkred", "s";
 ticks1, linewidth1, fontsize1 =  (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
 obs2, factor2, color2, mark2 = "occ_", 1, "cornflowerblue", "o";
 obs3, factor3, color3, mark3 = "sz_", 2, "darkblue", "o";
+obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
 num_xticks = 4;
 datamarkers = ["s","^","d","*"];
 
@@ -96,6 +97,8 @@ if(case in [1,2]): # observables vs time
     # AVERAGE electron spin vs time
     Ne = params["Ne"]; # number deloc electrons
     factor3 = factor3/Ne; # sum normalization
+    label3 = "$\\frac{1}{N_e} \sum_j  2\langle s_j^z \\rangle /\hbar $";
+    print(obs3,"-->",label3);
     yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(datafile+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
@@ -106,8 +109,6 @@ if(case in [1,2]): # observables vs time
     ax3.spines.left.set_position(("axes", -0.15));
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([]);
-    label3 = "$\\frac{1}{N_e} \sum_j  2\langle s_j^z \\rangle /\hbar $";
-    print(obs3,"-->",label3);
     ax3.set_ylabel(label3, color=color3, fontsize=fontsize1);
 
     if(plot_S2): # plot S^2
@@ -118,7 +119,6 @@ if(case in [1,2]): # observables vs time
             S2_vs_time[ti] = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
         ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4);
     else: # plot mutual info
-        obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
         label4 = get_ylabel(obs4, factor4, dstring=which_imp);
         S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
         for ti in range(len(times)):
@@ -172,7 +172,7 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
         for ti in range(len(times)):
             yds_vs_time[ti] = np.load(dfile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
         yds_summed = np.sum(yds_vs_time, axis=1);
-        ax.plot(times,yds_summed,color=color1, linestyle=mylinestyle);
+        ax.plot(times,factor1*yds_summed,color=color1, linestyle=mylinestyle);
         ax.set_ylabel(label1, color=color1, fontsize=fontsize1);
 
         # COMBINED electron spin vs time
@@ -195,7 +195,6 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
                 S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
             ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
         else: # plot mutual info
-            obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
             label4 = get_ylabel(obs4, factor4, dstring=which_imp);
             S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
             for ti in range(len(times)):
@@ -224,19 +223,30 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     plt.tight_layout();
     plt.show();
     
-if(case in [5,6]): # observables RATES OF CHANGE vs time, for two data sets side by side
+if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data sets side by side
 
+    def do_gradient(yarr, xarr, do=True):
+        if(do): # actually take gradient
+            return abs(np.gradient(yarr, xarr));
+        else:
+            return yarr;
+        
     # axes
     fig, ax = plt.subplots();
     params = json.load(open(datafiles[0]+".txt"));
-    if(case in [6]): plot_S2 = True;
-    else: plot_S2 = False; 
-    Jflow = True;    
+    if(case in [6,8,9]): plot_occ = True; # chooses observables to be plotted as occupancies
+    else: plot_occ = False; 
+    norm_to_Jflux = True;
+    if(case in [5,6]): norm_to_Jflux=False;
+    take_gradient = 1*norm_to_Jflux; 
+    if(case in [9]): use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy  
+    else: use_Jobs = False; 
 
     #### iter over triplet/singlet
     for dfile in datafiles:
         if("singlet" in dfile): mylinestyle = "dashed";
         elif("triplet" in dfile): mylinestyle = "solid";
+        else: mylinestyle = "dotted";
         print("\n>>>",mylinestyle,"=",dfile);
         
         # time evolution params
@@ -253,50 +263,101 @@ if(case in [5,6]): # observables RATES OF CHANGE vs time, for two data sets side
         assert(params["NFM"] == 2); # number of d sites
         Nconf = params["Nconf"];
         Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
-        
-        # incoming electron flow rate = dn_conf / dt
-        label2 = "$ \left| \\frac{d}{dt} n_{conf} \\right|$";
-        if(Jflow): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-        print(obs2,"-->",label2);
-        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-        yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
-        
-        # normalize by max flow rate
-        Jflow = 1.0;
-        if(Jflow): Jflow = max(abs(np.gradient(factor2*yjC_vs_time, times))); # time scale normalized
-        ax.plot(times, abs(np.gradient(factor2*yjC_vs_time, times))/Jflow, color=color2, linestyle=mylinestyle);
 
-        # COMBINED impurity z spin vs time, time scale normalized by Jflow
-        obs1, factor1, color1 = "Sdz_", 1, "darkred";
-        label1 = "$\\frac{d}{dt} \langle S_1^z + S_2^z \\rangle /\hbar$";
-        if(Jflow): label1 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-        print(obs1,"-->",label1);
-        yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
-        for ti in range(len(times)):
-            yds_vs_time[ti] = np.load(dfile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
-        yds_summed = np.sum(yds_vs_time, axis=1);
-        ax.plot(times,np.gradient(yds_summed, times)/Jflow,color=color1, linestyle=mylinestyle);
-        ax.set_ylabel(label1, color=color1, fontsize=fontsize1);
+        if(not plot_occ): # plot spin observables: S1^z + S2^z, MI[1,2]
+     
+            # COMBINED impurity z spin vs time, time scale normalized by Jflux
+            obs1, factor1, color1 = "Sdz_", 1, "darkred";
+            label1 = "$\langle S_1^z + S_2^z \\rangle /\hbar$";
+            if(take_gradient): label1 = "$\\frac{d}{dt}$"+label1;
+            if(norm_to_Jflux): label1 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+            print(obs1,"-->",label1);
+            yds_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+            for ti in range(len(times)):
+                yds_vs_time[ti] = np.load(dfile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(times[ti]));
+            yds_summed = np.sum(yds_vs_time, axis=1);
+            ax.plot(times, do_gradient(factor1*yds_summed,times,do=take_gradient)/Jflux,
+                    color=color1, linestyle=mylinestyle);
     
-        # (S1 + S2)^2
-        if(plot_S2):
-            obs4, factor4, color4 = "S2_", 0.5, "black";
-            label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=True);
-            if(Jflow): label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-            S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+            # mutual info between the two impurities, time scale normalized by Jflux   
+            label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=take_gradient);
+            if(norm_to_Jflux): label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+            MI_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
             for ti in range(len(times)):
-                S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-            ax.plot(times, np.gradient(factor4*S2_vs_time[:,which_imp], times)/Jflow, color=color4, linestyle=mylinestyle);
-        else: # plot mutual info
-            obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
-            label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=True);
-            if(Jflow): label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-            S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
-            for ti in range(len(times)):
-                S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-            ax.plot(times, np.gradient(factor4*S2_vs_time[:,which_imp],times)/Jflow, color=color4, linestyle=mylinestyle);
+                MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+            ax.plot(times, do_gradient(factor4*MI_vs_time[:,which_imp],times,do=take_gradient)/Jflux, 
+                    color=color4, linestyle=mylinestyle);
+            
+        else: # plot rate of change of occupancy of different regions
+        
+            if(use_Jobs): # occ rate of change expressed with particle current (<J>)
+                assert(take_gradient);
+                
+                obs2, label2 = "J_", "$J_{flux}$";
+                if(norm_to_Jflux): label2 += "$/max \left( J_{flux} \\right)$";
+                print(obs2,"-->",label2);
+                yjs_vs_time = np.zeros((len(times),3),dtype=float);
+                for ti in range(len(times)):
+                    yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+
+                # normalize by max incoming electron flux
+                if(norm_to_Jflux): Jflux = max(abs(yjs_vs_time[:,0]));#current through site Nconf = Jflux
+                else: Jflux = 1.0; # no normalization
+             
+                # plot particle currents -> NO FACTORS
+                ax.plot(times, yjs_vs_time[:,0]/Jflux, 
+                        color=color2,linestyle=mylinestyle); # current through site Nconf
+                ax.plot(times, yjs_vs_time[:,1]/Jflux, 
+                        color=color1,linestyle=mylinestyle); # current through site NL
+                ax.plot(times, yjs_vs_time[:,2]/Jflux, 
+                        color=color4,linestyle=mylinestyle); # current through site NR
+            
+                # labels
+                label1 = "$J_{L}(t)$";
+                label4 = "$J_{R}(t)$";
+                if(norm_to_Jflux):
+                    label1 += "$/max \left( J_{flux} \\right)$";
+                    label4 += "$/max \left( J_{flux} \\right)$";
+                    
+            else: # occ rate of change expressed with dn/dt
+            
+                # incoming electron flux = dn_conf / dt
+                if(take_gradient): label2 = "$ \left| \\frac{d}{dt} n_{conf} \\right|$";
+                else: label2 = "$ \left|n_{conf} \\right|$";
+                if(norm_to_Jflux): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+                print(obs2,"-->",label2);
+                yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
+                for ti in range(len(times)):
+                    yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+        
+                # normalize by max incoming electron flux
+                yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
+                if(norm_to_Jflux): Jflux = max(abs(np.gradient(factor2*yjC_vs_time, times)));#time scale norm'd
+                else: Jflux = 1.0; # no normalization
+                ax.plot(times, abs(do_gradient(yjC_vs_time,times,do=take_gradient))/Jflux, 
+                        color=color2, linestyle=mylinestyle);
+             
+                # occ vs time
+                NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
+                Nsites = NL+NFM+NR; 
+                yjL_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1);
+                yjR_vs_time = np.sum(yjs_vs_time[:,NL+NFM:], axis=1);
+             
+                # plot occupancies -> NO FACTORS
+                ax.plot(times, do_gradient(yjL_vs_time,times,do=take_gradient)/Jflux, 
+                        color=color1,linestyle=mylinestyle);
+                ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient)/Jflux, 
+                        color=color4,linestyle=mylinestyle);
+            
+                # labels
+                label1 = "$n_{L}(t)$";
+                label4 = "$n_{R}(t)$";
+                if(take_gradient):
+                    label1 = "$\left|\\frac{d}{dt}n_{L}(t)\\right|$";
+                    label4 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
+                if(norm_to_Jflux):
+                    label1 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
+                    label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
         
     # formatting
     ax3 = ax.twinx();
@@ -309,87 +370,18 @@ if(case in [5,6]): # observables RATES OF CHANGE vs time, for two data sets side
     ax4.yaxis.set_label_position("right");
     ax4.spines.right.set_position(("axes", 1.0));
     ax4.spines.right.set(alpha=1.0);
-    ax4.set_yticks([])
-    ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # labels (S1+S2)^2 on left
-    ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt on right
-    ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( open(datafiles[0]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
-
-    # show
-    plt.tight_layout();
-    plt.show();
-    
-elif(case in [7,8]): # left lead, SR, right lead occupancy as a function of time
-    if(case in [8]): difference=True;
-    else: difference = False;
-    
-    # axes
-    fig, ax = plt.subplots();
-
-    # plot observables for EACH datafile
-    for dfile in datafiles:
-        if("singlet" in dfile): mylinestyle = "dashed"; ticks1 = (0.0,0.5,1.0);
-        elif("triplet" in dfile): mylinestyle = "solid"; ticks1 = (0.0,0.5,1.0);
-        else: mylinestyle = "solid"; ticks1 = (-1.0,-0.5,0.0,0.5,1.0);
-        print("\n>>>",mylinestyle,"=",dfile)
-
-        # time evolution params
-        params = json.load(open(dfile+".txt"));
-        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\nUpdate time = {:.2f}".format(params["tupdate"]));
-        times = np.zeros((Nupdates+1,),dtype=float); 
-        for ti in range(len(times)):
-            times[ti] = (update0 + ti)*tupdate;
-            
-        # occ vs time
-        NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
-        Nsites = NL+NFM+NR; 
-        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-
-        # break up occupancies
-        yjL_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1);
-        yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
-        yjSR_vs_time = np.sum(yjs_vs_time[:,NL:NL+NFM], axis=1);
-        yjR_vs_time = np.sum(yjs_vs_time[:,NL+NFM:], axis=1);
-        
-        yjSR_vs_time = 1*yjC_vs_time; # <----- !!!
-                                      # <----- !!!
-                                      
-        if(difference): # only plot change in occupancy
-            print("LL n(0) = {:.4f}".format(yjL_vs_time[0]));
-            yjL_vs_time = yjL_vs_time - yjL_vs_time[0];
-            print("SR n(0) = {:.4f}".format(yjSR_vs_time[0]));
-            yjSR_vs_time = yjSR_vs_time - yjSR_vs_time[0];
-            print("RL n(0) = {:.4f}".format(yjR_vs_time[0]));
-            yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
-        
-        # plot occupancies
-        ax.plot(times, yjL_vs_time,color=color1,linestyle=mylinestyle);
-        ax.plot(times, yjSR_vs_time,color=color2,linestyle=mylinestyle);
-        ax.plot(times, yjR_vs_time,color=color3,linestyle=mylinestyle);
-        
-    # formatting
-    if(difference):
-        label1 = "$\Delta n_{L}(t)$";
-        label3 = "$\Delta n_{R}(t)$";
-    else: 
-        label1 = "$n_{L}(t)$";
-        label3 = "$n_{R}(t)$";
-    ax.set_ylabel(label1, color=color1, fontsize=fontsize1);
-    ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( open(datafiles[0]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+    ax4.set_yticks([]);
+    if(plot_occ and norm_to_Jflux): ticks1 = [0.0, 1.0];
+    else: ticks1 = [];
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     
-    # right hand y axis label
-    ax3 = ax.twinx();
-    ax3.yaxis.set_label_position("right");
-    ax3.spines.right.set_position(("axes", 1.0));
-    ax3.spines.right.set(alpha=1.0);
-    ax3.set_yticks([])
-    ax3.set_ylabel(label3, color=color3, fontsize=fontsize1); 
-    
+    # labels
+    ax.set_ylabel( label1, color=color1, fontsize=fontsize1); # observable rate of change on left
+    ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # observable rate of change on left
+    ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt normalizing quantity on right
+    ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
+    ax.set_title( open(datafiles[0]+"_arrays/occ_title.txt","r").read().splitlines()[0][1:]);
+
     # show
     plt.tight_layout();
     plt.show();

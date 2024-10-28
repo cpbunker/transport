@@ -846,59 +846,84 @@ def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
     
-def get_pcurrent(eris_or_driver, whichsites, spin, block, verbose=0):
+def get_pcurrent(eris_or_driver, whichsite, sigma, block, verbose=0):
     '''
-    MPO for particle current from whichsites[0] to whichsites[1]
-    positive is rightward, associated with positive bias st left lead chem potential
-    is higher) 
+    MPO for particle current from whichsite-1 to whichsite
+    positive particle current is rightward, associated with positive bias st left 
+    lead chem potential > right lead chem potential
+    
+    Ultimately, what we calculate here feeds into two observables:
+        (1) the current, from Eq (69) in Garnet's coupled cluster dynamics paper, JCP 2021:
+        <J_j> =  e/\hbar * hopping * i * \sum_sigma 
+        <c_j,\sigma^\dagger c_j-1,\sigma - c_j-1,\sigma^\dagger c_j,\sigma >
 
-    Ultimately, we want this for conductance. The formula is found in 
-    Garnet's coupled cluster dynamics paper, JCP 2021, Eqs 69-70
-    G/G0 = \pi <J>/(Vb/e), where Vb/e is a VOLTAGE, and
-    <J> =  e/\hbar * hopping * i * \sum_sigma 
-    < c_j+1,\sigma^\dagger c_j,\sigma - c_j,\sigma^\dagger c_j+1,\sigma >
-    HOWEVER for convenience we wait till plotting to apply factor 
-    \pi e/\hbar * hopping/(Vb/e)
+        (2) the conductance in units of the conductance quanta G0=e^2/\pi\hbar
+        G/G0 = \pi <J>/(Vb/e), where Vb/e is a VOLTAGE
+    
+    HOWEVER here we just calculate i*<c_j,\sigma^\dagger c_j-1,\sigma - c_j-1,\sigma^\dagger c_j,\sigma>
+    We always wait until after wrapper (plotting step) to apply the prefactors, which are either
+    (1) e/\hbar * hopping
+    (2) \pi*hopping/Vb
 
     Args:
     eris_or_driver, Block2 driver
-    whichsites, list of site indices. must be ordered, so that
-    add_term( "cd", whichsites ) represents NEGATIVE current
-    spin, int 0 or 1, meaning up or down current
+    whichsite, int, the site index -> j, then we find current between j-1, j
+    sigma, int 0 or 1, meaning up or down current
     '''
-    if(whichsites[1]-whichsites[0]!=1): raise ValueError;
-    if(spin==0): spinstr = "cd";
-    elif(spin==1): spinstr = "CD";
+    if(sigma==0): sigmastr = "cd";
+    elif(sigma==1): sigmastr = "CD";
     else: raise ValueError;
+    
+    # we get current between this site and the one to its left, with rightward particle flow positive
+    whichsites = [whichsite-1, whichsite];
 
     if(block):# construct MPO
         builder = eris_or_driver.expr_builder();
-        builder.add_term(spinstr, whichsites, complex(0,-1)); # c on left, d on right = negative particle current
-        builder.add_term(spinstr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive particle current
+        builder.add_term(sigmastr, whichsites[::-1], complex(0,1)); # c on right, d on left = positive particle current
+        builder.add_term(sigmastr, whichsites, complex(0,-1)); # c on left, d on right = negative particle current
         return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
     else: # construct ERIs
         Nspinorbs = len(eris_or_driver.h1e[0]);
         nloc = 2;
         h1e, g2e = np.zeros((Nspinorbs,Nspinorbs),dtype=complex), np.zeros((Nspinorbs,Nspinorbs,Nspinorbs,Nspinorbs),dtype=complex);
-        h1e[nloc*whichsites[0]+spin,nloc*whichsites[1]+spin] += complex(0,-1.0);
-        h1e[nloc*whichsites[1]+spin,nloc*whichsites[0]+spin] += complex(0,1.0);
+        h1e[nloc*whichsites[1]+sigma,nloc*whichsites[0]+sigma] += complex(0, 1.0);
+        h1e[nloc*whichsites[0]+sigma,nloc*whichsites[1]+sigma] += complex(0,-1.0);
         return tdfci.ERIs(h1e, g2e, eris_or_driver.mo_coeff, imag_cutoff = 1e-12);
+        
+def pcurrent_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
+    '''
+    Consider site whichsite. This wrapper sums the spin currents (see get_pcurrent)
+    from whichsite-1 to whichsite (LEFT part)
+    In plotting steps, we multiply this by e/\hbar * hopping to make it current
+    '''
+    if(block): compute_func = compute_obs;
+    else: compute_func = tdfci.compute_obs;
+
+    the_pcurrent = 0.0;
+    for sigma in [0,1]:
+        the_mpo = get_pcurrent(eris_or_driver, whichsite, sigma, block, verbose=verbose);
+        the_pcurrent += compute_func(psi, the_mpo, eris_or_driver);
+
+    # average
+    ret = 1*(the_pcurrent); # must add e/\hbar * hopping factor later
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
+    return np.real(ret);
 
 def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     '''
     Consider site whichsite. This wrapper:
     1) sums the spin currents from whichsite-1 to whichsite (LEFT part)
     2) sums the spin currents from whichsite to whichsite+1 (RIGHT part)
-    3) averages over the results of 1 and 2 to find the current "through" whichsite
-    Later we multiply this by  \pi e/\hbar * hopping/(Vb/e) to make it *conductance*
+    3) averages over the results of 1 and 2 to find the current through whichsite
+    In plotting steps, we multiply this by  \pi*hopping/Vb to make it conductance/G0
     '''
     if(block): compute_func = compute_obs;
     else: compute_func = tdfci.compute_obs;
 
     # left part
     pcurrent_left = 0.0;
-    for spin in [0,1]:
-        left_mpo = get_pcurrent(eris_or_driver, [whichsite-1, whichsite], spin, block, verbose=verbose);
+    for sigma in [0,1]:
+        left_mpo = get_pcurrent(eris_or_driver, whichsite, sigma, block, verbose=verbose);
         left_val = compute_func(psi, left_mpo, eris_or_driver);
         pcurrent_left += left_val;
 
@@ -906,13 +931,13 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     print("\n>>> SKIPPING PCURRENT RIGHT\n>>> SKIPPING PCURRENT RIGHT\n");
     assert False;
     #pcurrent_right = 0.0;
-    #for spin in [0,1]:
-    #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], spin, block, verbose=verbose);
+    #for sigma in [0,1]:
+    #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], sigma, block, verbose=verbose);
     #right_val = compute_func(psi, right_mpo, eris_or_driver);
     #pcurrent_right += right_val;
 
     # average
-    ret = complex(1,0)*(pcurrent_left); # must add  e/\hbar * th/Vb later
+    ret = 1*(pcurrent_left); # must add  \pi*hopping/Vb factor later
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 

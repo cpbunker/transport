@@ -83,9 +83,9 @@ myVconf = 30.0;
 
 # iter over Ne, Nconf values
 pairvals = np.array([(2,2),(5,5), (10,10)]); # always half filling
-#pairvals = np.array([(2,10),(5,10), (10,10)]); # Nconf=10 fixed
-#pairvals = np.array([(2,20),(5,20), (10,20)]); # Nconf=20 fixed (low enrgy)
-pairvals = np.array([(1,5),(1,10), (1,20),(1,40)]); # Ne=1 fixed
+pairvals = np.array([(1,10),(2,10),(5,10), (10,10)]); # Nconf=10 fixed
+pairvals = np.array([(1,20),(2,20),(5,20), (10,20)]); # Nconf=20 fixed (low energy)
+#pairvals = np.array([(1,5),(1,10), (1,20),(1,40)]); # Ne=1 fixed
 for pairi in range(len(pairvals)):
     myNe, myNconf = pairvals[pairi];
 
