@@ -20,7 +20,7 @@ import time
 def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_name, verbose=0):
     '''
     '''
-    assert(params_dict["te_type"]=="tdvp");
+    #assert(params_dict["te_type"]=="tdvp");
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
