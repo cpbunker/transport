@@ -409,7 +409,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # observable rate of change on left
     ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt normalizing quantity on right
     ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( open(datafiles[0]+"_arrays/occ_title.txt","r").read().splitlines()[0][1:]);
+    ax.set_title( open(datafiles[-1]+"_arrays/occ_title.txt","r").read().splitlines()[0][1:]);
 
     # show
     plt.tight_layout();
