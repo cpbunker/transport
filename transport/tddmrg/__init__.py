@@ -1927,15 +1927,15 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("ZZ",[j,j+1],-Bent);
             builder.add_term("PM",[j,j+1],-Bent/2);
             builder.add_term("MP",[j,j+1],-Bent/2);
+    if("Bx" in params_dict.keys()): # B in the x direction, w/in the confining region
+        Bx = params_dict["Bx"];
+        for j in conf_sites:
+            builder.add_term("cD",[j,j],-Bx/2);
+            #builder.add_term("Cd",[j,j],-Bx/2);
 
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
     return driver, mpo_from_builder;
- 
-    # special case initialization
-    if("Bsd_x" in params_dict.keys()): # B in the x on the j that couples to 1st loc spin
-        Bsd_x = params_dict["Bsd_x"];
-        s = central_sites[0];
-        builder.add_term("cD",[s,s],-Bsd_x/2);
+    
 
 

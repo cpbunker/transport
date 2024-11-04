@@ -147,7 +147,8 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     for dfile in datafiles:
         if("singlet" in dfile): mylinestyle = "dashed"; ticks1 = (0.0,0.5,1.0);
         elif("triplet" in dfile): mylinestyle = "solid"; ticks1 = (0.0,0.5,1.0);
-        else: mylinestyle = "solid"; ticks1 = (-1.0,-0.5,0.0,0.5,1.0);
+        elif("nosd" in dfile): mylinestyle = "dotted"; ticks1 = (0.0,0.5,1.0);
+        else: mylinestyle = "dashdot"; ticks1 = (-1.0,-0.5,0.0,0.5,1.0);
         print("\n>>>",mylinestyle,"=",dfile);
         
         # time evolution params
@@ -193,14 +194,16 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
             S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
             for ti in range(len(times)):
                 S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-            ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
+            Line2D_obs4 = ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
         else: # plot mutual info
             label4 = get_ylabel(obs4, factor4, dstring=which_imp);
             S2_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
             for ti in range(len(times)):
                 S2_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-            ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
-        
+            Line2D_obs4 = ax.plot(times, factor4*S2_vs_time[:,which_imp],color=color4, linestyle=mylinestyle);
+        Line2D_data = Line2D_obs4[0].get_xydata();
+        for dati in range(len(times)):
+            print("  TIME = {:.0f}, MI = {:.6f}".format(Line2D_data[dati,0], Line2D_data[dati,1]));
     # formatting
     ax3 = ax.twinx();
     ax3.yaxis.set_label_position("left");
@@ -216,7 +219,7 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # labels (S1+S2)^2 on left
     ax4.set_ylabel(label3, color=color3, fontsize=fontsize1); # labels s_j^z on right
     ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( open(datafiles[0]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+    ax.set_title( open(datafiles[-1]+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
    
     # show
@@ -248,7 +251,8 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     for dfile in datafiles:
         if("singlet" in dfile): mylinestyle = "dashed";
         elif("triplet" in dfile): mylinestyle = "solid";
-        else: mylinestyle = "dotted";
+        elif("nosd" in dfile): mylinestyle = "dotted";
+        else: mylinestyle = "dashdot";
         print("\n>>>",mylinestyle,"=",dfile);
         
         # time evolution params
