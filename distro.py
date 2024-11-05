@@ -1,10 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_occs_Ne_TwoSz(the_Ne, the_TwoSz):
+def get_occs_Ne_TwoSz(the_Ne, the_TwoSz, num_skip = 0):
     '''
     '''
     assert(the_Ne % 2 == the_TwoSz % 2);
+    # lower energy levels that we skip and leave empty
+    skip_levels = [];
+    for leveli in range(num_skip):
+        skip_levels.append(0);
     # spin_polarized levels
     spinpol_levels = [];
     for _ in range(the_TwoSz):
@@ -13,7 +17,7 @@ def get_occs_Ne_TwoSz(the_Ne, the_TwoSz):
     nonpol_levels = [];
     for _ in range((the_Ne - the_TwoSz)//2):
         nonpol_levels.append(2);
-    return np.append(nonpol_levels, spinpol_levels).astype(int);
+    return np.append(skip_levels, np.append(nonpol_levels, spinpol_levels)).astype(int);
 
 def get_overlaps(the_Nconf, the_Nsites, the_tl, the_Vconf, the_occs, plot=False):
     '''
@@ -114,17 +118,18 @@ mytl = 1.0;
 myVconf = 30.0;
 
 # iter over Ne, TwoSz, Nconf values
-#pairvals = np.array([(1,1,5),(1,1,10), (1,1,20),(1,1,40)]); # Ne=1 fixed
-#pairvals = np.array([(1,1,20),(2,2,20),(5,5,20), (10,10,20)]); # Nconf=20 fixed, spin polarized
-#pairvals = np.array([(2,0,20),(10,0,20)]); # Nconf=20 fixed not spin polarized
-pairvals = np.array([(2,0,20),(4,0,20),(10,0,20), (20,0,20)]); # Nconf=20 fixed not spin polarized
-pairvals = np.array([(2,2,20),(4,2,20),(10,2,20), (20,2,20)]); # Nconf=20 fixed slightly spin polarized
+pairvals = np.array([(1,1,5,0),(1,1,10,0), (1,1,20,0),(1,1,40,0)]); # Ne=1 fixed
+pairvals = np.array([(1,1,20,0),(1,1,20,2),(1,1,20,4)]); # Ne=1 fixed, ground vs excited states
+#pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
+#pairvals = np.array([(2,0,20,0),(10,0,20,0)]); # Nconf=20 fixed not spin polarized
+#pairvals = np.array([(2,0,20,0),(4,0,20,0),(10,0,20,0), (20,0,20,0)]); # Nconf=20 fixed not spin polarized
+#pairvals = np.array([(2,2,20,0),(4,2,20,0),(10,2,20,0), (20,2,20,0)]); # Nconf=20 fixed slightly spin polarized
 
 # plot either individual wfs or real-space PDFs
 plot_wfs = False;
 for pairi in range(len(pairvals)):
-    myNe, myTwoSz, myNconf = pairvals[pairi];
-    my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz);
+    myNe, myTwoSz, myNconf, my_levels_skip = pairvals[pairi];
+    my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
     # geometric params
     myNL = myNconf+5;
@@ -145,8 +150,8 @@ for pairi in range(len(pairvals)):
 # plot the PDFs
 myfig, myax = plt.subplots();
 for pairi in range(len(pairvals)):
-    myNe, myTwoSz, myNconf = pairvals[pairi];
-    my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz);
+    myNe, myTwoSz, myNconf, my_levels_skip = pairvals[pairi];
+    my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
     # geometric params
     myNL = myNconf+5;

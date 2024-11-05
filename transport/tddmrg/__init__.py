@@ -1904,7 +1904,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     # eigenstates of the confined, spinless, t<0 system
     if("Bstate" in params_dict.keys()):
         Bstate = params_dict["Bstate"];
-        h1e_t0 = np.zeros((Nconf,Nconf),dtype=float);
+        h1e_t0 = np.zeros((Nsites,Nsites),dtype=float);
         nloc = 1; # spinless
         # j <-> j+1 hopping for fermions
         for j in all_sites[:-1]:
@@ -1922,8 +1922,8 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         for kmvali in range(how_many_states): #iter over states
             for j in all_sites:
                 for jp in all_sites:
-                    builder.add_term("cd",[j,jp], Bstate);
-                    builder.add_term("CD",[j,jp], Bstate);
+                    builder.add_term("cd",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
+                    builder.add_term("CD",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
 
     # B field in the confined region ----------> ASSUMED IN THE Z
     # only within the region of confining potential
@@ -1953,9 +1953,9 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("MP",[j,j+1],-Bent/2);
     if("DSz2" in params_dict.keys()):
         assert(params_dict["DSz2"]==1.0);
-        #remove some of Bent-> hard z-axis for d>0
+        # hard z-axis for cases where Bent is applied
         for j in central_sites:
-            builder.add_term("ZZ",[j,j],2*Bent);
+            builder.add_term("ZZ",[j,j],4*abs(Bent));
     if("Bx" in params_dict.keys()): # B in the x direction, w/in the confining region
         Bx = params_dict["Bx"];
         for j in conf_sites:
