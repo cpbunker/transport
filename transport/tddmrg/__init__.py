@@ -1875,7 +1875,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     assert(params_dict["sys_type"]=="STT");
 
     # load data from json
-    Vconf, Be, BFM = params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
+    tl, Vconf, Be, BFM = params_dict["tl"], params_dict["Vconf"], params_dict["Be"], params_dict["BFM"];
     NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
     Nbuffer = 0;
     if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
@@ -1900,6 +1900,30 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     for j in conf_sites:
         builder.add_term("cd",[j,j],-Vconf); 
         builder.add_term("CD",[j,j],-Vconf);
+
+    # eigenstates of the confined, spinless, t<0 system
+    if("Bstate" in params_dict.keys()):
+        Bstate = params_dict["Bstate"];
+        h1e_t0 = np.zeros((Nconf,Nconf),dtype=float);
+        nloc = 1; # spinless
+        # j <-> j+1 hopping for fermions
+        for j in all_sites[:-1]:
+            h1e_t0[nloc*j+0,nloc*(j+1)+0] += -tl; # spinless
+            h1e_t0[nloc*(j+1)+0,nloc*j+0] += -tl;
+        # confinement
+        for j in conf_sites:
+            h1e_t0[nloc*j+0,nloc*j+0] += -Vconf; # spinless!
+        # t<0 eigenstates (|k_m> states)
+        vals_t0, vecs_t0 = np.linalg.eigh(h1e_t0);
+        vecs_t0 = vecs_t0.T;
+        # now we have the eigenstates that span the confined well at t<0
+        # use them to apply B field *directly to these states*
+        how_many_states = params_dict["Bstate_num"]; # we block only lowest (this number) of states
+        for kmvali in range(how_many_states): #iter over states
+            for j in all_sites:
+                for jp in all_sites:
+                    builder.add_term("cd",[j,jp], Bstate);
+                    builder.add_term("CD",[j,jp], Bstate);
 
     # B field in the confined region ----------> ASSUMED IN THE Z
     # only within the region of confining potential
@@ -1927,6 +1951,11 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("ZZ",[j,j+1],-Bent);
             builder.add_term("PM",[j,j+1],-Bent/2);
             builder.add_term("MP",[j,j+1],-Bent/2);
+    if("DSz2" in params_dict.keys()):
+        assert(params_dict["DSz2"]==1.0);
+        #remove some of Bent-> hard z-axis for d>0
+        for j in central_sites:
+            builder.add_term("ZZ",[j,j],2*Bent);
     if("Bx" in params_dict.keys()): # B in the x direction, w/in the confining region
         Bx = params_dict["Bx"];
         for j in conf_sites:
