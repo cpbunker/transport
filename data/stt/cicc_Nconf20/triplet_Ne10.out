@@ -1,0 +1,378 @@
+#### SLURM ####
+pwd: 
+/blue/m2qm-efrc/cpbunker/GitHub/transport
+host: 
+c23a-s27.ufhpc
+# conda environments:
+#
+base                     /apps/conda/24.3.0
+block2                *  /blue/m2qm-efrc/cpbunker/condaenvs/block2
+vasp                     /blue/m2qm-efrc/cpbunker/condaenvs/vasp
+
+#### PYTHON ####
+start time: 
+Wed Oct 23 22:10:44 EDT 2024
+
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:180: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:180: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:512: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:512: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+>>> PWD:  /blue/m2qm-efrc/cpbunker/GitHub/transport
+>>> Params =  {'sys_type': 'STT', 'tl': 1.0, 'Vconf': 30.0, 'Be': 100.0, 'BFM': 0.0, 'Bent': 100.0, 'Jz': 0.0, 'Jx': 0.0, 'Jsd': 1.0, 'NL': 25, 'NFM': 2, 'NR': 30, 'Nconf': 20, 'Ne': 10, 'TwoSz': 10, 'TwoSd': 1, 'symmetry': 'Sz', 'ex_sites': [25, 26], 'plot': 0, 'bdim_0': [150, 150, 150, 200, 200], 'bdim_t': [250], 'noises': [0.01, 0.001, 0.0001, 1e-05, 0.0], 'dmrg_sweeps': 20, 'cutoff': -1.0, 'te_type': 'tdvp', 'time_step': 0.1, 'tupdate': 4.0, 'Nupdates': 8}
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+Ground state energy (DMRG) = -837.387705
+>>> Init compute time = 72.9285957813263
+
+Time = 0.00
+Total energy = -837.387705+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=25> = -0.000000+0.000000j
+<Sz d=26> = 0.000000+0.000000j
+<(S1+S2)^2> = 2.000000
+ents2[26,25] = 0.0000000000
+MI[25,26] = 0.693147 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 5.000000
+Total <Sdz_> = 0.000000
+Total <S2_> = nan
+ents2[26,25] = 0.0000000000
+Total <MI_> = nan
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+
+Build MPO | Nsites =    57 | Nterms =        232 | Algorithm = FastBIP | Cutoff = 1.00e-14
+ Site =     0 /    57 .. Mmpo =     5 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+ Site =     1 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =     2 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     3 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     4 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     5 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     6 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     7 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     8 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     9 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    10 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    11 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    12 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    13 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    14 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    15 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    16 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    17 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    18 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    19 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    20 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    21 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    22 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    23 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    24 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    25 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.001
+ Site =    26 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.001
+ Site =    27 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    28 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    29 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    30 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    31 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    32 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    33 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    34 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    35 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    36 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    37 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    38 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    39 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    40 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    41 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    42 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    43 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    44 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    45 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    46 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    47 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    48 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    49 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    50 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    51 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    52 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    53 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    54 /    57 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    55 /    57 .. Mmpo =     5 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =    56 /    57 .. Mmpo =     1 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+Ttotal =      0.026 Tmvc-total = 0.001 MPO bond dimension =     6 MaxDW = 0.00e+00
+NNZ =          560 SIZE =         1978 SPT = 0.7169
+
+Rank =     0 Ttotal =      0.031 MPO method = FastBipartite bond dimension =       6 NNZ =          560 SIZE =         1978 SPT = 0.7169
+
+
+START TIME EVOLUTION (te_type = tdvp)
+
+ ************************************************** 
+
+
+
+>>>> Evol CPU time = 172.8 min
+
+
+Time = 4.00
+Total energy = -12.393887+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=25> = 0.008608-0.000000j
+<Sz d=26> = 0.007870-0.000000j
+<(S1+S2)^2> = 1.985388
+ents2[26,25] = 0.1259793518
+MI[25,26] = 0.630021 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.983522
+Total <Sdz_> = 0.016478
+Total <S2_> = nan
+ents2[26,25] = 0.1259793518
+Total <MI_> = nan
+
+>>>> Observables CPU time = 7.5 min
+
+
+>>>> Evol CPU time = 176.2 min
+
+
+Time = 8.00
+Total energy = -12.393887+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=25> = 0.057323+0.000000j
+<Sz d=26> = 0.123319+0.000000j
+<(S1+S2)^2> = 1.879197
+ents2[26,25] = 0.6703397428
+MI[25,26] = 0.339319 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.819358
+Total <Sdz_> = 0.180642
+Total <S2_> = nan
+ents2[26,25] = 0.6703397428
+Total <MI_> = nan
+
+>>>> Observables CPU time = 7.5 min
+
+
+>>>> Evol CPU time = 178.1 min
+
+
+Time = 12.00
+Total energy = -12.393887-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=25> = 0.116701+0.000000j
+<Sz d=26> = 0.232804+0.000000j
+<(S1+S2)^2> = 1.798706
+ents2[26,25] = 0.8845373885
+MI[25,26] = 0.180784 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.650495
+Total <Sdz_> = 0.349505
+Total <S2_> = nan
+ents2[26,25] = 0.8845373885
+Total <MI_> = nan
+
+>>>> Observables CPU time = 7.2 min
+
+
+>>>> Evol CPU time = 187.7 min
+
+
+Time = 16.00
+Total energy = -12.393908+0.000000j
+WF norm = 0.999972+0.000000j
+<Sz d=25> = 0.171031-0.000000j
+<Sz d=26> = 0.309517+0.000000j
+<(S1+S2)^2> = 1.751207
+ents2[26,25] = 0.9154647994
+MI[25,26] = 0.102452 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.519452
+Total <Sdz_> = 0.480548
+Total <S2_> = nan
+ents2[26,25] = 0.9154647994
+Total <MI_> = nan
+
+>>>> Observables CPU time = 6.7 min
+
+
+>>>> Evol CPU time = 180.1 min
+
+
+Time = 20.00
+Total energy = -12.394150-0.000000j
+WF norm = 0.999542+0.000000j
+<Sz d=25> = 0.216864-0.000000j
+<Sz d=26> = 0.359092-0.000000j
+<(S1+S2)^2> = 1.728157
+ents2[26,25] = 0.8735553001
+MI[25,26] = 0.064472 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.424045
+Total <Sdz_> = 0.575955
+Total <S2_> = nan
+ents2[26,25] = 0.8735553001
+Total <MI_> = nan
+
+>>>> Observables CPU time = 6.8 min
+
+
+>>>> Evol CPU time = 171.0 min
+
+
+Time = 24.00
+Total energy = -12.395386+0.000000j
+WF norm = 0.997113-0.000000j
+<Sz d=25> = 0.253738-0.000000j
+<Sz d=26> = 0.389604+0.000000j
+<(S1+S2)^2> = 1.722234
+ents2[26,25] = 0.8136148208
+MI[25,26] = 0.045959 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.356658
+Total <Sdz_> = 0.643342
+Total <S2_> = nan
+ents2[26,25] = 0.8136148208
+Total <MI_> = nan
+
+>>>> Observables CPU time = 5.9 min
+
+
+>>>> Evol CPU time = 165.9 min
+
+
+Time = 28.00
+Total energy = -12.397915+0.000000j
+WF norm = 0.991540-0.000000j
+<Sz d=25> = 0.275026+0.000000j
+<Sz d=26> = 0.404960+0.000000j
+<(S1+S2)^2> = 1.723789
+ents2[26,25] = 0.7699273148
+MI[25,26] = 0.038626 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.320015
+Total <Sdz_> = 0.679985
+Total <S2_> = nan
+ents2[26,25] = 0.7699273148
+Total <MI_> = nan
+
+>>>> Observables CPU time = 5.6 min
+
+
+>>>> Evol CPU time = 158.0 min
+
+
+Time = 32.00
+Total energy = -12.401825+0.000000j
+WF norm = 0.984357-0.000000j
+<Sz d=25> = 0.289928+0.000000j
+<Sz d=26> = 0.412244+0.000000j
+<(S1+S2)^2> = 1.725544
+ents2[26,25] = 0.7444008096
+MI[25,26] = 0.033483 (max = 0.693147)
+Total <occ_> = 10.000000
+Total <sz_> = 4.297828
+Total <Sdz_> = 0.702172
+Total <S2_> = nan
+ents2[26,25] = 0.7444008096
+Total <MI_> = nan
+
+>>>> Observables CPU time = 5.8 min
+
+stop time: 
+Thu Oct 24 22:21:45 EDT 2024
