@@ -1852,6 +1852,16 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("cDM",[j,j,j],-Jsd/2);
         builder.add_term("CdP",[j,j,j],-Jsd/2);
         #pass;
+        
+    # special case terms
+    if("tunnel" in params_dict.keys()):
+        # tunnel barrier on last site of left lead
+        tunnel = params_dict["tunnel"];
+        tunnel_size = 3;
+        assert(NL-Nconf>tunnel_size);
+        for j in llead_sites[-tunnel_size:]:
+            builder.add_term("cd",[j,j],tunnel);
+            builder.add_term("CD",[j,j],tunnel);
 
     return driver, builder;
 

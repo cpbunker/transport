@@ -464,6 +464,7 @@ if(case in [10,11]): # animate time evol
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
     ax3.set_ylabel(get_ylabel(obs3, factor3), color=color3, fontsize=fontsize1);
+    ax.set_ylim([0.0,0.25]);
 
     # pairwise observable
     if(params["NFM"]>1):
@@ -501,6 +502,7 @@ if(case in [10,11]): # animate time evol
         # (S1+S2)^2 / 2
         yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
         S2.set_ydata(factor4*yds_4_t);
+        ax.set_ylim([0.0,0.25]);
 
     # animate
     if(Nupdates > 0): interval = 1000*(10/Nupdates); # so total animation time is 10 sec
