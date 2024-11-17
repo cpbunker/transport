@@ -22,6 +22,8 @@ def kernel(params_dict, driver_inst, mpo_inst, psi, check_func, plot_func, save_
     '''
     #assert(params_dict["te_type"]=="tdvp");
     print("\n\nSTART TIME EVOLUTION (te_type = "+params_dict["te_type"]+")\n\n","*"*50,"\n\n")
+    print("\t driver.mpi = ",driver_inst.mpi);
+    print("\t global threads = {:.0f}".format(driver_inst.bw.b.Global.threading.n_threads_global));
     time_step = params_dict["time_step"];
     time_update = params_dict["tupdate"];
     time_update = time_step*int(abs(time_update/time_step)+0.1); # discrete number
@@ -1731,7 +1733,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # construct ExprBuilder
     if(params_dict["symmetry"] == "Sz"):
-        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4) #None, mpi=True);
         # using complex symmetry type, as above, seems linked to
         # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
         # but only when TwoSz is input correctly
@@ -1739,6 +1741,10 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         #driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ, n_threads=4)
         driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
     else: raise NotImplementedError;
+
+    # ###############
+    print("\t driver.mpi = ",driver.mpi);
+    print("\t global threads = {:.0f}".format(driver.bw.b.Global.threading.n_threads_global));
 
     # Szd blocks for fermion-impurity operators
     # squares are diagonal blocks and triangles are one off diagonal
