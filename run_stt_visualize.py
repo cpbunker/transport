@@ -262,6 +262,8 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
+        time_window_limits = (10,30);
+        time_window_mask = np.logical_and(np.array(times>time_window_limits[0]), np.array(times<time_window_limits[1]));
 
         # which imps to get data for
         which_imp = 0;
@@ -343,7 +345,10 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                         color=color1,linestyle=mylinestyle); # current through site NL
                 ax.plot(times, yjs_vs_time[:,2]/Jflux, 
                         color=color4,linestyle=mylinestyle); # current through site NR
-            
+                # current through NR, plateau-averaged
+                plateau = np.mean((yjs_vs_time[:,2]/Jflux)[time_window_mask]);
+                print("plateau = {:.6f}".format(plateau))
+
                 # labels
                 label1 = "$J_{L}(t)$";
                 label4 = "$J_{R}(t)$";
