@@ -103,6 +103,8 @@ H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), i
 # gd state
 gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
                          bond_dim=params["bdim_0"][0] )
+                  # NB the above method creates an MPS with attribute dot=2, meaning H_driver.dmrg method 
+                  # (does not apply to H_driver.td_dmrg method) will do TWO-SITE sweep algorithm
 gdstate_E_dmrg = H_driver.dmrg(H_mpo_initial, gdstate_mps_inst,#tol=1e-24, # <------ !!!!!!
     bond_dims=params["bdim_0"], noises=params["noises"], n_sweeps=params["dmrg_sweeps"], cutoff=params["cutoff"],
     iprint=0); # set to 2 to see Mmps
