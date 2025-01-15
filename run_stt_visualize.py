@@ -39,24 +39,44 @@ def get_ylabel(the_obs, the_factor, dstring="d", ddt=False):
     # return
     print(the_obs,"-->",ret);
     return ret;
+    
+def get_title(f, to_exclude=["J_x", "J_z"]):
+    '''
+    '''
+    
+    in_title = open(f+"_arrays/occ_title.txt","r").read().splitlines()[0][1:];
+    in_title = in_title.split(",");
+    title_mask = np.ones(np.shape(in_title),dtype=int);
+    for i in range(len(in_title)):
+        for ex in to_exclude:
+            if(ex in in_title[i]): title_mask[i] = 0;
+    out_title = [];  
+    for i in range(len(in_title)):
+        if(title_mask[i]): out_title.append(in_title[i]); 
+    out_title = ",".join(out_title);
+    return out_title;
 
 ########################################################################
 #### run code
 
-# top level
-case = int(sys.argv[1]);
-update0 = int(sys.argv[2]);  # time to start at, in units of update interval
-datafiles = sys.argv[3:];
+if(__name__=="__main__"):
 
-# plotting
-obs1, factor1, color1, mark1, = "Sdz_", 2,"darkred", "s";
-ticks1, linewidth1, fontsize1 =  (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
-obs2, factor2, color2, mark2 = "occ_", 1, "cornflowerblue", "o";
-obs3, factor3, color3, mark3 = "sz_", 2, "darkblue", "o";
-obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
-num_xticks = 4;
-datamarkers = ["s","^","d","*"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+    # top level
+    case = int(sys.argv[1]);
+    update0 = int(sys.argv[2]);  # time to start at, in units of update interval
+    datafiles = sys.argv[3:];
+
+    # plotting
+    myfontsize=14;
+    obs1, factor1, color1, mark1, = "Sdz_", 2,"darkred", "s";
+    ticks1, linewidth1, fontsize1 =  (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
+    obs2, factor2, color2, mark2 = "occ_", 1, "cornflowerblue", "o";
+    obs3, factor3, color3, mark3 = "sz_", 2, "darkblue", "o";
+    obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
+    num_xticks = 4;
+    datamarkers = ["s","^","d","*"];
+    plt.rcParams.update({"font.family": "serif"})
+    #plt.rcParams.update({"text.usetex": True})
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -273,7 +293,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
-        time_window_limits = (times[-1]//4, 3*times[-1]//4);
+        time_window_limits = (times[-1]//4, 2*times[-1]//4);
         time_window_mask = np.logical_and(np.array(times>time_window_limits[0]), np.array(times<time_window_limits[1]));
         # time windo mask is used to extract plateau values!!
 
@@ -360,6 +380,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 # current through NR, plateau-averaged
                 plateau = np.mean((yjs_vs_time[:,2]/Jconf)[time_window_mask]);
                 print("plateau = {:.6f}".format(plateau));
+                print(time_window_limits);
 
                 # labels
                 label1 = "$J_{L}(t)$";
@@ -400,8 +421,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                         color=color4,linestyle=mylinestyle);
                         
                 # plot occupancy of last site to show onset of finite size effects
-                ax.plot(times, np.sum(yjs_vs_time[:,-11:], axis=1),
-                        color="darkblue",linestyle=mylinestyle);               
+                ax.plot(times, np.sum(yjs_vs_time[:,-11:], axis=1),color="darkblue",linestyle=mylinestyle);               
             
                 # labels
                 label1 = "$n_{L}(t)$";
@@ -428,13 +448,15 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     if(plot_occ and norm_to_Jconf): ticks1 = [0.0, 1.0];
     else: ticks1 = [0.0, 1.0];
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
+    if(plot_occ and use_Jobs): 
+        for limit in time_window_limits: ax.axvline(limit,linestyle="solid",color="gray");
     
     # labels
     ax.set_ylabel( label1, color=color1, fontsize=fontsize1); # observable rate of change on left
     ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # observable rate of change on left
     ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt normalizing quantity on right
     ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( open(datafiles[-1]+"_arrays/occ_title.txt","r").read().splitlines()[0][1:]);
+    ax.set_title( get_title(datafiles[-1]));
 
     # show
     plt.tight_layout();
@@ -443,54 +465,65 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
 elif(case in [15]): # occupancy vs site vs time heatmap
 
     # axes
-    fignrows, figncols = 1, len(datafiles);
-    fig, axes = plt.subplots(ncols=figncols,sharey=True);
-    if(figncols==1): axes = [axes];
-    fig.set_size_inches(4*figncols,4)
+    horizontal = True; # puts heatmaps side by side, else stack
+    if(horizontal): fignrows, figncols = 1, len(datafiles);
+    else: fignrows, figncols = len(datafiles), 1;
+    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows,sharey=True);
+    if((horizontal and figncols==1) or (not horizontal and fignrows==1)): axes = [axes];
+    fig.set_size_inches(4*figncols,5*fignrows)
     params = json.load(open(datafiles[0]+".txt"));
     
     #### iter over triplet/singlet
+    myaxlabels = "";
     for axi, dfile in enumerate(datafiles):
-        if("singlet" in dfile): mytitle = "singlet";
-        elif("triplet" in dfile): mytitle = "triplet";
-        elif("nosd" in dfile): mytitle = "absent" #"None" #to turn off
-        else: mytitle = "none";
-        print("\n>>>",mytitle,"=",dfile);
+        if("nosd" in dfile): myaxlabels += " $\swarrow$Qubits Removed";
+        elif("triplet" in dfile): myaxlabels += " $\downarrow$Triplet";
+        elif("singlet" in dfile): myaxlabels += " Singlet$\searrow$";
+        print("\n>>>",myaxlabels.split(" ")[-1],"=",dfile);
         
         # time evolution params
         params = json.load(open(dfile+".txt"));
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\nUpdate time = {:.2f}".format(params["tupdate"]));
+        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
             
-        # which imps to get data for
-        which_imp = 0;
-        assert(which_imp == 0);
-        assert(params["NFM"] == 2); # number of d sites
+        # get data
         Nconf = params["Nconf"];
         Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
         yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
         for ti in range(len(times)):
             yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-        print(np.shape(yjs_vs_time));
         
         # mesh grids for time (x) and site (y) plotting heatmap
         timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Nsites];
-        print(np.shape(timex))
-        print(np.shape(sitey))
         
         # plot
-        heatmap = axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='RdBu', vmin=0.0, vmax=np.max(yjs_vs_time))
-        axes[axi].set_title(mytitle)
-        fig.colorbar(heatmap, ax=axes[axi])
-    
+        heatmap = axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time))
+        print("    vmax = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
+        
     # format
-    axes[0].set_ylabel("Site");
-    for axi in range(len(axes)): axes[axi].set_xlabel("Time $(\hbar/t_l)$");
-    
+    axes[0].set_ylabel("Site",fontsize=myfontsize);
+    for axi in range(len(axes)): 
+        axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
+        cbar = fig.colorbar(heatmap,ax=axes[axi],location='top',shrink=0.9,pad=0.01);
+        if(axi != len(axes)-1): fig.delaxes(cbar.ax)
+        
+    #### iter over triplet/singlet
+    for axi, dfile in enumerate(datafiles):
+        # qubit positions
+        params = json.load(open(dfile+".txt"));
+        qubit_sites = params["NL"], params["NL"]+1; 
+        if("nosd" not in dfile):
+            rightax = axes[axi].twinx();
+            rightax.set_ylim(axes[axi].get_ylim());
+            rightax.set_yticks(qubit_sites,labels=[]);
+            rightax.tick_params(axis='y', left=True,right=False, color='black', length=20, width=2, grid_color='none');
+
     # show
+    axes[0].set_title(get_title(datafiles[-1]),fontsize=myfontsize);
+    axes[1].set_title(myaxlabels,fontsize=myfontsize)
     fig.tight_layout()
     plt.show()
     
@@ -506,7 +539,7 @@ if(case in [10,11]): # animate time evol
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     ax.set_yticks(ticks1);
     ax.set_xlabel("$j(d)$", fontsize=fontsize1);
-    ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
+    ax.set_title(get_title(datafile));
     
     # time evolution params
     Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
