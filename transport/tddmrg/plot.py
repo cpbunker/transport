@@ -111,8 +111,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
 
             # save DMRG data
             if(not params_dict["plot"]):
-                np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
-                np.save(savename[:-4]+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
+                np.save(savename+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}".format(time), x_js);
+                np.save(savename+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}".format(time), y_js);
 
     #format
     for obsi in range(len(obs_strs)):
@@ -125,8 +125,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     plt.tight_layout();
     if(params_dict["plot"]): plt.show() #pass #plt.show();
     else:
-        np.savetxt(savename[:-4]+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
-        #plt.savefig(savename[:-4]+"_arrays/time{:.2f}.pdf".format(time));
+        np.savetxt(savename+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
+        #plt.savefig(savename+"_arrays/time{:.2f}.pdf".format(time));
     plt.close(); # keeps figure from being stored in memory
 
 def snapshot_fromdata(loadname, time, sys_type):

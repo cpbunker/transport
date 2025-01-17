@@ -88,7 +88,6 @@ if(case in [0]): # standard charge density vs site snapshot
 
 if(case in [1,2]): # observables vs time
     datafile = datafiles[0];
-    params = json.load(open(datafile+".txt"));
     if(case in [2]): plot_S2 = True;
     else: plot_S2 = False; 
 
@@ -100,6 +99,7 @@ if(case in [1,2]): # observables vs time
     ax.set_title( open(datafile+"_arrays/"+obs2+"title.txt","r").read().splitlines()[0][1:]);
 
     # time evolution params
+    params = json.load(open(datafile+".txt"));
     Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
     times = np.zeros((Nupdates+1,),dtype=float);
     print("\nUpdate time = {:.2f}".format(params["tupdate"]));
@@ -160,7 +160,6 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
 
     # axes
     fig, ax = plt.subplots();
-    params = json.load(open(datafiles[0]+".txt"));
     if(case in [4]): plot_S2 = True;
     else: plot_S2 = False;     
 
@@ -262,8 +261,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         
     # axes
     fig, ax = plt.subplots();
-    params = json.load(open(datafiles[0]+".txt"));
-    
+
     # chooses observables to be plotted
     # True means we plot occupancies, False means we describe MSQ quantum state (MI, Sz, etc)
     if(case in [6,8,9]): plot_occ = True; 
@@ -471,14 +469,17 @@ elif(case in [15]): # occupancy vs site vs time heatmap
     fig, axes = plt.subplots(ncols=figncols,nrows=fignrows,sharey=True);
     if((horizontal and figncols==1) or (not horizontal and fignrows==1)): axes = [axes];
     fig.set_size_inches(4*figncols,5*fignrows)
-    params = json.load(open(datafiles[0]+".txt"));
-    
+
     #### iter over triplet/singlet
     myaxlabels = "";
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile): myaxlabels += " $\swarrow$Qubits Removed";
-        elif("triplet" in dfile): myaxlabels += " $\downarrow$Triplet";
-        elif("singlet" in dfile): myaxlabels += " Singlet$\searrow$";
+        if("nosd" in dfile):      myaxlab = " No Qubits";
+        elif("triplet" in dfile): myaxlab = " Triplet";
+        elif("singlet" in dfile): myaxlab = " Singlet";
+        else: myaxlab = dfile.split("/")[-1].split("_")[0];
+        arrow_labels = ["$\swarrow$","$\downarrow$","$\searrow$"];
+        if(axi==2): myaxlabels += myaxlab+arrow_labels[axi];
+        else: myaxlabels += arrow_labels[axi] + myaxlab;
         print("\n>>>",myaxlabels.split(" ")[-1],"=",dfile);
         
         # time evolution params
@@ -507,8 +508,8 @@ elif(case in [15]): # occupancy vs site vs time heatmap
     axes[0].set_ylabel("Site",fontsize=myfontsize);
     for axi in range(len(axes)): 
         axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
-        cbar = fig.colorbar(heatmap,ax=axes[axi],location='top',shrink=0.9,pad=0.01);
-        if(axi != len(axes)-1): fig.delaxes(cbar.ax)
+        if(len(axes)>2): cbar = fig.colorbar(heatmap,ax=axes[axi],location='top',shrink=0.9,pad=0.01);
+        if(len(axes)>2 and axi != len(axes)-1): fig.delaxes(cbar.ax)
         
     #### iter over triplet/singlet
     for axi, dfile in enumerate(datafiles):
@@ -523,7 +524,7 @@ elif(case in [15]): # occupancy vs site vs time heatmap
 
     # show
     axes[0].set_title(get_title(datafiles[-1]),fontsize=myfontsize);
-    axes[1].set_title(myaxlabels,fontsize=myfontsize)
+    if(len(axes)>1): axes[1].set_title(myaxlabels,fontsize=myfontsize)
     fig.tight_layout()
     plt.show()
     

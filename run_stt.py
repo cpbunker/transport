@@ -69,7 +69,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
-params = json.load(open(json_name)); print(">>> Params = ",params);
+params = json.load(open(json_name+".txt")); print(">>> Params = ",params);
 is_block = True;
 
 # unpacking

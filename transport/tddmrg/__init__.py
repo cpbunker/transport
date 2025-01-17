@@ -1733,7 +1733,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # construct ExprBuilder
     if(params_dict["symmetry"] == "Sz"):
-        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4) #None, mpi=True);
+        driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4) #None, mpi=True);
         # using complex symmetry type, as above, seems linked to
         # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
         # but only when TwoSz is input correctly
@@ -1861,13 +1861,20 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         
     # special case terms
     if("tunnel" in params_dict.keys()):
-        # tunnel barrier on last site of left lead
+        # tunnel barrier on last few sites of left lead
         tunnel = params_dict["tunnel"];
-        tunnel_size = 3;
+        tunnel_size = 3; # last tunnel_size sites
         assert(NL-Nconf>tunnel_size);
         for j in llead_sites[-tunnel_size:]:
             builder.add_term("cd",[j,j],tunnel);
             builder.add_term("CD",[j,j],tunnel);
+    if("Vdelta" in params_dict.keys()):
+        # voltage gradient from site to site, ie constant applied Electric field
+        Vdelta = params_dict["Vdelta"];
+        for j in all_sites:
+            builder.add_term("cd",[j,j],-Vdelta*j);
+            builder.add_term("CD",[j,j],-Vdelta*j);
+        
 
     return driver, builder;
 
@@ -1968,6 +1975,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             builder.add_term("PM",[j,j+1],-Bent/2);
             builder.add_term("MP",[j,j+1],-Bent/2);
     if("DSz2" in params_dict.keys()):
+        raise NotImplementedError;
         assert(params_dict["DSz2"]==1.0);
         # hard z-axis for cases where Bent is applied
         for j in central_sites:
@@ -1977,6 +1985,12 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         for j in conf_sites:
             builder.add_term("cD",[j,j],-Bx/2);
             #builder.add_term("Cd",[j,j],-Bx/2);
+    if("Vdelta_rm" in params_dict.keys()):
+        # REMOVE the voltage gradient for time < 0, so it doesn't affect initialization
+        Vdelta_rm = params_dict["Vdelta_rm"];
+        for j in all_sites:
+            builder.add_term("cd",[j,j],Vdelta_rm*j);
+            builder.add_term("CD",[j,j],Vdelta_rm*j);
 
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
