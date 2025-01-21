@@ -473,7 +473,7 @@ elif(case in [15]): # occupancy vs site vs time heatmap
     #### iter over triplet/singlet
     myaxlabels = "";
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " No Qubits";
+        if("nosd" in dfile):      myaxlab = " No_Qubits";
         elif("triplet" in dfile): myaxlab = " Triplet";
         elif("singlet" in dfile): myaxlab = " Singlet";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];

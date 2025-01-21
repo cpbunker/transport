@@ -19,7 +19,7 @@ def get_occs_Ne_TwoSz(the_Ne, the_TwoSz, num_skip = 0):
         nonpol_levels.append(2);
     return np.append(skip_levels, np.append(nonpol_levels, spinpol_levels)).astype(int);
 
-def get_overlaps(the_Nconf, the_Nsites, the_tl, the_Vconf, the_occs, plot=False):
+def get_overlaps(the_Nconf, the_Nsites, the_tl, the_Vconf, the_Vdelta, the_occs, plot=False):
     '''
     '''
     if(not isinstance(the_occs, np.ndarray)): raise TypeError;
@@ -54,6 +54,7 @@ def get_overlaps(the_Nconf, the_Nsites, the_tl, the_Vconf, the_occs, plot=False)
     
     for vali in range(4):
         the_axes[0].plot(vecs_t0[vali], label="$k_m =${:.4f}".format(np.pi*(vali+1)/the_Nconf));
+    the_axes[0].plot(np.diag(h1e_t0)/np.max(abs(np.diag(h1e_t0))),color="black",label="$V_j$");
     the_axes[0].legend(loc="lower right");
     the_axes[0].set_xlabel("$j$");
     the_axes[0].set_ylabel("$\langle j | k_m \\rangle$");
@@ -65,12 +66,17 @@ def get_overlaps(the_Nconf, the_Nsites, the_tl, the_Vconf, the_occs, plot=False)
     for j in all_sites[:-1]:
         h1e[nloc*j+0,nloc*(j+1)+0] += -the_tl; # spinless
         h1e[nloc*(j+1)+0,nloc*j+0] += -the_tl;
+        
+    # electric field
+    for j in all_sites:
+        h1e[nloc*j+0,nloc*j+0] += -(the_Vdelta)*j;
 
     # t>0 eigenstates (|k_n> states)
     vals, vecs = np.linalg.eigh(h1e);
     vecs = vecs.T;
     for vali in range(4):
         the_axes[1].plot(vecs[vali], label="$k_n=${:.4f}".format(np.pi*(vali+1)/the_Nsites));
+    the_axes[1].plot(np.diag(h1e)/np.max(abs(np.diag(h1e))),color="black",label="$V_j$");
     the_axes[1].legend(loc="lower right");
     the_axes[1].set_xlabel("$j$");
     the_axes[1].set_ylabel("$\langle j | k_n \\rangle$");
@@ -116,17 +122,20 @@ mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink
 # physical params
 mytl = 1.0;
 myVconf = 30.0;
+myVdelta = -0.01;
 
 # iter over Ne, TwoSz, Nconf values
-pairvals = np.array([(1,1,5,0),(1,1,10,0), (1,1,20,0),(1,1,40,0)]); # Ne=1 fixed
-pairvals = np.array([(1,1,20,0),(1,1,20,2),(1,1,20,4)]); # Ne=1 fixed, ground vs excited states
-#pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
+#pairvals = np.array([(1,1,5,0),(1,1,10,0), (1,1,20,0),(1,1,40,0)]); # Ne=1 fixed
+#pairvals = np.array([(1,1,20,0),(1,1,20,2),(1,1,20,4)]); # Ne=1 fixed, ground vs excited states
+#pairvals = np.array([(1,1,20,0),(5,5,20,0), (5,5,40,0),(5,5,60,0)]); # mix of interesting cases
+#pairvals = np.array([(1,1,20,0),(5,5,20,0)]); # mix of interesting cases
+pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
 #pairvals = np.array([(2,0,20,0),(10,0,20,0)]); # Nconf=20 fixed not spin polarized
 #pairvals = np.array([(2,0,20,0),(4,0,20,0),(10,0,20,0), (20,0,20,0)]); # Nconf=20 fixed not spin polarized
 #pairvals = np.array([(2,2,20,0),(4,2,20,0),(10,2,20,0), (20,2,20,0)]); # Nconf=20 fixed slightly spin polarized
 
 # plot either individual wfs or real-space PDFs
-plot_wfs = False;
+plot_wfs = True;
 for pairi in range(len(pairvals)):
     myNe, myTwoSz, myNconf, my_levels_skip = pairvals[pairi];
     my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
@@ -138,7 +147,7 @@ for pairi in range(len(pairvals)):
     myNsites = myNL+myNFM+myNR;
 
     # get pdf values
-    _, _, my_real, my_spin = get_overlaps(myNconf, myNsites, mytl, myVconf, my_occs, plot=plot_wfs);
+    _, _, my_real, my_spin = get_overlaps(myNconf, myNsites, mytl, myVconf, myVdelta, my_occs, plot=plot_wfs);
     if(not plot_wfs):
         pairfig, pairax = plt.subplots();
         pairax.fill_between(np.arange(len(my_real)),my_real, color="cornflowerblue");
@@ -160,9 +169,9 @@ for pairi in range(len(pairvals)):
     myNsites = myNL+myNFM+myNR;
 
     # get pdf values
-    mykvals, mypdfs, _, _ = get_overlaps(myNconf, myNsites, mytl, myVconf, my_occs, plot=False);  
+    mykvals, mypdfs, _, _ = get_overlaps(myNconf, myNsites, mytl, myVconf, myVdelta, my_occs, plot=False);  
     if(norm_Ne): mypdfs = mypdfs/myNe;
-    myax.plot(mykvals, mypdfs, color=mycolors[pairi], label = "$N_e =${:.0f}, $2S_z=${:.0f}".format(myNe,myTwoSz)+", $N_{conf} =$"+"{:.0f}".format(myNconf));
+    myax.plot(mykvals, mypdfs, color=mycolors[pairi], label = "$N_e =${:.0f}, $\Delta V=${:.2f}".format(myNe,myVdelta)+", $N_{conf} =$"+"{:.0f}".format(myNconf));
     #myax.axvline(np.pi/myNconf, color=mycolors[pairi], linestyle="dashed", label="$k^0$");
 
 # format

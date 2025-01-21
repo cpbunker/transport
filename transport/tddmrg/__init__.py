@@ -1985,12 +1985,12 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         for j in conf_sites:
             builder.add_term("cD",[j,j],-Bx/2);
             #builder.add_term("Cd",[j,j],-Bx/2);
-    if("Vdelta_rm" in params_dict.keys()):
+    if("Vdelta" in params_dict.keys()):
         # REMOVE the voltage gradient for time < 0, so it doesn't affect initialization
-        Vdelta_rm = params_dict["Vdelta_rm"];
+        Vdelta = params_dict["Vdelta"];
         for j in all_sites:
-            builder.add_term("cd",[j,j],Vdelta_rm*j);
-            builder.add_term("CD",[j,j],Vdelta_rm*j);
+            builder.add_term("cd",[j,j],Vdelta*j);
+            builder.add_term("CD",[j,j],Vdelta*j);
 
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
