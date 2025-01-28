@@ -55,6 +55,26 @@ def get_title(f, to_exclude=["J_x", "J_z"]):
         if(title_mask[i]): out_title.append(in_title[i]); 
     out_title = ",".join(out_title);
     return out_title;
+    
+def crop_and_tighten_figure(f, yratio, xratio,fheight,fwidth):
+    '''
+    '''
+    f.tight_layout();
+    f.canvas.draw();
+    image_from_plot = np.frombuffer(f.canvas.tostring_rgb(), dtype=np.uint8)
+    image_from_plot = image_from_plot.reshape(f.canvas.get_width_height()[::-1] + (3,))
+    plt.close(f)
+    #image_from_plot = image_from_plot[::-1,:,:];
+    ypixels, xpixels, _ = np.shape(image_from_plot);
+    
+    # crop according to given ratios
+    image_from_plot = image_from_plot[:int(yratio*ypixels),:int(xratio*xpixels)];
+    
+    fig_from_imshow = plt.imshow(image_from_plot);
+    #fig_from_imshow.set_size_inches((4.5/1.3)*fwidth,(5.5/1.3)*fheight);
+    plt.axis('off');
+    plt.savefig();
+    plt.show();
 
 ########################################################################
 #### run code
@@ -464,28 +484,34 @@ elif(case in [15]): # occupancy vs site vs time heatmap
 
     # axes
     horizontal = True; # puts heatmaps side by side, else stack
-    if(horizontal): fignrows, figncols = 1, len(datafiles);
-    else: fignrows, figncols = len(datafiles), 1;
+    if(horizontal): fignrows, figncols = 1, len(datafiles)+1;
+    else: fignrows, figncols = len(datafiles)+1, 1;
     fig, axes = plt.subplots(ncols=figncols,nrows=fignrows,sharey=True);
     if((horizontal and figncols==1) or (not horizontal and fignrows==1)): axes = [axes];
-    fig.set_size_inches(4*figncols,5*fignrows)
+    fig.set_size_inches((4.5/1.3)*figncols,(5.5/1.3)*fignrows)
 
     #### iter over triplet/singlet
-    myaxlabels = "";
+    myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " No_Qubits";
+        if("nosd" in dfile):      myaxlab = " Qubits_Removed";
         elif("triplet" in dfile): myaxlab = " Triplet";
         elif("singlet" in dfile): myaxlab = " Singlet";
+        elif("nofield" in dfile): myaxlab = " Field_Removed";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];
-        arrow_labels = ["$\swarrow$","$\downarrow$","$\searrow$"];
-        if(axi==2): myaxlabels += myaxlab+arrow_labels[axi];
-        else: myaxlabels += arrow_labels[axi] + myaxlab;
-        print("\n>>>",myaxlabels.split(" ")[-1],"=",dfile);
+        if(isinstance(myaxlabels,str)):
+            arrow_labels = ["$\swarrow$","$\downarrow$","$\searrow$"];
+            if(axi==2): myaxlabels += myaxlab+arrow_labels[axi];
+            else: myaxlabels += arrow_labels[axi] + myaxlab;
+            print("\n>>>",myaxlabels.split(" ")[-1],"=",dfile);
+        else: 
+            myaxlabels.append(myaxlab);
+            print("\n>>>",myaxlabels[-1],"=",dfile);
         
         # time evolution params
         params = json.load(open(dfile+".txt"));
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
         print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
+        if("Vdelta" in params.keys()): print("\n    Electric field w/ Delta V = {:.3f}".format(params["Vdelta"]));
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
@@ -501,32 +527,40 @@ elif(case in [15]): # occupancy vs site vs time heatmap
         timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Nsites];
         
         # plot
-        heatmap = axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time))
+        heatmap=axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
         print("    vmax = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
         
-    # format
-    axes[0].set_ylabel("Site",fontsize=myfontsize);
-    for axi in range(len(axes)): 
-        axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
-        if(len(axes)>2): cbar = fig.colorbar(heatmap,ax=axes[axi],location='top',shrink=0.9,pad=0.01);
-        if(len(axes)>2 and axi != len(axes)-1): fig.delaxes(cbar.ax)
+        # colorbar
+        if(axi==len(axes)-2): 
+            #heatmap = axes[-1].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr',vmin=0.0,vmax=np.max(yjs_vs_time));
+            cbar = fig.colorbar(heatmap,ax=axes[-1], pad=0.35,location='left');
+            axes[-1].text(-0.90,1.03,"$\langle \hat{n} \\rangle $",
+            transform=axes[-1].transAxes, fontsize=myfontsize);
+            axes[-1].axis('off');
         
-    #### iter over triplet/singlet
+    # format axes
+    axes[0].set_ylabel("Site",fontsize=myfontsize); 
+    for axi in range(len(datafiles)): 
+        axes[axi].text(0,0.9,myaxlabels[axi], color="white",
+            transform=axes[axi].transAxes,fontsize=myfontsize);
+        axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
+        if(len(datafiles)%2 != 0): axes[len(datafiles)//2].set_title( get_title(datafiles[-1]),fontsize=myfontsize);
+        else: axes[axi].set_title(get_title(datafiles[axi]),loc="left",fontsize=myfontsize);
+        
+    #### iter over triplet/singlet to mark 
     for axi, dfile in enumerate(datafiles):
         # qubit positions
         params = json.load(open(dfile+".txt"));
         qubit_sites = params["NL"], params["NL"]+1; 
-        if("nosd" not in dfile):
+        if(params["Jsd"] != 0.0):
             rightax = axes[axi].twinx();
             rightax.set_ylim(axes[axi].get_ylim());
             rightax.set_yticks(qubit_sites,labels=[]);
-            rightax.tick_params(axis='y', left=True,right=False, color='black', length=20, width=2, grid_color='none');
+            rightax.tick_params(axis='y', left=True,right=False, color='black', length=12, width=2, grid_color='none');
 
     # show
-    axes[0].set_title(get_title(datafiles[-1]),fontsize=myfontsize);
-    if(len(axes)>1): axes[1].set_title(myaxlabels,fontsize=myfontsize)
-    fig.tight_layout()
-    plt.show()
+    fig.tight_layout();
+    plt.show();
     
 
 if(case in [10,11]): # animate time evol

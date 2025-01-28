@@ -54,6 +54,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(params_dict["Jsd"])+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(params_dict["Jx"], params_dict["Jz"], Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
+        if("Vdelta" in params_dict.keys()): title_str += ", $\Delta V = ${:.2f}$t_l$";
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_", "J_", "S2_", "MI_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $",
