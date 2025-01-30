@@ -54,7 +54,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(params_dict["Jsd"])+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(params_dict["Jx"], params_dict["Jz"], Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
-        if("Vdelta" in params_dict.keys()): title_str += ", $\Delta V = ${:.2f}$t_l$";
+        if("tp" in params_dict.keys()): title_str += ", $t_p =${:.1f}$t_l$".format(params_dict["tp"]);
+        if("Vdelta" in params_dict.keys()): title_str += ", $\Delta V = ${:.3f}$t_l$".format(params_dict["Vdelta"]);
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_", "J_", "S2_", "MI_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $",
@@ -124,7 +125,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     axes[-1].legend(title = "Time = {:.2f}$\hbar/t_l$".format(time));
     axes[0].set_title(title_str);
     plt.tight_layout();
-    if(params_dict["plot"]): plt.show() #pass #plt.show();
+    if(params_dict["plot"]): plt.show();
     else:
         np.savetxt(savename+"_arrays/"+obs_strs[0]+"title.txt",[0.0], header=title_str);
         #plt.savefig(savename+"_arrays/time{:.2f}.pdf".format(time));

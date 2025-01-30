@@ -1874,7 +1874,23 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         for j in all_sites:
             builder.add_term("cd",[j,j],-Vdelta*j);
             builder.add_term("CD",[j,j],-Vdelta*j);
-        
+    if("tp" in params_dict.keys()):
+        # different hopping (t') in BOTH leads (doesn't break left-right symmetry)
+        # NL, NFM, NR, Nconf
+        tp = params_dict["tp"];
+        conf_sites = np.arange(Nconf);
+        assert(NL+NFM+NR - Nconf > Nconf);
+        anticonf_sites = np.arange(NL+NFM+NR - Nconf, NL+NFM+NR);
+        for j in conf_sites:
+            builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
+            builder.add_term("CD",[j,j+1],tl-tp);
+            builder.add_term("cd",[j+1,j],tl-tp);
+            builder.add_term("CD",[j+1,j],tl-tp);
+        for j in (anticonf_sites-1):
+            builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
+            builder.add_term("CD",[j,j+1],tl-tp);
+            builder.add_term("cd",[j+1,j],tl-tp);
+            builder.add_term("CD",[j+1,j],tl-tp);     
 
     return driver, builder;
 

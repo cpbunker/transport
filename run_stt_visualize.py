@@ -56,26 +56,6 @@ def get_title(f, to_exclude=["J_x", "J_z"]):
     out_title = ",".join(out_title);
     return out_title;
     
-def crop_and_tighten_figure(f, yratio, xratio,fheight,fwidth):
-    '''
-    '''
-    f.tight_layout();
-    f.canvas.draw();
-    image_from_plot = np.frombuffer(f.canvas.tostring_rgb(), dtype=np.uint8)
-    image_from_plot = image_from_plot.reshape(f.canvas.get_width_height()[::-1] + (3,))
-    plt.close(f)
-    #image_from_plot = image_from_plot[::-1,:,:];
-    ypixels, xpixels, _ = np.shape(image_from_plot);
-    
-    # crop according to given ratios
-    image_from_plot = image_from_plot[:int(yratio*ypixels),:int(xratio*xpixels)];
-    
-    fig_from_imshow = plt.imshow(image_from_plot);
-    #fig_from_imshow.set_size_inches((4.5/1.3)*fwidth,(5.5/1.3)*fheight);
-    plt.axis('off');
-    plt.savefig();
-    plt.show();
-
 ########################################################################
 #### run code
 
@@ -95,8 +75,8 @@ if(__name__=="__main__"):
     obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
     num_xticks = 4;
     datamarkers = ["s","^","d","*"];
-    plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True})
+    plt.rcParams.update({"font.family": "serif"});
+    #plt.rcParams.update({"text.usetex": True});
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -493,10 +473,10 @@ elif(case in [15]): # occupancy vs site vs time heatmap
     #### iter over triplet/singlet
     myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " Qubits_Removed";
+        if("nosd" in dfile):      myaxlab = " Qubits Removed";
         elif("triplet" in dfile): myaxlab = " Triplet";
         elif("singlet" in dfile): myaxlab = " Singlet";
-        elif("nofield" in dfile): myaxlab = " Field_Removed";
+        elif("nofield" in dfile): myaxlab = " Field Removed";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];
         if(isinstance(myaxlabels,str)):
             arrow_labels = ["$\swarrow$","$\downarrow$","$\searrow$"];
