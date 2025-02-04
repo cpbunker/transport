@@ -68,9 +68,15 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 # top level
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
+is_block = True; # whether to use block2 to do DMRG, or do FCI instead
+# open parameters JSON
 json_name = sys.argv[1];
-params = json.load(open(json_name+".txt")); print(">>> Params = ",params);
-is_block = True;
+try:
+    try: params = json.load(open(json_name+".txt"));
+    except: params = json.load(open(json_name));
+    print(">>> Params = ",params);
+except:
+    raise Exception(json_name+" cannot be found");
 
 # unpacking
 myNL, myNFM, myNR, myNe = params["NL"], params["NFM"], params["NR"], params["Ne"],
