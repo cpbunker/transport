@@ -49,11 +49,11 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
 
     # classify site indices (spin not included)
     conf_sites = np.arange(the_Nconf);
-    if tp_symmetry:
+    if tp_symmetry: # modifies left and right lead
         assert(the_Nsites - the_Nconf > the_Nconf);
         anticonf_sites = np.arange(the_Nsites-the_Nconf, the_Nsites);
         nonconf_sites = np.arange(the_Nconf, the_Nsites - the_Nconf);
-    else:
+    else: # modifies left lead only
         anticonf_sites = np.array([]);
         nonconf_sites = np.arange(the_Nconf, the_Nsites);
     all_sites = np.arange(the_Nsites);
