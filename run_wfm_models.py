@@ -12,10 +12,12 @@ from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 #### top level
 np.set_printoptions(precision = 4, suppress = True);
 verbose = 5;
+case = int(sys.argv[1]);
 
 # fig standardizing
 myxvals = 199;
@@ -26,7 +28,8 @@ mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"font.family": "serif"})
+plt.rcParams.update({"text.usetex": True})
 
 # constructing the hamiltonian
 def diag_ham(params, S) -> np.ndarray:
@@ -53,7 +56,7 @@ def diag_ham(params, S) -> np.ndarray:
     return h;
     
                    
-    # RAISING/LOWERING ONLY
+    # THIS BLOCK DOES RAISING/LOWERING ONLY (No Sz terms)
     h += (JK1/2)*np.array([[0,1/2, np.sqrt(S)],
                            [1/2,0,-np.sqrt(S)],
                            [np.sqrt(S),-np.sqrt(S),0]]);
@@ -66,7 +69,7 @@ def diag_ham(params, S) -> np.ndarray:
 #########################################################
 #### effects of Ki and Delta E
 
-if True: # T+ at different Delta E by changing D
+if(case in [1,2]): # T+ at different Delta E by changing D
 
     # axes
     ylabels = ["+","-","i"]#[:1];
@@ -77,10 +80,11 @@ if True: # T+ at different Delta E by changing D
 
     # tight binding params
     tl = 1.0;
-    Distval = 1;
+    Distval = 1; # <-- ???
     JK =  6*np.pi*tl/Distval; 
     J12 = 0*tl/100;
     myspinS = 0.5;
+    print("\nSystem = two MSQs on an infinite 1D nanowire\nMSQs have spin = {:.1f}\n".format(myspinS));
     n_loc_dof = 3;
     source = np.zeros((n_loc_dof,));
     sourcei = n_loc_dof-1;
@@ -89,13 +93,14 @@ if True: # T+ at different Delta E by changing D
     plot_Rvals = True;
 
     # energy of the incident electron
-    K_indep = False; # what to put on x axis
+    K_indep = True; # puts energy above the bottom of the band (logarithmically) on x axis
+    if(case==2): K_indep = False; # puts wavenumber on the x axis
     if(K_indep):               
         logKlims = -4,-1
         Kvals = np.logspace(*logKlims,myxvals, dtype = complex); # K > 0 always
         knumbers = np.arccos((Kvals-2*tl)/(-2*tl));
     else:
-        knumberlims = 0.1*(np.pi/Distval), 4.0*(np.pi/Distval);
+        knumberlims = 0.1*(np.pi/Distval), 4.0*(np.pi/Distval); # distval = N-1 = num lattice constants btwn MSQs
         knumbers = np.linspace(knumberlims[0], knumberlims[1], myxvals, dtype=complex);
         Kvals = 2*tl - 2*tl*np.cos(knumbers);
     if(Distval == 1): # special case
@@ -142,6 +147,9 @@ if True: # T+ at different Delta E by changing D
         for hb in hblocks:
             hb += -E_shift*np.eye(n_loc_dof);
         if(verbose > 3 ): print("Delta E / t = ", (hblocks[0][0,0] - hblocks[0][2,2])/tl);
+        if(Dvali==0 and verbose>5): 
+            print("shape(hblocks) = ",np.shape(hblocks));
+            print("sourcei = ",sourcei);
 
         # hopping
         tnn = np.array(tnn[:-1]);
@@ -153,7 +161,7 @@ if True: # T+ at different Delta E by changing D
         for Kvali in range(len(Kvals)):
 
             # energy
-            Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
+            Kval = Kvals[Kvali]; # Kval > 0 always, what I call Ki in paper
             Energy = Kval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
 
             # get R, T coefs

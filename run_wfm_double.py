@@ -33,7 +33,8 @@ mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"font.family": "serif"})
+plt.rcParams.update({"text.usetex": True})
 
 # constructing the hamiltonian
 def reduced_ham(params, S) -> np.ndarray:

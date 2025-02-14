@@ -27,13 +27,16 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = Tru
         or within SR which is defined by tnn, tnnn matrices
     -E, float, energy of the incident electron
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
+    -is_psi_jsigma, whether to return computed wavefunction
+    -is_Rhat, whether to return Rhat operator or just R, T probabilities
     Optional args
     -verbose, how much printing to do
-    -is_Rhat, whether to return Rhat operator or just R, T probabilities
     -all_debug, whether to enforce a bunch of extra assert statements
 
     Returns
     tuple of R coefs (vector of floats for each sigma) and T coefs (likewise)
+    UNLESS is_psi_jsigma = True, in which case
+    returns the computed wavefunction
     UNLESS is_Rhat = True, in which case
     returns n_loc_dof \times n_loc_dof matrix Rhat, which
     transforms incoming spin states to reflected spin states
