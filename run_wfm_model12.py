@@ -301,6 +301,68 @@ elif(case in ["N2","N2_k"]): # compare T vs rhoJa for N=2 fixed
     fname = "data/model12/"+case+"/"+str(int(Jval*1000)/1000);
     print("Saving data to "+fname);
     np.save(fname, data);
+    
+elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
+
+    # channels
+    pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
+    source = np.zeros(8); 
+    # sourcei is one of the pairs always
+    sigmas = [pair[0],pair[1]]; # all the channels of interest to generating entanglement
+    source[pair[1]] = 1;  # MSQs in *singlet* so transmission should be resonant
+
+    # tight binding params
+    tl = 1.0;
+    Jval = -0.5*tl/100;
+    
+    # rhoJa = fixed throughout
+    rhoJval = 1.0;
+    fixed_knumber = abs(Jval)/(np.pi*tl*rhoJval); # < ---- change !!!!
+    
+    # d = number of lattice constants between MSQ 1 and MSQ
+    kdalims = 0.1*np.pi, 1.9*np.pi
+    kdavals = np.linspace(*kdalims, myxvals);
+    Distvals = (kdavals/fixed_knumber).astype(int);
+    print("max N = {:.0f}".format(np.max(Distvals)+2));
+    
+    # iter over d, getting T
+    Rvals = np.empty((len(Distvals),len(source)), dtype = float);
+    Tvals = np.empty((len(Distvals),len(source)), dtype = float);
+    for Distvali in range(len(Distvals)):
+    
+        # construct hams
+        # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
+        i1, i2 = [1], [Distvals[Distvali]+1];
+        hblocks, tnn = h_cicc_eff(Jval, tl, i1, i2, i2[-1]+2, pair); # full 8 by 8, not reduced
+        tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+        if(Distvali==0): 
+            print("shape(hblocks) = ",np.shape(hblocks));
+            print("sourcei = ",np.argmax(source));
+            if(verbose > 3): print("hblocks =\n",np.real(hblocks));
+
+        # get R, T coefs
+        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(fixed_knumber), source, 
+                         False, False, all_debug = False);
+        Rvals[Distvali] = Rdum;
+        Tvals[Distvali] = Tdum;
+        
+    fig, ax = plt.subplots();
+    ax.plot(kdavals/np.pi, Tvals[np.argmax(source)]);
+    plt.show();
+    assert False;
+
+    # save data to .npy
+    data = np.zeros((2+2*len(source),len(indep_vals)),dtype=float);
+    data[0,0] = tl;
+    data[0,1] = Jval;
+    data[0,2:2+len(sigmas)] = sigmas[:];
+    data[0,2+len(sigmas):] = np.full((len(indep_vals)-2-len(sigmas),), np.nan);
+    data[1,:] = np.real(indep_vals);
+    data[2:10,:] = Tvals.T; # 8 spin dofs
+    data[10:,:] = Rvals.T;
+    fname = "data/model12/"+case+"/"+str(int(rhoJval*1000)/1000);
+    print("Saving data to "+fname);
+    np.save(fname, data);
 
 
 ########################################################################
