@@ -27,19 +27,19 @@ import sys
 def load_data(fname):
     print("Loading data from "+fname);
     data = np.load(fname);
-    myt = data[0,0];
+    myt = data[0,0]; # sometimes overload this with other quantities,such as rhoJ
     myJ = data[0,1];
     mysigmavals = data[0,2:];
     mysigmavals = np.extract(np.isfinite(mysigmavals), mysigmavals).astype(int);
     myxvals = data[1];
     myTvals = data[2:10];
-    myRvals = data[10:];
+    myRvals = data[10:]; # this is also sometimes overloaded
     mytotals = np.sum(myTvals, axis = 0) + np.sum(myRvals, axis = 0);
     print("- shape sigmavals = ", np.shape(mysigmavals));
     print("- shape xvals = ", np.shape(myxvals));
     print("- shape Tvals = ", np.shape(myTvals));
     print("- shape Rvals = ", np.shape(myRvals));
-    return myJ, mysigmavals, myxvals, myRvals, myTvals, mytotals;
+    return myt, myJ, mysigmavals, myxvals, myRvals, myTvals, mytotals;
 
 # colormap
 def get_color(colori,numcolors):
@@ -114,21 +114,21 @@ def h_cicc_eff(J, t, i1, i2, Nsites, pair_to_entangle):
     # heisenberg interaction matrices
     Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
                         [0,1,0,0,0,0,0,0],   # channel 1 = up up down
-                        [0,0,-1,0,2,0,0,0],  # channel 2 = up down up
-                        [0,0,0,-1,0,2,0,0],
-                        [0,0,2,0,-1,0,0,0],  # channel 4 = down up up
-                        [0,0,0,2,0,-1,0,0],
-                        [0,0,0,0,0,0,1,0],
-                        [0,0,0,0,0,0,0,1] ]);
+                        [0,0,-1, 0, 2, 0,0,0],  # channel 2 = up down up
+                        [0,0, 0,-1, 0, 2,0,0],
+                        [0,0, 2, 0,-1, 0,0,0],  # channel 4 = down up up
+                        [0,0, 0, 2, 0,-1,0,0],
+                        [0,0, 0, 0, 0, 0,1,0],
+                        [0,0, 0, 0, 0, 0,0,1] ]);
 
     Se_dot_S2 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to second spin impurity
-                        [0,-1,0,0,2,0,0,0],
-                        [0,0,1,0,0,0,0,0],
-                        [0,0,0,-1,0,0,2,0],
-                        [0,2,0,0,-1,0,0,0],
-                        [0,0,0,0,0,1,0,0],
-                        [0,0,0,2,0,0,-1,0],
-                        [0,0,0,0,0,0,0,1] ]);
+                        [0,-1, 0, 0, 2, 0, 0,0],
+                        [0, 0, 1, 0, 0, 0, 0,0],
+                        [0, 0, 0,-1, 0, 0, 2,0],
+                        [0, 2, 0, 0,-1, 0, 0,0],
+                        [0, 0, 0, 0, 0, 1, 0,0],
+                        [0, 0, 0, 2, 0, 0,-1,0],
+                        [0, 0, 0, 0, 0,0 , 0,1] ]);
     Se_dot_S1 = entangle(Se_dot_S1,*pair_to_entangle); # verified correct
     Se_dot_S2 = entangle(Se_dot_S2,*pair_to_entangle); # verified correct
 
@@ -160,7 +160,7 @@ if(__name__=="__main__"):
     case = sys.argv[1];
 
     # fig standardizing
-    myxvals = 199;
+    myxvals = 99; # number of pts on the x axis
     myfontsize = 14;
     mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
     accentcolors = ["black","red"];
@@ -306,28 +306,30 @@ elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
 
     # channels
     pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
-    source = np.zeros(8); 
-    # sourcei is one of the pairs always
-    sigmas = [pair[0],pair[1]]; # all the channels of interest to generating entanglement
-    source[pair[1]] = 1;  # MSQs in *singlet* so transmission should be resonant
+    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement 
 
     # tight binding params
     tl = 1.0;
-    Jval = -0.5*tl/100;
+    Jval = -0.5*tl/10; # /100
     
     # rhoJa = fixed throughout
     rhoJval = 1.0;
-    fixed_knumber = abs(Jval)/(np.pi*tl*rhoJval); # < ---- change !!!!
+    fixed_Kval = abs(1/(np.pi*np.pi)*(Jval*Jval/tl)*1/(rhoJval*rhoJval));
+    fixed_knumber = np.arccos((fixed_Kval-2*tl)/(-2*tl));
+    fixed_rhoJ = (1/np.pi)*np.sqrt(abs(Jval*Jval/(tl*fixed_Kval)));
     
     # d = number of lattice constants between MSQ 1 and MSQ
-    kdalims = 0.1*np.pi, 1.9*np.pi
+    kdalims = 0.1*np.pi, 1.1*np.pi
     kdavals = np.linspace(*kdalims, myxvals);
+    indep_vals = kdavals/np.pi;
     Distvals = (kdavals/fixed_knumber).astype(int);
-    print("max N = {:.0f}".format(np.max(Distvals)+2));
     
     # iter over d, getting T
-    Rvals = np.empty((len(Distvals),len(source)), dtype = float);
-    Tvals = np.empty((len(Distvals),len(source)), dtype = float);
+    # here T is *diagonal* in that we only save T in the channel of the source!
+    # we don't compute for all channels so we leave the rest as NaNs
+    Tvals = np.full((len(Distvals),8), np.nan, dtype = float);
+    Tsummed = np.full((len(Distvals),8), np.nan, dtype = float);
+    TpRsummed = np.full((len(Distvals),8), np.nan, dtype = float);
     for Distvali in range(len(Distvals)):
     
         # construct hams
@@ -336,31 +338,43 @@ elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
         hblocks, tnn = h_cicc_eff(Jval, tl, i1, i2, i2[-1]+2, pair); # full 8 by 8, not reduced
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
         if(Distvali==0): 
-            print("shape(hblocks) = ",np.shape(hblocks));
-            print("sourcei = ",np.argmax(source));
             if(verbose > 3): print("hblocks =\n",np.real(hblocks));
+            print("rhoJ = {:.4f}".format(fixed_rhoJ));
+            print("\nmax N = {:.0f}".format(np.max(Distvals)+2));
+            print("shape(hblocks) = ",np.shape(hblocks));
 
-        # get R, T coefs
-        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(fixed_knumber), source, 
-                         False, False, all_debug = False);
-        Rvals[Distvali] = Rdum;
-        Tvals[Distvali] = Tdum;
+        for sigmai in range(len(sigmas)):
         
-    fig, ax = plt.subplots();
-    ax.plot(kdavals/np.pi, Tvals[np.argmax(source)]);
-    plt.show();
-    assert False;
+            # sourcei is one of the pairs always 
+            source = np.zeros(8);
+            source[sigmas[sigmai]] = 1;  # MSQs in singlet or triplet
+
+            # get  T coefs
+            Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, -2*tl*np.cos(fixed_knumber), source, 
+                         False, False, all_debug = False);
+            Tvals[Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
+            Tsummed[Distvali,sigmas[sigmai]] = np.sum(Tdum);
+            TpRsummed[Distvali,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
+    
+    if(False):   
+        fig, ax = plt.subplots();
+        for sigmai in range(len(sigmas)): 
+            ax.plot(kdavals/np.pi, Tvals[:,sigmas[sigmai]]);
+            ax.plot(kdavals/np.pi, Tsummed[:,sigmas[sigmai]],linestyle="dashed");
+        ax.set_title("rhoJ = {:.3f}".format(fixed_rhoJ))
+        plt.show();
+        assert False;
 
     # save data to .npy
     data = np.zeros((2+2*len(source),len(indep_vals)),dtype=float);
-    data[0,0] = tl;
+    data[0,0] = fixed_rhoJ;
     data[0,1] = Jval;
     data[0,2:2+len(sigmas)] = sigmas[:];
     data[0,2+len(sigmas):] = np.full((len(indep_vals)-2-len(sigmas),), np.nan);
     data[1,:] = np.real(indep_vals);
-    data[2:10,:] = Tvals.T; # 8 spin dofs
-    data[10:,:] = Rvals.T;
-    fname = "data/model12/"+case+"/"+str(int(rhoJval*1000)/1000);
+    data[2:2+len(source),:] = Tvals.T; # 8 spin dofs
+    data[2+len(source):2+2*len(source),:] = Tsummed.T;
+    fname = "data/model12/"+case+"/"+str(int(rhoJval*10)/10);
     print("Saving data to "+fname);
     np.save(fname, data);
 
@@ -368,7 +382,51 @@ elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
 ########################################################################
 #### plot data
 
-#### plot T+ like cicc figure
+
+#### plot transmission in same state like in Cicc fig 2
+elif(case in ["rhoJ_visualize"]):
+
+    # set up plots
+    num_plots = 1;
+    height_mult = 1;
+    fig, axes = plt.subplots(num_plots, 1, sharex=True);
+    if num_plots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3);
+    
+    # get data
+    dataf = sys.argv[2];
+    datacase = dataf.split("/")[-2];
+    rhoJval, Jval, sigmavals, xvals, Tsummed, Tvals, totals = load_data(dataf); 
+    
+    # get channels
+    assert(sigmavals[1]-sigmavals[0] == 1); # poor mans verification of pair assignment
+
+    # plot T(|+> -> |+>) and T(|-> -> |->) 
+    for sigmai in range(len(sigmavals)):
+        axes[0].plot(xvals, Tvals[sigmavals[sigmai]], color = mycolors[sigmai], marker =
+                   mymarkers[sigmai+1],markevery=mymarkevery,linewidth = mylinewidth,
+                   label = "$T_{"+["+","-"][sigmai]+"}$");
+        axes[0].plot(xvals, Tsummed[sigmavals[sigmai]], color = mycolors[sigmai], linestyle="dashed");
+    print(">>> T+ max = ",np.max(Tvals[sigmavals[0]])," at indep = ",xvals[np.argmax(Tvals[sigmavals[0]])]);
+    print(">>> T- max = ",np.max(Tvals[sigmavals[1]])," at indep = ",xvals[np.argmax(Tvals[sigmavals[1]])]);
+    
+    # format T plot
+    offset_y = 0.08;
+    axes[0].set_ylim(0-offset_y, 1.0+offset_y);
+    
+    # format
+    axes[-1].set_xlabel('$k_i d/\pi$',fontsize = myfontsize);
+    for axi in range(len(axes)): axes[axi].set_title("$\\rho J a = ${:.1f}".format(rhoJval), 
+               x=0.5, y = 0.0, fontsize = myfontsize);
+    
+    # show
+    plt.tight_layout();
+    if False:
+        plt.savefig('figs/double/model12.pdf');
+    else:
+        plt.show();
+
+#### plot T+ = entanglement generation prob like in Cicc fig 6
 elif(case in ["gen_visualize"]):
 
     # set up plots
@@ -380,10 +438,10 @@ elif(case in ["gen_visualize"]):
     
     # get data
     dataf = sys.argv[2];
-    case = dataf.split("/")[-2];
+    datacase = dataf.split("/")[-2];
     if("_k" in case): K_indep = False;
     else: K_indep = True;
-    Jval, sigmavals, xvals, Rvals, Tvals, totals = load_data(dataf); 
+    _, Jval, sigmavals, xvals, Rvals, Tvals, totals = load_data(dataf); 
     # typically xvals are Ki, i.e. the energy above zero
     logElims = np.log10(xvals[0]), np.log10(xvals[-1]);
     
