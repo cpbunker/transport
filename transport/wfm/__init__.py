@@ -229,6 +229,31 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
                   .format(np.real(v_R[sigma]), np.imag(v_R[sigma]), np.real(SigmaRs[sigma]), np.imag(SigmaRs[sigma])));
 
     return Hp;
+    
+def g_closed(diag, offdiag, E):
+    '''
+    '''
+    
+    # scale the energy
+    lamR = (E-diag)/(2*offdiag);
+    # make sure the sign of Im[g]is correctly assigned
+    assert( abs(np.imag(lamR)) < 1e-10);
+    lamR = np.real(lamR); 
+    return (1/offdiag)*(lamR + np.lib.scimath.sqrt(lamR*lamR - 1));
+    
+def g_iter(diag, offdiag, E, ith, g_prev, imE = 1e-3):
+    '''
+    '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;
+    if(not isinstance(ith, int)): raise TypeError;
+    eye_like = np.eye(len(diag));
+    E = complex(E,imE);
+     
+    if(ith==0): # 0th iteration
+        return np.linalg.inv(eye_like*E - diag);
+        
+    else: # higher iteration
+        return np.linalg.inv(eye_like*E - diag - np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T))));
 
 def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     '''
