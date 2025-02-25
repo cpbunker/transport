@@ -67,7 +67,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = Tru
     ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector with sigma components
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
     v_L = 2*tl*np.sin(ka_L); # vector with sigma components
-    v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1
+    v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1   <---- !!! change !!!
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
@@ -109,7 +109,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = Tru
     
     return Rs, Ts;
 
-def Hmat(h, tnn, tnnn, verbose = 0) -> np.ndarray:
+def Hmat(h, tnn, tnnn) -> np.ndarray:
     '''
     Make the hamiltonian H for reduced dimensional N+2 x N+2 system
     where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
@@ -144,7 +144,7 @@ def Hmat(h, tnn, tnnn, verbose = 0) -> np.ndarray:
                     if(sitei == sitej): # input from local h to main diag
                         H[ovi, ovj] = h[sitei][loci, locj];
 
-                    elif(sitei == sitej+1): # input from tnn to lower diag
+                    elif(sitei == sitej+1): # input from tnn to lower diag <---- !!! change !!!
                         H[ovi, ovj] = tnn[sitej][loci, locj];
 
                     elif(sitei+1 == sitej): # input from tnn to upper diag
@@ -167,19 +167,20 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
     -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
+    -E, float, energye of the state to evaluate the self energy at. NB -2*tl <= E <= +2*tl
 
-    returns 2d array with spatial and spin indices mixed
+    returns 2d array with spatial and spin indices mixed up
     '''
 
     # unpack
     N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0]; # general dofs that are not the site number
+    n_loc_dof = np.shape(h[0])[0]; # encompasses all dofs that are not the site number
 
     # base hamiltonian
-    Hp = Hmat(h, tnn, tnnn, verbose = verbose); # SR on site, hopping blocks
+    Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
     
     # self energies in LL
-    # need a self energy for all incoming/outgoing spin states (all local dof)
+    # need a self energy for all incoming channels (all local dof)
     SigmaLs = np.zeros(n_loc_dof, dtype = complex);
     for Vi in range(n_loc_dof): # iters over all local dof
         # scale the energy
@@ -191,7 +192,7 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
         # reflected self energy
         LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); 
         SigmaL = -tl/LambdaLminus; 
-        Hp[Vi,Vi] += SigmaL;
+        #Hp[Vi,Vi] += SigmaL;
         SigmaLs[Vi] = SigmaL
     del V, lamL, LambdaLminus, SigmaL
 
@@ -207,47 +208,85 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
         # transmitted self energy
         LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1);
         SigmaR = -tl*LambdaRplus;
-        Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
+        #Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
         SigmaRs[Vi] = SigmaR;
     del V, lamR, LambdaRplus, SigmaR;
+    
+    # compute sigmas directly through g_ functions
+    print(SigmaLs)
+    gLmat = g_closed(h[0], -tl*np.eye(n_loc_dof), E, -1); # argument of surface gf = *lead* hopping
+    # matrices multiplying g = coupling of SR to leads, which here is tnn[0] (tnn[-1]) for the left (right) lead
+    # my convention is that hopping^\dagger is on lower diagonal. 
+    # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
+    assert(np.shape(gLmat) == np.shape(tnn[0]));
+    SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
+    print(np.diagonal(SigmaLmat));
+    
+    print(SigmaRs);
+    gRmat = g_closed(h[-1], -tl*np.eye(n_loc_dof), E, 1); # argument of surface gf = *lead* hopping
+    SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
+    print(np.diagonal(SigmaRmat));
+    del SigmaLs, SigmaRs
+    #assert False  
 
     # check that modes with given energy are allowed in some LL channels
-    SigmaLs, SigmaRs = np.array(SigmaLs), np.array(SigmaRs);
-    assert(np.any(np.imag(SigmaLs)) );
-    for sigmai in range(len(SigmaLs)):
-        if(abs(np.imag(SigmaLs[sigmai])) > 1e-10 and abs(np.imag(SigmaRs[sigmai])) > 1e-10 ):
-            assert(np.sign(np.imag(SigmaLs[sigmai])) == np.sign(np.imag(SigmaRs[sigmai])));
+    assert(np.any(np.imag(np.diag(SigmaLmat))) );
+    for sigmai in range(n_loc_dof):
+        if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):
+            assert(np.sign(np.imag(SigmaLmat[sigmai,sigmai])) == np.sign(np.imag(SigmaRmat[sigmai,sigmai])));
     if(verbose > 3):
         ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector running over sigma
         ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
-        v_L = 2*tl*np.sin(ka_L); # a/hbar defined as 1
-        v_R = 2*tl*np.sin(ka_R);
-        for sigma in range(len(ka_L)):
-            print(" - sigma = "+str(sigma)+", v_L = {:.4f}+{:.4f}j, Sigma_L = {:.4f}+{:.4f}j"
-                  .format(np.real(v_L[sigma]), np.imag(v_L[sigma]), np.real(SigmaLs[sigma]), np.imag(SigmaLs[sigma])));
-            print(" - sigma = "+str(sigma)+", v_R = {:.4f}+{:.4f}j, Sigma_R = {:.4f}+{:.4f}j"
-                  .format(np.real(v_R[sigma]), np.imag(v_R[sigma]), np.real(SigmaRs[sigma]), np.imag(SigmaRs[sigma])));
+        for sigmai in range(n_loc_dof):
+            print(" - chan "+str(sigmai)+", kL = {:.3f}+{:.3f}j, SigmaL = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
+                  .format(np.real(ka_L[sigmai]), np.imag(ka_L[sigmai]), 
+                   np.real(SigmaLmat[sigmai,sigmai]), np.imag(SigmaLmat[sigmai,sigmai]),
+                   np.real(-tl*np.exp(complex(0,ka_L[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_L[sigmai])))));
+            print(" - chan "+str(sigmai)+", kR = {:.3f}+{:.3f}j, SigmaR = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
+                  .format(np.real(ka_R[sigmai]), np.imag(ka_R[sigmai]), 
+                   np.real(SigmaRmat[sigmai,sigmai]), np.imag(SigmaRmat[sigmai,sigmai]),
+                   np.real(-tl*np.exp(complex(0,ka_R[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_R[sigmai])))));
+                  
+    # add self energies to Hprime
+    Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
+    Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
     return Hp;
     
-def g_closed(diag, offdiag, E):
+def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     '''
+    Surface Green's function of a periodic semi-infinite tight-binding lead
+    The closed form comes from the diagonal and off-diagonal spatial blocks both being 
+    diagonal in channel space, so Eq. 7 of my PRA paper is realized
+    
+    Returns: 
     '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
+    if(inoutsign not in [1,-1]): raise ValueError;
+    # check diagonality
+    if(np.any(diag-np.diagflat(np.diagonal(diag)))): raise Exception("Not diagonal:\n"+str(diag)); 
+    
+    # everything is vectorized by channel
+    diag = np.diagonal(diag);
+    offdiag = np.diagonal(offdiag);
     
     # scale the energy
-    lamR = (E-diag)/(2*offdiag);
-    # make sure the sign of Im[g]is correctly assigned
-    assert( abs(np.imag(lamR)) < 1e-10);
-    lamR = np.real(lamR); 
-    return (1/offdiag)*(lamR + np.lib.scimath.sqrt(lamR*lamR - 1));
+    lam = (E-diag)/(2*offdiag); # offdiag includes - sign
+    # make sure the sign of Im[g] is correctly assigned
+    assert( np.max(abs(np.imag(lam))) < 1e-10);
+    Lambda_minusplus = np.real(lam) + inoutsign*np.lib.scimath.sqrt(np.real(lam)*np.real(lam) - 1);
     
-def g_iter(diag, offdiag, E, ith, g_prev, imE = 1e-3):
+    # return as same sized array
+    if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
+    elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
+    
+def g_iter(diag, offdiag, E, ith, g_prev, inoutsign, imE = 1e-3) -> np.ndarray:
     '''
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;
     if(not isinstance(ith, int)): raise TypeError;
     eye_like = np.eye(len(diag));
-    E = complex(E,imE);
+    E = complex(np.real(E),imE); # NB the E argument is in general complex
      
     if(ith==0): # 0th iteration
         return np.linalg.inv(eye_like*E - diag);
@@ -272,10 +311,9 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
-    # get 2d green's function matrix
-    Hp = Hprime(h, tnn, tnnn, tl, E, verbose=verbose); # for easy inversion, 2d array with spatial and spin indices mixed
-    #if(verbose): print(">>> H' = \n", Hp );
-    #if(verbose): print(">>> EI - H' = \n", E*np.eye(np.shape(Hp)[0]) - Hp );
+    # get system Green's function in matrix form
+    # for easy inversion, Hp should be 2d array with spatial and spin indices mixed
+    Hp = Hprime(h, tnn, tnnn, tl, E, verbose=verbose); 
     Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
 
     # make 4d

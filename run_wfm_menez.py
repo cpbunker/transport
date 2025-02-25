@@ -10,7 +10,7 @@ solved in time-independent QM using wfm method in transport/wfm
 
 '''
 
-from transport import wfm, fci_mod
+from transport import wfm
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +28,8 @@ mymarkers = ["+","o","^","s","d","*","X"];
 mymarkevery = (40, 40);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"})
+plt.rcParams.update({"font.family": "serif"})
+plt.rcParams.update({"text.usetex": True})
 
 def h_kondo(J,s2):
     '''
@@ -50,7 +51,7 @@ def h_kondo(J,s2):
 #################################################################
 #### all possible T_{\alpha -> \beta}
 
-if True:
+if(__name__=="__main__"):
 
     # tight binding params
     tl = 1.0;
@@ -107,7 +108,7 @@ if True:
 
             # R and T
             # kernel returns R[beta], T[beta] at given E
-            Rbeta, Tbeta = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False);
+            Rbeta, Tbeta = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, False, False, all_debug = False);
             Rvals[alphai,:,Evali] = Rbeta;
             Tvals[alphai,:,Evali] = Tbeta;
 

@@ -40,7 +40,7 @@ if(__name__=="__main__"):
     n_mu_dof = len(mustrings); # runs over d orbitals and p orbitals
     n_tau_dof = len(taus); # display results for tau = -t and tau = +t
     
-if(case in ["g_iter"]):       
+if(case in ["giter"]):       
 
     # set up figure
     fig, axes = plt.subplots(n_tau_dof*n_mu_dof, n_mu_dof, sharex = True);
@@ -63,11 +63,13 @@ if(case in ["g_iter"]):
         # iter over right lead surface Green's function iterations
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
+        # NB this is the right lead, so we need outgoing=1
+        outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
                 gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], 
-                    ith_iter, last_iter[:,:,Evali], imE=imag_pt_E); 
+                    ith_iter, last_iter[:,:,Evali], outgoing, imE=imag_pt_E); 
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
             
             # plot results for this iteration
@@ -80,10 +82,14 @@ if(case in ["g_iter"]):
                           color=mycolors[0], linestyle="dashed");
        
 
-    # plot the closed form result
-    gsurf_closed = np.zeros_like(Evals);
+    # get the closed form result
+    gsurf_closed = np.zeros_like(Evals); # NB lack of mu dofs
+    eye_like = np.eye(1);
     for Evali in range(len(Evals)): 
-        gsurf_closed[Evali] = wfm.g_closed(eps_d, -tl, Evals[Evali]); # NB the off-diag element is -tl, not tl
+        # NB the off-diag element is -tl, not tl
+        gsurf_closed[Evali] = wfm.g_closed(eps_d*eye_like, -tl*eye_like, Evals[Evali], 1)[0,0]; 
+       
+    # plot the closed form result 
     axes[0,0].plot(np.real(Evals),np.real(gsurf_closed),color=accentcolors[0], linestyle="solid",label="$\infty$");
     axes[0,0].plot(np.real(Evals),np.imag(gsurf_closed),color=accentcolors[0], linestyle="dashed");
     axes[0,1].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],      linestyle="solid",label="$\infty$"); # for legend
@@ -105,7 +111,7 @@ if(case in ["g_iter"]):
     plt.tight_layout();
     plt.show();
     
-elif(case in ["dos"]): 
+elif(case in ["sdos"]): 
 
     # set up figure
     fig, axes = plt.subplots(n_tau_dof, 1, sharex = True);
@@ -128,20 +134,27 @@ elif(case in ["dos"]):
         # iter over right lead surface Green's function iterations
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
+        # NB this is the right lead, so we need outgoing=1
+        outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
                 gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], 
-                    ith_iter, last_iter[:,:,Evali], imE=imag_pt_E); 
+                    ith_iter, last_iter[:,:,Evali], outgoing, imE=imag_pt_E); 
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
     
         # get density of states
         dos = (-1/np.pi)*np.imag(gsurf); # real-valued
         axes[taui].plot(np.real(Evals), dos[0,0], color=mycolors[0], label=str(n_iterations-1));
         
-    # plot exact soln
-    exact_dos_case1 = 1/(np.pi*tl)*np.sqrt(1-np.power((np.real(Evals)-eps_d)/(-2*tl),2));
-    axes[0].plot(np.real(Evals), exact_dos_case1, color=accentcolors[0], label="$\infty$");
+    # plot closed-form soln
+    sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
+    eye_like = np.eye(1);
+    for Evali in range(len(Evals)): 
+        sdos_closed[Evali] = (-1/np.pi)*np.imag(wfm.g_closed(eps_d*eye_like, -tl*eye_like,Evals[Evali],1))[0,0];
+    axes[0].plot(np.real(Evals), sdos_closed, color=accentcolors[0], label="$\infty$");
+    #sdos_case2 = 1/np.sin(
+    #axes[1].plot(np.real(Evals), sdos_case2, color=accentcolors[0], label="$\infty$");
     
     # legend
     axes[0].legend(title="# iterations");
@@ -149,7 +162,7 @@ elif(case in ["dos"]):
     # format
     axes[-1].set_xlabel("$E$");
     for taui in range(len(taus)): 
-        axes[taui].set_ylabel("DOS");
+        axes[taui].set_ylabel("Surface DOS");
         axes[taui].set_title("$\\tau =${:.1f}$t_l, \delta \\varepsilon=${:.1f}$t_l, \eta =${:.0e}"
          .format(taus[taui],deltas[taui], imag_pt_E));
 

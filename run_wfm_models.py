@@ -34,7 +34,7 @@ plt.rcParams.update({"text.usetex": True})
 # constructing the hamiltonian
 def diag_ham(params, S) -> np.ndarray:
     '''
-    Eq (40) in PRA paper
+    Eq (40) in my PRA paper
     '''
     for el in params:
         if( not isinstance(el, float)): raise TypeError;

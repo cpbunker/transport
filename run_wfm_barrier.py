@@ -23,10 +23,11 @@ myfontsize = 14;
 mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
 accentcolors = ["black","red"];
 mymarkers = ["+","o","^","s","d","*","X"];
-mymarkevery = (40, 40);
+mymarkevery = (10, 10);
 mylinewidth = 1.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
+plt.rcParams.update({"font.family": "serif"})
+plt.rcParams.update({"text.usetex": True}) 
 
 # tight binding params
 tl = 1.0;
@@ -62,9 +63,11 @@ for Evali in range(len(Evals)):
     Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
 
     if(Evali < 1): # verbose
-        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False, verbose = verbose);
+        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
+                         False, False, all_debug = True, verbose = verbose);
     else: # not verbose
-         Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, all_debug = False);
+         Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
+                         False, False, all_debug = False, verbose = 0);
     Rvals[Evali] = Rdum;
     Tvals[Evali] = Tdum;
 
@@ -72,7 +75,7 @@ for Evali in range(len(Evals)):
 numplots = 1;
 fig, axes = plt.subplots(numplots, sharex = True);
 if numplots == 1: axes = [axes];
-fig.set_size_inches(7/2,3*numplots/2);
+fig.set_size_inches(7,3*numplots);
 axes[0].plot(Evals, np.real(Tvals[:,0]), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
 
 # ideal
@@ -86,7 +89,10 @@ ideal_Tvals *= ideal_correction
 
 # ideal comparison
 axes[0].plot(Evals,np.real(ideal_Tvals), color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);
-axes[0].set_ylim(0,1);
+y_offset = 0.07;
+yticks = [0.0, 1.0]
+axes[0].set_ylim(yticks[0]-y_offset, yticks[1]+y_offset);
+for tick in yticks: axes[0].axhline(tick, linestyle="dashed", color="gray");
 axes[0].set_ylabel('$T$');
         
 # format and show
@@ -97,7 +103,6 @@ axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
 for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.07, y = 0.7, fontsize = myfontsize); 
 plt.tight_layout();
 plt.show();
-#plt.savefig('figs/wfm_barrier/T.pdf');
    
 
 
