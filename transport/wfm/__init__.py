@@ -247,7 +247,11 @@ def g_iter(diag, offdiag, E, ith, g_prev, inoutsign, imE = 1e-3) -> np.ndarray:
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;
     if(not isinstance(ith, int)): raise TypeError;
+    if(inoutsign not in [1,-1]): raise ValueError;
+    if(inoutsign != 1): raise NotImplementedError; # the order of offdiag, offdiag^\dagger differs in LL
     eye_like = np.eye(len(diag));
+    
+    # g_retarded \equiv lim(\eta->0) g(E+i\eta)
     E = complex(np.real(E),imE); # NB the E argument is in general complex
      
     if(ith==0): # 0th iteration

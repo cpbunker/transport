@@ -29,10 +29,13 @@ if(__name__=="__main__"):
     Evals = np.linspace(-2*tl+1e-4, 2*tl-1e-4, 199, dtype=complex);
     imag_pt_E = 1e-2; 
     taus = np.array([-tl, 1*tl]); # in-cell hopping either same, or off by (-1)
+    
+    taus = np.array([-tl, -tl]); # <--- right now just look at delta eps perturbatively!!
+    
     # in-cell energies are eps_d, eps_d + \delta \epsilon
     # eps_d is like eps_0_ii in the tau = -tl case, we can freely set it to zero
     eps_d = 0.0;
-    deltas = tl*np.array([0.0, 1.5]); # needs to be zero in the tau = -tl case
+    deltas = tl*np.array([0.0, 0.05]); # needs to be zero in the tau = -tl case
     n_iterations = 91;
 
     # set up figure
@@ -56,7 +59,7 @@ if(case in ["giter"]):
         # from tight binding parameters, construct matrices that act on mu dofs
         h00 = np.array([[eps_d, taus[taui]], [taus[taui], eps_d + deltas[taui]]]);
         h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
-        print("\nCase tau = {:.1f}, delta = {:.1f}".format(taus[taui],deltas[taui]));
+        print("\nCase tau = {:.2f}, delta = {:.2f}".format(taus[taui],deltas[taui]));
         print("h00 =\n",h00);
         print("h01 =\n",h01);
 
@@ -104,8 +107,8 @@ if(case in ["giter"]):
             axes[rowi, coli].set_ylabel("$\langle "+mustrings[rowi%2]+"| \mathbf{g}_{00}|"+mustrings[coli%2]+" \\rangle$");
     for ax in axes[-1]: ax.set_xlabel("$E$");
     for taui in range(len(taus)): 
-        axes[taui*n_mu_dof,0].set_title("$\\tau =${:.1f}$t_l, \delta \\varepsilon=${:.1f}$t_l, \eta =${:.0e}"
-         .format(taus[taui],deltas[taui], imag_pt_E));
+        axes[taui*n_mu_dof,0].set_title("$\\tau =${:.2f}$t_l, \delta \\varepsilon=${:.2f}$t_l, \eta =${:.0e}, mesh={:.0e}"
+         .format(taus[taui],deltas[taui], imag_pt_E, myxvals));
 
     # show
     plt.tight_layout();
@@ -115,7 +118,7 @@ elif(case in ["sdos"]):
 
     # set up figure
     fig, axes = plt.subplots(n_tau_dof, 1, sharex = True);
-    fig.set_size_inches(3.6, n_tau_dof*3.6);
+    fig.set_size_inches(2*3.6, n_tau_dof*3.6);
 
     # run over tau values
     for taui in range(len(taus)):
@@ -127,7 +130,7 @@ elif(case in ["sdos"]):
         # from tight binding parameters, construct matrices that act on mu dofs
         h00 = np.array([[eps_d, taus[taui]], [taus[taui], eps_d + deltas[taui]]]);
         h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
-        print("\nCase tau = {:.1f}, delta = {:.1f}".format(taus[taui],deltas[taui]));
+        print("\nCase tau = {:.2f}, delta = {:.2f}".format(taus[taui],deltas[taui]));
         print("h00 =\n",h00);
         print("h01 =\n",h01);
 
@@ -163,8 +166,8 @@ elif(case in ["sdos"]):
     axes[-1].set_xlabel("$E$");
     for taui in range(len(taus)): 
         axes[taui].set_ylabel("Surface DOS");
-        axes[taui].set_title("$\\tau =${:.1f}$t_l, \delta \\varepsilon=${:.1f}$t_l, \eta =${:.0e}"
-         .format(taus[taui],deltas[taui], imag_pt_E));
+        axes[taui].set_title("$\\tau =${:.2f}$t_l, \delta \\varepsilon=${:.2f}$t_l, \eta =${:.0e}, mesh = {:.0e}"
+         .format(taus[taui],deltas[taui], imag_pt_E, myxvals));
 
     # show
     plt.tight_layout();
