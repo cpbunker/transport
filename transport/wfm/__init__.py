@@ -179,57 +179,19 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     # base hamiltonian
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
     
-    # self energies in LL
-    # need a self energy for all incoming channels (all local dof)
-    SigmaLs = np.zeros(n_loc_dof, dtype = complex);
-    for Vi in range(n_loc_dof): # iters over all local dof
-        # scale the energy
-        V = h[0][Vi,Vi];
-        lamL = (E-V)/(-2*tl);
-        # make sure sign of SigmaL is correctly assigned
-        assert( abs(np.imag(lamL)) < 1e-10);
-        lamL = np.real(lamL);
-        # reflected self energy
-        LambdaLminus = lamL - np.lib.scimath.sqrt(lamL*lamL - 1); 
-        SigmaL = -tl/LambdaLminus; 
-        #Hp[Vi,Vi] += SigmaL;
-        SigmaLs[Vi] = SigmaL
-    del V, lamL, LambdaLminus, SigmaL
-
-    # self energies in RL
-    SigmaRs = np.zeros(n_loc_dof, dtype = complex);
-    for Vi in range(n_loc_dof): # iters over all local dof
-        # scale the energy
-        V = h[-1][Vi,Vi];     
-        lamR = (E-V)/(-2*tl);
-        # make sure the sign of SigmaR is correctly assigned
-        assert( abs(np.imag(lamR)) < 1e-10);
-        lamR = np.real(lamR); # makes sure sign of SigmaL is correctly assigned
-        # transmitted self energy
-        LambdaRplus = lamR + np.lib.scimath.sqrt(lamR*lamR - 1);
-        SigmaR = -tl*LambdaRplus;
-        #Hp[Vi-n_loc_dof,Vi-n_loc_dof] += SigmaR;
-        SigmaRs[Vi] = SigmaR;
-    del V, lamR, LambdaRplus, SigmaR;
-    
-    # compute sigmas directly through g_ functions
-    print(SigmaLs)
+    # compute left lead self energies directly through g_ functions
     gLmat = g_closed(h[0], -tl*np.eye(n_loc_dof), E, -1); # argument of surface gf = *lead* hopping
     # matrices multiplying g = coupling of SR to leads, which here is tnn[0] (tnn[-1]) for the left (right) lead
     # my convention is that hopping^\dagger is on lower diagonal. 
     # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
     assert(np.shape(gLmat) == np.shape(tnn[0]));
     SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
-    print(np.diagonal(SigmaLmat));
     
-    print(SigmaRs);
+    # right lead self energies
     gRmat = g_closed(h[-1], -tl*np.eye(n_loc_dof), E, 1); # argument of surface gf = *lead* hopping
     SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
-    print(np.diagonal(SigmaRmat));
-    del SigmaLs, SigmaRs
-    #assert False  
 
-    # check that modes with given energy are allowed in some LL channels
+    # check that modes with given energy are allowed in *at least some* LL channels
     assert(np.any(np.imag(np.diag(SigmaLmat))) );
     for sigmai in range(n_loc_dof):
         if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):

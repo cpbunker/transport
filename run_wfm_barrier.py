@@ -62,7 +62,7 @@ for Evali in range(len(Evals)):
     Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
     Energy = Eval - 2*tl; # -2t < Energy < 2t, what I call E in paper
 
-    if(Evali < 1): # verbose
+    if(Evali < 5): # verbose
         Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
                          False, False, all_debug = True, verbose = verbose);
     else: # not verbose

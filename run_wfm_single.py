@@ -80,12 +80,7 @@ if(case in ["continuum", "inelastic"]):
     for Jvali in range(len(Jvals)):
         Jval = Jvals[Jvali];
         
-        # 2nd qu'd operator for S dot s
-        #h1e = np.zeros((4,4))
-        #g2e = wfm.utils.h_kondo_2e(Jval, 0.5); # J, spin
-        #states_1p = [[0,1],[2,3]]; # [e up, down], [imp up, down]
-        #hSR = fci_mod.single_to_det(h1e, g2e, np.array([1,1]), states_1p); # to determinant form
-        
+        # S dot s
         hSR = h_kondo(Jval,0.5)
 
         # zeeman splitting
@@ -137,7 +132,7 @@ if(case in ["continuum", "inelastic"]):
             Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
             Energy = Kval - 2*tl; # -2t < Energy < 2t, what I call E in paper
 
-            if(Kvali < 1): # verbose
+            if(Kvali < 5): # verbose
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
                                 False, False, all_debug = True, verbose = verbose);
             else: # not verbose
