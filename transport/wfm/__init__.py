@@ -214,6 +214,43 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
     return Hp;
+
+def g_wrapper(diag, offdiag, E, inoutsign, imE, conv_tol, 
+              conv_rep=5, min_iter=int(1e1), max_iter=int(1e5)) -> np.ndarray:
+    '''
+    '''
+    # assert statements
+
+    # check if we can use closed form
+    if False:
+        assert False;
+
+    # iterative g
+    g = np.zeros_like(diag);
+    dos_ith = np.zeros((max_iter,), dtype=float); # convergence metric
+    conv_ith = np.zeros((max_iter,), dtype=int); # tracks whether [i,i-1] met conv tol
+
+    # repeated iterations
+    for ith in range(max_iter):
+
+        # update g
+        g = g_iter(diag, offdiag, E, inoutsign, imE, ith, g); 
+
+        # update convergence metric (surface density of states)
+        if(inoutsign==1): dos_ith[ith] = (-1/np.pi)*np.imag(g)[0,0];
+        elif(inoutsign==-1): raise NotImplementedError;
+
+        # check convergence
+        if(ith>min_iter):
+            conv_check = abs((dos_ith[ith]-dos_ith[ith-1])/dos_ith[ith])
+            if(conv_check<conv_tol): conv_ith[ith] = 1; # this iter met tol
+            if(np.sum(conv_ith[ith+1-conv_rep:ith+1])==conv_rep):
+                # fully converged 
+                #print(">>> {:.0f} >>> {:.6f} >>> {:.6f} >>> {:.0f}".format(ith,np.real(E),conv_check,conv_ith[ith]));
+                return g, ith;
+
+    # if we got here, we never converged
+    raise Exception("g({:.6f}+{:.6f}j) convergence was {:.0e}, failed to meet {:.0e} tolerance after {:.0e} iterations".format(np.real(E), imE, conv_check, conv_tol, max_iter));
     
 def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     '''
@@ -242,7 +279,7 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
     elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
     
-def g_iter(diag, offdiag, E, ith, g_prev, inoutsign, imE = 1e-3) -> np.ndarray:
+def g_iter(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     '''
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;

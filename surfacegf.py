@@ -26,17 +26,17 @@ if(__name__=="__main__"):
     
     # tight binding parameters
     tl = 1.0;
-    Evals = np.linspace(-2*tl+1e-4, 2*tl-1e-4, 199, dtype=complex);
-    imag_pt_E = 1e-2; 
-    taus = np.array([-tl, 1*tl]); # in-cell hopping either same, or off by (-1)
-    
-    taus = np.array([-tl, -tl]); # <--- right now just look at delta eps perturbatively!!
-    
     # in-cell energies are eps_d, eps_d + \delta \epsilon
     # eps_d is like eps_0_ii in the tau = -tl case, we can freely set it to zero
     eps_d = 0.0;
     deltas = tl*np.array([0.0, 0.05]); # needs to be zero in the tau = -tl case
-    n_iterations = 91;
+    n_iterations = int(sys.argv[2]);
+    logKlims = (-4,-1)
+    Evals = np.linspace(-2*tl+np.power(10.0,logKlims[0]), 0.1, 199, dtype=complex);
+    imag_pt_E = float(sys.argv[3])
+    taus = np.array([-tl, 1*tl]); # in-cell hopping either same, or off by (-1)
+    
+    taus = np.array([-tl, -tl]); # <--- right now just look at delta eps perturbatively!!
 
     # set up figure
     mustrings = ["d","p"];
@@ -46,8 +46,8 @@ if(__name__=="__main__"):
 if(case in ["giter"]):       
 
     # set up figure
-    fig, axes = plt.subplots(n_tau_dof*n_mu_dof, n_mu_dof, sharex = True);
-    fig.set_size_inches(n_mu_dof*3.6, n_tau_dof*n_mu_dof*1.8);
+    fig, axes = plt.subplots(n_tau_dof*n_mu_dof, n_mu_dof, sharex=True, sharey=True);
+    fig.set_size_inches(n_mu_dof*4.0, n_tau_dof*n_mu_dof*1.8);
 
     # run over tau values
     for taui in range(len(taus)):
@@ -66,13 +66,15 @@ if(case in ["giter"]):
         # iter over right lead surface Green's function iterations
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
+        last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         # NB this is the right lead, so we need outgoing=1
         outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
-                gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], 
-                    ith_iter, last_iter[:,:,Evali], outgoing, imE=imag_pt_E); 
+                gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], outgoing, 
+                    imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
+                last_change[:,:,Evali] = abs(gsurf[:,:,Evali]-last_iter[:,:,Evali]);
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
             
             # plot results for this iteration
@@ -83,6 +85,9 @@ if(case in ["giter"]):
                           color=mycolors[0], linestyle="solid", label=str(ith_iter));
                         axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.imag(gsurf[mu,mup]), 
                           color=mycolors[0], linestyle="dashed");
+                        axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.real(last_change[mu,mup]),
+                          color=mycolors[1], linestyle="solid", label="$\Delta_{"+str(ith_iter)+"}$");
+                        #axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.imag(last_change[mu,mup]),color=mycolors[1], linestyle="dashed");
        
 
     # get the closed form result
@@ -98,16 +103,19 @@ if(case in ["giter"]):
     axes[0,1].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],      linestyle="solid",label="$\infty$"); # for legend
 
     # legend
-    axes[0,1].legend(title="# iterations");
+    axes[1,0].legend(title="# iterations");
 
     # format
     for rowi in range(np.shape(axes)[0]):
         for coli in range(np.shape(axes)[1]):
             axes[rowi, coli].set_ylim(-2.0,2.0);
+            axes[rowi, coli].axhline(0.0, color="gray", linestyle="dotted");
             axes[rowi, coli].set_ylabel("$\langle "+mustrings[rowi%2]+"| \mathbf{g}_{00}|"+mustrings[coli%2]+" \\rangle$");
-    for ax in axes[-1]: ax.set_xlabel("$E$");
+    for ax in axes[-1]: 
+        ax.set_xlabel("$E$");
+        ax.set_xlim(min(np.real(Evals)), max(np.real(Evals)));
     for taui in range(len(taus)): 
-        axes[taui*n_mu_dof,0].set_title("$\\tau =${:.2f}$t_l, \delta \\varepsilon=${:.2f}$t_l, \eta =${:.0e}, mesh={:.0e}"
+        axes[taui*n_mu_dof,0].set_title("$\\tau =${:.2f}$, \delta \\varepsilon=${:.2f}$, \eta =${:.0e}, mesh={:.0e}"
          .format(taus[taui],deltas[taui], imag_pt_E, myxvals));
 
     # show
@@ -117,7 +125,7 @@ if(case in ["giter"]):
 elif(case in ["sdos"]): 
 
     # set up figure
-    fig, axes = plt.subplots(n_tau_dof, 1, sharex = True);
+    fig, axes = plt.subplots(n_tau_dof, 1, sharex=True, sharey=True);
     fig.set_size_inches(2*3.6, n_tau_dof*3.6);
 
     # run over tau values
@@ -137,18 +145,24 @@ elif(case in ["sdos"]):
         # iter over right lead surface Green's function iterations
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
+        last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         # NB this is the right lead, so we need outgoing=1
         outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
-                gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], 
-                    ith_iter, last_iter[:,:,Evali], outgoing, imE=imag_pt_E); 
+                gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], outgoing,
+                    imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
+                last_change[:,:,Evali] = gsurf[:,:,Evali]-last_iter[:,:,Evali];
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
     
         # get density of states
-        dos = (-1/np.pi)*np.imag(gsurf); # real-valued
-        axes[taui].plot(np.real(Evals), dos[0,0], color=mycolors[0], label=str(n_iterations-1));
+        dos = (-1/np.pi)*np.imag(gsurf)[0,0]; # real-valued function of E
+        axes[taui].plot(np.real(Evals), dos, color=mycolors[0], label=str(n_iterations-1));
+
+        # get change in density of states at last iteration
+        dos_change = (-1/np.pi)*np.imag(last_change)[0,0]; # real-valued function of E
+        axes[taui].plot(np.real(Evals), dos_change, color=mycolors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
         
     # plot closed-form soln
     sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
@@ -163,14 +177,121 @@ elif(case in ["sdos"]):
     axes[0].legend(title="# iterations");
 
     # format
-    axes[-1].set_xlabel("$E$");
+    axes[-1].set_xlabel("$E$", fontsize=myfontsize);
+    axes[-1].set_xlim(min(np.real(Evals)), max(np.real(Evals)));
     for taui in range(len(taus)): 
-        axes[taui].set_ylabel("Surface DOS");
-        axes[taui].set_title("$\\tau =${:.2f}$t_l, \delta \\varepsilon=${:.2f}$t_l, \eta =${:.0e}, mesh = {:.0e}"
-         .format(taus[taui],deltas[taui], imag_pt_E, myxvals));
+        axes[taui].set_ylabel("Right Lead Surface DOS", fontsize=myfontsize);
+        axes[taui].set_title("$\\tau =${:.2f}$, \delta \\varepsilon=${:.2f}$, \eta =${:.0e}, mesh = {:.0e}"
+         .format(taus[taui],deltas[taui], imag_pt_E, myxvals), fontsize=myfontsize);
 
     # show
     plt.tight_layout();
-    plt.show();   
+    plt.show(); 
+
+elif(case in ["sdos_conv","sdos_log"]):
+
+    # control convergence 
+    # code will determine n_iterations automatically for each E
+    conv_tol = float(sys.argv[4]); # convergence tolerance
+
+    # set up figure
+    subrows = 2; # SDOS and \Delta SDOS plotted on separate axes
+    fig, axes = plt.subplots(n_tau_dof*subrows, 1, sharex=True);
+    fig.set_size_inches(2*3.6, n_tau_dof*subrows*1.8);
+
+    # logarithmic energies
+    if(case in ["sdos_log"]):
+        Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
+        Evals = Kvals - 2*tl;
+    else:
+        Kvals = Evals + 2*tl;
+
+    # run over tau values
+    for taui in range(len(taus)):
+
+        # right lead surface Green's function
+        # exists as a complex matrix acting on mu dofs
+        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Kvals)), dtype=complex);
+
+        # right lead surface density of states
+        # real-valued function of E, but we store each iteration to compare
+        dos = np.zeros((n_iterations, len(Kvals)), dtype=float);
+    
+        # from tight binding parameters, construct matrices that act on mu dofs
+        h00 = np.array([[eps_d, taus[taui]], [taus[taui], eps_d + deltas[taui]]]);
+        h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
+        print("\nCase tau = {:.2f}, delta = {:.2f}".format(taus[taui],deltas[taui]));
+        print("h00 =\n",h00);
+        print("h01 =\n",h01);
+
+        # iter over right lead surface Green's function iterations
+        # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
+        last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
+        # NB this is the right lead, so we need outgoing=1
+        outgoing = 1;
+        for ith_iter in range(n_iterations):
+            # energy values
+            for Evali in range(len(Evals)):
+                gsurf[:,:,Evali] = wfm.g_iter(h00, h01, Evals[Evali], outgoing,
+                    imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
+                last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
+
+            # get density of states at this iteration
+            dos[ith_iter,:] = (-1/np.pi)*np.imag(gsurf)[0,0]; # real-valued func of E
+    
+            # plot
+            ith_to_plot = [6*n_iterations//8,7*n_iterations//8,n_iterations-1];
+            if(ith_iter in ith_to_plot):
+                ith_color = ith_to_plot.index(ith_iter);
+
+                # SDOS itself
+                axes[taui*subrows].plot(np.real(Kvals), dos[ith_iter], color=mycolors[ith_color], label=str(ith_iter));
+
+                # \Delta SDOS
+                axes[taui*subrows+1].plot(np.real(Kvals), abs((dos[ith_iter]-dos[ith_iter-1])/dos[ith_iter]), color=mycolors[ith_color],label=str(ith_iter));
+                # avg this metric over iterations
+                # assert False
+
+        # instead of getting surface gf after given number of iterations, 
+        # force it to comply with  convergence tolerance
+        dos_wrapped = np.zeros((len(Kvals),), dtype=float); 
+        iconvs = np.zeros((len(Evals),), dtype=int); 
+        for Evali in range(len(Evals)):
+            wrapper_out, iconv = wfm.g_wrapper(h00, h01, Evals[Evali], outgoing, 
+                              imag_pt_E, conv_tol);
+            dos_wrapped[Evali] = (-1/np.pi)*np.imag(wrapper_out[0,0]);
+            iconvs[Evali] = 1*iconv;
+        axes[taui*subrows].plot(np.real(Kvals), dos_wrapped, color=mycolors[-1], label="tol");
+        axes[taui*subrows+1].plot(np.real(Kvals), iconvs, color=mycolors[-1], label="tol");
+        
+    # plot closed-form soln
+    dos_closed = np.zeros((len(Kvals),), dtype=float); # NB lack of mu dofs
+    eye_like = np.eye(1);
+    for Evali in range(len(Evals)): 
+        dos_closed[Evali] = (-1/np.pi)*np.imag(wfm.g_closed(eps_d*eye_like, -tl*eye_like,Evals[Evali],1))[0,0];
+    axes[0].plot(np.real(Kvals), dos_closed, color=accentcolors[0], label="$\infty$");
+    
+    # legend
+    axes[0].legend(title="# iterations");
+
+    # format
+    if(case in ["sdos_log"]):
+        axes[-1].set_xscale('log', subs = []);
+        axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
+        axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
+    else:
+        axes[-1].set_xlabel("$E$", fontsize=myfontsize);
+        axes[-1].set_xlim(min(np.real(Kvals)), max(np.real(Kvals)));
+    for taui in range(len(taus)): 
+        axes[taui*subrows].set_ylabel("SDOS", fontsize=myfontsize);
+        axes[taui*subrows].set_title("$\\tau =${:.2f}$, \delta \\varepsilon=${:.2f}$, \eta =${:.0e}"
+          .format(taus[taui],deltas[taui], imag_pt_E)
+          +", tol={:.0e}, mesh={:.0e}".format(conv_tol, myxvals), fontsize=myfontsize);
+        axes[taui*subrows+1].set_ylabel("$\Delta$SDOS", fontsize=myfontsize);
+        #axes[taui*subrows+1].set_ylim(0.0,conv_tol);
+
+    # show
+    plt.tight_layout();
+    plt.show();    
 
 else: raise NotImplementedError("case = "+case);
