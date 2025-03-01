@@ -16,7 +16,8 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = True, verbose = 0, ):
+def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma, 
+           is_psi_jsigma, is_Rhat, all_debug = True, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
     Args
@@ -26,6 +27,8 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = Tru
     -tl, float, hopping in leads, not necessarily same as hopping on/off SR
         or within SR which is defined by tnn, tnnn matrices
     -E, float, energy of the incident electron
+    -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
+    -conv_tol, float, the convergence criteria (if the iterative scheme is used)
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
     -is_psi_jsigma, whether to return computed wavefunction
     -is_Rhat, whether to return Rhat operator or just R, T probabilities
@@ -71,7 +74,7 @@ def kernel(h, tnn, tnnn, tl, E, Ajsigma, is_psi_jsigma, is_Rhat, all_debug = Tru
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
-    Gmat = Green(h, tnn, tnnn, tl, E, verbose = verbose); # spatial and spin indices separate
+    Gmat = Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = verbose); # spatial and spin indices separate
     
     # from Green's function, determine wavefunction elements \psi_j\sigma
     psi_jsigma = complex(0,1)*np.dot(Gmat[:,0], Ajsigma*v_L);
@@ -158,7 +161,7 @@ def Hmat(h, tnn, tnnn) -> np.ndarray:
                         
     return H; # end Hmat
 
-def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
+def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
@@ -167,7 +170,9 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
     -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
-    -E, float, energye of the state to evaluate the self energy at. NB -2*tl <= E <= +2*tl
+    -E, float, energy of the state to evaluate the self energy at. NB -2*tl <= E <= +2*tl
+    -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
+    -conv_tol, float, the convergence criteria (if the iterative scheme is used)
 
     returns 2d array with spatial and spin indices mixed up
     '''
@@ -179,20 +184,25 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     # base hamiltonian
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
     
-    # compute left lead self energies directly through g_ functions
-    gLmat = g_closed(h[0], -tl*np.eye(n_loc_dof), E, -1); # argument of surface gf = *lead* hopping
+    # compute lead self energies directly through g_ functions
+    gLargs = (h[0], -tl*np.eye(n_loc_dof), E, -1); # surface gf ~ *lead* hopping
+    gRargs = (h[-1], -tl*np.eye(n_loc_dof), E, 1); 
+    if(np.isnan(conv_tol)): # use the closed soln of the surface green's func
+        gLmat = g_closed(*gLargs);
+        gRmat = g_closed(*gRargs);
+    else: # use the iterative soln of the surface green's func
+        gLmat = g_iter(*gLargs, imE, conv_tol);
+        gRmat = g_iter(*gRargs, imE, conv_tol);
+
+    # get the self energy matrices
     # matrices multiplying g = coupling of SR to leads, which here is tnn[0] (tnn[-1]) for the left (right) lead
     # my convention is that hopping^\dagger is on lower diagonal. 
     # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
     assert(np.shape(gLmat) == np.shape(tnn[0]));
     SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
-    
-    # right lead self energies
-    gRmat = g_closed(h[-1], -tl*np.eye(n_loc_dof), E, 1); # argument of surface gf = *lead* hopping
     SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
 
-    # check that modes with given energy are allowed in *at least some* LL channels
-    assert(np.any(np.imag(np.diag(SigmaLmat))) );
+    assert(np.any(np.imag(np.diag(SigmaLmat))) ); # checks that given energy allows propagating modes in *at least some* LL channels
     for sigmai in range(n_loc_dof):
         if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):
             assert(np.sign(np.imag(SigmaLmat[sigmai,sigmai])) == np.sign(np.imag(SigmaRmat[sigmai,sigmai])));
@@ -214,51 +224,21 @@ def Hprime(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
     return Hp;
-
-def g_wrapper(diag, offdiag, E, inoutsign, imE, conv_tol, 
-              conv_rep=5, min_iter=int(1e1), max_iter=int(1e5)) -> np.ndarray:
-    '''
-    '''
-    # assert statements
-
-    # check if we can use closed form
-    if False:
-        assert False;
-
-    # iterative g
-    g = np.zeros_like(diag);
-    dos_ith = np.zeros((max_iter,), dtype=float); # convergence metric
-    conv_ith = np.zeros((max_iter,), dtype=int); # tracks whether [i,i-1] met conv tol
-
-    # repeated iterations
-    for ith in range(max_iter):
-
-        # update g
-        g = g_iter(diag, offdiag, E, inoutsign, imE, ith, g); 
-
-        # update convergence metric (surface density of states)
-        if(inoutsign==1): dos_ith[ith] = (-1/np.pi)*np.imag(g)[0,0];
-        elif(inoutsign==-1): raise NotImplementedError;
-
-        # check convergence
-        if(ith>min_iter):
-            conv_check = abs((dos_ith[ith]-dos_ith[ith-1])/dos_ith[ith])
-            if(conv_check<conv_tol): conv_ith[ith] = 1; # this iter met tol
-            if(np.sum(conv_ith[ith+1-conv_rep:ith+1])==conv_rep):
-                # fully converged 
-                #print(">>> {:.0f} >>> {:.6f} >>> {:.6f} >>> {:.0f}".format(ith,np.real(E),conv_check,conv_ith[ith]));
-                return g, ith;
-
-    # if we got here, we never converged
-    raise Exception("g({:.6f}+{:.6f}j) convergence was {:.0e}, failed to meet {:.0e} tolerance after {:.0e} iterations".format(np.real(E), imE, conv_check, conv_tol, max_iter));
     
 def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     '''
     Surface Green's function of a periodic semi-infinite tight-binding lead
     The closed form comes from the diagonal and off-diagonal spatial blocks both being 
     diagonal in channel space, so Eq. 7 of my PRA paper is realized
+
+    Args:
+    -diag, matrix in channel space, same-spatial-site matrix elements of H
+    -off_diag, matrix in channel space, nearest-neighbor matrix elmements of H
+    -E, complex, band energy (can be negative, complex type but im(E)=0
+    -inoutsign, telling us if we are computing incoming or outgoing state
     
     Returns: 
+    -the surface green's function, matrix in channel space--same shape as diag
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
     if(inoutsign not in [1,-1]): raise ValueError;
@@ -279,8 +259,11 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
     elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
     
-def g_iter(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
+def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     '''
+    Surface Green's function of a periodic semi-infinite tight-binding lead
+    When the diag and off-diagonal blocks are not diagonal in channel basis,
+    we must solve iteratively
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;
     if(not isinstance(ith, int)): raise TypeError;
@@ -289,7 +272,7 @@ def g_iter(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     eye_like = np.eye(len(diag));
     
     # g_retarded \equiv lim(\eta->0) g(E+i\eta)
-    E = complex(np.real(E),imE); # NB the E argument is in general complex
+    E = complex(np.real(E),abs(imE)); # NB the E argument is in general complex
      
     if(ith==0): # 0th iteration
         return np.linalg.inv(eye_like*E - diag);
@@ -297,7 +280,55 @@ def g_iter(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     else: # higher iteration
         return np.linalg.inv(eye_like*E - diag - np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T))));
 
-def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
+def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol, 
+              conv_rep=5, min_iter=int(1e1), max_iter=int(1e5), full=False) -> np.ndarray:
+    '''
+    Args:
+    -diag, matrix in channel space, same-spatial-site matrix elements of H
+    -off_diag, matrix in channel space, nearest-neighbor matrix elmements of H
+    -E, complex, band energy (can be negative, complex type but im(E)=0
+    -inoutsign, telling us if we are computing incoming or outgoing state
+    -imE, float, the small imaginary part to add to the real energy
+    -conv_tol, float, the threshold relative change in the surface dos for convergence
+    -conv_rep, int, the number of iterations that must meet conv_tol before full convergence is achieved
+    -min_iter, int, the number of iterations to do before checking for convergence
+    -max_iter, int, the number of iterations to do before declaring failure
+    -full, bool, tells us whether to return the surface green's function, the convergence metric, and the number of iterations used, or just the former
+    
+    Returns: 
+    -the surface green's function, matrix in channel space--same shape as diag
+    '''
+    # assert statements
+
+    # iterative g
+    g = np.zeros_like(diag);
+    dos_ith = np.zeros((max_iter,), dtype=float); # convergence metric
+    conv_ith = np.zeros((max_iter,), dtype=int); # tracks whether [i,i-1] met conv tol
+
+    # repeated iterations
+    for ith in range(max_iter):
+
+        # update g
+        g = g_ith(diag, offdiag, E, inoutsign, imE, ith, g); 
+
+        # update convergence metric (surface density of states)
+        if(inoutsign==1): dos_ith[ith] = (-1/np.pi)*np.imag(g)[0,0];
+        elif(inoutsign==-1): raise NotImplementedError;
+
+        # check convergence
+        if(ith>min_iter):
+            conv_check = abs((dos_ith[ith]-dos_ith[ith-1])/dos_ith[ith])
+            if(conv_check<conv_tol): conv_ith[ith] = 1; # this iter met tol
+            if(np.sum(conv_ith[ith+1-conv_rep:ith+1])==conv_rep):
+                # fully converged 
+                #print(">>> {:.0f} >>> {:.6f} >>> {:.6f} >>> {:.0f}".format(ith,np.real(E),conv_check,conv_ith[ith]));
+                if(full): return g, abs((dos_ith[ith]-dos_ith[ith-1])/dos_ith[ith]), ith;
+                else: return g;
+
+    # if we got here, we never converged
+    raise Exception("g({:.6f}+{:.6f}j) convergence was {:.0e}, failed to meet {:.0e} tolerance after {:.0e} iterations".format(np.real(E), imE, conv_check, conv_tol, max_iter));
+
+def Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     '''
     Greens function for system described by
     Args
@@ -306,7 +337,8 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
     -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
     -E, float, incident energy
-
+    -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
+    -conv_tol, float, the convergence criteria (if the iterative scheme is used)
     returns 4d array with spatial and spin indices separate
     '''
 
@@ -316,7 +348,7 @@ def Green(h, tnn, tnnn, tl, E, verbose = 0) -> np.ndarray:
 
     # get system Green's function in matrix form
     # for easy inversion, Hp should be 2d array with spatial and spin indices mixed
-    Hp = Hprime(h, tnn, tnnn, tl, E, verbose=verbose); 
+    Hp = Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose=verbose); 
     Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
 
     # make 4d
