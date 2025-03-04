@@ -22,8 +22,8 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     coefficient for a transmitted up and down electron
     Args
     -h, array, block hamiltonian matrices
-    -tnn, array, nearest neighbor block hopping matrices
-    -tnnn, array, next nearest neighbor block hopping matrices
+    -tnn, array, upper diagonal nearest neighbor block hopping matrices
+    -tnnn, array, upper diagonal next nearest neighbor block hopping matrices
     -tl, float, hopping in leads, not necessarily same as hopping on/off SR
         or within SR which is defined by tnn, tnnn matrices
     -E, float, energy of the incident electron
@@ -48,11 +48,12 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     if(not isinstance(tnn, np.ndarray)): raise TypeError;
     if(not isinstance(tnnn, np.ndarray)): raise TypeError;
     
-    # check that lead hams are diagonal
+    # check that lead blocks are okay
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if(all_debug and np.any(isdiag)): # True if there are nonzero off diag terms
-            raise Exception("Not diagonal\n"+str(h[hi]))
+            assert(not np.any(np.diagonal(h[hi]))); # diagonal must be zero
+            #raise Exception("Not diagonal\n"+str(h[hi]))
     for sigma in range(len(Ajsigma)): # always set incident mu = 0
         if(Ajsigma[sigma] != 0):
             pass;
@@ -118,8 +119,8 @@ def Hmat(h, tnn, tnnn) -> np.ndarray:
     where there are N sites in the scattering region (SR), 1 LL site, 1 RL site
     Args
     -h, 2d array, on site blocks at each of the N+2 sites of the system
-    -tnn, 2d array, nearest neighbor hopping btwn sites, N-1 blocks
-    -tnnn, 2d array, next nearest neighbor hopping btwn sites, N-2 blocks
+    -tnn, 2d array, upper diagonal nearest neighbor hopping, N-1 blocks
+    -tnnn, 2d array, upper diagonal next nearest neighbor hopping, N-2 blocks
 
     returns 2d array with spatial and spin indices mixed
     '''
@@ -147,14 +148,14 @@ def Hmat(h, tnn, tnnn) -> np.ndarray:
                     if(sitei == sitej): # input from local h to main diag
                         H[ovi, ovj] = h[sitei][loci, locj];
 
-                    elif(sitei == sitej+1): # input from tnn to lower diag <---- !!! change !!!
-                        H[ovi, ovj] = tnn[sitej][loci, locj];
+                    elif(sitei == sitej+1): # input from tnn to lower diag
+                        H[ovi, ovj] = (np.conj(tnn[sitej]).T)[loci, locj];
 
                     elif(sitei+1 == sitej): # input from tnn to upper diag
                         H[ovi, ovj] = tnn[sitei][loci, locj];
 
                     elif(sitei == sitej+2): # input from tnnn to 2nd lower diag
-                        H[ovi, ovj] = tnnn[sitej][loci, locj];
+                        H[ovi, ovj] = (np.conj(tnnn[sitej]).T)[loci, locj];
 
                     elif(sitei+2 == sitej): # input from tnnn to 2nd upper diag
                         H[ovi, ovj] = tnnn[sitei][loci, locj];
@@ -167,8 +168,8 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     where there are N sites in the scattering region (SR).
     Args
     -h, array, on site blocks at each of the N+2 sites of the system
-    -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
-    -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
+    -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
+    -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
     -E, float, energy of the state to evaluate the self energy at. NB -2*tl <= E <= +2*tl
     -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
@@ -183,10 +184,10 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
 
     # base hamiltonian
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
-    
+   
     # compute lead self energies directly through g_ functions
-    gLargs = (h[0], -tl*np.eye(n_loc_dof), E, -1); # surface gf ~ *lead* hopping
-    gRargs = (h[-1], -tl*np.eye(n_loc_dof), E, 1); 
+    gLargs = (h[0], tnn[0], E, -1); 
+    gRargs = (h[-1], tnn[-1], E, 1); 
     if(np.isnan(conv_tol)): # use the closed soln of the surface green's func
         gLmat = g_closed(*gLargs);
         gRmat = g_closed(*gRargs);
@@ -223,6 +224,9 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
+    if(verbose>4): 
+        print(np.real(Hp));
+        print(np.imag(Hp)); 
     return Hp;
     
 def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
@@ -233,7 +237,7 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
 
     Args:
     -diag, matrix in channel space, same-spatial-site matrix elements of H
-    -off_diag, matrix in channel space, nearest-neighbor matrix elmements of H
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elmements of H
     -E, complex, band energy (can be negative, complex type but im(E)=0
     -inoutsign, telling us if we are computing incoming or outgoing state
     
@@ -261,14 +265,10 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     
 def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     '''
-    Surface Green's function of a periodic semi-infinite tight-binding lead
-    When the diag and off-diagonal blocks are not diagonal in channel basis,
-    we must solve iteratively
+    Single iteration of the surface Green's function
+    See Sec C.1 of Zuxin's "Molecular Junction" notes
     '''
-    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) != np.shape(g_prev)): raise ValueError;
     if(not isinstance(ith, int)): raise TypeError;
-    if(inoutsign not in [1,-1]): raise ValueError;
-    if(inoutsign != 1): raise NotImplementedError; # the order of offdiag, offdiag^\dagger differs in LL
     eye_like = np.eye(len(diag));
     
     # g_retarded \equiv lim(\eta->0) g(E+i\eta)
@@ -278,14 +278,21 @@ def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
         return np.linalg.inv(eye_like*E - diag);
         
     else: # higher iteration
-        return np.linalg.inv(eye_like*E - diag - np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T))));
+        if(inoutsign==1): # right lead outgoing state
+            txgxt = np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T)));
+        elif(inoutsign == -1): # left lead incoming state
+            txgxt = np.matmul(np.conj(offdiag.T), np.matmul(g_prev, offdiag));
+        return np.linalg.inv(eye_like*E - diag - txgxt);
 
 def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol, 
               conv_rep=5, min_iter=int(1e1), max_iter=int(1e5), full=False) -> np.ndarray:
     '''
+    Surface Green's function of a periodic semi-infinite tight-binding lead
+    When the diag and off-diagonal blocks are not diagonal in channel basis,
+    we must solve iteratively
     Args:
-    -diag, matrix in channel space, same-spatial-site matrix elements of H
-    -off_diag, matrix in channel space, nearest-neighbor matrix elmements of H
+    -diag, matrix in channel space, same-spatial-site block
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor block
     -E, complex, band energy (can be negative, complex type but im(E)=0
     -inoutsign, telling us if we are computing incoming or outgoing state
     -imE, float, the small imaginary part to add to the real energy
@@ -298,7 +305,8 @@ def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol,
     Returns: 
     -the surface green's function, matrix in channel space--same shape as diag
     '''
-    # assert statements
+    if(np.shape(diag) != np.shape(offdiag)): raise ValueError;
+    if(inoutsign not in [1,-1]): raise ValueError;
 
     # iterative g
     g = np.zeros_like(diag);
@@ -313,7 +321,7 @@ def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol,
 
         # update convergence metric (surface density of states)
         if(inoutsign==1): dos_ith[ith] = (-1/np.pi)*np.imag(g)[0,0];
-        elif(inoutsign==-1): raise NotImplementedError;
+        elif(inoutsign==-1): dos_ith[ith] = (-1/np.pi)*np.imag(g)[-1,-1];
 
         # check convergence
         if(ith>min_iter):
@@ -333,8 +341,8 @@ def Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     Greens function for system described by
     Args
     -h, array, on site blocks at each of the N+2 sites of the system
-    -tnn, array, nearest neighbor hopping btwn sites, N-1 blocks
-    -tnnn, array, next nearest neighbor hopping btwn sites, N-2 blocks
+    -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
+    -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
     -E, float, incident energy
     -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
