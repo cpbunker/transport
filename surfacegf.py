@@ -28,24 +28,30 @@ if(__name__=="__main__"):
     tl = 1.0;
     # in-cell energies are u_0 _ u, u_0 - u;
     u0 = 0.0;
-    uvals = tl*np.array([0.0, 0.025]); # needs to be zero in the tau = -tl case
+    uvals = tl*np.array([0.0, 0.0]); # needs to be zero in the tau = -tl case
     n_iterations = int(sys.argv[2]);
     logKlims = (-4,-1)
     Evals = np.linspace(-2*tl+np.power(10.0,logKlims[0]), 0.1, 199, dtype=complex);
     imag_pt_E = float(sys.argv[3]);
-    taus = np.array([-tl, 1*tl]); # in-cell hopping either same, or off by (-1)
-    
-    taus = np.array([-tl, -tl]); # <--- right now just look at delta eps perturbatively!!
+    taus = np.array([-tl, -1.095*tl]);
+    is_topological = False;
+    if(is_topological): taus = np.array([-tl, -0.905*tl]); 
 
     # set up figure
-    mustrings = ["d","p"];
+    mustrings = ["A","B"];
     n_mu_dof = len(mustrings); # runs over d orbitals and p orbitals
     n_tau_dof = len(taus); # display results for tau = -t and tau = +t
     
-if(case in ["giter"]):       
+if(case in ["giter"]):  
+    band_widen = 1
+    Evals = np.linspace(-tl*(2+band_widen), tl*(2+band_widen), 199, dtype=complex);     
 
     # set up figure
-    fig, axes = plt.subplots(n_tau_dof*n_mu_dof, n_mu_dof, sharex=True, sharey=True);
+    nrow = n_tau_dof*n_mu_dof;
+    ncol = 1;
+    fig, axes = plt.subplots(nrow, ncol, sharex=True, sharey=True);
+    if(ncol==1): axes = np.array([[ax] for ax in axes]);
+
     fig.set_size_inches(n_mu_dof*4.0, n_tau_dof*n_mu_dof*1.8);
 
     # run over tau values
@@ -79,27 +85,33 @@ if(case in ["giter"]):
             # plot results for this iteration
             if(ith_iter == n_iterations-1):
                 for mu in range(n_mu_dof):
-                    for mup in range(n_mu_dof):
+                    for mup in [0]: # range(n_mu_dof):
                         axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.real(gsurf[mu,mup]), 
                           color=mycolors[0], linestyle="solid", label=str(ith_iter));
                         axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.imag(gsurf[mu,mup]), 
                           color=mycolors[0], linestyle="dashed");
                         axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.real(last_change[mu,mup]),
-                          color=mycolors[1], linestyle="solid", label="$\Delta_{"+str(ith_iter)+"}$");
-                        #axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.imag(last_change[mu,mup]),color=mycolors[1], linestyle="dashed");
+                          color=mycolors[1], linestyle="solid", label="$\Delta_{"+str(ith_iter)+"}$");      
        
+        # plot the closed form result *for diatomic model* (Rice-Mele)
+        gsurf_dia = np.zeros_like(Evals); # NB lack of mu dofs
+        for Evali in range(len(Evals)):
+            gsurf_dia[Evali] = wfm.g_RM(h00,h01, Evals[Evali], outgoing)[0,0]; # get AA element
+        # plot
+        axes[taui*n_mu_dof,0].plot(np.real(Evals),np.real(gsurf_dia),color=accentcolors[1], linestyle="solid",label="dia");
+        axes[taui*n_mu_dof,0].plot(np.real(Evals),np.imag(gsurf_dia),color=accentcolors[1], linestyle="dashed");
+        axes[taui*n_mu_dof+1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[1], linestyle="solid",label="dia"); # for legend
 
-    # get the closed form result
-    gsurf_closed = np.zeros_like(Evals); # NB lack of mu dofs
+    # exact result
+    gsurf_exact = np.zeros_like(Evals); # NB lack of mu dofs
     eye_like = np.eye(1);
     for Evali in range(len(Evals)): 
         # NB the off-diag element is -tl, not tl
-        gsurf_closed[Evali] = wfm.g_closed(u0*eye_like, -tl*eye_like, Evals[Evali], 1)[0,0]; 
-       
-    # plot the closed form result 
-    axes[0,0].plot(np.real(Evals),np.real(gsurf_closed),color=accentcolors[0], linestyle="solid",label="$\infty$");
-    axes[0,0].plot(np.real(Evals),np.imag(gsurf_closed),color=accentcolors[0], linestyle="dashed");
-    axes[0,1].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],      linestyle="solid",label="$\infty$"); # for legend
+        gsurf_exact[Evali] = wfm.g_closed(u0*eye_like, -tl*eye_like, Evals[Evali], 1)[0,0]; 
+    #axes[0,0].plot(np.real(Evals),np.real(gsurf_exact),color=accentcolors[0], linestyle="solid",label="$\infty$");
+    #axes[0,0].plot(np.real(Evals),np.imag(gsurf_exact),color=accentcolors[0], linestyle="dashed");
+    axes[1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],      linestyle="solid",label="$\infty$"); # for legend
+
 
     # legend
     axes[1,0].legend(title="# iterations");
@@ -107,7 +119,7 @@ if(case in ["giter"]):
     # format
     for rowi in range(np.shape(axes)[0]):
         for coli in range(np.shape(axes)[1]):
-            axes[rowi, coli].set_ylim(-2.0,2.0);
+            #axes[rowi, coli].set_ylim(-2.0,2.0);
             axes[rowi, coli].axhline(0.0, color="gray", linestyle="dotted");
             axes[rowi, coli].set_ylabel("$\langle "+mustrings[rowi%2]+"| \mathbf{g}_{00}|"+mustrings[coli%2]+" \\rangle$");
     for ax in axes[-1]: 

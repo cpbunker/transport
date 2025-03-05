@@ -15,28 +15,30 @@ import matplotlib.cm as cm
 
 import sys
 
-# top level
-np.set_printoptions(precision = 4, suppress = True);
-verbose = 5;
-case = sys.argv[1];
+if(__name__=="__main__"):
 
-# fig standardizing
-myxvals = 199;
-myfontsize = 14;
-mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
-accentcolors = ["black","red"];
-mymarkers = ["+","o","^","s","d","*","X"];
-mymarkevery = (10, 10);
-mylinewidth = 1.0;
-mypanels = ["(a)","(b)","(c)","(d)"];
-plt.rcParams.update({"font.family": "serif"})
-#plt.rcParams.update({"text.usetex": True}) 
+    # top level
+    np.set_printoptions(precision = 4, suppress = True);
+    verbose = 5;
+    case = sys.argv[1];
 
-# set up figure
-numplots = 2;
-fig, axes = plt.subplots(numplots, sharex = True);
-if numplots == 1: axes = [axes];
-fig.set_size_inches(7,3*numplots);
+    # fig standardizing
+    myxvals = 199;
+    myfontsize = 14;
+    mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
+    accentcolors = ["black","red"];
+    mymarkers = ["+","o","^","s","d","*","X"];
+    mymarkevery = (10, 10);
+    mylinewidth = 1.0;
+    mypanels = ["(a)","(b)","(c)","(d)"];
+    plt.rcParams.update({"font.family": "serif"})
+    #plt.rcParams.update({"text.usetex": True}) 
+
+    # set up figure
+    numplots = 2;
+    fig, axes = plt.subplots(numplots, sharex = True);
+    if numplots == 1: axes = [axes];
+    fig.set_size_inches(7,3*numplots);
 
 # tight binding params
 tl = 1.0;
@@ -82,7 +84,7 @@ for Kvali in range(len(Kvals)):
          Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn,tl,Energy,0.0,np.nan,source,  
                          False, False, all_debug = False, verbose = 0);
     Tvals[Kvali] = Tdum;
-axes[0].plot(np.real(Kvals), np.real(Tvals[:,0]), label="closed-form gf", color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
+axes[0].plot(np.real(Kvals), np.real(Tvals[:,0]), label="closed-form $u=${:.2f}, $v=${:.2f}".format(0.0,-1.0), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
 
 # ideal single-channel transmission through barrier
 kavals = np.arccos((Kvals-2*tl-hblocks[0][0,0])/(-2*tl));
@@ -99,7 +101,7 @@ ideal_Tvals *= ideal_correction
 
 # the model for the diatomic unit cell model is the Rice-Mele model
 # parameterized by staggered on-site potential +u,-u and staggered hopping vow
-uval = 0.0;
+uval = float(case);
 vval = -1*tl;
 # w is just tl;
 
@@ -148,7 +150,7 @@ for Kvali in range(len(Kvals)):
                         conv_tol,source_dia, False, False, all_debug=False, verbose=0);
     Tvals_iter[Kvali] = Tdum;
     # NB Tvals[:,dia_out] gives transmission *into the right lead*
-axes[0].plot(np.real(Kvals), np.real(Tvals_iter[:,dia_out]), label="iterative gf", color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth=mylinewidth); 
+axes[0].plot(np.real(Kvals), np.real(Tvals_iter[:,dia_out]), label="iterative $u=${:.2f}, $v=${:.2f}".format(uval,vval), color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth=mylinewidth); 
 
 # plot ideal for comparison
 axes[0].plot(np.real(Kvals),np.real(ideal_Tvals), label="exact", color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);

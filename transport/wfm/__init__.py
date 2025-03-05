@@ -76,6 +76,12 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
     Gmat = Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = verbose); # spatial and spin indices separate
+
+    # Q vector
+    Qjsigma = source_vector();
+
+    # every time v is used below will have to be replaced!!
+    del v_L, v_R
     
     # from Green's function, determine wavefunction elements \psi_j\sigma
     psi_jsigma = complex(0,1)*np.dot(Gmat[:,0], Ajsigma*v_L);
@@ -225,8 +231,8 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
     if(verbose>4): 
-        print(np.real(Hp));
-        print(np.imag(Hp)); 
+        print("Re[Hp]=\n",np.real(Hp));
+        print("Im[Hp]=\n",np.imag(Hp)); 
     return Hp;
     
 def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
@@ -262,6 +268,48 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     # return as same sized array
     if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
     elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
+
+def g_RM(diag, offdiag, E, inoutsign) -> np.ndarray:
+    '''
+    Surface Green's function of the Rice-Mele model
+    The closed form comes from Yen-Ting Lin's thesis at Aachen 
+
+    Args:
+    -diag, matrix in channel space, same-spatial-site matrix elements of H
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elmements of H
+    -E, complex, band energy (can be negative, complex type but im(E)=0
+    -inoutsign, telling us if we are computing incoming or outgoing state
+    
+    Returns: 
+    -the surface green's function, matrix in channel space--same shape as diag
+    '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
+    if(inoutsign not in [1,-1]): raise ValueError;
+    # check RM compatibility
+    offdiag_check = 1*offdiag;
+    offdiag_check[-1,0] = 0.0;
+    if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
+    
+    # break down into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); assert(abs(u0)<1e-10);
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    # functional form
+    squared_val = np.power((E+u)*(E-u)+(w+v)*(w-v),2);
+    sqrt_val = np.lib.scimath.sqrt( 4*w*w*(u*u-E*E) + squared_val);
+    prefactor = 1/(2*w*w*(E-u));
+    if(np.imag(sqrt_val*prefactor) > 0): sqrt_val = (-1)*sqrt_val; # Im[g_ret]<0
+    g = prefactor*((E+u)*(E-u)+(w+v)*(w-v) + sqrt_val);
+    
+    # return as same sized array
+    gmat = np.zeros(np.shape(diag), dtype=complex);
+    if(inoutsign ==-1): # left lead
+        gmat[-1,-1] = g;
+    elif(inoutsign== 1): # right lead
+        gmat[0,0] = g;
+    return gmat;
     
 def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     '''
