@@ -26,16 +26,19 @@ if(__name__=="__main__"):
     
     # tight binding parameters
     tl = 1.0;
-    # in-cell energies are u_0 _ u, u_0 - u;
+    # in-cell energies are u_0 + u, u_0 - u;
     u0 = 0.0;
     uvals = tl*np.array([0.0, 0.0]); # needs to be zero in the tau = -tl case
     n_iterations = int(sys.argv[2]);
     logKlims = (-4,-1)
-    Evals = np.linspace(-2*tl+np.power(10.0,logKlims[0]), 0.1, 199, dtype=complex);
+    Evals = np.linspace(-2*tl, 2*tl, 399, dtype=complex);
     imag_pt_E = float(sys.argv[3]);
     taus = np.array([-tl, -1.095*tl]);
     is_topological = False;
-    if(is_topological): taus = np.array([-tl, -0.905*tl]); 
+    if(is_topological): 
+        taus = np.array([-tl, tl]); 
+        uvals = tl*np.array([0.0, 0.25]); 
+    plot_dia = True;
 
     # set up figure
     mustrings = ["A","B"];
@@ -43,7 +46,7 @@ if(__name__=="__main__"):
     n_tau_dof = len(taus); # display results for tau = -t and tau = +t
     
 if(case in ["giter"]):  
-    band_widen = 1
+    band_widen = 0;
     Evals = np.linspace(-tl*(2+band_widen), tl*(2+band_widen), 199, dtype=complex);     
 
     # set up figure
@@ -57,27 +60,57 @@ if(case in ["giter"]):
     # run over tau values
     for taui in range(len(taus)):
 
-        # right lead surface Green's function
-        # exists as a matrix acting on mu dofs
-        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-    
         # from tight binding parameters, construct matrices that act on mu dofs
         h00 = np.array([[u0+uvals[taui], taus[taui]], [taus[taui], u0-uvals[taui]]]);
         h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
+        houtgoing = 1; # tells code it is right lead
         print("\n\nRice-Mele v = {:.2f}, u = {:.2f}".format(taus[taui],uvals[taui]));
         print("h00 =\n",h00);
         print("h01 =\n",h01);
+
+        # monatomic cell closed-form result
+        gsurf_exact = np.zeros_like(Evals); # NB lack of mu dofs
+        for Evali in range(len(Evals)): 
+            # NB the off-diag element is -tl, not tl
+            gsurf_exact[Evali]=wfm.g_closed(h00[:1,:1],h01[1:,:1],Evals[Evali],houtgoing)[0,0];
+        if(taui == 0): # plot monatomic
+            axes[taui*n_mu_dof,0].plot(np.real(Evals),np.real(gsurf_exact), color=accentcolors[0], linestyle="solid",label="$\infty$ (monatomic cell)");
+            axes[taui*n_mu_dof,0].plot(np.real(Evals),np.imag(gsurf_exact), color=accentcolors[0], linestyle="dashed");
+            axes[taui*n_mu_dof+1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],linestyle="solid",label="$\infty$ (monatomic cell)"); #legend
+        del gsurf_exact;
+
+        # *diatomic model* (Rice-Mele) closed-form result
+        gsurf_dia = np.zeros_like(Evals); # NB lack of mu dofs
+        for Evali in range(len(Evals)):
+            gsurf_dia[Evali] = wfm.g_RM(h00,h01, Evals[Evali], houtgoing)[0,0]; # get AA element
+        if(plot_dia): # plot diatomic
+            axes[taui*n_mu_dof,0].plot(np.real(Evals),np.real(gsurf_dia),color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)");
+            axes[taui*n_mu_dof,0].plot(np.real(Evals),np.imag(gsurf_dia),color=accentcolors[1], linestyle="dashed");
+            axes[taui*n_mu_dof+1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)"); # for legend
+            
+        # show where the bottom of the valence band is
+        assert(u0==0);
+        band_edge_pm =[np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl+taus[taui],2)),
+                           np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl-taus[taui],2))];
+        axes[taui*n_mu_dof,0].axvline(np.min(band_edge_pm), color="gray",linestyle="dashed");
+
+
+        #
+        # **iterative **
+        #
+        # right lead surface Green's function
+        # exists as a matrix acting on mu dofs
+        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
 
         # iter over right lead surface Green's function iterations
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         # NB this is the right lead, so we need outgoing=1
-        outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
-                gsurf[:,:,Evali] = wfm.g_ith(h00, h01, Evals[Evali], outgoing, 
+                gsurf[:,:,Evali] = wfm.g_ith(h00, h01, Evals[Evali], houtgoing, 
                     imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
                 last_change[:,:,Evali] = abs(gsurf[:,:,Evali]-last_iter[:,:,Evali]);
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
@@ -92,26 +125,6 @@ if(case in ["giter"]):
                           color=mycolors[0], linestyle="dashed");
                         axes[taui*n_tau_dof+mu,mup].plot(np.real(Evals), np.real(last_change[mu,mup]),
                           color=mycolors[1], linestyle="solid", label="$\Delta_{"+str(ith_iter)+"}$");      
-       
-        # plot the closed form result *for diatomic model* (Rice-Mele)
-        gsurf_dia = np.zeros_like(Evals); # NB lack of mu dofs
-        for Evali in range(len(Evals)):
-            gsurf_dia[Evali] = wfm.g_RM(h00,h01, Evals[Evali], outgoing)[0,0]; # get AA element
-        # plot
-        axes[taui*n_mu_dof,0].plot(np.real(Evals),np.real(gsurf_dia),color=accentcolors[1], linestyle="solid",label="dia");
-        axes[taui*n_mu_dof,0].plot(np.real(Evals),np.imag(gsurf_dia),color=accentcolors[1], linestyle="dashed");
-        axes[taui*n_mu_dof+1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[1], linestyle="solid",label="dia"); # for legend
-
-    # exact result
-    gsurf_exact = np.zeros_like(Evals); # NB lack of mu dofs
-    eye_like = np.eye(1);
-    for Evali in range(len(Evals)): 
-        # NB the off-diag element is -tl, not tl
-        gsurf_exact[Evali] = wfm.g_closed(u0*eye_like, -tl*eye_like, Evals[Evali], 1)[0,0]; 
-    #axes[0,0].plot(np.real(Evals),np.real(gsurf_exact),color=accentcolors[0], linestyle="solid",label="$\infty$");
-    #axes[0,0].plot(np.real(Evals),np.imag(gsurf_exact),color=accentcolors[0], linestyle="dashed");
-    axes[1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[0],      linestyle="solid",label="$\infty$"); # for legend
-
 
     # legend
     axes[1,0].legend(title="# iterations");
@@ -127,7 +140,7 @@ if(case in ["giter"]):
         ax.set_xlim(min(np.real(Evals)), max(np.real(Evals)));
     for taui in range(len(taus)): 
         axes[taui*n_mu_dof,0].set_title("$v =${:.2f}$, u=${:.2f}$, \eta =${:.0e}"
-         .format(taus[taui],uvals[taui], imag_pt_E));
+         .format(taus[taui],uvals[taui], imag_pt_E)+", Re[$g$]=solid, Im[$g$]=dashed");
 
     # show
     plt.tight_layout();
@@ -136,8 +149,9 @@ if(case in ["giter"]):
 elif(case in ["sdos"]): 
 
     # set up figure
-    fig, axes = plt.subplots(n_tau_dof, 1, sharex=True, sharey=True);
-    fig.set_size_inches(2*3.6, n_tau_dof*3.6);
+    nrow, ncol = n_tau_dof, 2;
+    fig, axes = plt.subplots(nrow, ncol, sharex=True);
+    fig.set_size_inches(ncol*2*3.6, nrow*3.6);
 
     # run over tau values
     for taui in range(len(taus)):
@@ -149,50 +163,77 @@ elif(case in ["sdos"]):
         # from tight binding parameters, construct matrices that act on mu dofs
         h00 = np.array([[u0+uvals[taui], taus[taui]], [taus[taui],u0-uvals[taui]]]);
         h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
+        houtgoing = 1
         print("\n\nRice-Mele v = {:.2f}, u = {:.2f}".format(taus[taui],uvals[taui]));
         print("h00 =\n",h00);
         print("h01 =\n",h01);
 
-        # iter over right lead surface Green's function iterations
+        if(taui == 0): # plot closed-form solution, monatomic case
+            sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
+            for Evali in range(len(Evals)): 
+                sdos_closed[Evali] =(-1/np.pi)*np.imag(wfm.g_closed(h00[:1,:1],h01[1:,:1], Evals[Evali], houtgoing))[0,0];
+            axes[taui,0].plot(np.real(Evals),sdos_closed,color=accentcolors[0], label="$\infty$ (monatomic cell)");
+            axes[taui,1].plot(np.real(Evals),2*tl*np.sqrt(1-np.power(np.real(Evals/(2*tl)),2)), color=accentcolors[0]);
+
+        # plot closed-form solution, diatomic case
+        sdos_dia = np.zeros_like(Evals, dtype=float); 
+        for Evali in range(len(Evals)):
+            sdos_dia[Evali] =(-1/np.pi)*np.imag(wfm.g_RM(h00,h01, Evals[Evali], houtgoing)[0,0]); 
+        axes[taui,0].plot(np.real(Evals),sdos_dia,color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)");
+        # diatomic velocities
+        axes[taui,1].plot(np.real(Evals),sdos_dia*2*np.pi*tl*tl,color=accentcolors[1], linestyle="solid");
+
+        # velocities direct from derivative of diatomic E(k)
+        velocities_deriv = np.zeros_like(sdos_dia);
+        for Evali in range(len(Evals)):
+            velocities_deriv[Evali] = wfm.velocity_RM(h00,h01,Evals[Evali]);
+        axes[taui,1].plot(np.real(Evals),velocities_deriv,color=mycolors[-1], linestyle="solid", marker="s"); 
+
+        # show where the bottom of the valence band is
+        assert(u0==0);
+        band_edge_pm =[np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl+taus[taui],2)),
+                           np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl-taus[taui],2))];
+        for ax in axes[taui]: 
+            ax.axvline(np.min(band_edge_pm), color="gray",linestyle="dashed");
+
+        #
+        # **iterative **
+        #
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         # NB this is the right lead, so we need outgoing=1
-        outgoing = 1;
         for ith_iter in range(n_iterations):
             # energy values
             for Evali in range(len(Evals)):
-                gsurf[:,:,Evali] = wfm.g_ith(h00, h01, Evals[Evali], outgoing,
+                gsurf[:,:,Evali] = wfm.g_ith(h00, h01, Evals[Evali], houtgoing,
                     imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
                 last_change[:,:,Evali] = gsurf[:,:,Evali]-last_iter[:,:,Evali];
                 last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
     
         # get density of states
         dos = (-1/np.pi)*np.imag(gsurf)[0,0]; # real-valued function of E
-        axes[taui].plot(np.real(Evals), dos, color=mycolors[0], label=str(n_iterations-1));
+        axes[taui,0].plot(np.real(Evals), dos, color=mycolors[0], label=str(n_iterations-1));
 
         # get change in density of states at last iteration
         dos_change = (-1/np.pi)*np.imag(last_change)[0,0]; # real-valued function of E
-        axes[taui].plot(np.real(Evals), dos_change, color=mycolors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
+        axes[taui,0].plot(np.real(Evals), dos_change, color=mycolors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
+
+        # get velocities
+        velocities_dos = dos*(-np.pi)*tl*tl*(-2); # -2Im[\Sigma]
+        axes[taui,1].plot(np.real(Evals), velocities_dos, color=mycolors[0]);
         
-    # plot closed-form soln
-    sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
-    eye_like = np.eye(1);
-    for Evali in range(len(Evals)): 
-        sdos_closed[Evali] = (-1/np.pi)*np.imag(wfm.g_closed(u0*eye_like, -tl*eye_like,Evals[Evali],1))[0,0];
-    axes[0].plot(np.real(Evals), sdos_closed, color=accentcolors[0], label="$\infty$");
-    #sdos_case2 = 1/np.sin(
-    #axes[1].plot(np.real(Evals), sdos_case2, color=accentcolors[0], label="$\infty$");
-    
     # legend
-    axes[0].legend(title="# iterations");
+    axes[0,0].legend(title="# iterations");
 
     # format
-    axes[-1].set_xlabel("$E$", fontsize=myfontsize);
-    axes[-1].set_xlim(min(np.real(Evals)), max(np.real(Evals)));
+    for coli in range(ncol):
+        axes[-1,coli].set_xlabel("$E$", fontsize=myfontsize);
+        axes[-1,coli].set_xlim(min(np.real(Evals)), max(np.real(Evals)));
     for taui in range(len(taus)): 
-        axes[taui].set_ylabel("Right Lead Surface DOS", fontsize=myfontsize);
-        axes[taui].set_title("$v =${:.2f}$, u=${:.2f}$, \eta =${:.0e}"
+        axes[taui,0].set_ylabel("Right Lead Surface DOS", fontsize=myfontsize);
+        axes[taui,1].set_ylabel("Right Lead Velocities", fontsize=myfontsize);
+        axes[taui,0].set_title("$v =${:.2f}$, u=${:.2f}$, \eta =${:.0e}"
          .format(taus[taui],uvals[taui], imag_pt_E), fontsize=myfontsize);
 
     # show

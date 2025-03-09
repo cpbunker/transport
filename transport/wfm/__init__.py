@@ -72,6 +72,7 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
     v_L = 2*tl*np.sin(ka_L); # vector with sigma components
     v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1   <---- !!! change !!!
+    del ka_L, ka_R;
 
     # green's function
     if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
@@ -234,6 +235,32 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
         print("Re[Hp]=\n",np.real(Hp));
         print("Im[Hp]=\n",np.imag(Hp)); 
     return Hp;
+
+def velocity_RM(diag, offdiag, E) -> np.ndarray:
+    '''
+    '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
+    # check RM compatibility
+    offdiag_check = 1*offdiag;
+    offdiag_check[-1,0] = 0.0;
+    if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
+    
+    # decompose into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); assert(abs(u0)<1e-10);
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    # invert the dispersion to get cos(ka)
+    coska = 1/(2*v*w)*((E-u0)*(E-u0) - u*u - v*v - w*w);
+    sinka = np.sqrt(1-coska*coska);
+
+    # determine if E is in the valence or conduction band
+    bandsign = np.sign(E-u0);
+
+    # velocity(E)
+    sqrt = np.sqrt( 1+(u/v)*(u/v)+(w/v)*(w/v)+(2*w/v)*coska);
+    return (-1)*bandsign*w*sinka/sqrt;
     
 def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     '''
@@ -243,12 +270,15 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
 
     Args:
     -diag, matrix in channel space, same-spatial-site matrix elements of H
-    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elmements of H
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elems of H
     -E, complex, band energy (can be negative, complex type but im(E)=0
     -inoutsign, telling us if we are computing incoming or outgoing state
     
     Returns: 
     -the surface green's function, matrix in channel space--same shape as diag
+       -->Properties:
+          Im[g] < 0 always, symmetric function of (E)
+          Re[g] has sign(E), antisymmetric function of (E)
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
     if(inoutsign not in [1,-1]): raise ValueError;
@@ -258,6 +288,14 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     # everything is vectorized by channel
     diag = np.diagonal(diag);
     offdiag = np.diagonal(offdiag);
+
+    # this decomposition gives correct sign of sqrt always, but need to double-check
+    if(False):
+        raise NotImplementedError("Need to verify all plots")
+        reduced = (E-diag)/(2*offdiag);
+        term1 = reduced/offdiag;
+        term2 = np.lib.scimath.sqrt(reduced*reduced-1);
+        return np.diagflat(np.real(term1)-np.sign(E)*abs(np.real(term2))-complex(0,1)*abs(np.imag(term2)));
     
     # scale the energy
     lam = (E-diag)/(2*offdiag); # offdiag includes - sign
@@ -290,7 +328,7 @@ def g_RM(diag, offdiag, E, inoutsign) -> np.ndarray:
     offdiag_check[-1,0] = 0.0;
     if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
     
-    # break down into u, w, v
+    # decompose into u, w, v
     u0 = np.sum(np.diagonal(diag))/len(diag); assert(abs(u0)<1e-10);
     u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
     v = diag[0,-1];
