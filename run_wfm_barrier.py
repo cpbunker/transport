@@ -21,6 +21,7 @@ if(__name__=="__main__"):
     np.set_printoptions(precision = 4, suppress = True);
     verbose = 5;
     case = sys.argv[1];
+    if(case not in ["VB","CB"]): raise NotImplementedError;
 
     # fig standardizing
     myxvals = 199;
@@ -65,29 +66,21 @@ source[0] = 1;
 # def range
 logKlims = -3,0
 Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
-imag_pt_E = float(sys.argv[2])
-conv_tol = float(sys.argv[3]); # convergence tolerance for iterative gf scheme
 
-# test wmf kernel - closed form surface green's function
-Tvals = np.full((len(Kvals),len(source)), np.nan, dtype = float); 
-for Kvali in range(len(Kvals)):
-    # energy
-    Kval = Kvals[Kvali]; # Kval > 0 always, what I call K in paper
-    Energy = Kval - 2*tl; # -2t < Energy < 2t, what I call E in paper
-
-    if(Kvali < 5): # verbose
-        # np here we pass imag part of E = 0.0 since it's not needed, and
-        # pass conv_tol = np.nan to tell code to use closed form surface greens func
-        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn,tl,Energy,0.0,np.nan,source, 
-                         False, False, all_debug = True, verbose = verbose);
-    else: # not verbose
-         Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn,tl,Energy,0.0,np.nan,source,  
-                         False, False, all_debug = False, verbose = 0);
-    Tvals[Kvali] = Tdum;
-axes[0].plot(np.real(Kvals), np.real(Tvals[:,0]), label="closed-form $u=${:.2f}, $v=${:.2f}".format(0.0,-1.0), color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
+# the model for the diatomic unit cell model is the Rice-Mele model
+# parameterized by staggered on-site potential +u,-u and staggered hopping vow
+vval = float(sys.argv[2]);
+uval = float(sys.argv[3]); 
+# w is always -tl;
+band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
+                       np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
+RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
+if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; # new band = conduction band!
 
 # ideal single-channel transmission through barrier
-kavals = np.arccos((Kvals-2*tl-hblocks[0][0,0])/(-2*tl));
+#kavals = np.arccos(((Kvals+np.min(-band_edges))**2-uval**2 -vval**2 -tl**2)/(-2*vval*tl));
+#kappavals = np.arccos(((Kvals+np.min(-band_edges))**2-uval**2 -vval**2 -tl**2)/(-2*vval*tl));
+kavals = np.arccos((Kvals-2*tl-hblocks[0][0,0])/(-2*tl)); # <--- unshifted !!
 kappavals = np.arccosh((Kvals-2*tl-hblocks[1][0,0])/(-2*tl));
 ideal_prefactor = np.power(4*kavals*kappavals/(kavals*kavals+kappavals*kappavals),2);
 ideal_exp = np.exp(-2*NC*kappavals);
@@ -95,18 +88,37 @@ ideal_Tvals = ideal_prefactor*ideal_exp;
 ideal_correction = np.power(1+(ideal_prefactor-2)*ideal_exp+ideal_exp*ideal_exp,-1);
 ideal_Tvals *= ideal_correction
 
+# closed form surface green's function
+conv_closed = "g_closed"
+Tvals_clos = np.full((len(Kvals),len(source)), np.nan, dtype = float); 
+for Kvali in range(len(Kvals)):
+    # energy
+    Kval = Kvals[Kvali]; # Kval > 0 always, what I call K in paper
+    Energy = Kval - 2*tl; # <--- unshifted !!
+
+    if(Kvali < 5): # verbose
+        # pass converger=g_closed tell code to use closed form surface greens func
+        Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn,tl,Energy,conv_closed,source, 
+                         False, False, all_debug = True, verbose = verbose);
+    else: # not verbose
+         Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn,tl,Energy,conv_closed,source,  
+                         False, False, all_debug = False, verbose = 0);
+    Tvals_clos[Kvali] = Tdum;
+
+# plot the closed form surface green's function
+axes[0].plot(np.real(Kvals), np.real(Tvals_clos[:,0]),
+label=conv_closed+", $E_{min}=$"+"{:.2f}".format(-2), 
+color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
+# and plot its error w/r/t ideal
+axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_clos[:,0])/ideal_Tvals)), 
+  color = mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth); 
+
 #################################################################
-# test wmf kernel - iterative scheme for surface green's function
+# test various schemes for surface green's function of Rice-Mele
 # this requires constructing diatomic Hamiltonian!!
 
-# the model for the diatomic unit cell model is the Rice-Mele model
-# parameterized by staggered on-site potential +u,-u and staggered hopping vow
-uval = float(case);
-vval = -1*tl;
-# w is just tl;
-
 # construct diatomic Hamiltonian
-del hblocks, tnn, tnnn, source
+del hblocks, tnn, tnnn, source;
 h00 = np.array([[uval, vval], [vval, -uval]]);
 h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
 print("\n\nRice-Mele, v = {:.2f}, u = {:.2f}".format(vval,uval));
@@ -134,44 +146,67 @@ source_dia = np.zeros(np.shape(h00)[0]);
 dia_in, dia_out = 0,1;
 source_dia[dia_in] = 1;
 
-# get Evals predicted by the iterative scheme
-Tvals_iter = np.full((len(Kvals),len(source_dia)), np.nan, dtype = float); 
-for Kvali in range(len(Kvals)):
-    # energy
-    Kval = Kvals[Kvali]; # Kval > 0 always, what I call K in paper
-    Energy = Kval - 2*tl; # -2t < Energy < 2t, what I call E in paper
+# run over the different methods for handling the diatomic Rice-Mele unit cell
+# and getting the surface green's function
+# these methods are: call g_RiceMele, use iterative green's func
+imag_pt_E = float(sys.argv[4])       # for iterative gf scheme, E needs small >0 imag pt
+iterative_tol = 1e-3  # and we need tolerance at which we stop iterating
+myconverger_values = ["g_RiceMele", (imag_pt_E, iterative_tol)];
+for myconvergeri in range(len(myconverger_values)):
+    myconverger = myconverger_values[myconvergeri];
 
-    if(Kvali < 5): # verbose
-        # passing conv_tol assures we use iterative scheme
-        Rdum, Tdum = wfm.kernel(h_dia, tnn_dia, tnnn_dia,tl,Energy,imag_pt_E, 
-                       conv_tol,source_dia, False, False, all_debug=True, verbose=verbose);
-    else: # not verbose
-         Rdum, Tdum = wfm.kernel(h_dia, tnn_dia, tnnn_dia,tl,Energy,imag_pt_E,
-                        conv_tol,source_dia, False, False, all_debug=False, verbose=0);
-    Tvals_iter[Kvali] = Tdum;
+    # get Tvals corresponding to this diatomic method
+    Tvals_iter = np.full((len(Kvals),len(source_dia)), np.nan, dtype = float); 
+    for Kvali in range(len(Kvals)):
+        # energy
+        Kval = Kvals[Kvali]; # Kval > 0 always, what I call K in paper
+        Energy = Kval-2*tl+RiceMele_shift; # energy that is `Kval` above either VB or CB
+        if(Kvali < 5): # verbose
+            # passing conv_tol assures we use iterative scheme
+            Rdum, Tdum = wfm.kernel(h_dia, tnn_dia, tnnn_dia,tl,Energy,myconverger, 
+                       source_dia, False, False, all_debug=True, verbose=verbose);
+        else: # not verbose
+            Rdum, Tdum = wfm.kernel(h_dia, tnn_dia, tnnn_dia,tl,Energy,myconverger,
+                        source_dia, False, False, all_debug=False, verbose=0);
+        Tvals_iter[Kvali] = Tdum;
+
+    # plot the Tvals
+    if(not isinstance(myconverger, str)): 
+        myconverger_lab = "$\eta =${:.0e}, tol$=${:.0e}".format(*myconverger);
+    else:
+        myconverger_lab = myconverger[:];
+
     # NB Tvals[:,dia_out] gives transmission *into the right lead*
-axes[0].plot(np.real(Kvals), np.real(Tvals_iter[:,dia_out]), label="iterative $u=${:.2f}, $v=${:.2f}".format(uval,vval), color=mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth=mylinewidth); 
+    axes[0].plot(np.real(Kvals), np.real(Tvals_iter[:,dia_out]), 
+      label=myconverger_lab, color=mycolors[1+myconvergeri], marker=mymarkers[2+myconvergeri], 
+      markevery=mymarkevery, linewidth=mylinewidth);
+    axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_iter[:,dia_out])/ideal_Tvals)),
+      color=mycolors[1+myconvergeri], marker=mymarkers[2+myconvergeri], 
+      markevery=mymarkevery, linewidth=mylinewidth); 
+
+### end loop over different gf methods
 
 # plot ideal for comparison
-axes[0].plot(np.real(Kvals),np.real(ideal_Tvals), label="exact", color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);
+axes[0].plot(np.real(Kvals),np.real(ideal_Tvals), label="exact, $E_{min}=$"+"{:.2f}".format(-2), 
+  color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);
+       
+# format
+title_str = "Barrier height$=${:.2f}, barrier width$=${:.0f}".format(Vb, NC)
+title_str += ", $u=${:.2f}, $v=${:.2f}, $w=${:.2f}".format(uval, vval, -tl)
+axes[0].set_title(title_str)
+axes[0].legend();
+axes[0].set_ylabel('$T$');
+axes[1].set_ylabel("Relative error");
 y_offset = 0.07;
 yticks = [0.0, 1.0]
 axes[0].set_ylim(yticks[0]-y_offset, yticks[1]+y_offset);
 for tick in yticks: axes[0].axhline(tick, linestyle="dashed", color="gray");
-axes[0].set_ylabel('$T$');
-
-# plot error w/r/t ideal
-axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals[:,0])/ideal_Tvals)), color = mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth);
-axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_iter[:,dia_out])/ideal_Tvals)), color = mycolors[1], marker=mymarkers[2], markevery=mymarkevery, linewidth = mylinewidth);
-axes[1].set_ylabel("Relative error");
-        
-# format
-axes[0].set_title("Barrier height$=${:.2f}, barrier width$=${:.0f}, $\eta =${:.0e}, tol$=${:.0e}".format(Vb, NC, imag_pt_E, conv_tol))
-axes[0].legend();
 axes[-1].set_xscale('log', subs = []);
 axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
 axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
-axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
+RiceMele_shift_str = "$-E_{min}^{(VB)}, E_{min}^{(VB)}=$"+"{:.2f}".format(np.min(-band_edges))
+if(case=="CB"): RiceMele_shift_str="$-E_{min}^{(CB)}, E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
+axes[-1].set_xlabel("$E$"+RiceMele_shift_str,fontsize = myfontsize);
 
 # show
 plt.tight_layout();

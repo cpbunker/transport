@@ -28,16 +28,11 @@ if(__name__=="__main__"):
     tl = 1.0;
     # in-cell energies are u_0 + u, u_0 - u;
     u0 = 0.0;
-    uvals = tl*np.array([0.0, 0.0]); # needs to be zero in the tau = -tl case
-    n_iterations = int(sys.argv[2]);
+    n_iterations = 201 #raise Exception("change all niter to conv_tol");
     logKlims = (-4,-1)
-    Evals = np.linspace(-2*tl, 2*tl, 399, dtype=complex);
-    imag_pt_E = float(sys.argv[3]);
-    taus = np.array([-tl, -1.095*tl]);
-    is_topological = False;
-    if(is_topological): 
-        taus = np.array([-tl, tl]); 
-        uvals = tl*np.array([0.0, 0.25]); 
+    imag_pt_E = float(sys.argv[4]);
+    taus = np.array([-tl, float(sys.argv[2])]);
+    uvals = tl*np.array([0.0, float(sys.argv[3])]); 
     plot_dia = True;
 
     # set up figure
@@ -46,8 +41,6 @@ if(__name__=="__main__"):
     n_tau_dof = len(taus); # display results for tau = -t and tau = +t
     
 if(case in ["giter"]):  
-    band_widen = 0;
-    Evals = np.linspace(-tl*(2+band_widen), tl*(2+band_widen), 199, dtype=complex);     
 
     # set up figure
     nrow = n_tau_dof*n_mu_dof;
@@ -68,6 +61,17 @@ if(case in ["giter"]):
         print("h00 =\n",h00);
         print("h01 =\n",h01);
 
+        # energy values lie in a band determined by Rice-Mele params
+        assert(u0==0);
+        band_edges = np.array([np.sqrt(uvals[taui]**2+(-tl+taus[taui])**2),
+                               np.sqrt(uvals[taui]**2+(-tl-taus[taui])**2)]);
+        Evals = np.linspace(np.min(-band_edges), np.max(band_edges), 199, dtype=complex);     
+
+        # show where the bottom of the valence band is
+        for edge in [np.min(-band_edges),np.max(-band_edges), np.min(band_edges), np.max(band_edges)]:
+            axes[taui*n_mu_dof,0].axvline(edge, color="gray",linestyle="dashed");
+
+
         # monatomic cell closed-form result
         gsurf_exact = np.zeros_like(Evals); # NB lack of mu dofs
         for Evali in range(len(Evals)): 
@@ -82,18 +86,11 @@ if(case in ["giter"]):
         # *diatomic model* (Rice-Mele) closed-form result
         gsurf_dia = np.zeros_like(Evals); # NB lack of mu dofs
         for Evali in range(len(Evals)):
-            gsurf_dia[Evali] = wfm.g_RM(h00,h01, Evals[Evali], houtgoing)[0,0]; # get AA element
+            gsurf_dia[Evali] = wfm.g_RiceMele(h00,h01, Evals[Evali], houtgoing)[0,0]; # get AA element
         if(plot_dia): # plot diatomic
             axes[taui*n_mu_dof,0].plot(np.real(Evals),np.real(gsurf_dia),color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)");
             axes[taui*n_mu_dof,0].plot(np.real(Evals),np.imag(gsurf_dia),color=accentcolors[1], linestyle="dashed");
             axes[taui*n_mu_dof+1,0].plot(np.real(Evals), np.nan*np.ones_like(np.real(Evals)), color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)"); # for legend
-            
-        # show where the bottom of the valence band is
-        assert(u0==0);
-        band_edge_pm =[np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl+taus[taui],2)),
-                           np.sqrt(uvals[taui]*uvals[taui]+np.power(-tl-taus[taui],2))];
-        axes[taui*n_mu_dof,0].axvline(np.min(band_edge_pm), color="gray",linestyle="dashed");
-
 
         #
         # **iterative **
@@ -132,12 +129,12 @@ if(case in ["giter"]):
     # format
     for rowi in range(np.shape(axes)[0]):
         for coli in range(np.shape(axes)[1]):
-            #axes[rowi, coli].set_ylim(-2.0,2.0);
+            axes[rowi, coli].set_ylim(-2.0,2.0);
             axes[rowi, coli].axhline(0.0, color="gray", linestyle="dotted");
             axes[rowi, coli].set_ylabel("$\langle "+mustrings[rowi%2]+"| \mathbf{g}_{00}|"+mustrings[coli%2]+" \\rangle$");
     for ax in axes[-1]: 
         ax.set_xlabel("$E$");
-        ax.set_xlim(min(np.real(Evals)), max(np.real(Evals)));
+        #ax.set_xlim(min(np.real(Evals)), max(np.real(Evals)));
     for taui in range(len(taus)): 
         axes[taui*n_mu_dof,0].set_title("$v =${:.2f}$, u=${:.2f}$, \eta =${:.0e}"
          .format(taus[taui],uvals[taui], imag_pt_E)+", Re[$g$]=solid, Im[$g$]=dashed");
@@ -156,10 +153,6 @@ elif(case in ["sdos"]):
     # run over tau values
     for taui in range(len(taus)):
 
-        # right lead surface Green's function
-        # exists as a matrix acting on mu dofs
-        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-    
         # from tight binding parameters, construct matrices that act on mu dofs
         h00 = np.array([[u0+uvals[taui], taus[taui]], [taus[taui],u0-uvals[taui]]]);
         h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
@@ -167,6 +160,12 @@ elif(case in ["sdos"]):
         print("\n\nRice-Mele v = {:.2f}, u = {:.2f}".format(taus[taui],uvals[taui]));
         print("h00 =\n",h00);
         print("h01 =\n",h01);
+
+        Evals = np.linspace(-2*tl, 2*tl, 199, dtype=complex);     
+
+        # right lead surface Green's function
+        # exists as a matrix acting on mu dofs
+        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
 
         if(taui == 0): # plot closed-form solution, monatomic case
             sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
@@ -178,7 +177,7 @@ elif(case in ["sdos"]):
         # plot closed-form solution, diatomic case
         sdos_dia = np.zeros_like(Evals, dtype=float); 
         for Evali in range(len(Evals)):
-            sdos_dia[Evali] =(-1/np.pi)*np.imag(wfm.g_RM(h00,h01, Evals[Evali], houtgoing)[0,0]); 
+            sdos_dia[Evali] =(-1/np.pi)*np.imag(wfm.g_RiceMele(h00,h01,Evals[Evali],houtgoing)[0,0]); 
         axes[taui,0].plot(np.real(Evals),sdos_dia,color=accentcolors[1], linestyle="solid",label="$\infty$ (diatomic cell)");
         # diatomic velocities
         axes[taui,1].plot(np.real(Evals),sdos_dia*2*np.pi*tl*tl,color=accentcolors[1], linestyle="solid");
@@ -186,8 +185,8 @@ elif(case in ["sdos"]):
         # velocities direct from derivative of diatomic E(k)
         velocities_deriv = np.zeros_like(sdos_dia);
         for Evali in range(len(Evals)):
-            velocities_deriv[Evali] = wfm.velocity_RM(h00,h01,Evals[Evali]);
-        axes[taui,1].plot(np.real(Evals),velocities_deriv,color=mycolors[-1], linestyle="solid", marker="s"); 
+            velocities_deriv[Evali] = wfm.velocity_RiceMele(h00,h01,Evals[Evali]);
+        axes[taui,1].plot(np.real(Evals),velocities_deriv,color=mycolors[-1], linestyle="solid", marker="s",markevery=mymarkevery); 
 
         # show where the bottom of the valence band is
         assert(u0==0);
@@ -244,7 +243,7 @@ elif(case in ["sdos_conv","sdos_log","sdos_adapt"]):
 
     # control convergence 
     # code will determine n_iterations automatically for each E
-    conv_tol = float(sys.argv[4]); # convergence tolerance for iterative gf scheme
+    conv_tol = 1e-3; # convergence tolerance for iterative gf scheme
 
     # set up figure
     taus = taus[:1] # skip other tau, delta values

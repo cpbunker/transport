@@ -16,7 +16,7 @@ import numpy as np
 ##################################################################################
 #### driver of transmission coefficient calculations
 
-def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma, 
+def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma, 
            is_psi_jsigma, is_Rhat, all_debug = True, verbose = 0):
     '''
     coefficient for a transmitted up and down electron
@@ -26,7 +26,7 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     -tnnn, array, upper diagonal next nearest neighbor block hopping matrices
     -tl, float, hopping in leads, not necessarily same as hopping on/off SR
         or within SR which is defined by tnn, tnnn matrices
-    -E, float, energy of the incident electron
+    -E, complex, energy of the incident electron
     -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
     -conv_tol, float, the convergence criteria (if the iterative scheme is used)
     -Ajsigma, incident particle amplitude at site 0 in spin channel j
@@ -67,22 +67,14 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     N = len(h) - 2; # num scattering region sites
     n_loc_dof = np.shape(h[0])[0];
 
-    # determine velocities in the left, right leads
-    ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector with sigma components
-    ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
-    v_L = 2*tl*np.sin(ka_L); # vector with sigma components
-    v_R = 2*tl*np.sin(ka_R); # a, hbar defined as 1   <---- !!! change !!!
-    del ka_L, ka_R;
+    # compute velocities directly through g_ functions -> vectors over channels
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger);
+    # assert the Sigmas are diagonal
+    v_L, v_R = -2*np.imag(np.diagonal(SigmaLmat)), -2*np.imag(np.diagonal(SigmaRmat));
 
-    # green's function
-    if(verbose): print("\nEnergy = {:.6f}".format(np.real(E+2*tl))); # start printouts
-    Gmat = Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = verbose); # spatial and spin indices separate
-
-    # Q vector
-    Qjsigma = source_vector();
-
-    # every time v is used below will have to be replaced!!
-    del v_L, v_R
+    # Green's function
+    if(verbose): print("\nEnergy = {:.6f}".format(np.real(E))); # start printouts
+    Gmat = Green(h, tnn, tnnn, tl, E, converger, verbose = verbose); # spatial and spin indices separate
     
     # from Green's function, determine wavefunction elements \psi_j\sigma
     psi_jsigma = complex(0,1)*np.dot(Gmat[:,0], Ajsigma*v_L);
@@ -90,7 +82,7 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
     
     # from Green's func, determine matrix elements < \sigma | rhat | \sigma'> of the
     # reflection operator Rhat, which scatters \sigma' -> \sigma
-    Rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
+    #Rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
     if(is_Rhat): return Rhat_matrix;
 
     # determine matrix elements
@@ -119,6 +111,35 @@ def kernel(h, tnn, tnnn, tl, E, imE, conv_tol, Ajsigma,
         Ts[sigma] = np.real(Tcoef_to_add);
     
     return Rs, Ts;
+
+def Green(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
+    '''
+    Greens function for system described by
+    Args
+    -h, array, on site blocks at each of the N+2 sites of the system
+    -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
+    -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
+    -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
+    -E, complex, energy of the incident electron
+    -converger, either a keyword to use a closed-form green's function, 
+     or (if the iterative scheme for the surface green's function is used) tuple of
+       -imE, float, the small imaginary part of the energy 
+       -conv_tol, float, the convergence criteria 
+    returns 4d array with spatial and spin indices separate
+    '''
+
+    # unpack
+    N = len(h) - 2; # num scattering region sites
+    n_loc_dof = np.shape(h[0])[0];
+
+    # get system Green's function in matrix form
+    # for easy inversion, Hp should be 2d array with spatial and spin indices mixed
+    Hp = Hprime(h, tnn, tnnn, tl, E, converger, verbose=verbose); 
+    Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
+
+    # make 4d
+    Gmat = fci_mod.mat_2d_to_4d(Gmat, n_loc_dof); # separates spatial and spin indices
+    return Gmat;
 
 def Hmat(h, tnn, tnnn) -> np.ndarray:
     '''
@@ -169,7 +190,7 @@ def Hmat(h, tnn, tnnn) -> np.ndarray:
                         
     return H; # end Hmat
 
-def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
+def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
@@ -178,10 +199,11 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
     -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
     -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
-    -E, float, energy of the state to evaluate the self energy at. NB -2*tl <= E <= +2*tl
-    -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
-    -conv_tol, float, the convergence criteria (if the iterative scheme is used)
-
+    -E, complex, energy to evaluate the self energy at
+    -converger, either a keyword to use a closed-form green's function, 
+     or (if the iterative scheme for the surface green's function is used) tuple of
+       -imE, float, the small imaginary part of the energy 
+       -conv_tol, float, the convergence criteria 
     returns 2d array with spatial and spin indices mixed up
     '''
 
@@ -193,22 +215,11 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
    
     # compute lead self energies directly through g_ functions
-    gLargs = (h[0], tnn[0], E, -1); 
-    gRargs = (h[-1], tnn[-1], E, 1); 
-    if(np.isnan(conv_tol)): # use the closed soln of the surface green's func
-        gLmat = g_closed(*gLargs);
-        gRmat = g_closed(*gRargs);
-    else: # use the iterative soln of the surface green's func
-        gLmat = g_iter(*gLargs, imE, conv_tol);
-        gRmat = g_iter(*gRargs, imE, conv_tol);
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger);
 
-    # get the self energy matrices
-    # matrices multiplying g = coupling of SR to leads, which here is tnn[0] (tnn[-1]) for the left (right) lead
-    # my convention is that hopping^\dagger is on lower diagonal. 
-    # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
-    assert(np.shape(gLmat) == np.shape(tnn[0]));
-    SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
-    SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
+    # add self energies to Hprime
+    Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
+    Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
     assert(np.any(np.imag(np.diag(SigmaLmat))) ); # checks that given energy allows propagating modes in *at least some* LL channels
     for sigmai in range(n_loc_dof):
@@ -218,25 +229,157 @@ def Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
         ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector running over sigma
         ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
         for sigmai in range(n_loc_dof):
-            print(" - chan "+str(sigmai)+", kL = {:.3f}+{:.3f}j, SigmaL = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
-                  .format(np.real(ka_L[sigmai]), np.imag(ka_L[sigmai]), 
+            print(" - chan "+str(sigmai)+", SigmaL = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
+                  .format( 
                    np.real(SigmaLmat[sigmai,sigmai]), np.imag(SigmaLmat[sigmai,sigmai]),
                    np.real(-tl*np.exp(complex(0,ka_L[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_L[sigmai])))));
-            print(" - chan "+str(sigmai)+", kR = {:.3f}+{:.3f}j, SigmaR = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
-                  .format(np.real(ka_R[sigmai]), np.imag(ka_R[sigmai]), 
+            print(" - chan "+str(sigmai)+", SigmaR = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
+                  .format(
                    np.real(SigmaRmat[sigmai,sigmai]), np.imag(SigmaRmat[sigmai,sigmai]),
                    np.real(-tl*np.exp(complex(0,ka_R[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_R[sigmai])))));
                   
-    # add self energies to Hprime
-    Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
-    Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
-
     if(verbose>4): 
         print("Re[Hp]=\n",np.real(Hp));
         print("Im[Hp]=\n",np.imag(Hp)); 
     return Hp;
 
-def velocity_RM(diag, offdiag, E) -> np.ndarray:
+def SelfEnergies(h, tnn, tnnn, tl, E, converger) -> tuple:
+    '''
+    Self energy of each lead (left, right) for a two-lead system
+    Args:
+    -E, complex, energy to evaluate the self energy at
+       NB the g_closed function assumes a band -2*tl <= E <= +2*tl
+       More complicated systems will have different bands
+    '''
+
+    # compute lead self energies directly through g_ functions
+    gLargs = (h[0], tnn[0], E, -1); 
+    gRargs = (h[-1], tnn[-1], E, 1); 
+    if(converger=="g_closed"): # closed-form monatomic surface green's func
+        gLmat = g_closed(*gLargs);
+        gRmat = g_closed(*gRargs);
+    elif(converger=="g_RiceMele"): # closed-form diatomic surface green's func
+        gLmat = g_RiceMele(*gLargs);
+        gRmat = g_RiceMele(*gRargs);
+    elif(isinstance(converger,tuple)): # iterative soln of the surface green's func
+        gLmat = g_iter(*gLargs, *converger);
+        gRmat = g_iter(*gRargs, *converger);
+    else: raise Exception("converger = "+str(converger)+" not supported");
+
+    # get the self energy matrices
+    # matrices multiplying g = coupling of SR to leads, which here is tnn[0] (tnn[-1]) for the left (right) lead
+    # my convention is that hopping^\dagger is on lower diagonal. 
+    # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
+    assert(np.shape(gLmat) == np.shape(tnn[0]));
+    SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
+    SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
+
+    return SigmaLmat, SigmaRmat;
+    
+def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
+    '''
+    Surface Green's function of a periodic semi-infinite tight-binding lead
+    The closed form comes from the diagonal and off-diagonal spatial blocks both being 
+    diagonal in channel space, so Eq. 7 of my PRA paper is realized
+
+    Args:
+    -diag, matrix in channel space, same-spatial-site matrix elements of H
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elems of H
+    -E, complex, band energy. **this function assumes** -2*tl <= E <= +2*tl
+    -inoutsign, telling us if we are computing incoming or outgoing state
+    
+    Returns: 
+    -the surface green's function, matrix in channel space--same shape as diag
+       -->Properties:
+          Im[g] < 0 always, symmetric function of (E)
+          Re[g] has sign(E), antisymmetric function of (E)
+    '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
+    if(inoutsign not in [1,-1]): raise ValueError;
+    # check diagonality
+    if(np.any(diag-np.diagflat(np.diagonal(diag)))): raise Exception("Not diagonal:\n"+str(diag)); 
+    
+    # everything is vectorized by channel
+    diag = np.diagonal(diag);
+    offdiag = np.diagonal(offdiag);
+
+    # this decomposition gives correct sign of sqrt always, but need to double-check
+    if(True):
+        #raise NotImplementedError("Need to verify all plots")
+        reduced = (E-diag)/(2*offdiag);
+        term1 = reduced/offdiag;
+        term2 = np.lib.scimath.sqrt(reduced*reduced-1);
+        return np.diagflat(np.real(term1)-np.sign(E-diag)*abs(np.real(term2))-complex(0,1)*abs(np.imag(term2)));
+    
+    # scale the energy
+    lam = (E-diag)/(2*offdiag); # offdiag includes - sign
+    # make sure the sign of Im[g] is correctly assigned
+    assert( np.max(abs(np.imag(lam))) < 1e-10);
+    Lambda_minusplus = np.real(lam) + inoutsign*np.lib.scimath.sqrt(np.real(lam)*np.real(lam) - 1);
+    
+    # return as same sized array
+    if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
+    elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
+
+def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
+    '''
+    Surface Green's function of the Rice-Mele model
+    The closed form comes from Yen-Ting Lin's thesis at Aachen 
+
+    Args:
+    -diag, matrix in channel space, same-spatial-site matrix elements of H
+    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elmements of H
+    -E, complex, 
+    -inoutsign, telling us if we are computing incoming or outgoing state
+    
+    Returns: 
+    -the surface green's function, matrix in channel space--same shape as diag
+    '''
+    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
+    if(inoutsign not in [1,-1]): raise ValueError;
+    # check RM compatibility
+    if(len(diag)%2 != 0): raise ValueError("diag is not Rice-Mele type");
+    n_spin = len(diag)//2;
+    offdiag_check = 1*offdiag;
+    offdiag_check[n_spin:,:n_spin] = 0*offdiag[n_spin:,:n_spin]; # remove lower left
+    if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
+    
+    # decompose into u, w, v
+    # for spin included, these will be vectors over spin channels
+    u0 = (np.diagonal(diag)[:n_spin]+np.diagonal(diag)[n_spin:])/2;
+    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10);
+    u = (np.diagonal(diag)[:n_spin]-np.diagonal(diag)[n_spin:])/2; 
+    v = np.diagonal(diag[:n_spin,n_spin:]);
+    w = np.diagonal(offdiag[n_spin:,:n_spin]);
+
+    # functional form
+    squared_val = np.power((E+u)*(E-u)+(w+v)*(w-v),2);
+    sqrt_val = np.lib.scimath.sqrt( 4*w*w*(u+E)*(u-E)**2/(u-E) + squared_val);
+    prefactor = 1/(2*w*w*(E-u));
+    for sigma in range(n_spin):   # Enforce Im[g_ret]<0
+        if(np.imag(sqrt_val[sigma]*prefactor[sigma]) > 0): sqrt_val[sigma] = (-1)*sqrt_val[sigma]; 
+    g = prefactor*((E+u)*(E-u)+(w+v)*(w-v) + sqrt_val);
+
+    if False:
+        polynomial_coefs = np.polynomial.Polynomial([-E-u, E*E+w*w-u*u-v*v,-E*w*w+u*w*w]);
+        gs = polynomial_coefs.roots();
+        print(np.imag(gs))
+        if(E==u): g = complex(np.nan, np.nan);
+        else: g = gs[np.argmin(np.imag(gs))]
+        #assert False
+
+    band_edges = np.array([np.sqrt(u*u+(w+v)*(w+v)),
+                           np.sqrt(u*u+(w-v)*(w-v))]);
+
+    # return as same sized array
+    gmat = np.zeros(np.shape(diag), dtype=complex);
+    if(inoutsign ==-1): # left lead: fill all spin channels of last B orb
+        gmat[n_spin:,n_spin:] = np.diagflat(g);
+    elif(inoutsign== 1): # right lead: fill all spin channels of first A orb
+        gmat[:n_spin,:n_spin] = np.diagflat(g);
+    return gmat;
+
+def velocity_RiceMele(diag, offdiag, E) -> np.ndarray:
     '''
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
@@ -261,117 +404,9 @@ def velocity_RM(diag, offdiag, E) -> np.ndarray:
     # velocity(E)
     sqrt = np.sqrt( 1+(u/v)*(u/v)+(w/v)*(w/v)+(2*w/v)*coska);
     return (-1)*bandsign*w*sinka/sqrt;
-    
-def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
-    '''
-    Surface Green's function of a periodic semi-infinite tight-binding lead
-    The closed form comes from the diagonal and off-diagonal spatial blocks both being 
-    diagonal in channel space, so Eq. 7 of my PRA paper is realized
-
-    Args:
-    -diag, matrix in channel space, same-spatial-site matrix elements of H
-    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elems of H
-    -E, complex, band energy (can be negative, complex type but im(E)=0
-    -inoutsign, telling us if we are computing incoming or outgoing state
-    
-    Returns: 
-    -the surface green's function, matrix in channel space--same shape as diag
-       -->Properties:
-          Im[g] < 0 always, symmetric function of (E)
-          Re[g] has sign(E), antisymmetric function of (E)
-    '''
-    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
-    if(inoutsign not in [1,-1]): raise ValueError;
-    # check diagonality
-    if(np.any(diag-np.diagflat(np.diagonal(diag)))): raise Exception("Not diagonal:\n"+str(diag)); 
-    
-    # everything is vectorized by channel
-    diag = np.diagonal(diag);
-    offdiag = np.diagonal(offdiag);
-
-    # this decomposition gives correct sign of sqrt always, but need to double-check
-    if(False):
-        raise NotImplementedError("Need to verify all plots")
-        reduced = (E-diag)/(2*offdiag);
-        term1 = reduced/offdiag;
-        term2 = np.lib.scimath.sqrt(reduced*reduced-1);
-        return np.diagflat(np.real(term1)-np.sign(E)*abs(np.real(term2))-complex(0,1)*abs(np.imag(term2)));
-    
-    # scale the energy
-    lam = (E-diag)/(2*offdiag); # offdiag includes - sign
-    # make sure the sign of Im[g] is correctly assigned
-    assert( np.max(abs(np.imag(lam))) < 1e-10);
-    Lambda_minusplus = np.real(lam) + inoutsign*np.lib.scimath.sqrt(np.real(lam)*np.real(lam) - 1);
-    
-    # return as same sized array
-    if  (inoutsign ==-1): return np.diagflat((1/offdiag)/Lambda_minusplus); # incoming state (left lead)
-    elif(inoutsign == 1): return np.diagflat((1/offdiag)*Lambda_minusplus); # outgoing state (right lead)
-
-def g_RM(diag, offdiag, E, inoutsign) -> np.ndarray:
-    '''
-    Surface Green's function of the Rice-Mele model
-    The closed form comes from Yen-Ting Lin's thesis at Aachen 
-
-    Args:
-    -diag, matrix in channel space, same-spatial-site matrix elements of H
-    -off_diag, matrix in channel space, upper diagonal nearest-neighbor matrix elmements of H
-    -E, complex, band energy (can be negative, complex type but im(E)=0
-    -inoutsign, telling us if we are computing incoming or outgoing state
-    
-    Returns: 
-    -the surface green's function, matrix in channel space--same shape as diag
-    '''
-    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
-    if(inoutsign not in [1,-1]): raise ValueError;
-    # check RM compatibility
-    offdiag_check = 1*offdiag;
-    offdiag_check[-1,0] = 0.0;
-    if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
-    
-    # decompose into u, w, v
-    u0 = np.sum(np.diagonal(diag))/len(diag); assert(abs(u0)<1e-10);
-    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
-    v = diag[0,-1];
-    w = offdiag[-1,0];
-
-    # functional form
-    squared_val = np.power((E+u)*(E-u)+(w+v)*(w-v),2);
-    sqrt_val = np.lib.scimath.sqrt( 4*w*w*(u*u-E*E) + squared_val);
-    prefactor = 1/(2*w*w*(E-u));
-    if(np.imag(sqrt_val*prefactor) > 0): sqrt_val = (-1)*sqrt_val; # Im[g_ret]<0
-    g = prefactor*((E+u)*(E-u)+(w+v)*(w-v) + sqrt_val);
-    
-    # return as same sized array
-    gmat = np.zeros(np.shape(diag), dtype=complex);
-    if(inoutsign ==-1): # left lead
-        gmat[-1,-1] = g;
-    elif(inoutsign== 1): # right lead
-        gmat[0,0] = g;
-    return gmat;
-    
-def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
-    '''
-    Single iteration of the surface Green's function
-    See Sec C.1 of Zuxin's "Molecular Junction" notes
-    '''
-    if(not isinstance(ith, int)): raise TypeError;
-    eye_like = np.eye(len(diag));
-    
-    # g_retarded \equiv lim(\eta->0) g(E+i\eta)
-    E = complex(np.real(E),abs(imE)); # NB the E argument is in general complex
-     
-    if(ith==0): # 0th iteration
-        return np.linalg.inv(eye_like*E - diag);
-        
-    else: # higher iteration
-        if(inoutsign==1): # right lead outgoing state
-            txgxt = np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T)));
-        elif(inoutsign == -1): # left lead incoming state
-            txgxt = np.matmul(np.conj(offdiag.T), np.matmul(g_prev, offdiag));
-        return np.linalg.inv(eye_like*E - diag - txgxt);
 
 def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol, 
-              conv_rep=5, min_iter=int(1e1), max_iter=int(1e5), full=False) -> np.ndarray:
+              conv_rep=5, min_iter=int(1e2), max_iter=int(1e5), full=False) -> np.ndarray:
     '''
     Surface Green's function of a periodic semi-infinite tight-binding lead
     When the diag and off-diagonal blocks are not diagonal in channel basis,
@@ -393,6 +428,7 @@ def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol,
     '''
     if(np.shape(diag) != np.shape(offdiag)): raise ValueError;
     if(inoutsign not in [1,-1]): raise ValueError;
+    if(len(diag)>2): raise NotImplementedError("Iterative diatomic and spin combined not supported");
 
     # iterative g
     g = np.zeros_like(diag);
@@ -421,33 +457,27 @@ def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol,
 
     # if we got here, we never converged
     raise Exception("g({:.6f}+{:.6f}j) convergence was {:.0e}, failed to meet {:.0e} tolerance after {:.0e} iterations".format(np.real(E), imE, conv_check, conv_tol, max_iter));
-
-def Green(h, tnn, tnnn, tl, E, imE, conv_tol, verbose = 0) -> np.ndarray:
+    
+def g_ith(diag, offdiag, E, inoutsign, imE, ith, g_prev) -> np.ndarray:
     '''
-    Greens function for system described by
-    Args
-    -h, array, on site blocks at each of the N+2 sites of the system
-    -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
-    -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
-    -tl, float, hopping in leads, distinct from hopping within SR def'd by above arrays
-    -E, float, incident energy
-    -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
-    -conv_tol, float, the convergence criteria (if the iterative scheme is used)
-    returns 4d array with spatial and spin indices separate
+    Single iteration of the surface Green's function
+    See Sec C.1 of Zuxin's "Molecular Junction" notes
     '''
-
-    # unpack
-    N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0];
-
-    # get system Green's function in matrix form
-    # for easy inversion, Hp should be 2d array with spatial and spin indices mixed
-    Hp = Hprime(h, tnn, tnnn, tl, E, imE, conv_tol, verbose=verbose); 
-    Gmat = np.linalg.inv( E*np.eye(*np.shape(Hp)) - Hp );
-
-    # make 4d
-    Gmat = fci_mod.mat_2d_to_4d(Gmat, n_loc_dof); # separates spatial and spin indices
-    return Gmat;
+    if(not isinstance(ith, int)): raise TypeError;
+    eye_like = np.eye(len(diag));
+    
+    # g_retarded \equiv lim(\eta->0) g(E+i\eta)
+    E = complex(np.real(E),abs(imE)); # NB the E argument is in general complex
+     
+    if(ith==0): # 0th iteration
+        return np.linalg.inv(eye_like*E - diag);
+        
+    else: # higher iteration
+        if(inoutsign==1): # right lead outgoing state
+            txgxt = np.matmul(offdiag, np.matmul(g_prev, np.conj(offdiag.T)));
+        elif(inoutsign == -1): # left lead incoming state
+            txgxt = np.matmul(np.conj(offdiag.T), np.matmul(g_prev, offdiag));
+        return np.linalg.inv(eye_like*E - diag - txgxt);
 
 ##################################################################################
 #### test code

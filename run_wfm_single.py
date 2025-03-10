@@ -20,22 +20,34 @@ import matplotlib.pyplot as plt
 
 import sys
 
-def h_kondo(J,s2):
+def h_kondo(J,s2,spin_trunc,unit_cell):
     '''
     Kondo interaction between spin 1/2 and spin s2
     '''
-    n_loc_dof = int(2*(2*s2+1));
-    h = np.zeros((n_loc_dof,n_loc_dof),dtype=complex);
+
+    # construct in spin space
+    n_spin_dof = int(2*(2*s2+1));
+    h_spinspace = np.zeros((n_spin_dof,n_spin_dof),dtype=complex);
     if(s2 == 0.5):
-        h[0,0] = 1;
-        h[1,1] = -1;
-        h[2,2] = -1;
-        h[3,3] = 1;
-        h[1,2] = 2;
-        h[2,1] = 2;
-        h *= J/4;
+        h_spinspace[0,0] = 1;
+        h_spinspace[1,1] = -1;
+        h_spinspace[2,2] = -1;
+        h_spinspace[3,3] = 1;
+        h_spinspace[1,2] = 2;
+        h_spinspace[2,1] = 2;
+        h_spinspace *= J/4;
     else: raise NotImplementedError;
-    return h;
+
+    # truncate in unit space
+    if(spin_trunc is not None):
+        if(not isinstance(spin_trunc,tuple)): raise TypeError;
+        h_spinspace = h_spinspace[spin_trunc[0]:spin_trunc[1],spin_trunc[0]:spin_trunc[1]];
+        n_spin_dof = len(h_spinspace);
+
+    # expand into unit cell space
+    h_unitspace = np.zeros((unit_cell*n_spin_dof,unit_cell*n_spin_dof),dtype=complex);
+    h_unitspace[:n_spin_dof,:n_spin_dof] = h_spinspace[:,:];
+    return h_unitspace;
     
 if(__name__=="__main__"):
 
@@ -43,6 +55,7 @@ if(__name__=="__main__"):
     np.set_printoptions(precision = 4, suppress = True);
     verbose = 5;
     case = sys.argv[1];
+    myconverger = sys.argv[2]; # tells code how to evaluate the surface greens function
 
     # fig standardizing
     myxvals = 499;
@@ -53,15 +66,155 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
     plt.rcParams.update({"font.family": "serif"})
-    plt.rcParams.update({"text.usetex": True})
+    #plt.rcParams.update({"text.usetex": True})
 
     # tight binding params
+    Msites = 1; # non contact interaction
     tl = 1.0;
+    # Rice-Mele tight binding
+    vval = -1.0;
+    uval = 0.0;
+    band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
+                           np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
+    RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
+    if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
+
+    # Rice-Mele matrices
+    diag_base_RM_spin=np.array([[+uval,0,+vval,0],  # elec up, imp dw, A orb
+                                [0,+uval,0,+vval],  # elec dw, imp up, A orb
+                                [+vval,0,-uval,0],  # elec up, imp dw, B orb
+                                [0,+vval,0,-uval]]);# elec dw, imp up, B orb
+    offdiag_base_RM_spin=np.array([[0,0,0,0], 
+                                   [0,0,0,0], 
+                                   [-tl,0,0,0],  
+                                   [0,tl,0,0]]);
+
+#################################################################
+#### **DIATOMIC HAMILTONIAN**
+
+if(myconverger=="g_RiceMele" and case in ["continuum","inelastic"]):
+    my_unit_cell = 2; # since diatomic
+
+    # inelastic ?
+    if(case in ["inelastic"]): inelastic = True; Delta = 0.001; raise NotImplementedError
+    else: inelastic = False; Delta = 0.0;
+    num_plots = 4;
+    if inelastic: num_plots = 2;
+    fig, axes = plt.subplots(num_plots, sharex = True);
+    if num_plots == 1: axes = [axes];
+    fig.set_size_inches(7/2,3*num_plots/2);
+
+    # iter over effective J
+    Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
+    for Jvali in range(len(Jvals)):
+        Jval = Jvals[Jvali];
+        
+        # S dot s
+        hSR = h_kondo(Jval,0.5,(1,3),my_unit_cell); # 4x4 matrix
+                                                    # 2 for A/B orbs, 2 for up,dw/dw,up
+        hSR += diag_base_RM_spin
+
+        # leads
+        hLL = 1*diag_base_RM_spin;
+        hRL = 1*diag_base_RM_spin;
+
+        # source for diatomic system
+        source = np.zeros(np.shape(hSR)[0]);
+        in_noflip = 0;  # |elec up, imp dw, A orb> = incident channel
+        out_noflip = 2; # |elec up, imp dw, B orb> = **no spin flip** transmission channel
+        out_flip = 3;   # |elec dw, imp up, B orb> = **spin flip** transmission channel
+        source[in_noflip] = 1;
+
+        # package together hamiltonian blocks
+        hblocks = [hLL];
+        for _ in range(Msites): hblocks.append(np.copy(hSR));
+        assert(Msites==1);
+        hblocks.append(hRL);
+        hblocks = np.array(hblocks);
+
+        # hopping
+        tnn = [];
+        for _ in range(len(hblocks)-1): tnn.append(offdiag_base_RM_spin);
+        tnn = np.array(tnn);
+        tnnn = np.zeros_like(tnn)[:-1];
+        if(verbose and Jvali == 0): 
+            print("\nhblocks:\n", np.real(hblocks));
+            print("\ntnn:\n", np.real(tnn),"\ntnnn:\n",np.real(tnnn));
+            if(inelastic): assert False
+
+        # sweep over range of energies
+        # def range
+        logKlims = -6,0
+        Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
+        kavals = np.arccos((Kvals-2*tl)/(-2*tl));
+        jprimevals = Jval/(4*tl*kavals);
+        menez_Tf = jprimevals*jprimevals/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
+        menez_Tnf = (1+jprimevals*jprimevals/4)/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
+        menez_Tf, menez_Tnf = np.real(menez_Tf), np.real(menez_Tnf);
+        Rvals = np.empty((len(Kvals),len(source)), dtype = float);
+        Tvals = np.empty((len(Kvals),len(source)), dtype = float); 
+        for Kvali in range(len(Kvals)):
+
+            # energy
+            Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
+            Energy = Kval-2*tl+RiceMele_shift; #energy that is `Kval` above either VB or CB
+
+            if(Kvali < 3): # verbose
+                Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
+                                False, False, all_debug = True, verbose = verbose);
+            else: # not verbose
+                 Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
+                                False, False, all_debug = False, verbose = 0);
+            Rvals[Kvali] = Rdum;
+            Tvals[Kvali] = Tdum;
+
+        # plot tight binding results
+        ax0, ax1, ax2, ax3 = 0,1,2,3;
+        if inelastic: ax0, ax2 = 0,1
+        axes[ax0].plot(np.real(Kvals),Tvals[:,out_flip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+        axes[ax2].plot(np.real(Kvals),Tvals[:,out_noflip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+        totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
+        #axes[1].plot(np.real(Kvals), totals, color="red", label = "total ");
+       
+        # continuum results
+        lower_y = 0.08;
+        if inelastic:
+            #axes[ax0].axvline(0.025, color = "gray");
+            axes[ax0].plot(Kvals, menez_Tf, color = mycolors[Jvali],linestyle = "dashed", marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth); 
+            axes[ax2].plot(Kvals, menez_Tnf, color = mycolors[Jvali],linestyle = "dashed", marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax0].set_ylim(-0.4*lower_y,0.4)
+            axes[ax0].set_ylabel('$T_{f}$', fontsize = myfontsize );
+            axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));
+            axes[ax2].set_ylabel('$T_{nf}$', fontsize = myfontsize );
+            
+        # differences
+        if not inelastic:
+            axes[ax1].plot(np.real(Kvals),abs(Tvals[:,out_flip]-menez_Tf)/menez_Tf,color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax3].plot(np.real(Kvals),abs(Tvals[:,out_noflip]-menez_Tnf)/menez_Tnf,color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax0].set_ylim(-0.4*lower_y,0.4)
+            axes[ax0].set_ylabel('$T_{f}$', fontsize = myfontsize );
+            axes[ax1].set_ylim(-0.1*lower_y,0.1);
+            axes[ax1].set_ylabel('$|T_{f}-T_{f,c}|/T_{f,c}$', fontsize = myfontsize );
+            axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));
+            axes[ax2].set_ylabel('$T_{nf}$', fontsize = myfontsize );
+            axes[ax3].set_ylim(-0.1*lower_y,0.1);
+            axes[ax3].set_ylabel('$|T_{nf}-T_{nf,c}|/T_{nf,c}$', fontsize = myfontsize );
+    
+    # show
+    axes[-1].set_xscale('log', subs = []);
+    axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
+    axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
+    axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
+    for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.065, y = 0.74, fontsize = myfontsize); 
+    plt.tight_layout();
+    fname = 'figs/'+case+'.pdf'
+    plt.show();
 
 #################################################################
 #### replication of continuum solution
 
-if(case in ["continuum", "inelastic"]):
+elif(myconverger=="g_closed" and case in ["continuum", "inelastic"]):
+    my_unit_cell = 1;
 
     # inelastic ?
     if(case in ["inelastic"]): inelastic = True; Delta = 0.001;
@@ -71,9 +224,6 @@ if(case in ["continuum", "inelastic"]):
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
     fig.set_size_inches(7/2,3*num_plots/2);
-    
-    # non contact interaction
-    Msites = 1; 
 
     # iter over effective J
     Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
@@ -81,18 +231,18 @@ if(case in ["continuum", "inelastic"]):
         Jval = Jvals[Jvali];
         
         # S dot s
-        hSR = h_kondo(Jval,0.5)
+        hSR = h_kondo(Jval,0.5,(1,3),my_unit_cell)
 
         # zeeman splitting
         hzeeman = np.array([[0, 0, 0, 0],
                         [0,Delta, 0, 0],
                         [0, 0, 0, 0], # spin flip gains PE delta
                         [0, 0, 0, Delta]]);
+        hzeeman = hzeeman[1:3,1:3]; # truncate to coupled channels
+        print("hSR =\n",np.real(hSR));
+        print("hzeeman =\n",np.real(hzeeman));
         hSR += hzeeman;
-
-        # truncate to coupled channels
-        hSR = hSR[1:3,1:3];
-        hzeeman = hzeeman[1:3,1:3];
+        print("hSR+hzeeman =\n",np.real(hSR));
 
         # leads
         hLL = np.copy(hzeeman);
@@ -114,7 +264,10 @@ if(case in ["continuum", "inelastic"]):
         for _ in range(len(hblocks)-1): tnn.append(-tl*np.eye(*np.shape(hSR)));
         tnn = np.array(tnn);
         tnnn = np.zeros_like(tnn)[:-1];
-        if(verbose and Jvali == 0): print("\nhblocks:\n", hblocks, "\ntnn:\n", tnn,"\ntnnn:\n",tnnn);
+        if(verbose and Jvali == 0): 
+            print("\nhblocks:\n", np.real(hblocks));
+            print("\ntnn:\n", np.real(tnn),"\ntnnn:\n", np.real(tnnn));
+            if(inelastic): assert False;
 
         # sweep over range of energies
         # def range
@@ -124,6 +277,7 @@ if(case in ["continuum", "inelastic"]):
         jprimevals = Jval/(4*tl*kavals);
         menez_Tf = jprimevals*jprimevals/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
         menez_Tnf = (1+jprimevals*jprimevals/4)/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
+        menez_Tf, menez_Tnf = np.real(menez_Tf), np.real(menez_Tnf);
         Rvals = np.empty((len(Kvals),len(source)), dtype = float);
         Tvals = np.empty((len(Kvals),len(source)), dtype = float); 
         for Kvali in range(len(Kvals)):
@@ -132,11 +286,11 @@ if(case in ["continuum", "inelastic"]):
             Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
             Energy = Kval - 2*tl; # -2t < Energy < 2t, what I call E in paper
 
-            if(Kvali < 5): # verbose
-                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
+            if(Kvali < 3): # verbose
+                Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
                                 False, False, all_debug = True, verbose = verbose);
             else: # not verbose
-                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, Energy, source, 
+                 Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
                                 False, False, all_debug = False, verbose = 0);
             Rvals[Kvali] = Rdum;
             Tvals[Kvali] = Tdum;
@@ -287,5 +441,5 @@ elif(case in ["origin"]):
     fname = 'figs/'+case+'.pdf'
     plt.show();
     
-else: raise NotImplementedError("case = "+case);
+else: raise NotImplementedError("case = "+case+", myconverger = "+str(myconverger));
 
