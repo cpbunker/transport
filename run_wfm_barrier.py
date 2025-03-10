@@ -64,18 +64,8 @@ source[0] = 1;
 
 # sweep over range of energies
 # def range
-logKlims = -3,0
+logKlims = -4,0
 Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
-
-# the model for the diatomic unit cell model is the Rice-Mele model
-# parameterized by staggered on-site potential +u,-u and staggered hopping vow
-vval = float(sys.argv[2]);
-uval = float(sys.argv[3]); 
-# w is always -tl;
-band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
-                       np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
-RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
-if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; # new band = conduction band!
 
 # ideal single-channel transmission through barrier
 #kavals = np.arccos(((Kvals+np.min(-band_edges))**2-uval**2 -vval**2 -tl**2)/(-2*vval*tl));
@@ -117,6 +107,18 @@ axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_clos[:,0])/ideal_Tval
 # test various schemes for surface green's function of Rice-Mele
 # this requires constructing diatomic Hamiltonian!!
 
+# the model for the diatomic unit cell model is the Rice-Mele model
+# parameterized by staggered on-site potential +u,-u and staggered hopping vow
+vval = float(sys.argv[2]);
+uval = float(sys.argv[3]); 
+# w is always -tl;
+band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
+                       np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
+RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
+if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; # new band = conduction band!
+RiceMele_Energies = Kvals - 2*tl + RiceMele_shift; # value in the RM band
+RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
+
 # construct diatomic Hamiltonian
 del hblocks, tnn, tnnn, source;
 h00 = np.array([[uval, vval], [vval, -uval]]);
@@ -151,7 +153,7 @@ source_dia[dia_in] = 1;
 # these methods are: call g_RiceMele, use iterative green's func
 imag_pt_E = float(sys.argv[4])       # for iterative gf scheme, E needs small >0 imag pt
 iterative_tol = 1e-3  # and we need tolerance at which we stop iterating
-myconverger_values = ["g_RiceMele", (imag_pt_E, iterative_tol)];
+myconverger_values = ["g_RiceMele"] #, (imag_pt_E, iterative_tol)];
 for myconvergeri in range(len(myconverger_values)):
     myconverger = myconverger_values[myconvergeri];
 
@@ -205,7 +207,8 @@ axes[-1].set_xscale('log', subs = []);
 axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
 axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
 RiceMele_shift_str = "$-E_{min}^{(VB)}, E_{min}^{(VB)}=$"+"{:.2f}".format(np.min(-band_edges))
-if(case=="CB"): RiceMele_shift_str="$-E_{min}^{(CB)}, E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
+if(case=="CB"): RiceMele_shift_str="$-E_{min}^{(CB)},  E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
+RiceMele_shift_str += ",  $ka/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
 axes[-1].set_xlabel("$E$"+RiceMele_shift_str,fontsize = myfontsize);
 
 # show

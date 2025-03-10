@@ -71,13 +71,28 @@ if(__name__=="__main__"):
     # tight binding params
     Msites = 1; # non contact interaction
     tl = 1.0;
+
+    # def energy range
+    logKlims = -6,0
+    Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
+
+#################################################################
+#### **DIATOMIC HAMILTONIAN**
+
+if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
+    my_unit_cell = 2; # since diatomic
+
     # Rice-Mele tight binding
-    vval = -1.0;
-    uval = 0.0;
+    vval = float(sys.argv[3]);
+    uval = float(sys.argv[4]); 
+    # w is always -tl;
     band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
                            np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
     RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
     if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
+    RiceMele_Energies = Kvals - 2*tl + RiceMele_shift; # value in the RM band
+    RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
+
 
     # Rice-Mele matrices
     diag_base_RM_spin=np.array([[+uval,0,+vval,0],  # elec up, imp dw, A orb
@@ -89,20 +104,16 @@ if(__name__=="__main__"):
                                    [-tl,0,0,0],  
                                    [0,tl,0,0]]);
 
-#################################################################
-#### **DIATOMIC HAMILTONIAN**
-
-if(myconverger=="g_RiceMele" and case in ["continuum","inelastic"]):
-    my_unit_cell = 2; # since diatomic
-
     # inelastic ?
     if(case in ["inelastic"]): inelastic = True; Delta = 0.001; raise NotImplementedError
     else: inelastic = False; Delta = 0.0;
+
+    # set up figure
     num_plots = 4;
     if inelastic: num_plots = 2;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
-    fig.set_size_inches(7/2,3*num_plots/2);
+    fig.set_size_inches(5,3*num_plots/2);
 
     # iter over effective J
     Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
@@ -142,15 +153,13 @@ if(myconverger=="g_RiceMele" and case in ["continuum","inelastic"]):
             print("\ntnn:\n", np.real(tnn),"\ntnnn:\n",np.real(tnnn));
             if(inelastic): assert False
 
-        # sweep over range of energies
-        # def range
-        logKlims = -6,0
-        Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
+        # Menezes' exact results
         kavals = np.arccos((Kvals-2*tl)/(-2*tl));
         jprimevals = Jval/(4*tl*kavals);
         menez_Tf = jprimevals*jprimevals/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
         menez_Tnf = (1+jprimevals*jprimevals/4)/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
         menez_Tf, menez_Tnf = np.real(menez_Tf), np.real(menez_Tnf);
+        del kavals;
         Rvals = np.empty((len(Kvals),len(source)), dtype = float);
         Tvals = np.empty((len(Kvals),len(source)), dtype = float); 
         for Kvali in range(len(Kvals)):
@@ -204,7 +213,11 @@ if(myconverger=="g_RiceMele" and case in ["continuum","inelastic"]):
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
     axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
-    axes[-1].set_xlabel('$K_i/t$',fontsize = myfontsize);
+    RiceMele_shift_str = "$-E_{min}^{(VB)}, E_{min}^{(VB)}=$"+"{:.2f}".format(np.min(-band_edges))
+    if(case=="CB"): RiceMele_shift_str="$-E_{min}^{(CB)},  E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
+    RiceMele_shift_str += ",  $ka/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
+    axes[-1].set_xlabel("$E$"+RiceMele_shift_str,fontsize = myfontsize);
+
     for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.065, y = 0.74, fontsize = myfontsize); 
     plt.tight_layout();
     fname = 'figs/'+case+'.pdf'
@@ -269,10 +282,7 @@ elif(myconverger=="g_closed" and case in ["continuum", "inelastic"]):
             print("\ntnn:\n", np.real(tnn),"\ntnnn:\n", np.real(tnnn));
             if(inelastic): assert False;
 
-        # sweep over range of energies
-        # def range
-        logKlims = -6,0
-        Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
+        # Menezes' exact results
         kavals = np.arccos((Kvals-2*tl)/(-2*tl));
         jprimevals = Jval/(4*tl*kavals);
         menez_Tf = jprimevals*jprimevals/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
