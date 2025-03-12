@@ -58,7 +58,7 @@ if(__name__=="__main__"):
     myconverger = sys.argv[2]; # tells code how to evaluate the surface greens function
 
     # fig standardizing
-    myxvals = 499;
+    myxvals = 199;
     myfontsize = 14;
     mycolors = ["black","darkblue","darkgreen","darkred", "darkcyan", "darkmagenta","darkgray"];
     mymarkers = ["o","^","s","d","*","X","P"];
@@ -66,7 +66,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
     plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True})
+    plt.rcParams.update({"text.usetex": True}) 
 
     # tight binding params
     Msites = 1; # non contact interaction
@@ -95,14 +95,14 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
 
     # Rice-Mele matrices
-    diag_base_RM_spin=np.array([[+uval,0,+vval,0],  # elec up, imp dw, A orb
-                                [0,+uval,0,+vval],  # elec dw, imp up, A orb
-                                [+vval,0,-uval,0],  # elec up, imp dw, B orb
-                                [0,+vval,0,-uval]]);# elec dw, imp up, B orb
-    offdiag_base_RM_spin=np.array([[0,0,0,0], 
-                                   [0,0,0,0], 
-                                   [-tl,0,0,0],  
-                                   [0,tl,0,0]]);
+    diag_base_RM_spin=np.array([[+uval,0, +vval,0],  # elec up, imp dw, A orb
+                                [0,+uval, 0,+vval],  # elec dw, imp up, A orb
+                                [+vval,0, -uval,0],  # elec up, imp dw, B orb
+                                [0,+vval, 0,-uval]]);# elec dw, imp up, B orb
+    offdiag_base_RM_spin=np.array([[0,0,   0,0], 
+                                   [0,0,   0,0], 
+                                   [-tl,0, 0,0],  
+                                   [0,-tl, 0,0]]);
 
     # inelastic ?
     if(case in ["inelastic"]): inelastic = True; Delta = 0.001; raise NotImplementedError
@@ -110,10 +110,11 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
     # set up figure
     num_plots = 4;
-    if inelastic: num_plots = 2;
+    plot_differences = False;
+    if(inelastic or not plot_differences): num_plots = 2;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
-    fig.set_size_inches(5,3*num_plots/2);
+    fig.set_size_inches(6,3*num_plots/2);
 
     # iter over effective J
     Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
@@ -179,11 +180,14 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
         # plot tight binding results
         ax0, ax1, ax2, ax3 = 0,1,2,3;
-        if inelastic: ax0, ax2 = 0,1
+        if(inelastic or not plot_differences): ax0, ax2 = 0,1
         axes[ax0].plot(np.real(Kvals),Tvals[:,out_flip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         axes[ax2].plot(np.real(Kvals),Tvals[:,out_noflip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        #axes[1].plot(np.real(Kvals), totals, color="red", label = "total ");
+        #axes[-1].plot(np.real(Kvals), totals, color="red", label = "total ");
+        axes[ax0].set_ylabel('$T_{spin flip}$', fontsize = myfontsize );
+        axes[ax2].set_ylabel('$T_{no flip}$', fontsize = myfontsize );
+            
        
         # continuum results
         lower_y = 0.08;
@@ -195,21 +199,26 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             axes[ax0].set_ylabel('$T_{f}$', fontsize = myfontsize );
             axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));
             axes[ax2].set_ylabel('$T_{nf}$', fontsize = myfontsize );
-            
+
         # differences
-        if not inelastic:
-            axes[ax1].plot(np.real(Kvals),abs(Tvals[:,out_flip]-menez_Tf)/menez_Tf,color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
-            axes[ax3].plot(np.real(Kvals),abs(Tvals[:,out_noflip]-menez_Tnf)/menez_Tnf,color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
-            axes[ax0].set_ylim(-0.4*lower_y,0.4)
-            axes[ax0].set_ylabel('$T_{f}$', fontsize = myfontsize );
+        if(not inelastic and plot_differences):
+            axes[ax1].plot(np.real(Kvals),abs(Tvals[:,out_flip]-menez_Tf)/menez_Tf,
+              color = mycolors[Jvali], label="$J=${:.4f}".format(Jval),
+              marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax3].plot(np.real(Kvals),abs(Tvals[:,out_noflip]-menez_Tnf)/menez_Tnf,
+              color = mycolors[Jvali], label="$J=${:.4f}".format(Jval),
+              marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax0].set_ylim(-0.4*lower_y,0.4)          
             axes[ax1].set_ylim(-0.1*lower_y,0.1);
             axes[ax1].set_ylabel('$|T_{f}-T_{f,c}|/T_{f,c}$', fontsize = myfontsize );
-            axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));
-            axes[ax2].set_ylabel('$T_{nf}$', fontsize = myfontsize );
+            axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));          
             axes[ax3].set_ylim(-0.1*lower_y,0.1);
             axes[ax3].set_ylabel('$|T_{nf}-T_{nf,c}|/T_{nf,c}$', fontsize = myfontsize );
     
-    # show
+    # format
+    title_str = "$u=${:.2f}, $v=${:.2f}, $w=${:.2f}".format(uval, vval, -tl)
+    axes[0].set_title(title_str);
+    axes[-1].legend();
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
     axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
@@ -218,7 +227,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     RiceMele_shift_str += ",  $ka/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
     axes[-1].set_xlabel("$E$"+RiceMele_shift_str,fontsize = myfontsize);
 
-    for axi in range(len(axes)): axes[axi].set_title(mypanels[axi], x=0.065, y = 0.74, fontsize = myfontsize); 
+    # show 
     plt.tight_layout();
     fname = 'figs/'+case+'.pdf'
     plt.show();

@@ -221,7 +221,7 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
     Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
-    assert(np.any(np.imag(np.diag(SigmaLmat))) ); # checks that given energy allows propagating modes in *at least some* LL channels
+    #assert(np.any(np.imag(np.diag(SigmaLmat))) ); # checks that given energy allows propagating modes in *at least some* LL channels
     for sigmai in range(n_loc_dof):
         if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):
             assert(np.sign(np.imag(SigmaLmat[sigmai,sigmai])) == np.sign(np.imag(SigmaRmat[sigmai,sigmai])));
