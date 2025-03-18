@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.animation as animation
 
 import sys
+import os
 import json
 
 ########################################################################
@@ -76,7 +77,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["s","^","d","*"];
     plt.rcParams.update({"font.family": "serif"});
-    #plt.rcParams.update({"text.usetex": True});
+    plt.rcParams.update({"text.usetex": True});
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -460,20 +461,28 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     plt.tight_layout();
     plt.show();
     
-elif(case in [15]): # occupancy vs site vs time heatmap
+elif(case in [15,16]): # occupancy vs site vs time heatmap
 
     # axes
     horizontal = True; # puts heatmaps side by side, else stack
     if(horizontal): fignrows, figncols = 1, len(datafiles)+1;
     else: fignrows, figncols = len(datafiles)+1, 1;
-    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows,sharey=True);
+    add_MI = True;
+    if(add_MI):
+        fignrows += 1; assert(horizontal);
+        change_height_ratios = {"height_ratios":[1.0,0.25]};
+    else: 
+        change_height_ratios = {} #{"height_ratios":[]};
+    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, sharey="row",sharex="col",
+                             gridspec_kw=change_height_ratios);
+    if(add_MI): axes, MIaxes = axes[0], axes[1];
     if((horizontal and figncols==1) or (not horizontal and fignrows==1)): axes = [axes];
-    fig.set_size_inches((4.5/1.3)*figncols,(5.5/1.3)*fignrows)
+    fig.set_size_inches((4.5/1.3)*figncols,5.5/1.3)
 
     #### iter over triplet/singlet
     myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " Qubits Removed";
+        if("nosd" in dfile):      myaxlab = " Qubits Decoupled";
         elif("triplet" in dfile): myaxlab = " Triplet";
         elif("singlet" in dfile): myaxlab = " Singlet";
         elif("nofield" in dfile): myaxlab = " Field Removed";
@@ -506,26 +515,42 @@ elif(case in [15]): # occupancy vs site vs time heatmap
         # mesh grids for time (x) and site (y) plotting heatmap
         timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Nsites];
         
-        # plot
+        # plot heatmap
         heatmap=axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
         print("    vmax = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
         
-        # colorbar
+        # plot mutual info  
+        which_imp = 0; # d=N_L 
+        #label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=take_gradient);
+        MI_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        print("Loading "+dfile+"_arrays/"+obs4+"yjs_time0.00.npy");
+        for ti in range(len(times)):
+            MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+        MIaxes[axi].plot(times, factor4*MI_vs_time[:,which_imp], color=color4, linewidth=2);
+        
+        # format colorbar
         if(axi==len(axes)-2): 
             #heatmap = axes[-1].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr',vmin=0.0,vmax=np.max(yjs_vs_time));
             cbar = fig.colorbar(heatmap,ax=axes[-1], pad=0.35,location='left');
             axes[-1].text(-0.90,1.03,"$\langle \hat{n} \\rangle $",
             transform=axes[-1].transAxes, fontsize=myfontsize);
             axes[-1].axis('off');
+            MIaxes[-1].axis('off');
         
     # format axes
     axes[0].set_ylabel("Site",fontsize=myfontsize); 
+    MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
+    MIaxes[0].set_ylabel("$I/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
     for axi in range(len(datafiles)): 
-        axes[axi].text(0,0.9,myaxlabels[axi], color="white",
+        axes[axi].text(0.05,0.9,myaxlabels[axi], color="white",
             transform=axes[axi].transAxes,fontsize=myfontsize);
         axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
         if(len(datafiles)%2 != 0): axes[len(datafiles)//2].set_title( get_title(datafiles[-1]),fontsize=myfontsize);
         else: axes[axi].set_title(get_title(datafiles[axi]),loc="left",fontsize=myfontsize);
+        MIaxes[axi].set_ylim(-0.1,1.1);
+        MIticks = [0,0.5,1.0];
+        for tick in MIticks: MIaxes[axi].axhline(tick, color="gray",linestyle="dashed");
+        MIaxes[axi].set_yticks([0,1]);
         
     #### iter over triplet/singlet to mark 
     for axi, dfile in enumerate(datafiles):
@@ -540,7 +565,12 @@ elif(case in [15]): # occupancy vs site vs time heatmap
 
     # show
     fig.tight_layout();
-    plt.show();
+    folder = os.getcwd().split("/")[-1].split("_")[-1];
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+".pdf"
+    if(case in [16]): 
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else: plt.show();
     
 
 if(case in [10,11]): # animate time evol

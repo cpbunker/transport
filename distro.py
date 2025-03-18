@@ -74,6 +74,7 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
         h1e_t0[nloc*j+0,nloc*j+0] += -the_Vconf; # spinless!
 
     # t<0 eigenstates (|k_m> states)
+    m_HOMO = len(the_occs) - 1; # m value of the highest occupied k state
     vals_t0, vecs_t0 = np.linalg.eigh(h1e_t0);
     vecs_t0 = vecs_t0.T;
     the_occs_final = np.zeros_like(vals_t0, dtype = the_occs.dtype);
@@ -81,8 +82,12 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
     print(the_occs,"-->\n", the_occs_final);
     the_occs = 1*the_occs_final; del the_occs_final;
     
-    for vali in range(4):
-        the_axes[0].plot(vecs_t0[vali], label="$k_m =${:.4f}".format(np.pi*(vali+1)/the_Nconf));
+    ms_to_probe = [max(0,m_HOMO-2), min(m_HOMO+1,len(vecs_t0))];
+    ms_to_probe = range(ms_to_probe[0], ms_to_probe[1]);
+    for m in ms_to_probe:
+        if(m < the_Nconf): k_plotted_level = np.pi*(m+1)/the_Nconf;
+        else: k_plotted_level = np.nan;
+        the_axes[0].plot(vecs_t0[m], label="$m =${:.0f}, $k_m =${:.4f}".format(m+1, k_plotted_level));
     diag_norm_t0 = np.max(abs(np.diag(h1e_t0)))
     if(diag_norm_t0 < 1e-10): diag_norm_t0 = 1;
     the_axes[0].plot(np.diag(h1e_t0)/diag_norm_t0,color="black")#,label="$\langle j | V |j \\rangle$"); # onsite
@@ -112,8 +117,8 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
     # t>0 eigenstates (|k_n> states)
     vals, vecs = np.linalg.eigh(h1e);
     vecs = vecs.T;
-    for vali in range(4):
-        the_axes[1].plot(vecs[vali], label="$k_n=${:.4f}".format(np.pi*(vali+1)/the_Nsites));
+    for n in range(4):
+        the_axes[1].plot(vecs[n], label="$n =${:.0f}, $k_n=${:.4f}".format(n+1,np.pi*(n+1)/the_Nsites));
     diag_norm = np.max(abs(np.diag(h1e)))
     if(diag_norm < 1e-10): diag_norm = 1;
     the_axes[1].plot(np.diag(h1e)/diag_norm,color="black")#,label="$\langle j | V |j \\rangle$"); # onsite
@@ -137,7 +142,8 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
 
     # visualize the k-state wavefunctions
     the_axes[0].set_title("$N_e =${:.0f}".format(np.sum(the_occs))+", $N_{conf} =$"+"{:.0f}".format(the_Nconf)
-            +", $\Delta V =${:.3f}, $t_p =${:.1f}".format(the_Vdelta, the_tp));
+            +", $\Delta V =${:.3f}, $t_p =${:.1f}".format(the_Vdelta, the_tp)
+            +", $m_{HOMO} =$"+"{:.0f}".format(m_HOMO));
     if(plot): plt.tight_layout(), plt.show();
     else: plt.close();
     
@@ -171,10 +177,13 @@ to_override = ["Ne", "TwoSz", "Nconf"];
 for key in to_override: params[key] = np.nan;
 
 # iter over Ne, TwoSz, Nconf, excited_state values
-#pairvals = np.array([(1,1,20,0),(1,1,20,2),(1,1,20,4)]); # Ne=1 fixed, ground vs excited states
+pairvals = np.array([(1,1,20,0),(1,1,20,4),(1,1,20,9),(1,1,20,14),(1,1,20,19)]); # Ne=1 fixed, ground vs excited states
+
+
 #pairvals = np.array([(1,1,20,0),(5,5,20,0), (5,5,40,0),(5,5,60,0)]); # mix of interesting cases
 #pairvals = np.array([(1,1,20,0),(5,5,20,0)]); # mix of interesting cases
-pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
+
+#pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
 #pairvals = np.array([(1,1,40,0),(2,2,40,0),(5,5,40,0), (10,10,40,0)]); # Nconf=40 fixed, spin polarized
 
 # plot either individual wfs or real-space PDFs
@@ -213,14 +222,15 @@ for pairi in range(len(pairvals)):
     params["Nconf"] = myNconf;
     
     # get pdf values
-    mykvals, mypdfs, _, _ = get_overlaps(params, my_occs, plot=False);  
+    mykvals, mypdfs, _, _ = get_overlaps(params, my_occs, plot=False); 
+    nvals_mykvals =  (mykvals*myNsites/np.pi).astype(int)
     if(norm_Ne): mypdfs = mypdfs/myNe;
-    myax.plot(mykvals, mypdfs, color=mycolors[pairi], label = "$N_e =${:.0f}".format(myNe)+", $N_{conf} =$"+"{:.0f}".format(myNconf));
+    myax.plot(nvals_mykvals, mypdfs, color=mycolors[pairi], label = "$N_e =${:.0f}".format(myNe)+", $N_{conf} =$"+"{:.0f}".format(myNconf));
 
 # format
 myax.axvline(np.pi/20, color="black", label = "$k_n^{target}$");
-myax.set_xlabel("$k_n$",fontsize=myfontsize);
-myax.set_xlim(mykvals[0], mykvals[-1]);
+myax.set_xlabel("$n$ ($N_{sites} =$"+"{:.0f})".format(myNsites),fontsize=myfontsize);
+#myax.set_xlim(mykvals[0], mykvals[-1]);
 pdf_ylabel = "$ \sum_{k_m}^{occ} |\langle k_m | k_n \\rangle |^2$";
 if(norm_Ne): pdf_ylabel = "$\\frac{1}{N_e} $"+pdf_ylabel;
 myax.set_ylabel(pdf_ylabel,fontsize=myfontsize);
