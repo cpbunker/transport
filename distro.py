@@ -22,7 +22,7 @@ def get_occs_Ne_TwoSz(the_Ne, the_TwoSz, num_skip = 0):
         nonpol_levels.append(2);
     return np.append(skip_levels, np.append(nonpol_levels, spinpol_levels)).astype(int);
 
-def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
+def get_overlaps(the_params, the_occs, plot=False):
     '''
     '''
     if(not isinstance(the_occs, np.ndarray)): raise TypeError;
@@ -49,7 +49,9 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
 
     # classify site indices (spin not included)
     conf_sites = np.arange(the_Nconf);
-    if tp_symmetry: # modifies left and right lead
+    tp_symmetry = 1;
+    if("tp_symmetry" in the_params.keys()): tp_symmetry = the_params["tp_symmetry"];
+    if tp_symmetry: # modifies left and right lead symmetrically
         assert(the_Nsites - the_Nconf > the_Nconf);
         anticonf_sites = np.arange(the_Nsites-the_Nconf, the_Nsites);
         nonconf_sites = np.arange(the_Nconf, the_Nsites - the_Nconf);
@@ -65,7 +67,7 @@ def get_overlaps(the_params, the_occs, plot=False, tp_symmetry=True):
     for j in nonconf_sites[:-1]:
         h1e_t0[nloc*j+0,nloc*(j+1)+0] += -the_tl; # spinless
         h1e_t0[nloc*(j+1)+0,nloc*j+0] += -the_tl;
-    for j in (anticonf_sites-1):
+    for j in (anticonf_sites-1): # this iteration is empty if tp_symmetry == False
         h1e_t0[nloc*j+0,nloc*(j+1)+0] += -the_tp; # <-- different hopping !!
         h1e_t0[nloc*(j+1)+0,nloc*j+0] += -the_tp;
 
@@ -177,7 +179,7 @@ to_override = ["Ne", "TwoSz", "Nconf"];
 for key in to_override: params[key] = np.nan;
 
 # iter over Ne, TwoSz, Nconf, excited_state values
-pairvals = np.array([(1,1,20,0),(1,1,20,4),(1,1,20,9),(1,1,20,14),(1,1,20,19)]); # Ne=1 fixed, ground vs excited states
+#pairvals = np.array([(1,1,20,0),(1,1,20,4),(1,1,20,9),(1,1,20,14),(1,1,20,19)]); # Ne=1 fixed, ground vs excited states
 
 
 #pairvals = np.array([(1,1,20,0),(5,5,20,0), (5,5,40,0),(5,5,60,0)]); # mix of interesting cases
@@ -185,6 +187,8 @@ pairvals = np.array([(1,1,20,0),(1,1,20,4),(1,1,20,9),(1,1,20,14),(1,1,20,19)]);
 
 #pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
 #pairvals = np.array([(1,1,40,0),(2,2,40,0),(5,5,40,0), (10,10,40,0)]); # Nconf=40 fixed, spin polarized
+
+pairvals = np.array([(5,5,5,0),(10,10,10,0),(20,20,20,0)]); # half filling, spin pol
 
 # plot either individual wfs or real-space PDFs
 plot_wfs = True;
