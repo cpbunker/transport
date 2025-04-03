@@ -1,0 +1,1350 @@
+#### SLURM ####
+pwd: 
+/blue/m2qm-efrc/cpbunker/GitHub/transport
+host: 
+c0709a-s5.ufhpc
+# conda environments:
+#
+base                     /apps/conda/24.3.0
+block2                *  /blue/m2qm-efrc/cpbunker/condaenvs/block2
+vasp                     /blue/m2qm-efrc/cpbunker/condaenvs/vasp
+
+#### PYTHON ####
+start time: 
+Wed Apr  2 10:57:43 EDT 2025
+
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+>>> PWD:  /blue/m2qm-efrc/cpbunker/GitHub/transport
+>>> Params =  {'sys_type': 'STT', 'tl': 1.0, 'Vconf': 30.0, 'Be': 100.0, 'BFM': 0.0, 'Bent': 100.0, 'Jz': 0.0, 'Jx': 0.0, 'Jsd': 5.0, 'NL': 10, 'NFM': 2, 'NR': 30, 'Nconf': 5, 'Ne': 5, 'TwoSz': 5, 'TwoSd': 1, 'symmetry': 'Sz', 'ex_sites': [10, 11], 'plot': 0, 'bdim_0': [150, 150, 150, 200, 200], 'bdim_t': [250], 'noises': [0.01, 0.001, 0.0001, 1e-05, 0.0], 'dmrg_sweeps': 20, 'cutoff': -1.0, 'te_type': 'tdvp', 'time_step': 0.1, 'tupdate': 1.0, 'Nupdates': 30}
+	 driver.mpi =  None
+	 global threads = 4
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+Ground state energy (DMRG) = -425.012502
+>>> Init compute time = 18.790895223617554
+
+Time = 0.00
+Total energy = -425.012502-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.000000+0.000000j
+<Sz d=11> = 0.000000+0.000000j
+<(S1+S2)^2> = 2.000000
+ents2[11,10] = 0.0000000000
+MI[10,11] = 0.693147 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.500000
+Total <Sdz_> = 0.000000
+Total <J_> = -0.000000
+Total <S2_> = nan
+ents2[11,10] = 0.0000000000
+Total <MI_> = nan
+	 driver.mpi =  None
+	 global threads = 4
+TwoSdz_ladder =
+ [ 1 -1]
+four_Sdz = 
+ [[ 0.5  0.   0.   0.   0.   0.   0.   0. ]
+ [ 0.  -0.5  0.  -0.   0.  -0.   0.  -0. ]
+ [ 0.   0.   0.5  0.   0.   0.   0.   0. ]
+ [ 0.  -0.   0.  -0.5  0.  -0.   0.  -0. ]
+ [ 0.   0.   0.   0.   0.5  0.   0.   0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.5  0.  -0. ]
+ [ 0.   0.   0.   0.   0.   0.   0.5  0. ]
+ [ 0.  -0.   0.  -0.   0.  -0.   0.  -0.5]]
+four_Sdminus = 
+ [[0. 0. 0. 0. 0. 0. 0. 0.]
+ [1. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 1. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 1. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 1. 0.]]
+four_Sdplus = 
+ [[0. 1. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 1. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 1. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 1.]
+ [0. 0. 0. 0. 0. 0. 0. 0.]]
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+>>> (0, 1, 0)
+>>> (0, -1, 0)
+>>> (1, 2, 0)
+>>> (1, 0, 0)
+>>> (1, -2, 0)
+>>> (2, 1, 0)
+>>> (2, -1, 0)
+
+ ######################################## 
+Constructed builder
+ ######################################## 
+
+
+Build MPO | Nsites =    42 | Nterms =        172 | Algorithm = FastBIP | Cutoff = 1.00e-14
+ Site =     0 /    42 .. Mmpo =     5 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+ Site =     1 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =     2 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     3 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     4 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     5 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     6 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     7 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     8 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =     9 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    10 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.000
+ Site =    11 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       11 SPT = 0.6944 Tmvc = 0.000 T = 0.000
+ Site =    12 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    13 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    14 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    15 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    16 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    17 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    18 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    19 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    20 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    21 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    22 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    23 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    24 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    25 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    26 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    27 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    28 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    29 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    30 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    31 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    32 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    33 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    34 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    35 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    36 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    37 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    38 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    39 /    42 .. Mmpo =     6 DW = 0.00e+00 NNZ =       10 SPT = 0.7222 Tmvc = 0.000 T = 0.000
+ Site =    40 /    42 .. Mmpo =     5 DW = 0.00e+00 NNZ =        9 SPT = 0.7000 Tmvc = 0.000 T = 0.000
+ Site =    41 /    42 .. Mmpo =     1 DW = 0.00e+00 NNZ =        5 SPT = 0.0000 Tmvc = 0.000 T = 0.000
+Ttotal =      0.008 Tmvc-total = 0.000 MPO bond dimension =     6 MaxDW = 0.00e+00
+NNZ =          410 SIZE =         1438 SPT = 0.7149
+
+Rank =     0 Ttotal =      0.010 MPO method = FastBipartite bond dimension =       6 NNZ =          410 SIZE =         1438 SPT = 0.7149
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: divide by zero encountered in log
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:182: RuntimeWarning: invalid value encountered in multiply
+  ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in subtract
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+/blue/m2qm-efrc/cpbunker/GitHub/transport/transport/tddmrg/__init__.py:514: RuntimeWarning: invalid value encountered in multiply
+  minfo = 0.5 * (ents1[:, None] + ents1[None, :] - ents2) * (1 - np.identity(len(ents1))); # (-1) * 2013 Reiher Eq (3)
+
+
+START TIME EVOLUTION (te_type = tdvp)
+
+ ************************************************** 
+
+
+	 driver.mpi =  None
+	 global threads = 4
+
+>>>> Evol CPU time = 9.8 min
+
+
+Time = 1.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.000000-0.000000j
+<Sz d=11> = 0.000000-0.000000j
+<(S1+S2)^2> = 2.000000
+ents2[11,10] = 0.0000021151
+MI[10,11] = 0.693146 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.500000
+Total <Sdz_> = 0.000000
+Total <J_> = 0.765366
+Total <S2_> = nan
+ents2[11,10] = 0.0000021151
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.9 min
+
+
+>>>> Evol CPU time = 9.9 min
+
+
+Time = 2.00
+Total energy = -0.025006-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.000371-0.000000j
+<Sz d=11> = 0.000032+0.000000j
+<(S1+S2)^2> = 1.999595
+ents2[11,10] = 0.0054711128
+MI[10,11] = 0.690411 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.499598
+Total <Sdz_> = 0.000402
+Total <J_> = 0.659945
+Total <S2_> = nan
+ents2[11,10] = 0.0054711128
+Total <MI_> = nan
+
+>>>> Observables CPU time = 3.1 min
+
+
+>>>> Evol CPU time = 9.7 min
+
+
+Time = 3.00
+Total energy = -0.025006-0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.017509-0.000000j
+<Sz d=11> = 0.002405+0.000000j
+<(S1+S2)^2> = 1.979726
+ents2[11,10] = 0.1538498508
+MI[10,11] = 0.615910 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.480086
+Total <Sdz_> = 0.019914
+Total <J_> = 0.783910
+Total <S2_> = nan
+ents2[11,10] = 0.1538498508
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.8 min
+
+
+>>>> Evol CPU time = 9.6 min
+
+
+Time = 4.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.112336+0.000000j
+<Sz d=11> = 0.022780+0.000000j
+<(S1+S2)^2> = 1.870588
+ents2[11,10] = 0.6187252000
+MI[10,11] = 0.370538 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.364885
+Total <Sdz_> = 0.135115
+Total <J_> = 1.142797
+Total <S2_> = nan
+ents2[11,10] = 0.6187252000
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.8 min
+
+
+>>>> Evol CPU time = 10.0 min
+
+
+Time = 5.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.249910+0.000000j
+<Sz d=11> = 0.067603+0.000000j
+<(S1+S2)^2> = 1.733322
+ents2[11,10] = 0.9290929965
+MI[10,11] = 0.158660 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.182487
+Total <Sdz_> = 0.317513
+Total <J_> = 1.008315
+Total <S2_> = nan
+ents2[11,10] = 0.9290929965
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.8 min
+
+
+>>>> Evol CPU time = 9.7 min
+
+
+Time = 6.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.341712-0.000000j
+<Sz d=11> = 0.119499-0.000000j
+<(S1+S2)^2> = 1.666881
+ents2[11,10] = 0.9700328479
+MI[10,11] = 0.065548 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 2.038789
+Total <Sdz_> = 0.461211
+Total <J_> = 0.977610
+Total <S2_> = nan
+ents2[11,10] = 0.9700328479
+Total <MI_> = nan
+
+>>>> Observables CPU time = 3.0 min
+
+
+>>>> Evol CPU time = 9.8 min
+
+
+Time = 7.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.393099-0.000000j
+<Sz d=11> = 0.175286+0.000000j
+<(S1+S2)^2> = 1.642855
+ents2[11,10] = 0.9182390784
+MI[10,11] = 0.026060 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.931615
+Total <Sdz_> = 0.568385
+Total <J_> = 0.665584
+Total <S2_> = nan
+ents2[11,10] = 0.9182390784
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.8 min
+
+
+>>>> Evol CPU time = 10.1 min
+
+
+Time = 8.00
+Total energy = -0.025006-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.423712-0.000000j
+<Sz d=11> = 0.229337-0.000000j
+<(S1+S2)^2> = 1.668896
+ents2[11,10] = 0.8231835883
+MI[10,11] = 0.015171 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.846951
+Total <Sdz_> = 0.653049
+Total <J_> = 0.537998
+Total <S2_> = nan
+ents2[11,10] = 0.8231835883
+Total <MI_> = nan
+
+>>>> Observables CPU time = 3.2 min
+
+
+>>>> Evol CPU time = 10.4 min
+
+
+Time = 9.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000-0.000000j
+<Sz d=10> = 0.434490-0.000000j
+<Sz d=11> = 0.275170-0.000000j
+<(S1+S2)^2> = 1.708874
+ents2[11,10] = 0.7422787218
+MI[10,11] = 0.016271 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.790340
+Total <Sdz_> = 0.709660
+Total <J_> = 0.174380
+Total <S2_> = nan
+ents2[11,10] = 0.7422787218
+Total <MI_> = nan
+
+>>>> Observables CPU time = 3.0 min
+
+
+>>>> Evol CPU time = 9.6 min
+
+
+Time = 10.00
+Total energy = -0.025006-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.434090-0.000000j
+<Sz d=11> = 0.302126-0.000000j
+<(S1+S2)^2> = 1.734341
+ents2[11,10] = 0.7042103476
+MI[10,11] = 0.018079 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.763784
+Total <Sdz_> = 0.736216
+Total <J_> = 0.111594
+Total <S2_> = nan
+ents2[11,10] = 0.7042103476
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.6 min
+
+
+>>>> Evol CPU time = 9.7 min
+
+
+Time = 11.00
+Total energy = -0.025006-0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.431931+0.000000j
+<Sz d=11> = 0.320724-0.000000j
+<(S1+S2)^2> = 1.751396
+ents2[11,10] = 0.6802384388
+MI[10,11] = 0.019335 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.747345
+Total <Sdz_> = 0.752655
+Total <J_> = -0.156775
+Total <S2_> = nan
+ents2[11,10] = 0.6802384388
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.7 min
+
+
+>>>> Evol CPU time = 9.8 min
+
+
+Time = 12.00
+Total energy = -0.025006+0.000000j
+WF norm = 1.000000+0.000000j
+<Sz d=10> = 0.429934-0.000000j
+<Sz d=11> = 0.336977-0.000000j
+<(S1+S2)^2> = 1.768088
+ents2[11,10] = 0.6582378295
+MI[10,11] = 0.020110 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.733089
+Total <Sdz_> = 0.766911
+Total <J_> = 0.223392
+Total <S2_> = nan
+ents2[11,10] = 0.6582378295
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.5 min
+
+
+>>>> Evol CPU time = 9.9 min
+
+
+Time = 13.00
+Total energy = -0.025006+0.000000j
+WF norm = 0.999999-0.000000j
+<Sz d=10> = 0.426331-0.000000j
+<Sz d=11> = 0.350787+0.000000j
+<(S1+S2)^2> = 1.780419
+ents2[11,10] = 0.6431416024
+MI[10,11] = 0.020614 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.722882
+Total <Sdz_> = 0.777118
+Total <J_> = 0.174212
+Total <S2_> = nan
+ents2[11,10] = 0.6431416024
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.6 min
+
+
+>>>> Evol CPU time = 11.8 min
+
+
+Time = 14.00
+Total energy = -0.025006-0.000000j
+WF norm = 0.999996+0.000000j
+<Sz d=10> = 0.420666+0.000000j
+<Sz d=11> = 0.362245-0.000000j
+<(S1+S2)^2> = 1.789420
+ents2[11,10] = 0.6366873193
+MI[10,11] = 0.020659 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.717089
+Total <Sdz_> = 0.782911
+Total <J_> = 0.305078
+Total <S2_> = nan
+ents2[11,10] = 0.6366873193
+Total <MI_> = nan
+
+>>>> Observables CPU time = 3.0 min
+
+
+>>>> Evol CPU time = 11.0 min
+
+
+Time = 15.00
+Total energy = -0.025006-0.000000j
+WF norm = 0.999987-0.000000j
+<Sz d=10> = 0.406897+0.000000j
+<Sz d=11> = 0.370126+0.000000j
+<(S1+S2)^2> = 1.789863
+ents2[11,10] = 0.6549294716
+MI[10,11] = 0.020438 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.722977
+Total <Sdz_> = 0.777023
+Total <J_> = 0.304514
+Total <S2_> = nan
+ents2[11,10] = 0.6549294716
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.7 min
+
+
+>>>> Evol CPU time = 10.7 min
+
+
+Time = 16.00
+Total energy = -0.025004+0.000000j
+WF norm = 0.999968+0.000000j
+<Sz d=10> = 0.381257-0.000000j
+<Sz d=11> = 0.378254+0.000000j
+<(S1+S2)^2> = 1.784604
+ents2[11,10] = 0.6953409549
+MI[10,11] = 0.019730 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.740489
+Total <Sdz_> = 0.759511
+Total <J_> = 0.337193
+Total <S2_> = nan
+ents2[11,10] = 0.6953409549
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.6 min
+
+
+>>>> Evol CPU time = 10.5 min
+
+
+Time = 17.00
+Total energy = -0.025002-0.000000j
+WF norm = 0.999929+0.000000j
+<Sz d=10> = 0.349678-0.000000j
+<Sz d=11> = 0.385950+0.000000j
+<(S1+S2)^2> = 1.775019
+ents2[11,10] = 0.7411120461
+MI[10,11] = 0.018528 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.764372
+Total <Sdz_> = 0.735628
+Total <J_> = 0.298852
+Total <S2_> = nan
+ents2[11,10] = 0.7411120461
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 10.4 min
+
+
+Time = 18.00
+Total energy = -0.024999-0.000000j
+WF norm = 0.999858+0.000000j
+<Sz d=10> = 0.333830+0.000000j
+<Sz d=11> = 0.392972-0.000000j
+<(S1+S2)^2> = 1.774716
+ents2[11,10] = 0.7552260727
+MI[10,11] = 0.017395 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.773198
+Total <Sdz_> = 0.726802
+Total <J_> = 0.241368
+Total <S2_> = nan
+ents2[11,10] = 0.7552260727
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 10.6 min
+
+
+Time = 19.00
+Total energy = -0.024999-0.000000j
+WF norm = 0.999737-0.000000j
+<Sz d=10> = 0.331746-0.000000j
+<Sz d=11> = 0.399780+0.000000j
+<(S1+S2)^2> = 1.775025
+ents2[11,10] = 0.7491444871
+MI[10,11] = 0.014764 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.768474
+Total <Sdz_> = 0.731526
+Total <J_> = 0.055188
+Total <S2_> = nan
+ents2[11,10] = 0.7491444871
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 10.8 min
+
+
+Time = 20.00
+Total energy = -0.025000-0.000000j
+WF norm = 0.999565-0.000000j
+<Sz d=10> = 0.333971+0.000000j
+<Sz d=11> = 0.405646+0.000000j
+<(S1+S2)^2> = 1.778886
+ents2[11,10] = 0.7369608099
+MI[10,11] = 0.012535 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.760383
+Total <Sdz_> = 0.739617
+Total <J_> = 0.119444
+Total <S2_> = nan
+ents2[11,10] = 0.7369608099
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 10.4 min
+
+
+Time = 21.00
+Total energy = -0.024999+0.000000j
+WF norm = 0.999349-0.000000j
+<Sz d=10> = 0.335029+0.000000j
+<Sz d=11> = 0.410367-0.000000j
+<(S1+S2)^2> = 1.781049
+ents2[11,10] = 0.7274141184
+MI[10,11] = 0.011048 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.754604
+Total <Sdz_> = 0.745396
+Total <J_> = -0.071079
+Total <S2_> = nan
+ents2[11,10] = 0.7274141184
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 10.6 min
+
+
+Time = 22.00
+Total energy = -0.025001-0.000000j
+WF norm = 0.999098-0.000000j
+<Sz d=10> = 0.336761+0.000000j
+<Sz d=11> = 0.414268+0.000000j
+<(S1+S2)^2> = 1.786408
+ents2[11,10] = 0.7170608947
+MI[10,11] = 0.010246 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.748971
+Total <Sdz_> = 0.751029
+Total <J_> = -0.042331
+Total <S2_> = nan
+ents2[11,10] = 0.7170608947
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.6 min
+
+
+>>>> Evol CPU time = 10.7 min
+
+
+Time = 23.00
+Total energy = -0.024997-0.000000j
+WF norm = 0.998824-0.000000j
+<Sz d=10> = 0.339171+0.000000j
+<Sz d=11> = 0.416200+0.000000j
+<(S1+S2)^2> = 1.788990
+ents2[11,10] = 0.7097762235
+MI[10,11] = 0.009610 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.744630
+Total <Sdz_> = 0.755370
+Total <J_> = -0.104859
+Total <S2_> = nan
+ents2[11,10] = 0.7097762235
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 11.0 min
+
+
+Time = 24.00
+Total energy = -0.024994-0.000000j
+WF norm = 0.998560+0.000000j
+<Sz d=10> = 0.341408-0.000000j
+<Sz d=11> = 0.418092+0.000000j
+<(S1+S2)^2> = 1.791272
+ents2[11,10] = 0.7026827611
+MI[10,11] = 0.009025 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.740500
+Total <Sdz_> = 0.759500
+Total <J_> = -0.163324
+Total <S2_> = nan
+ents2[11,10] = 0.7026827611
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.7 min
+
+
+>>>> Evol CPU time = 11.3 min
+
+
+Time = 25.00
+Total energy = -0.024996-0.000000j
+WF norm = 0.998294-0.000000j
+<Sz d=10> = 0.342632-0.000000j
+<Sz d=11> = 0.418324+0.000000j
+<(S1+S2)^2> = 1.792017
+ents2[11,10] = 0.7006280071
+MI[10,11] = 0.008748 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.739044
+Total <Sdz_> = 0.760956
+Total <J_> = 0.104916
+Total <S2_> = nan
+ents2[11,10] = 0.7006280071
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.7 min
+
+
+>>>> Evol CPU time = 11.4 min
+
+
+Time = 26.00
+Total energy = -0.024991+0.000000j
+WF norm = 0.998024+0.000000j
+<Sz d=10> = 0.344117-0.000000j
+<Sz d=11> = 0.417996-0.000000j
+<(S1+S2)^2> = 1.791891
+ents2[11,10] = 0.6994169549
+MI[10,11] = 0.008499 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.737887
+Total <Sdz_> = 0.762113
+Total <J_> = 0.027552
+Total <S2_> = nan
+ents2[11,10] = 0.6994169549
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 11.4 min
+
+
+Time = 27.00
+Total energy = -0.024979+0.000000j
+WF norm = 0.997734+0.000000j
+<Sz d=10> = 0.344206-0.000000j
+<Sz d=11> = 0.417228-0.000000j
+<(S1+S2)^2> = 1.788839
+ents2[11,10] = 0.7014863418
+MI[10,11] = 0.008315 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.738566
+Total <Sdz_> = 0.761434
+Total <J_> = 0.126582
+Total <S2_> = nan
+ents2[11,10] = 0.7014863418
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.5 min
+
+
+>>>> Evol CPU time = 11.6 min
+
+
+Time = 28.00
+Total energy = -0.024957+0.000000j
+WF norm = 0.997414+0.000000j
+<Sz d=10> = 0.342443-0.000000j
+<Sz d=11> = 0.415332+0.000000j
+<(S1+S2)^2> = 1.780900
+ents2[11,10] = 0.7091146574
+MI[10,11] = 0.008254 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.742225
+Total <Sdz_> = 0.757775
+Total <J_> = 0.144850
+Total <S2_> = nan
+ents2[11,10] = 0.7091146574
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.4 min
+
+
+>>>> Evol CPU time = 11.7 min
+
+
+Time = 29.00
+Total energy = -0.024930+0.000000j
+WF norm = 0.997043+0.000000j
+<Sz d=10> = 0.339616-0.000000j
+<Sz d=11> = 0.412649-0.000000j
+<(S1+S2)^2> = 1.771857
+ents2[11,10] = 0.7198182273
+MI[10,11] = 0.008427 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.747735
+Total <Sdz_> = 0.752265
+Total <J_> = 0.080057
+Total <S2_> = nan
+ents2[11,10] = 0.7198182273
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.6 min
+
+
+>>>> Evol CPU time = 11.5 min
+
+
+Time = 30.00
+Total energy = -0.024909-0.000000j
+WF norm = 0.996586+0.000000j
+<Sz d=10> = 0.335195+0.000000j
+<Sz d=11> = 0.411072+0.000000j
+<(S1+S2)^2> = 1.765729
+ents2[11,10] = 0.7299792988
+MI[10,11] = 0.008812 (max = 0.693147)
+Total <occ_> = 5.000000
+Total <sz_> = 1.753733
+Total <Sdz_> = 0.746267
+Total <J_> = 0.112562
+Total <S2_> = nan
+ents2[11,10] = 0.7299792988
+Total <MI_> = nan
+
+>>>> Observables CPU time = 2.5 min
+
+stop time: 
+Wed Apr  2 17:35:46 EDT 2025

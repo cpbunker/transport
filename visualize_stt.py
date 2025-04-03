@@ -77,7 +77,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["s","^","d","*"];
     plt.rcParams.update({"font.family": "serif"});
-    plt.rcParams.update({"text.usetex": True});
+    #plt.rcParams.update({"text.usetex": True});
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -532,13 +532,13 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         if(axi==len(axes)-2): 
             #heatmap = axes[-1].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr',vmin=0.0,vmax=np.max(yjs_vs_time));
             cbar = fig.colorbar(heatmap,ax=axes[-1], pad=0.35,location='left');
-            axes[-1].text(-0.90,1.03,"$\langle \hat{n} \\rangle $",
+            axes[-1].text(-0.90,1.03,"$\langle n_j \\rangle $",
             transform=axes[-1].transAxes, fontsize=myfontsize);
             axes[-1].axis('off');
             MIaxes[-1].axis('off');
         
     # format axes
-    axes[0].set_ylabel("Site",fontsize=myfontsize); 
+    axes[0].set_ylabel("Site $j$",fontsize=myfontsize); 
     MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
     MIaxes[0].set_ylabel("$I/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
     for axi in range(len(datafiles)): 

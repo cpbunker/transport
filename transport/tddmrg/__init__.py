@@ -1838,6 +1838,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
 
     # j <-> j+1 hopping for fermions
     for j in all_sites[:-1]:
+        print("j={:.0f} -> tl={:.2f}".format(j,tl));
         builder.add_term("cd",[j,j+1],-tl); 
         builder.add_term("CD",[j,j+1],-tl);
         builder.add_term("cd",[j+1,j],-tl);
@@ -1861,6 +1862,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         
     # special case terms
     if("tunnel" in params_dict.keys()):
+        raise NotImplementedError;
         # tunnel barrier on last few sites of left lead
         tunnel = params_dict["tunnel"];
         tunnel_size = 3; # last tunnel_size sites
@@ -1875,18 +1877,25 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
             builder.add_term("cd",[j,j],-Vdelta*j);
             builder.add_term("CD",[j,j],-Vdelta*j);
     if("tp" in params_dict.keys()):
-        # different hopping (t') in BOTH leads (doesn't break left-right symmetry)
-        # NL, NFM, NR, Nconf
+        # different hopping (t') in confinement region 
         tp = params_dict["tp"];
         conf_sites = np.arange(Nconf);
-        assert(NL+NFM+NR - Nconf > Nconf);
-        anticonf_sites = np.arange(NL+NFM+NR - Nconf, NL+NFM+NR);
+        tp_symmetry = 1;
+        if("tp_symmetry" in params_dict.keys()): tp_symmetry = params_dict["tp_symmetry"];
+        assert(tp_symmetry in [1,0]);
+        if(tp_symmetry==1): # different hopping for first AND last Nconf sites (preserves left-right symmetry)
+            assert(NL+NFM+NR - Nconf > Nconf);
+            anticonf_sites = np.arange(NL+NFM+NR - Nconf, NL+NFM+NR);
+        else:
+            anticonf_sites = np.array([]);
         for j in conf_sites:
+            print("j={:.0f} -> tp={:.2f}".format(j,tp));
             builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
             builder.add_term("CD",[j,j+1],tl-tp);
             builder.add_term("cd",[j+1,j],tl-tp);
             builder.add_term("CD",[j+1,j],tl-tp);
         for j in (anticonf_sites-1):
+            print("j={:.0f} -> tp={:.2f}".format(j,tp));
             builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
             builder.add_term("CD",[j,j+1],tl-tp);
             builder.add_term("cd",[j+1,j],tl-tp);
@@ -1987,15 +1996,18 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     if("Bent" in params_dict.keys() and len(central_sites)==2): # B field that entangles 2 loc spins
         Bent = params_dict["Bent"];
         for j in central_sites[:-1]:
-            builder.add_term("ZZ",[j,j+1],-Bent);
+            if(not ("triplet_flag" in params_dict.keys())):
+                print("no triplet flag")
+                builder.add_term("ZZ",[j,j+1],-Bent);
+            else: print("triplet flag");
             builder.add_term("PM",[j,j+1],-Bent/2);
             builder.add_term("MP",[j,j+1],-Bent/2);
     if("DSz2" in params_dict.keys()):
-        raise NotImplementedError;
-        assert(params_dict["DSz2"]==1.0);
         # hard z-axis for cases where Bent is applied
+        raise NotImplementedError("pointless for s-1/2 systems");
+        DSz2 = params_dict["DSz2"];
         for j in central_sites:
-            builder.add_term("ZZ",[j,j],4*abs(Bent));
+            builder.add_term("ZZ",[j,j],DSz2);
     if("Bx" in params_dict.keys()): # B in the x direction, w/in the confining region
         Bx = params_dict["Bx"];
         for j in conf_sites:
