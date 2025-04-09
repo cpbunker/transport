@@ -1708,7 +1708,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     assert(params_dict["sys_type"]=="STT");
 
     # load data from json
-    tl, Jz, Jx, Jsd = params_dict["tl"], params_dict["Jz"], params_dict["Jx"], params_dict["Jsd"];
+    tl, Jsd = params_dict["tl"], params_dict["Jsd"];
     NL, NFM, NR, Nconf = params_dict["NL"], params_dict["NFM"], params_dict["NR"], params_dict["Nconf"];
     Nbuffer = 0;
     if("Nbuffer" in params_dict.keys()): Nbuffer = params_dict["Nbuffer"];
@@ -1726,10 +1726,14 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     assert(TwoSd == 1); # for now, to get degeneracies right
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(Nbuffer,Nbuffer+NL)]);
-    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(Nbuffer+NL+NFM,Nbuffer+Nsites)]);
-    all_sites = np.array([j for j in range(Nsites)]);
+    llead_sites = np.arange(Nbuffer,Nbuffer+NL);
+    if("MSQ_spacer" in params_dict.keys()): # MSQs on either end of NFM only
+        print("MSQ spacer");
+        central_sites = np.array([Nbuffer+NL,Nbuffer+NL+NFM-1]);
+    else: # NFM full of MSQs
+        central_sites = np.arange(Nbuffer+NL,Nbuffer+NL+NFM);
+    rlead_sites = np.arange(Nbuffer+NL+NFM,Nbuffer+Nsites);
+    all_sites = np.arange(Nsites);
 
     # construct ExprBuilder
     if(params_dict["symmetry"] == "Sz"):
@@ -1845,10 +1849,15 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("CD",[j+1,j],-tl);
 
     # XXZ exchange between neighboring impurities
-    for j in central_sites[:-1]:
-        builder.add_term("ZZ",[j,j+1],-Jz);
-        builder.add_term("PM",[j,j+1],-Jx/2);
-        builder.add_term("MP",[j,j+1],-Jx/2);
+    if("Jz" in params_dict.keys() and "Jx" in params_dict.keys()):
+        Jz, Jx = params_dict["Jz"], params_dict["Jx"];
+        if("MSQ_spacer" in params_dict.keys()):
+            raise NotImplementedError("code assumes MSQs are neighbors");
+        else:
+            for j in central_sites[:-1]:
+                builder.add_term("ZZ",[j,j+1],-Jz);
+                builder.add_term("PM",[j,j+1],-Jx/2);
+                builder.add_term("MP",[j,j+1],-Jx/2);
 
     # sd exchange between impurities and charge density on their site
     for j in central_sites:
@@ -1934,11 +1943,14 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     TwoSz = params_dict["TwoSz"]; # fermion spin + impurity spin
 
     # classify site indices (spin not included)
-    llead_sites = np.array([j for j in range(Nbuffer,Nbuffer+NL)]);
-    central_sites = np.array([j for j in range(Nbuffer+NL,Nbuffer+NL+NFM) ]);
-    rlead_sites = np.array([j for j in range(Nbuffer+NL+NFM,Nbuffer+Nsites)]);
-    all_sites = np.array([j for j in range(Nsites)]);
-    conf_sites = np.array([j for j in range(Nbuffer,Nbuffer+Nconf)]);
+    llead_sites = np.arange(Nbuffer,Nbuffer+NL);
+    if("MSQ_spacer" in params_dict.keys()): # MSQs only at either end of NFM
+        central_sites = np.array([Nbuffer+NL,Nbuffer+NL+NFM-1]);
+    else: # NFM full of MSQs
+        central_sites = np.arange(Nbuffer+NL,Nbuffer+NL+NFM);
+    rlead_sites = np.arange(Nbuffer+NL+NFM,Nbuffer+Nsites);
+    all_sites = np.arange(Nsites);
+    conf_sites = np.arange(Nbuffer,Nbuffer+Nconf);
 
     # unpack ExprBuilder
     driver, builder = to_add_to;
@@ -1995,13 +2007,18 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         builder.add_term("CD",[j,j], Bsd/2);
     if("Bent" in params_dict.keys() and len(central_sites)==2): # B field that entangles 2 loc spins
         Bent = params_dict["Bent"];
-        for j in central_sites[:-1]:
+        if("MSQ_spacer" in params_dict.keys()): # MSQs at each end of NFM only
+            jpairs = [central_sites];
+        else: # NFM full of MSQs
+            jpairs = [];
+            for j in central_sites[:-1]: jpairs.append([j,j+1]);
+        for jpair in jpairs: # jpair is a list of two sites to entangle
             if(not ("triplet_flag" in params_dict.keys())):
                 print("no triplet flag")
-                builder.add_term("ZZ",[j,j+1],-Bent);
+                builder.add_term("ZZ",jpair,-Bent);
             else: print("triplet flag");
-            builder.add_term("PM",[j,j+1],-Bent/2);
-            builder.add_term("MP",[j,j+1],-Bent/2);
+            builder.add_term("PM",jpair,-Bent/2);
+            builder.add_term("MP",jpair,-Bent/2);
     if("DSz2" in params_dict.keys()):
         # hard z-axis for cases where Bent is applied
         raise NotImplementedError("pointless for s-1/2 systems");

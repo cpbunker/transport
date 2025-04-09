@@ -42,7 +42,10 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 
     # divide sites                              
     Nsites = params_dict["NL"] + params_dict["NFM"] + params_dict["NR"];      
-    central_j = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
+    if("MSQ_spacer" in params_dict.keys()):
+        central_j = np.array([params_dict["NL"],params_dict["NL"]+params_dict["NFM"]-1]);
+    else:
+        central_j = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
     all_j = np.arange(0, Nsites);
 
     # impurity Sz 
@@ -53,12 +56,12 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
             print("<Sz d={:.0f}> = {:.6f}".format(dsite, gd_s0_dmrg));
     if(len(central_j)==2):
         # (S1+S2)^2
-        S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, central_j[:2], is_impurity=True, block=block);
+        S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, central_j, is_impurity=True, block=block);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
 
         # mutual info
         minfo = tddmrg.mutual_info_wrapper(psi, eris_or_driver, central_j, True, block);
-        print("MI[{:.0f},{:.0f}] = {:.6f} (max = {:.6f})".format(*central_j[:2], minfo, np.log(2)));
+        print("MI[{:.0f},{:.0f}] = {:.6f} (max = {:.6f})".format(*central_j, minfo, np.log(2)));
 
     return;
                            

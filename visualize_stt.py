@@ -487,6 +487,9 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         elif("singlet" in dfile): myaxlab = " Singlet";
         elif("nofield" in dfile): myaxlab = " Field Removed";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];
+
+        params = json.load(open(dfile+".txt"));
+        if("MSQ_spacer" in params.keys()): myaxlab += ", $d =${:.0f}".format(params["NFM"]-1);
         if(isinstance(myaxlabels,str)):
             arrow_labels = ["$\swarrow$","$\downarrow$","$\searrow$"];
             if(axi==2): myaxlabels += myaxlab+arrow_labels[axi];
@@ -497,7 +500,6 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
             print("\n>>>",myaxlabels[-1],"=",dfile);
         
         # time evolution params
-        params = json.load(open(dfile+".txt"));
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
         print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
         if("Vdelta" in params.keys()): print("\n    Electric field w/ Delta V = {:.3f}".format(params["Vdelta"]));
@@ -516,13 +518,16 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Nsites];
         
         # plot heatmap
+        axes[axi].set_facecolor("steelblue");
         heatmap=axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
         print("    vmax = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
         
         # plot mutual info  
         which_imp = 0; # d=N_L 
         #label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=take_gradient);
-        MI_vs_time = np.zeros((len(times),params["NFM"]),dtype=float);
+        if("MSQ_spacer" in params.keys()): NFM_numsites = 2;
+        else: NFM_numsites = params["NFM"];
+        MI_vs_time = np.zeros((len(times),NFM_numsites),dtype=float);
         print("Loading "+dfile+"_arrays/"+obs4+"yjs_time0.00.npy");
         for ti in range(len(times)):
             MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
@@ -539,8 +544,8 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         
     # format axes
     axes[0].set_ylabel("Site $j$",fontsize=myfontsize); 
-    MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
-    MIaxes[0].set_ylabel("$I/\ln(2)$".format(params["NL"], params["NL"]+1),fontsize=myfontsize);
+    MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(params["NL"], params["NL"]+params["NFM"]-1),fontsize=myfontsize);
+    MIaxes[0].set_ylabel("$I/\ln(2)$",fontsize=myfontsize);
     for axi in range(len(datafiles)): 
         axes[axi].text(0.05,0.9,myaxlabels[axi], color="white",
             transform=axes[axi].transAxes,fontsize=myfontsize);
@@ -556,7 +561,7 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
     for axi, dfile in enumerate(datafiles):
         # qubit positions
         params = json.load(open(dfile+".txt"));
-        qubit_sites = params["NL"], params["NL"]+1; 
+        qubit_sites = params["NL"], params["NL"]+params["NFM"]-1; 
         if(params["Jsd"] != 0.0):
             rightax = axes[axi].twinx();
             rightax.set_ylim(axes[axi].get_ylim());
@@ -592,13 +597,15 @@ if(case in [10,11]): # animate time evol
     times = np.zeros((Nupdates+1,),dtype=float);
     for ti in range(len(times)):
         times[ti] = (update0 + ti)*tupdate;
+    time_coords = (0.0,-0.96);
+    if(params["Ne"]==1): time_coords = (0.0,0.20);
 
     # set up impurity spin animation
     xds = np.load(datafile+"_arrays/"+obs1+"xjs_time{:.2f}.npy".format(update0*tupdate));
     yds = np.load(datafile+"_arrays/"+obs1+"yjs_time{:.2f}.npy".format(update0*tupdate));
     impurity_sz, = ax.plot(xds, factor1*yds, marker=mark1, color=color1, markersize=linewidth1**2);
     ax.set_ylabel(get_ylabel(obs1, factor1), color=color1, fontsize=fontsize1);
-    time_annotation = ax.annotate("Time = {:.2f}".format(update0*tupdate), (0.0,-0.96),fontsize=fontsize1);
+    time_annotation = ax.annotate("Time = {:.2f}".format(update0*tupdate), time_coords, fontsize=fontsize1);
 
     # set up charge density animation
     xjs = np.load(datafile+"_arrays/"+obs2+"xjs_time{:.2f}.npy".format(update0*tupdate));
@@ -618,7 +625,9 @@ if(case in [10,11]): # animate time evol
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
     ax3.set_ylabel(get_ylabel(obs3, factor3), color=color3, fontsize=fontsize1);
-    #ax.set_ylim([0.0,0.25]);
+    if(params["Ne"]==1):
+        ax.set_ylim([0.0,0.25]);
+        ax.set_yticks([0.0,0.20]);
 
     # pairwise observable
     if(params["NFM"]>1):

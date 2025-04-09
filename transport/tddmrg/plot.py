@@ -53,7 +53,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     if(sys_type=="STT"):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
-        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(params_dict["Jsd"])+", $J_x = ${:.2f}$t_l$, $J_z = ${:.2f}$t_l$, $N_e = ${:.0f}".format(params_dict["Jx"], params_dict["Jz"], Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
+        title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(params_dict["Jsd"])+", $N_e = ${:.0f}".format(Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
         if("tp" in params_dict.keys()): title_str += ", $t_p =${:.1f}$t_l$".format(params_dict["tp"]);
         if("Vdelta" in params_dict.keys()): title_str += ", $\Delta V = ${:.3f}$t_l$".format(params_dict["Vdelta"]);
         # plot charge and spin vs site
@@ -80,7 +80,10 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     else:
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
-    central_sites = np.arange(NL,NL+NFM);
+    if("MSQ_spacer" in params_dict.keys()): # NFM has MSQs on either end only
+        central_sites = np.array([NL,NL+NFM-1]);
+    else: # NFM full of MSQs
+        central_sites = np.arange(NL,NL+NFM);
     all_sites = np.arange(Nsites);
 
     # plot
@@ -91,7 +94,6 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             # what sites to find <operator> over
             if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_"]): js_pass = central_sites; # operators on impurity sites only
             else: js_pass = all_sites;
-
             # what prefactors to apply to <operator>
             if(obs_strs[obsi] in ["G_"]): 
                 if(sys_type in ["SIAM", "SIETS"]): 
@@ -106,6 +108,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             else: prefactor = 1.0;
 
             # find <operator> vs sites
+            #print(obs_strs[obsi], js_pass)
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],is_impurity,block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
                                label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
