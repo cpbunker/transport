@@ -1159,7 +1159,7 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
 
 def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
-    Builds the parts of the STT Hamiltonian which apply at all t
+    Builds the parts of the SIAM Hamiltonian which apply at all t
     The physical params are contained in a .json file. They are all in eV.
     They are:
     tl (lead hopping), th (lead-impurity hopping), Vg (gate voltage on impurity),
@@ -1183,7 +1183,11 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     tl, th, Vg, U, Vb = params_dict["tl"], params_dict["th"], params_dict["Vg"], params_dict["U"], params_dict["Vb"];
     NL, NR = params_dict["NL"], params_dict["NR"];
     Nsites = NL+1+NR;
-    Ne=Nsites;
+    if("Ne_override" in params_dict.keys()):
+        assert("Ne" not in params_dict.keys());
+        Ne = params_dict["Ne_override"];
+    else:
+        Ne = 1*Nsites;
     if(block): assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
     TwoSz = 0;
 

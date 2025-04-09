@@ -1,7 +1,7 @@
 {
 "sys_type":"SIAM","symmetry":"Sz","plot":0,
 "tl":1.0, "Vb":0.001, "th":0.4, "Vg":0.0, "U":0.0,
-"NL":15, "NFM":1, "NR":16, "TwoSd":1,
+"NL":15, "NR":16, "TwoSd":1,
 "bdim_0":[400,400,400,500,500],"bdim_t":[600], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
-"time_step":0.1, "tupdate":2.0, "Nupdates":30
+"time_step":0.1, "tupdate":1.0, "Nupdates":30
 }

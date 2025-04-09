@@ -38,8 +38,6 @@ elif(case in [1,2]): # observable as a function of time
     for datai in range(len(datafiles)):
         params = json.load(open(datafiles[datai]+".txt"));
         title_or_label = open(datafiles[datai]+"_arrays/"+obs1+"title.txt","r").read().splitlines()[0][1:];
-        if(len(datafiles)==1): the_title = title_or_label[:]; the_label = "";
-        else: the_title = ""; the_label = title_or_label[:];
 
         # time evolution params
         tupdate = params["tupdate"];
@@ -47,9 +45,21 @@ elif(case in [1,2]): # observable as a function of time
         for ti in range(len(times)):
             times[ti] = time0 + ti*tupdate;
 
+        # total number of electrons
+        NL, NR = params["NL"], params["NR"];
+        if(params["sys_type"] == "SIAM"): NFM = 1;
+        elif(params["sys_type"] == "SIETS"): NFM = params["NFM"];
+        Nsites = NL+NFM+NR;
+        totalNe = np.sum(np.load(datafiles[datai]+"_arrays/occ_yjs_time{:.2f}.npy".format(times[-1])));
+        NsiteNestring = "$N_{sites}=$"+"{:.0f}, $N_e =${:.0f}".format(Nsites,totalNe); 
+        if(len(datafiles)==1):
+            the_title = title_or_label[:]; the_label = "";
+            print(NsiteNestring)
+        else:
+            the_label = title_or_label[:];
+            the_title = NsiteNestring[:];
+
         # current vs time
-        NL, NFM, NR = params["NL"], params["NFM"], params["NR"];
-        Nsites = NL+NFM+NR; 
         which_imp = 0;
         yds_vs_time = np.zeros((len(times),NFM+1),dtype=float);
         for ti in range(len(times)):

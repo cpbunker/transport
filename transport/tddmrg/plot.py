@@ -65,14 +65,16 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             obs_strs, ylabels, axlines = obs_strs[:-2], ylabels[:-2], axlines[:-2];
     elif(sys_type=="SIAM"):
         is_impurity = False;
-        NFM, Ne = 1, (NL+1+NR)//2;
+        NFM, Ne = 1, NL+1+NR;
+        if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
         title_str = "$U =${:.2f}$t_l, t_h =$ {:.2f}$t_l, V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(params_dict["U"], params_dict["th"], params_dict["Vg"], params_dict["Vb"]);
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type=="SIETS"):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
-        NFM, Ne = params_dict["NFM"], (NL+params_dict["NFM"]+NR)//2;
+        NFM, Ne = params_dict["NFM"], NL+params_dict["NFM"]+NR;
+        if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(params_dict["Jsd"])+"$t_h = ${:.2f}$t_l$, $V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(params_dict["th"], params_dict["Vg"], params_dict["Vb"]);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];

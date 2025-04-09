@@ -83,6 +83,9 @@ if("tdfci" in params.keys()):
 # unpacking
 myNL, myNR = params["NL"], params["NR"];
 myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
+if("Ne_override" in parms_dict.keys()):
+    assert("Ne" not in params_dict.keys());
+    myNe = params_dict["Ne_override"];
 nloc = 2; # spin dofs
 
 # checks
