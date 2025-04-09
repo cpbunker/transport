@@ -75,8 +75,11 @@ is_block = True; # whether to use block2 to do DMRG, or do FCI instead
 # open parameters JSON
 json_name = sys.argv[1];
 try:
-    try: params = json.load(open(json_name+".txt"));
-    except: params = json.load(open(json_name));
+    try: 
+        params = json.load(open(json_name+".txt"));
+    except: 
+        params = json.load(open(json_name));
+        json_name = json_name[:-4];
     print(">>> Params = ",params);
 except:
     raise Exception(json_name+" cannot be found");

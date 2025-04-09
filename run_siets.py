@@ -70,7 +70,15 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
-params = json.load(open(json_name)); print(">>> Params = ",params);
+try:
+    try:
+        params = json.load(open(json_name+".txt"));
+    except:
+        params = json.load(open(json_name));
+        json_name = json_name[:-4];
+    print(">>> Params = ",params);
+except:
+    raise Exception(json_name+" cannot be found");
 is_block = True;
 if("tdfci" in params.keys()):
     if(params["tdfci"]==1): is_block=False;

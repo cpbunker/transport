@@ -75,7 +75,15 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
 verbose = 2; assert verbose in [1,2,3];
 np.set_printoptions(precision = 4, suppress = True);
 json_name = sys.argv[1];
-params = json.load(open(json_name)); print(">>> Params = ",params);
+try:
+    try: 
+        params = json.load(open(json_name+".txt"));
+    except: 
+        params = json.load(open(json_name));
+        json_name = json_name[:-4];
+    print(">>> Params = ",params);
+except:
+    raise Exception(json_name+" cannot be found");
 is_block = True;
 if("tdfci" in params.keys()):
     if(params["tdfci"]==1): is_block=False;
@@ -83,9 +91,9 @@ if("tdfci" in params.keys()):
 # unpacking
 myNL, myNR = params["NL"], params["NR"];
 myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
-if("Ne_override" in parms_dict.keys()):
-    assert("Ne" not in params_dict.keys());
-    myNe = params_dict["Ne_override"];
+if("Ne_override" in params.keys()):
+    assert("Ne" not in params.keys());
+    myNe = params["Ne_override"];
 nloc = 2; # spin dofs
 
 # checks
@@ -145,8 +153,9 @@ H_driver_dyn, H_builder_dyn = tddmrg.H_SIAM_builder(params, is_block, scratch_di
 if(is_block):
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
     tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,gdstate_mps_inst,
-                  check_observables,json_name, verbose=2) # set to 2 to see mmps
-else:
+                  check_observables,tddmrg.plot.snapshot_bench,json_name, verbose=2) # set to 2 to see mmps
+
+else: # td-FCI !
     time_step, time_stop = params["time_step"], params["tupdate"];
     H_1e_dyn, H_2e_dyn = np.copy(H_driver_dyn), np.copy(H_builder_dyn); # output with block=True
     print("H_1e_dyn = ");print(H_1e_dyn[:nloc*myNL,:nloc*myNL]);print(H_1e_dyn[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);print(H_1e_dyn[nloc*(myNL+1):,nloc*(myNL+1):]); 

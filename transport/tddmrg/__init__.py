@@ -931,7 +931,7 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
 
     # right part
     print("\n>>> SKIPPING PCURRENT RIGHT\n>>> SKIPPING PCURRENT RIGHT\n");
-    assert False;
+    #assert False;
     #pcurrent_right = 0.0;
     #for sigma in [0,1]:
     #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], sigma, block, verbose=verbose);
@@ -985,7 +985,7 @@ def H_fermion_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # construct ExprBuilder
     if(block):
         if(params_dict["symmetry"] == "Sz"):
-            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
             driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
         else: raise NotImplementedError;
         builder = driver.expr_builder();
@@ -1188,8 +1188,9 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         Ne = params_dict["Ne_override"];
     else:
         Ne = 1*Nsites;
-    if(block): assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
-    TwoSz = 0;
+    
+    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz = 0;        # <------ !!!!
 
     # classify site indices (spin not included)
     llead_sites = np.arange(NL);
@@ -1200,7 +1201,7 @@ def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # construct ExprBuilder
     if(block):
         if(params_dict["symmetry"] == "Sz"):
-            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
             driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
         else: raise NotImplementedError;
         builder = driver.expr_builder();
@@ -1383,12 +1384,13 @@ def H_SIETS_builder(params_dict, block, scratch_dir="tmp", verbose=0):
     # construct ExprBuilder
     if(block):
         if(params_dict["symmetry"] == "Sz"):
-            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir[:-4], symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
             # using complex symmetry type, as above, seems linked to
             # Intel MKL ERROR: Parameter 8 was incorrect on entry to ZGEMM warnings
             # but only when TwoSz is input correctly
             # in latter case, we get a floating point exception even when complex sym is turned off!
             driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+            print(">>> driver(n_sites={:.0f}, n_elec={:.0f}, spin={:.0f})".format(Nsites, Ne, TwoSz));
         else: raise NotImplementedError;
 
         # Szd blocks for fermion-impurity operators

@@ -179,4 +179,4 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     plt.tight_layout();
     plt.show();
 
-
+else: raise Exception("case = {:.0f} not supported".format(case));

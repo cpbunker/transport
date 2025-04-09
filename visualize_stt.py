@@ -687,4 +687,4 @@ if(case in [10,11]): # animate time evol
     #     fps=15, metadata=dict(artist='Me'), bitrate=1800)
     # ani.save("movie.mp4", writer=writer)
 
-
+else: raise Exception("case = {:.0f} not supported".format(case));
