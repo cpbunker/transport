@@ -102,7 +102,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
                     prefactor = np.pi*params_dict["th"]/params_dict["Vb"]; # prefactor needed for G/G0
                 else: raise NotImplementedError;
                 js_pass = np.arange(NL,NL+NFM+1); # one extra
-            if(obs_strs[obsi] in ["J_"]): 
+            elif(obs_strs[obsi] in ["J_"]): 
                 if(sys_type in ["SIAM", "SIETS"]):
                     prefactor = params_dict["th"]; # prefactor needed for J
                 else: prefactor = params_dict["tl"];
