@@ -1157,6 +1157,176 @@ def H_fermion_polarizer(params_dict, to_add_to, block, verbose=0):
     else:
         return h1e, g2e;
 
+
+def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
+    '''
+    Builds SIAM Hamiltonian in RM model at all time
+    The physical params are contained in a .json file. They are all in eV.
+    They are:
+    v, w (RM hoppings), Vg (gate voltage on impurity),
+    Vb (bias between left and right leads.
+    Vb>0 means that left lead is higher chem potential than right, leading to
+    rightward/positive current).
+
+    NL (number sites in left lead),  NR (number of sites in right lead).
+    The total Sz of the electrons is always 0, so Ne_up=Ne_down=Ne//2
+    NB this requires that Ne%2==0
+
+    There is NO supersiting in this system
+
+    Returns: a tuple of DMRGDriver, ExprBuilder objects
+    '''
+    assert("SIAM" in params_dict["sys_type"]);
+
+    # load data from json
+    v, w, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["Vg"], params_dict["Vb"];
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+    Ntotal = NL+NFM+NR;
+
+    Ne = params_dict["Ne"];   
+    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz = 0;        # <------ !!!!
+
+    # classify site indices (spin not included)
+    RMdofs = 2;
+    lleads = np.arange(NL); # <-- blocks
+    centrals = np.arange(NL,NL+NFM);
+    rleads = np.arange(NL+NFM,Ntotal);
+    alls = np.arange(Ntotal);
+
+    # construct ExprBuilder
+    if(block):
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+        else: raise NotImplementedError;
+        builder = driver.expr_builder();
+        print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
+    else:       # <---------- change dtype to complex ?
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
+
+
+    # j <-> j+1 hopping for fermions everywhere
+    for spinstr in ["cd","CD"]:
+        for j in alls[:-1]:
+            # j is block -> spin orb index
+            muA, muB, muA_next = RMdofs*j, RMdofs*j+1, RMdofs*(j+1)
+            if(block):
+                builder.add_term(spinstr,[muA,muB],v); 
+                builder.add_term(spinstr,[muB,muA],vl);
+                builder.add_term(spinstr,[muB, muAnext],w);
+                builder.add_term(spinstr,[muAnext, muB],w);
+            else:
+                raise NotImplementedError;
+
+    # scattering region
+    for j in centrals:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        if(block):
+            builder.add_term("cd",[muA, muA], Vg);
+            builder.add_term("CD",[muA, muA], Vg);
+            builder.add_term("cd",[muB, muB], Vg);
+            builder.add_term("CD",[muB, muB], Vg);
+        else:
+            raise NotImplementedError;
+
+    # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
+    # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
+    # by the polarizer
+    for j in lleads:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        if(block):
+            builder.add_term("cd",[muA,muA], Vb/2); 
+            builder.add_term("CD",[muA,muA], Vb/2);
+            builder.add_term("cd",[muB,muB], Vb/2); 
+            builder.add_term("CD",[muB,muB], Vb/2);
+        else:
+            raise NotImplementedError;
+    for j in rleads:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        if(block):
+            builder.add_term("cd",[muA,muA], -Vb/2); 
+            builder.add_term("CD",[muA,muA], -Vb/2);
+            builder.add_term("cd",[muB,muB], -Vb/2); 
+            builder.add_term("CD",[muB,muB], -Vb/2);
+        else:
+            raise NotImplementedError;
+
+    if(block): return driver, builder;
+    else: return h1e, g2e;
+
+def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
+    '''
+    Adds terms specific to the t<0 SIAM Hamiltonian in RM model
+    (REMOVES Vb)
+
+    There is NO supersiting in this system
+
+    Args:
+    Params_dict: dict containing physical param values, these are defined in Hsys_base
+    to_add_to, tuple of objects to add terms to:
+        if block is True: these will be DMRGDriver, ExprBuilder objects
+        else: these will be 1-body and 2-body parts of the second quantized
+        Hamiltonian
+
+    Returns: a tuple of DMRGDriver, MPO
+    '''
+    assert("SIAM" in params_dict["sys_type"]);
+
+    # load data from json
+    v, w, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["Vg"], params_dict["Vb"];
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+    Ntotal = NL+NFM+NR;
+
+    #Ne = params_dict["Ne"];   
+    #assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    #TwoSz = 0;        # <------ !!!!
+
+    # classify site indices (spin not included)
+    RMdofs = 2;
+    lleads = np.arange(NL); # <-- blocks
+    centrals = np.arange(NL,NL+NFM);
+    rleads = np.arange(NL+NFM,Ntotal);
+    alls = np.arange(Ntotal);
+
+    # unpack ExprBuilder
+    if(block):
+        driver, builder = to_add_to;
+        if(driver.n_sites != Nsites): raise ValueError;
+    else:
+        h1e, g2e = to_add_to;
+        nloc = 2;
+        Nspinorbs = nloc*Nsites;
+        if(len(h1e) != Nspinorbs): raise ValueError;
+
+    for j in lleads:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        if(block):
+            builder.add_term("cd",[muA,muA], -Vb/2); 
+            builder.add_term("CD",[muA,muA], -Vb/2);
+            builder.add_term("cd",[muB,muB], -Vb/2); 
+            builder.add_term("CD",[muB,muB], -Vb/2);
+        else:
+            raise NotImplementedError;
+    for j in rleads:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        if(block):
+            builder.add_term("cd",[muA,muA], Vb/2); 
+            builder.add_term("CD",[muA,muA], Vb/2);
+            builder.add_term("cd",[muB,muB], Vb/2); 
+            builder.add_term("CD",[muB,muB], Vb/2);
+        else:
+            raise NotImplementedError;
+
+    # return
+    if(block):
+        mpo_from_builder = driver.get_mpo(builder.finalize());
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
+
 def H_SIAM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
     Builds the parts of the SIAM Hamiltonian which apply at all t

@@ -89,6 +89,10 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     all_sites = np.arange(Nsites);
 
     # plot
+    is_RM = False;
+    if("RM" in params_dict["sys_type"]);
+        assert("v" in params_dict.keys());
+        is_RM = True;
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
@@ -110,7 +114,13 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             else: prefactor = 1.0;
 
             # find <operator> vs sites
-            #print(obs_strs[obsi], js_pass)
+            if(is_RM):
+                new_js_pass = [];
+                for j in js_pass:
+                    new_js_pass.append(2*j);
+                    new_js_pass.append(2*j+1);
+                js_pass = new_js_pass;
+            print(obs_strs[obsi], js_pass)
             x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],is_impurity,block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
                                label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");

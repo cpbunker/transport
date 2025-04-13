@@ -44,6 +44,10 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     assert(isinstance(block, bool));
     print("\nTime = {:.2f}".format(the_time));
     if(not block): return; # hacky
+    RMflag = False;
+    if("RM" in params_dict["sys_type"]);
+        assert("v" in params_dict.keys());
+        RMflag = True;
 
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
@@ -53,20 +57,26 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     print("WF norm = {:.6f}".format(check_norm));
 
     # fermionic charge and spin in LL, Imp, RL
-    Impsite = params_dict["NL"]
-    sites_for_spin = [0, Impsite, Impsite+params_dict["NR"]];
+    Impi = params_dict["NL"]
+    sites_for_spin = [0, Impi, Impi+params_dict["NR"]];
     for sitei in sites_for_spin:
-        sz_mpo = tddmrg.get_sz(eris_or_driver, sitei, block);
-        sz_val = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
-        occ_mpo = tddmrg.get_occ(eris_or_driver, sitei, block);
-        occ_val = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
-        print("<n  j={:.0f} = {:.6f}".format(sitei, occ_val));
-        print("<sz j={:.0f} = {:.6f}".format(sitei, sz_val));
+        if(RMflag): sites_here = [2*sitei, 2*sitei+1];
+        else: sites_here = [sitei];
+        for i in sites_here:
+            sz_mpo = tddmrg.get_sz(eris_or_driver, i, block);
+            sz_val = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
+            occ_mpo = tddmrg.get_occ(eris_or_driver, i, block);
+            occ_val = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
+            print("<n  i={:.0f} = {:.6f}".format(i, occ_val));
+            print("<sz i={:.0f} = {:.6f}".format(i, sz_val));
 
     # current through Imp
-    Jimp_val = tddmrg.conductance_wrapper(psi, eris_or_driver, Impsite, block);
-    Jimp_val *= np.pi*params_dict["th"]/params_dict["Vb"];
-    print("<J  j={:.0f}>/Vb = {:.6f}".format(Impsite, Jimp_val));
+    if(RMflag): sites_for_J = [2*Impi, 2*Impi+1];
+    else: sites_for_J = [Impi];
+    for i in sites_for_J:
+        Jimp_val = tddmrg.conductance_wrapper(psi, eris_or_driver, i, block);
+        Jimp_val *= np.pi*params_dict["th"]/params_dict["Vb"];
+        print("<J  i={:.0f}>/Vb = {:.6f}".format(i, Jimp_val));
                            
 ##################################################################################
 #### run code
@@ -90,6 +100,7 @@ if("tdfci" in params.keys()):
 
 # unpacking
 myNL, myNR = params["NL"], params["NR"];
+if("NFM" in params.keys()): raise NotImplementedError;
 myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
 if("Ne_override" in params.keys()):
     assert("Ne" not in params.keys());
@@ -105,10 +116,20 @@ pass;
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+is_RM = False;
+if("RM" in params_dict["sys_type"]);
+    assert("v" in params_dict.keys());
+    is_RM = True;
+if(is_RM):
+    H_driver, H_builder = tddmrg.H_RM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+else:
+    H_driver, H_builder = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
+if(is_RM):
+    H_driver, H_mpo_initial = tddmrg.H_RM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
+else:
+    H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
     
 # gd state
 if(is_block):
@@ -149,7 +170,10 @@ plot.snapshot_bench(gdstate_mps_inst, eris_or_driver,
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+if(is_RM):
+    H_driver_dyn, H_builder_dyn = tddmrg.H_RM_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+else:
+    H_driver_dyn, H_builder_dyn = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
 if(is_block):
     H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
     tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,gdstate_mps_inst,

@@ -339,15 +339,16 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
     if(inoutsign not in [1,-1]): raise ValueError;
     # check RM compatibility
     if(len(diag)%2 != 0): raise ValueError("diag is not Rice-Mele type");
-    n_spin = len(diag)//2;
+    n_spin = len(diag)//2; # 2 internal dofs are A-B orbital, rest are spin
     offdiag_check = 1*offdiag;
-    offdiag_check[n_spin:,:n_spin] = 0*offdiag[n_spin:,:n_spin]; # remove lower left
+    offdiag_check[n_spin:,:n_spin] = 0*offdiag[n_spin:,:n_spin];
+    # ^ remove lower left, which should be only nonzero part
     if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
     
     # decompose into u, w, v
-    # for spin included, these will be vectors over spin channels
+    # for spin included, these will be vectors over spin channels (length nspin)
     u0 = (np.diagonal(diag)[:n_spin]+np.diagonal(diag)[n_spin:])/2;
-    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10);
+    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10); # ??
     u = (np.diagonal(diag)[:n_spin]-np.diagonal(diag)[n_spin:])/2; 
     v = np.diagonal(diag[:n_spin,n_spin:]);
     w = np.diagonal(offdiag[n_spin:,:n_spin]);
@@ -373,9 +374,11 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
 
     # return as same sized array
     gmat = np.zeros(np.shape(diag), dtype=complex);
-    if(inoutsign ==-1): # left lead: fill all spin channels of last B orb
+    if(inoutsign ==-1): # for left lead, return <B|g_00|B>
+                        # ie fill all spin channels of last B orb
         gmat[n_spin:,n_spin:] = np.diagflat(g);
-    elif(inoutsign== 1): # right lead: fill all spin channels of first A orb
+    elif(inoutsign== 1): # for right lead, return <A|g_00|A>
+                        # ie fill all spin channels of first A orb
         gmat[:n_spin,:n_spin] = np.diagflat(g);
     return gmat;
 

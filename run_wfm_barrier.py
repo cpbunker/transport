@@ -121,6 +121,7 @@ RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - 
 
 # construct diatomic Hamiltonian
 del hblocks, tnn, tnnn, source;
+# NC = NC*2 # <------ destroys agreement
 h00 = np.array([[uval, vval], [vval, -uval]]);
 h01 = np.array([[0.0, 0.0],[-tl, 0.0]]);
 print("\n\nRice-Mele, v = {:.2f}, u = {:.2f}".format(vval,uval));
