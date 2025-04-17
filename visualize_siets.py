@@ -185,7 +185,7 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         tup = params["tupdate"]
         #ddt_SR = np.gradient(yjSR_vs_time, tup)
         delta_nSR = np.append([np.nan],yjSR_vs_time[1:] - yjSR_vs_time[:-1]); # skip 1st time
-        axes[1].plot(times, -delta_nSR, color=color2, marker=datamarkers[datai], label="$n_SR(t)-n_{SR}(t-t_{up}) (t_{up}=$"+"{:.1f})".format(tup));
+        axes[1].plot(times, delta_nSR, color=color2, marker=datamarkers[datai], label="$n_SR(t)-n_{SR}(t-t_{up}) (t_{up}=$"+"{:.1f})".format(tup));
         
          # load current vs time data
         yds_vs_time = np.zeros((len(times),block2site*(NFM+1)),dtype=float);
@@ -205,8 +205,8 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         del_current_t = 1*del_current; # at this timestep
         del_current_trapezoid = (del_current_t + del_current_tminus)/2; # trapezoidal rule
         del del_current
-        axes[1].plot(times,tup*del_current_trapezoid, color=color3, marker="x",
-                label="$t_{up} \cdot \\frac{1}{2a}\left[ (J_{j+1}-J_j)_t + (J_{j+1}-J_j)_{t-t_{up}} \\right]$");
+        axes[1].plot(times,-tup*del_current_trapezoid, color=color3, marker="x",
+                label="$-t_{up} \cdot \\frac{1}{2a}\left[ (J_{j+1}-J_j)_t + (J_{j+1}-J_j)_{t-t_{up}} \\right]$");
              
     # formatting
     if(difference): axes[0].set_ylabel("$n_{SR}(t)-n_{SR}(0)$", color=color2, fontsize=fontsize1);
