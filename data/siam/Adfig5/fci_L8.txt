@@ -1,0 +1,7 @@
+{
+"sys_type":"SIAM","symmetry":"Sz","plot":0,"tdfci":1,
+"tl":1.0, "Vb":0.001, "th":0.4, "Vg":-0.5, "U":0.0,
+"NL":3, "NR":4, "TwoSd":1,
+"time_step":0.1, "tupdate":1.0, "Nupdates":1,
+"te_type":"FCI"
+}

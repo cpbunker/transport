@@ -97,15 +97,21 @@ except:
 is_block = True;
 if("tdfci" in params.keys()):
     if(params["tdfci"]==1): is_block=False;
+    
+# Rice-Mele model?
+is_RM = False;
+if("RM" in params["sys_type"]):
+    assert("v" in params.keys());
+    is_RM = True;
 
 # unpacking
-#myNL, myNR = params["NL"], params["NR"];
-#if("NFM" in params.keys()): raise NotImplementedError;
-#myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
-#if("Ne_override" in params.keys()):
-#assert("Ne" not in params.keys());
-#myNe = params["Ne_override"];
-#nloc = 2; # spin dofs
+nloc = 2; # spin dofs
+myNL, myNR = params["NL"], params["NR"];
+if("NFM" in params.keys() and (not is_RM)): raise NotImplementedError;
+myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
+if("Ne_override" in params.keys()):
+    assert("Ne" not in params.keys());
+    myNe = params["Ne_override"];
 
 # checks
 pass;
@@ -116,21 +122,21 @@ pass;
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-is_RM = False;
-if("RM" in params["sys_type"]):
-    assert("v" in params.keys());
-    is_RM = True;
 if(is_RM):
-    H_driver, H_builder = tddmrg.H_RM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+    H_driver, H_builder = tddmrg.H_RM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); 
 else:
-    H_driver, H_builder = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+    H_driver, H_builder = tddmrg.H_SIAM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); 
+    # if is_block: returns DMRGDriver, ExprBuilder
+    # else: returns h1e, g2e
 
 # add in t<0 terms
 if(is_RM):
     H_driver, H_mpo_initial = tddmrg.H_RM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
 else:
     H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
-
+    # if is_block: returns DMRGDriver, MPO for t<0 hamiltonian
+    # else: returns h1e, g2e
+    
 # gd state
 if(is_block):
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
