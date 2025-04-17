@@ -201,15 +201,20 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         for sitei in xds_plotted: print("G_ -> J_ at site {:.0f}".format(sitei));
         # convert units from conductance to current
         del_current = (params["Vb"]/np.pi)*(yds_vs_time[:,NFM*block2site]-yds_vs_time[:,0]); 
-        del_current = np.append([np.nan],del_current[:-1]); # ?
-        axes[1].plot(times,tup*del_current, color=color3, marker="x", label="$t_{up} \cdot \\frac{1}{a}(J_{j+1}-J_j)$");
+        del_current_tminus = np.append([np.nan],del_current[:-1]); # del_current at previous step
+        del_current_t = 1*del_current; # at this timestep
+        del_current_trapezoid = (del_current_t + del_current_tminus)/2; # trapezoidal rule
+        del del_current
+        axes[1].plot(times,tup*del_current_trapezoid, color=color3, marker="x",
+                label="$t_{up} \cdot \\frac{1}{2a}\left[ (J_{j+1}-J_j)_t + (J_{j+1}-J_j)_{t-t_{up}} \\right]$");
              
     # formatting
     if(difference): axes[0].set_ylabel("$n_{SR}(t)-n_{SR}(0)$", color=color2, fontsize=fontsize1);
     else: axes[0].set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
     axes[0].set_title(the_title);
     if(len(times)>num_xticks):
-        time_ticks = np.arange(times[0], times[-1], times[-1]//max(1,num_xticks-1))
+        #time_ticks = np.arange(times[0], times[-1], times[-1]//max(1,num_xticks-1))
+        time_ticks = [];
         axes[-1].set_xticks(time_ticks);
     axes[-1].set_xlim((times[0], times[-1]));
 
