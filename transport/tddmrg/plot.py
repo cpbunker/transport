@@ -13,12 +13,13 @@ mylinewidth = 3.0;
 mypanels = ["(a)","(b)","(c)","(d)"];
 #plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
-def vs_site(js,psi,eris_or_driver,which_obs, is_impurity, block, prefactor):
+def vs_site(params_dict, js,psi,eris_or_driver,which_obs, is_impurity, block, prefactor):
     '''
     '''
     if(not isinstance(prefactor, float)): raise TypeError;
     obs_funcs = {"occ_":tddmrg.get_occ, "sz_":tddmrg.get_sz,"Sdz_":tddmrg.get_Sd_mu, 
-                 "pur_":tddmrg.purity_wrapper, "G_":tddmrg.conductance_wrapper, "J_":tddmrg.pcurrent_wrapper,
+                 "pur_":tddmrg.purity_wrapper, "G_":tddmrg.conductance_wrapper, 
+                 "nB_":tddmrg.band_wrapper, "J_":tddmrg.pcurrent_wrapper,
                  "S2_":tddmrg.S2_wrapper, "MI_":tddmrg.mutual_info_wrapper};
     if(block): compute_func = tddmrg.compute_obs;
     else: compute_func = tdfci.compute_obs;
@@ -32,6 +33,8 @@ def vs_site(js,psi,eris_or_driver,which_obs, is_impurity, block, prefactor):
             else: vals[ji] = np.nan; # since op = op(d,d+1), we cannot compute for the final site.
         elif(which_obs in ["pur_","G_","J_"]): # WRAPPED operators
             vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji],block);
+        elif(which_obs in ["nB_"]): # WRAPPED operator w/ unique call signature
+            vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,js[ji],params_dict, block);
         else: # simple operators
             op = obs_funcs[which_obs](eris_or_driver,js[ji],block);
             ret = compute_func(psi, op, eris_or_driver);
@@ -50,7 +53,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     NL, NR = params_dict["NL"], params_dict["NR"];
 
     # Sys_type tells what observables we want to compute and how to compute them
-    if(sys_type=="STT"):
+    if(sys_type in ["STT", "STT_RM"]):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$".format(params_dict["Jsd"])+", $N_e = ${:.0f}".format(Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
@@ -63,7 +66,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[1.0,-1.0],[2.0,0.0],[np.log(2),0.0]];
         if(params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
             obs_strs, ylabels, axlines = obs_strs[:-2], ylabels[:-2], axlines[:-2];
-    elif(sys_type=="SIAM"):
+    elif(sys_type in ["SIAM", "SIAM_RM"]):
         is_impurity = False;
         NFM, Ne = 1, NL+1+NR;
         if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
@@ -71,7 +74,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
-    elif(sys_type=="SIETS"):
+    elif(sys_type in ["SIETS", "SIETS_RM"]):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM, Ne = params_dict["NFM"], NL+params_dict["NFM"]+NR;
         if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
@@ -83,31 +86,36 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
     if("MSQ_spacer" in params_dict.keys()): # NFM has MSQs on either end only
-        central_sites = np.array([NL,NL+NFM-1]);
+        centrals = np.array([NL,NL+NFM-1]);
     else: # NFM full of MSQs
-        central_sites = np.arange(NL,NL+NFM);
-    all_sites = np.arange(Nsites);
+        centrals = np.arange(NL,NL+NFM);
+    alls = np.arange(Nsites);
 
     # plot
     is_RM = False;
-    if("RM" in params_dict["sys_type"]);
+    if("RM" in params_dict["sys_type"]):
         assert("v" in params_dict.keys());
         is_RM = True;
+        obs_strs.append("nB_"); ylabels.append("nB"); axlines.append([1.0,0.0]);
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):
 
             # what sites to find <operator> over
-            if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_"]): js_pass = central_sites; # operators on impurity sites only
-            else: js_pass = all_sites;
+            if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_"]): 
+                js_pass = centrals; # operators on impurity sites only
+            elif(obs_strs[obsi] in ["nB_"]):
+                js_pass = centrals[:1]; # 1st block, A and B sites
+            else: js_pass = alls;
+
             # what prefactors to apply to <operator>
             if(obs_strs[obsi] in ["G_"]): 
-                if(sys_type in ["SIAM", "SIETS"]): 
+                if(sys_type in ["SIAM", "SIAM_RM","SIETS","SIETS_RM"]): 
                     prefactor = np.pi*params_dict["th"]/params_dict["Vb"]; # prefactor needed for G/G0
                 else: raise NotImplementedError;
-                js_pass = np.arange(NL,NL+NFM+1); # one extra
+                js_pass = np.append(centrals, [centrals[-1]+1]); # one extra
             elif(obs_strs[obsi] in ["J_"]): 
-                if(sys_type in ["SIAM", "SIETS"]):
+                if(sys_type in ["SIAM", "SIAM_RM", "SIETS", "SIETS_RM"]):
                     prefactor = params_dict["th"]; # prefactor needed for J
                 else: prefactor = params_dict["tl"];
                 js_pass = [params_dict["Nconf"], NL, NL+NFM]; 
@@ -121,7 +129,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
                     new_js_pass.append(2*j+1);
                 js_pass = new_js_pass;
             print(obs_strs[obsi], js_pass)
-            x_js, y_js = vs_site(js_pass,psi_mps,driver_inst,obs_strs[obsi],is_impurity,block,prefactor);
+            x_js, y_js = vs_site(params_dict,js_pass,psi_mps,driver_inst,obs_strs[obsi],is_impurity,block,prefactor);
             axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
                                label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
@@ -151,15 +159,15 @@ def snapshot_fromdata(loadname, time, sys_type):
     '''
     
     # plot charge and spin vs site
-    if(sys_type == "STT"):
+    if(sys_type in ["STT"]):
         obs_strs = ["occ_", "sz_", "Sdz_", "S2_", "MI_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[2.0,0.0],[np.log(2),0.0]];
-    elif(sys_type == "SIAM"):
+    elif(sys_type in ["SIAM", "SIAM_RM"]):
         obs_strs = ["occ_", "sz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
-    elif(sys_type == "SIETS"):
+    elif(sys_type in ["SIETS", "SIETS_RM"]):
         obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $", "$ \langle S_{d}^{z} \\rangle $","$\langle G_{j} \\rangle/G_0$"];
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];

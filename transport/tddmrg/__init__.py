@@ -623,7 +623,7 @@ def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
     '''
     MPO representing <Sz> of site impurity at site whichsite
     '''
-    assert(block);
+    if(not block): raise NotImplementedError;
     builder = eris_or_driver.expr_builder();
 
     # construct
@@ -645,7 +645,7 @@ def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
     '''
     MPO representing <Sz^2> of site impurity at site whichsite
     '''
-    assert(block);
+    if(not block): raise NotImplementedError;
     builder = eris_or_driver.expr_builder();
 
     # construct
@@ -773,81 +773,6 @@ def chirality_wrapper(psi,eris_or_driver, whichsites, block):
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
-def get_concurrence(eris_or_driver, whichsites, symm_block, add_ident, block, verbose=0):
-    '''
-    MPO corresponding to the action of the operator
-    \sigma_y^1 \otimes \sigma_y^2 
-    where 1, 2 denote the impurity spins, which in this case must be spin-1/2
-    This operator is needed to compute concurrence and pseudoconcurrence, below
-    
-    Since the full form of this operator does not conserve total TwoSz, we break it up
-    into blocks which do, and only return one of such "symmetry blocks" at a time
-    '''
-    assert(block);
-    builder = eris_or_driver.expr_builder()
-
-    # construct
-    which1, which2 = whichsites;
-    if(symm_block == 2):
-        builder.add_term("PP",[which1,which2],-1.0);
-    elif(symm_block == 0):
-        builder.add_term("PM",[which1,which2], 1.0);
-        builder.add_term("MP",[which1,which2], 1.0);
-    elif(symm_block ==-2):
-        builder.add_term("MM",[which1,which2],-1.0);
-    else: raise NotImplementedError;
-
-    # return
-    #print("\n"*20)
-    from pyblock2.driver.core import MPOAlgorithmTypes
-    ret = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"),add_ident=add_ident, iprint=0)# cutoff=0.0, algo_type=MPOAlgorithmTypes.SVD, iprint=2);
-    #print(type(ret))
-    #print(type(ret.prim_mpo))
-    #assert False
-    return ret
-
-def concurrence_wrapper(psi,eris_or_driver, whichsites, block, use_b3 = False):
-    '''
-    Concurrence is defined by Eqs 4 and 7 of https://doi.org/10.1103/PhysRevLett.80.2245
-    It involves taking the complex conjugate of the coefficients of the ket |\psi> (this 
-    is NOT the same as taking the bra, which complex conjugates the coefficients AND takes
-    the basis states from kets to bras). 
-    C=1 is maximal entanglement
-    
-    Sums expectation values across TwoSz=+2, 0, -2 symmetry blocks to find concurrence
-
-    NB also for s>1/2 we will need to define which levels are the qubits
-    '''
-    if(whichsites[0] == whichsites[1]): return np.nan;# sites have to be distinct
-    raise NotImplementedError; # not trusted
-
-    # exp vals across symmetry blocks
-    sblocks = [-2,0,2];
-    sterms = [];
-    if(use_b3): # use pyblock3 to calculate
-        psi_b3 = MPSTools.from_block2(psi); #  convert the MPS to pyblock3
-        psi_star = psi_b3.conj(); # complex conjugates coefs of ket
-        for sblock in sblocks:
-            mpo = get_concurrence(eris_or_driver, whichsites, sblock, False, block);
-            mpo_b3 = MPOTools.from_block2(mpo); # convert the MPO to pyblock3
-            # pyblock3 construction for determining the expectation value of an MPO:
-            norm_b3 = np.dot(psi_b3.conj(),psi_b3);
-            sterms.append( np.dot(psi_b3.conj(), mpo_b3 @ psi_star)/norm_b3 );
-
-    else: # use block2 to calculate
-        for sblock in sblocks:
-            psi_star = eris_or_driver.copy_mps(psi, tag="PSI-STAR");
-            psi_star.conjugate(); # in-place
-            mpo = get_concurrence(eris_or_driver, whichsites, sblock, True, block);
-            # use normal block2 construction for determining the expectation value of an MPO
-            norm = eris_or_driver.expectation(psi, eris_or_driver.get_identity_mpo(), psi);
-            sterms.append(eris_or_driver.expectation(psi, mpo, psi_star)/norm);
-       
-    # return
-    ret = np.sqrt(np.conj(np.sum(sterms))*np.sum(sterms));
-    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
-    return np.real(ret);
-    
 def get_pcurrent(eris_or_driver, whichsite, sigma, block, verbose=0):
     '''
     MPO for particle current from whichsite-1 to whichsite
@@ -915,8 +840,6 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
     '''
     Consider site whichsite. This wrapper:
     1) sums the spin currents from whichsite-1 to whichsite (LEFT part)
-    2) sums the spin currents from whichsite to whichsite+1 (RIGHT part)
-    3) averages over the results of 1 and 2 to find the current through whichsite
     In plotting steps, we multiply this by  \pi*hopping/Vb to make it conductance/G0
     '''
     if(block): compute_func = compute_obs;
@@ -929,19 +852,94 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
         left_val = compute_func(psi, left_mpo, eris_or_driver);
         pcurrent_left += left_val;
 
-    # right part
-    print("\n>>> SKIPPING PCURRENT RIGHT\n>>> SKIPPING PCURRENT RIGHT\n");
-    #assert False;
-    #pcurrent_right = 0.0;
-    #for sigma in [0,1]:
-    #right_mpo = get_pcurrent(eris_or_driver, [whichsite, whichsite+1], sigma, block, verbose=verbose);
-    #right_val = compute_func(psi, right_mpo, eris_or_driver);
-    #pcurrent_right += right_val;
-
-    # average
+    # just return left part
     ret = 1*(pcurrent_left); # must add  \pi*hopping/Vb factor later
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
+
+def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
+    '''
+    '''
+
+    # load data from json
+    v, w, Vg = params_dict["v"], params_dict["w"], params_dict["Vg"];
+    Ntotal = params_dict["NL"]+params_dict["NFM"]+params_dict["NR"];
+
+    # classify site indices (spin not included)
+    RMdofs = 2;
+    lleads = np.arange(params_dict["NL"]); # <-- blocks
+    centrals = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"])
+    rleads = np.arange(params_dict["NL"]+params_dict["NFM"],Ntotal);
+    alls = np.arange(Ntotal);
+    Nmolorbs = RMdofs*Ntotal;
+
+    # which lead to project onto
+    whichblock = whichsite // 2; 
+    if(whichblock in lleads): site_projector = np.arange(RMdofs*params_dict["NL"]); 
+    elif(whichblock in centrals): site_projector = np.arange(RMdofs*params_dict["NL"],RMdofs*(params_dict["NL"]+params_dict["NFM"]));
+    elif(whichblock in rleads): site_projector = np.arange(RMdofs*(params_dict["NL"]+params_dict["NFM"]),RMdofs*Ntotal);
+    else: print(whichblock); raise NotImplementedError;
+    # override - all sites
+    site_projector = np.arange(RMdofs*Ntotal);
+
+    # construct single-body Hamiltonian as matrix
+    h1e_twhen, g2e_dummy = H_RM_builder(params_dict, block=False);
+    h1e_twhen, g2e_dummy = H_RM_polarizer(params_dict, (h1e_twhen, g2e_dummy), block=False);
+    h1e_twhen = h1e_twhen[::2,::2]; # <- make spinless !!
+    print(h1e_twhen[:8,:8]);
+    print(h1e_twhen[-8:,-8:]);
+
+    # diagonalize single-body Hamiltonian -> energy eigenstates
+    vals_twhen, vecs_twhen = np.linalg.eigh(h1e_twhen);
+    vecs_twhen = vecs_twhen.T;
+
+    # output for density of states
+    print("\n\nH_RM_builder + H_RM_polarizer energies");
+    print([val for val in vals_twhen]);
+    assert(Nmolorbs == len(vals_twhen)); # 1 eigenval for each spinless orb
+
+    # which band to project onto
+    # valence band
+    if(whichsite % 2 ==0): band_divider = np.arange(0,len(vals_twhen)//2);
+    # conduction band
+    elif(whichsite % 2 == 1): band_divider = np.arange(len(vals_twhen)//2,len(vals_twhen));
+    print("in band_wrapper");
+    print("whichblock = {:.0f}, whichsite = {:.0f}".format(whichblock, whichsite)+"->")
+    print("band_divider = ", band_divider, "\n({:.0f} total k states)".format(len(vecs_twhen)));
+    print("site_projector = ", site_projector, "\n({:.0f} total sites)".format(len(vecs_twhen[0])))
+    #assert False;
+
+    # observable for band occupancy
+    if(block):
+        builder = eris_or_driver.expr_builder();
+    else:
+        nloc = 2;
+        Nspinorbs = nloc*RMdofs*Ntotal;
+        h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float);
+        g2e_zeros = np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
+
+    # coefs for this observable come from energy eigenstates
+    assert(len(vecs_twhen[0]) == Nmolorbs); # spatial extent of vecs = number of spinless orbs 
+    for kmvali in band_divider: #iter over states in band
+        for j in site_projector:
+            for jp in site_projector:
+                for sigma in [0,1]:
+                    spinstr = ["cd","CD"][sigma];
+                    alpha_alpha = vecs_twhen[kmvali,j]*np.conj(vecs_twhen[kmvali,jp]);
+                    if(block):
+                        builder.add_term(spinstr,[j,jp],alpha_alpha);
+                    else:
+                        h1e[nloc*j+sigma,nloc*jp+sigma] += alpha_alpha;
+
+    # fci operator
+    if(not block): op = tdfci.ERIs(h1e, g2e_zeros, eris_or_driver.mo_coeff);
+
+    # matrix product operator
+    band_mpo = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    ret = compute_obs(psi, band_mpo, eris_or_driver);
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
+    return np.real(ret);
+
 
 ##########################################################################################################
 #### hamiltonian constructors
@@ -1180,6 +1178,7 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
 
     # load data from json
     v, w, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["Vg"], params_dict["Vb"];
+    assert(abs(w) == params_dict["th"]);
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 
@@ -1193,66 +1192,81 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     centrals = np.arange(NL,NL+NFM);
     rleads = np.arange(NL+NFM,Ntotal);
     alls = np.arange(Ntotal);
+    Nmolorbs = RMdofs*Ntotal;
 
     # construct ExprBuilder
     if(block):
         if(params_dict["symmetry"] == "Sz"):
             driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
-            driver.initialize_system(n_sites=Nsites, n_elec=Ne, spin=TwoSz);
+            driver.initialize_system(n_sites=Nmolorbs, n_elec=Ne, spin=TwoSz);
         else: raise NotImplementedError;
         builder = driver.expr_builder();
         print("\n",40*"#","\nConstructed builder\n",40*"#","\n");
     else:       # <---------- change dtype to complex ?
         nloc = 2;
-        Nspinorbs = nloc*Nsites;
+        Nspinorbs = nloc*RMdofs*Ntotal;
         h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
 
     # j <-> j+1 hopping for fermions everywhere
-    for spinstr in ["cd","CD"]:
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
         for j in alls[:-1]:
             # j is block -> spin orb index
             muA, muB, muA_next = RMdofs*j, RMdofs*j+1, RMdofs*(j+1)
             if(block):
                 builder.add_term(spinstr,[muA,muB],v); 
-                builder.add_term(spinstr,[muB,muA],vl);
-                builder.add_term(spinstr,[muB, muAnext],w);
-                builder.add_term(spinstr,[muAnext, muB],w);
+                builder.add_term(spinstr,[muB,muA],v);
+                builder.add_term(spinstr,[muB, muA_next],w);
+                builder.add_term(spinstr,[muA_next, muB],w);
             else:
-                raise NotImplementedError;
+                h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA_next+sigma] += w;
+                h1e[nloc*muA_next+sigma,nloc*muB+sigma] += w;
+        for j in [alls[-1]]: # last block needs intra-block only
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muB],v);
+                builder.add_term(spinstr,[muB,muA],v);
+            else:
+                h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
 
     # scattering region
-    for j in centrals:
-        muA, muB = RMdofs*j, RMdofs*j+1;
-        if(block):
-            builder.add_term("cd",[muA, muA], Vg);
-            builder.add_term("CD",[muA, muA], Vg);
-            builder.add_term("cd",[muB, muB], Vg);
-            builder.add_term("CD",[muB, muB], Vg);
-        else:
-            raise NotImplementedError;
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
+        for j in centrals:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA, muA], Vg);
+                builder.add_term(spinstr,[muB, muB], Vg);
+            else:
+                h1e[nloc*muA+sigma,nloc*muA+sigma] += Vg;
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += Vg;
+    assert(params_dict["U"] == 0.0);
 
     # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
     # by the polarizer
-    for j in lleads:
-        muA, muB = RMdofs*j, RMdofs*j+1;
-        if(block):
-            builder.add_term("cd",[muA,muA], Vb/2); 
-            builder.add_term("CD",[muA,muA], Vb/2);
-            builder.add_term("cd",[muB,muB], Vb/2); 
-            builder.add_term("CD",[muB,muB], Vb/2);
-        else:
-            raise NotImplementedError;
-    for j in rleads:
-        muA, muB = RMdofs*j, RMdofs*j+1;
-        if(block):
-            builder.add_term("cd",[muA,muA], -Vb/2); 
-            builder.add_term("CD",[muA,muA], -Vb/2);
-            builder.add_term("cd",[muB,muB], -Vb/2); 
-            builder.add_term("CD",[muB,muB], -Vb/2);
-        else:
-            raise NotImplementedError;
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
+        for j in lleads:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muA], Vb/2); 
+                builder.add_term(spinstr,[muB,muB], Vb/2); 
+            else:
+                h1e[nloc*muA+sigma,nloc*muA+sigma] += Vb/2;
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += Vb/2;
+        for j in rleads:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muA], -Vb/2);
+                builder.add_term(spinstr,[muB,muB], -Vb/2); 
+            else:
+                h1e[nloc*muA+sigma,nloc*muA+sigma] += -Vb/2;
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -Vb/2;
 
     if(block): return driver, builder;
     else: return h1e, g2e;
@@ -1280,10 +1294,6 @@ def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 
-    #Ne = params_dict["Ne"];   
-    #assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
-    #TwoSz = 0;        # <------ !!!!
-
     # classify site indices (spin not included)
     RMdofs = 2;
     lleads = np.arange(NL); # <-- blocks
@@ -1294,35 +1304,38 @@ def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
     # unpack ExprBuilder
     if(block):
         driver, builder = to_add_to;
-        if(driver.n_sites != Nsites): raise ValueError;
+        if(driver.n_sites != RMdofs*Ntotal): raise ValueError; # 2 * number of blocks
     else:
         h1e, g2e = to_add_to;
         nloc = 2;
-        Nspinorbs = nloc*Nsites;
+        Nspinorbs = nloc*RMdofs*Ntotal;
         if(len(h1e) != Nspinorbs): raise ValueError;
 
-    for j in lleads:
-        muA, muB = RMdofs*j, RMdofs*j+1;
-        if(block):
-            builder.add_term("cd",[muA,muA], -Vb/2); 
-            builder.add_term("CD",[muA,muA], -Vb/2);
-            builder.add_term("cd",[muB,muB], -Vb/2); 
-            builder.add_term("CD",[muB,muB], -Vb/2);
-        else:
-            raise NotImplementedError;
-    for j in rleads:
-        muA, muB = RMdofs*j, RMdofs*j+1;
-        if(block):
-            builder.add_term("cd",[muA,muA], Vb/2); 
-            builder.add_term("CD",[muA,muA], Vb/2);
-            builder.add_term("cd",[muB,muB], Vb/2); 
-            builder.add_term("CD",[muB,muB], Vb/2);
-        else:
-            raise NotImplementedError;
+    # REMOVE bias
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
+        for j in lleads:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muA], -Vb/2);
+                builder.add_term(spinstr,[muB,muB], -Vb/2);
+            else:
+                h1e[nloc*muA+sigma,nloc*muA+sigma] += -Vb/2;
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -Vb/2;
+        for j in rleads:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muA], Vb/2);
+                builder.add_term(spinstr,[muB,muB], Vb/2);
+            else:
+                h1e[nloc*muA+sigma,nloc*muA+sigma] += Vb/2;
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += Vb/2;
 
     # return
     if(block):
+        print("Finalizing builder")
         mpo_from_builder = driver.get_mpo(builder.finalize());
+        print("Finalized builder");
         return driver, mpo_from_builder;
     else:
         return h1e, g2e;

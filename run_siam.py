@@ -45,7 +45,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     print("\nTime = {:.2f}".format(the_time));
     if(not block): return; # hacky
     RMflag = False;
-    if("RM" in params_dict["sys_type"]);
+    if("RM" in params_dict["sys_type"]):
         assert("v" in params_dict.keys());
         RMflag = True;
 
@@ -99,13 +99,13 @@ if("tdfci" in params.keys()):
     if(params["tdfci"]==1): is_block=False;
 
 # unpacking
-myNL, myNR = params["NL"], params["NR"];
-if("NFM" in params.keys()): raise NotImplementedError;
-myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
-if("Ne_override" in params.keys()):
-    assert("Ne" not in params.keys());
-    myNe = params["Ne_override"];
-nloc = 2; # spin dofs
+#myNL, myNR = params["NL"], params["NR"];
+#if("NFM" in params.keys()): raise NotImplementedError;
+#myNe = myNL+1+myNR; # total num electrons. For fci, should all be input as spin up
+#if("Ne_override" in params.keys()):
+#assert("Ne" not in params.keys());
+#myNe = params["Ne_override"];
+#nloc = 2; # spin dofs
 
 # checks
 pass;
@@ -117,8 +117,8 @@ init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
 is_RM = False;
-if("RM" in params_dict["sys_type"]);
-    assert("v" in params_dict.keys());
+if("RM" in params["sys_type"]):
+    assert("v" in params.keys());
     is_RM = True;
 if(is_RM):
     H_driver, H_builder = tddmrg.H_RM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
@@ -130,7 +130,7 @@ if(is_RM):
     H_driver, H_mpo_initial = tddmrg.H_RM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
 else:
     H_driver, H_mpo_initial = tddmrg.H_SIAM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
-    
+
 # gd state
 if(is_block):
     gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
