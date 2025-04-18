@@ -1,0 +1,10 @@
+Trying to replicate SIAM conductance dependence on gate voltage in 32-site chain,
+as originally found in Feiguin et al, PRB (2006)
+For half filled system, se whould see G/G0 saturate to 1 for Vg=0.0. At other
+Vg values, G/G0 should drop off symmetrically with |Vg|
+My results:
+-I observse |Vg| symmetry and drop-off for th=0.4
+-Results are very snesitive to th. For th=1.0 G/G0 converges to 1 for ALL Vg
+ values, ie there is symmetry but no dropoff
+
+**Results are current as of Apr 2025**

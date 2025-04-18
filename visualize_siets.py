@@ -177,15 +177,10 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         if(not difference):
             axes[0].plot(times, yjL_vs_time,color=color1,marker=datamarkers[datai]);
             axes[0].plot(times, yjR_vs_time,color=color3,marker=datamarkers[datai]);
-
-        # plot conservation of charge
-        axes[1].plot(times, np.sum(yjs_vs_time, axis=1)-np.sum(yjs_vs_time, axis=1)[0], color="black",linestyle="dashed");
         
-        # CONTINUITY: plot discrete time deriv of n_SR
+        # CONTINUITY: discrete time deriv of n_SR
         tup = params["tupdate"]
-        #ddt_SR = np.gradient(yjSR_vs_time, tup)
         delta_nSR = np.append([np.nan],yjSR_vs_time[1:] - yjSR_vs_time[:-1]); # skip 1st time
-        axes[1].plot(times, delta_nSR, color=color2, marker=datamarkers[datai], label="$n_SR(t)-n_{SR}(t-t_{up}) (t_{up}=$"+"{:.1f})".format(tup));
         
          # load current vs time data
         yds_vs_time = np.zeros((len(times),block2site*(NFM+1)),dtype=float);
@@ -205,9 +200,14 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         del_current_t = 1*del_current; # at this timestep
         del_current_trapezoid = (del_current_t + del_current_tminus)/2; # trapezoidal rule
         del del_current
-        axes[1].plot(times,-tup*del_current_trapezoid, color=color3, marker="x",
-                label="$-t_{up} \cdot \\frac{1}{2a}\left[ (J_{j+1}-J_j)_t + (J_{j+1}-J_j)_{t-t_{up}} \\right]$");
+        if(True):
+            axes[1].plot(times, delta_nSR, color=color2, marker=datamarkers[datai], label="$n_SR(t)-n_{SR}(t-t_{up}) (t_{up}=$"+"{:.1f})".format(tup));
+            axes[1].plot(times,-tup*del_current_trapezoid, color=color3, marker="x",label="$-t_{up} \cdot \\frac{1}{2a}\left[ (J_{j+1}-J_j)_t + (J_{j+1}-J_j)_{t-t_{up}} \\right]$");
              
+        # plot conservation of charge
+        else:
+            axes[1].plot(times, tup*del_current_trapezoid+delta_nSR, color="black",linestyle="dashed");
+
     # formatting
     if(difference): axes[0].set_ylabel("$n_{SR}(t)-n_{SR}(0)$", color=color2, fontsize=fontsize1);
     else: axes[0].set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
