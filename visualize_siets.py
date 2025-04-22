@@ -55,12 +55,11 @@ elif(case in [1,2]): # observable as a function of time
         totalNe = np.sum(np.load(datafiles[datai]+"_arrays/occ_yjs_time{:.2f}.npy".format(times[-1])));
         NsiteNestring = "$N_{sites}=$"+"{:.0f}, $N_e =${:.0f}".format(Ntotal*block2site,totalNe); 
         if(params["sys_type"] in ["SIAM_RM","SIETS_RM"]):
-            CB_edges = [np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)];
-            VB_edges = [-np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),-np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)];
-            Egap = np.min(CB_edges) - np.max(VB_edges);
+            band_edges = [np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)];
+            Egap = np.min(band_edges) - np.max(-band_edges);
             Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
             #NsiteNestring += Egap_str;
-            title_or_label = "$t_h =${:.2f}, $V_b =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["Vb"],params["v"],params["w"]);
+            title_or_label = "$t_h =${:.2f}, $V_b =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["Vb"],params["u"],params["v"],params["w"]);
             title_or_label += Egap_str;
         if(len(datafiles)==1):
             the_title = title_or_label[:]; the_label = "";
