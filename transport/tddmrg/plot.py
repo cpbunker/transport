@@ -95,6 +95,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     is_RM = False;
     if("RM" in params_dict["sys_type"]):
         assert("v" in params_dict.keys());
+        #assert(abs(params_dict["w"]) == abs(params_dict["th"]));
         is_RM = True;
         obs_strs.append("nB_"); ylabels.append("nB"); axlines.append([1.0,0.0]);
     fig, axes = plt.subplots(len(obs_strs));

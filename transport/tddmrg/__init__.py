@@ -1177,8 +1177,8 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     assert("SIAM" in params_dict["sys_type"]);
 
     # load data from json
-    v, w, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["Vg"], params_dict["Vb"];
-    assert(abs(w) == params_dict["th"]);
+    v, w, u, th, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["u"], params_dict["th"], params_dict["Vg"], params_dict["Vb"];
+    #assert(abs(w) == abs(params_dict["th"]));
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 
@@ -1219,23 +1219,32 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                 builder.add_term(spinstr,[muB,muA],v);
                 builder.add_term(spinstr,[muB, muA_next],w);
                 builder.add_term(spinstr,[muA_next, muB],w);
+                builder.add_term(spinstr,[muA,muA], u); # staggered intra-dimer **potential**
+                builder.add_term(spinstr,[muB,muB],-u);
             else:
                 h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
                 h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
                 h1e[nloc*muB+sigma,nloc*muA_next+sigma] += w;
                 h1e[nloc*muA_next+sigma,nloc*muB+sigma] += w;
+                h1e[nloc*muA+sigma,nloc*muA+sigma] +=  u; # staggered intra-dimer **potential**
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -u;
         for j in [alls[-1]]: # last block needs intra-block only
             muA, muB = RMdofs*j, RMdofs*j+1;
             if(block):
                 builder.add_term(spinstr,[muA,muB],v);
                 builder.add_term(spinstr,[muB,muA],v);
+                builder.add_term(spinstr,[muA,muA], u); # staggered intra-dimer **potential**
+                builder.add_term(spinstr,[muB,muB],-u);
             else:
                 h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
                 h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
+                h1e[nloc*muA+sigma,nloc*muA+sigma] +=  u; # staggered intra-dimer **potential**
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -u;
 
     # scattering region
     for sigma in [0,1]:
         spinstr = ["cd","CD"][sigma];
+        # gate voltage
         for j in centrals:
             muA, muB = RMdofs*j, RMdofs*j+1;
             if(block):
@@ -1244,7 +1253,17 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
             else:
                 h1e[nloc*muA+sigma,nloc*muA+sigma] += Vg;
                 h1e[nloc*muB+sigma,nloc*muB+sigma] += Vg;
-    assert(params_dict["U"] == 0.0);
+        # hybridization btwn scattering region and leads
+        for j_hyb in [centrals[0]-1,centrals[-1]]: # should be interblock only, i.e. muB <-> muA_next
+            muA, muB, muA_next = RMdofs*j_hyb, RMdofs*j_hyb+1, RMdofs*(j_hyb+1);
+            assert(th > 0.0); # to keep track of different sign conventions
+            if(block):     
+                builder.add_term(spinstr,[muB, muA_next], -w -th); # REMOVE `w` already there
+                builder.add_term(spinstr,[muA_next, muB], -w -th);
+            else:
+                h1e[nloc*muB+sigma,nloc*muA_next+sigma] += -w -th; # REMOVE `w` already there
+                h1e[nloc*muA_next+sigma,nloc*muB+sigma] += -w -th;     
+    assert(params_dict["U"] == 0.0); # no Coulomb
 
     # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
@@ -1290,7 +1309,7 @@ def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
     assert("SIAM" in params_dict["sys_type"]);
 
     # load data from json
-    v, w, Vg, Vb = params_dict["v"], params_dict["w"], params_dict["Vg"], params_dict["Vb"];
+    Vb = params_dict["Vb"];
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 

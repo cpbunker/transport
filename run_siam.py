@@ -148,10 +148,13 @@ if(is_block):
     print("Ground state energy (DMRG) = {:.6f}".format(gdstate_E_dmrg));
 else:
     H_1e, H_2e = np.copy(H_driver), np.copy(H_mpo_initial); # H_SIAM_polarizer output with block=False
+    if(is_RM): block2site=2;
+    else: block2site = 1;
     print("H_1e = ");
-    print(H_1e[:nloc*myNL,:nloc*myNL]);
-    print(H_1e[nloc*(myNL-1):nloc*(myNL+1+1),nloc*(myNL-1):nloc*(myNL+1+1)]);
-    print(H_1e[nloc*(myNL+1):,nloc*(myNL+1):]); 
+    print(H_1e[:nloc*myNL*block2site,:nloc*myNL*block2site]);
+    print(H_1e[nloc*(myNL-1)*block2site:nloc*(myNL+1+1)*block2site,nloc*(myNL-1)*block2site:nloc*(myNL+1+1)*block2site]);
+    print(H_1e[nloc*(myNL+1)*block2site:,nloc*(myNL+1)*block2site:]); 
+    assert False;
 
     # gd state
     gdstate_mps_inst, gdstate_E, gdstate_scf_inst = get_energy_fci(H_1e, H_2e, (myNe, 0), nroots=1, verbose=0);
