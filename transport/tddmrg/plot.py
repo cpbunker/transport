@@ -76,12 +76,11 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[1.0,0.0]];
     elif(sys_type in ["SIETS", "SIETS_RM"]):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
-        NFM, Ne = params_dict["NFM"], NL+params_dict["NFM"]+NR;
-        if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
+        NFM, Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}$t_l$, ".format(params_dict["Jsd"])+"$t_h = ${:.2f}$t_l$, $V_g =${:.2f}$t_l, V_b =${:.2f}$t_l$".format(params_dict["th"], params_dict["Vg"], params_dict["Vb"]);
-        obs_strs = ["occ_", "sz_", "Sdz_", "G_"];
-        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$"];
-        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0]];
+        obs_strs = ["occ_", "sz_", "Sdz_", "G_", "S2_", "MI_"];
+        ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $","$ \langle S_{d}^{z} \\rangle $", "$\langle G_{j} \\rangle/G_0$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
+        axlines = [ [1.2,1.0,0.8],[0.1,0.0,-0.1],[0.5,0.0,-0.5],[1.0,0.0],[2.0,0.0],[np.log(2),0.0]];
     else:
         raise Exception("System type = "+sys_type+" not supported");
     Nsites = NL+NFM+NR; # number of j sites in 1D chain
@@ -91,13 +90,16 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         centrals = np.arange(NL,NL+NFM);
     alls = np.arange(Nsites);
 
-    # plot
-    is_RM = False;
-    if("RM" in params_dict["sys_type"]):
+    # is Rice-Mele ?
+    if(params_dict["sys_type"] in ["SIAM_RM", "SIETS_RM"]):
         assert("v" in params_dict.keys());
         #assert(abs(params_dict["w"]) == abs(params_dict["th"]));
         is_RM = True;
-        obs_strs.append("nB_"); ylabels.append("nB"); axlines.append([1.0,0.0]);
+        if(params_dict["sys_type"] in ["SIAM_RM"]):
+            obs_strs.append("nB_"); ylabels.append("nB"); axlines.append([1.0,0.0]);
+    else: is_RM = False;
+    
+    # plot
     fig, axes = plt.subplots(len(obs_strs));
     if(psi_mps is not None): # with dmrg
         for obsi in range(len(obs_strs)):

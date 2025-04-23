@@ -48,6 +48,7 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     if("RM" in params_dict["sys_type"]):
         assert("v" in params_dict.keys());
         RMflag = True;
+        RMdofs = 2;
 
     # check gd state
     check_E_dmrg = tddmrg.compute_obs(psi, none_or_mpo, eris_or_driver);
@@ -56,27 +57,46 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
     check_norm = eris_or_driver.expectation(psi, impo, psi)
     print("WF norm = {:.6f}".format(check_norm));
 
-    # fermionic charge and spin in LL, Imp, RL
+    # observables
     Impi = params_dict["NL"]
-    sites_for_spin = [0, Impi, Impi+params_dict["NR"]];
-    for sitei in sites_for_spin:
-        if(RMflag): sites_here = [2*sitei, 2*sitei+1];
-        else: sites_here = [sitei];
-        for i in sites_here:
-            sz_mpo = tddmrg.get_sz(eris_or_driver, i, block);
-            sz_val = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
-            occ_mpo = tddmrg.get_occ(eris_or_driver, i, block);
-            occ_val = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
-            print("<n  i={:.0f} = {:.6f}".format(i, occ_val));
-            print("<sz i={:.0f} = {:.6f}".format(i, sz_val));
+    if(params_dict["sys_type"] in ["SIETS_RM"]): # impurity spin
+        for_spin = np.arange(Impi, Impi+params_dict["NFM"]);
+        for sitei in for_spin: 
+            if(RMflag): mus = [RMdofs*sitei, RMdofs*sitei+1];
+            else: mus = [sitei];
+            for mu in mus:
+                Sd_mpo = tddmrg.get_Sd_mu(eris_or_driver, mu, block);
+                Sd_val = tddmrg.compute_obs(psi, Sd_mpo, eris_or_driver);
+                print("<Sz d={:.0f} = {:.6f}".format(mu, Sd_val));
+    else: # fermionic charge and spin in LL, Imp, RL
+        for_spin = [0, Impi, Impi+params_dict["NR"]];
+        for sitei in for_spin:
+            if(RMflag): mus = [RMdofs*sitei, RMdofs*sitei+1];
+            else: mus = [sitei];
+            for mu in mus:
+                sz_mpo = tddmrg.get_sz(eris_or_driver, mu, block);
+                sz_val = tddmrg.compute_obs(psi, sz_mpo, eris_or_driver);
+                occ_mpo = tddmrg.get_occ(eris_or_driver, mu, block);
+                occ_val = tddmrg.compute_obs(psi, occ_mpo, eris_or_driver);
+                print("<n  site={:.0f} = {:.6f}".format(mu, occ_val));
+                print("<sz site={:.0f} = {:.6f}".format(mu, sz_val));
+                
+    if(len(np.arange(Impi, Impi+params_dict["NFM"]))==1): # SR has 1 RM block -> 2 impurities
+        # (S1+S2)^2
+        S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, [RMdofs*Impi,RMdofs*Impi+1], is_impurity=True, block=block);
+        print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
 
-    # current through Imp
-    if(RMflag): sites_for_J = [2*Impi, 2*Impi+1];
-    else: sites_for_J = [Impi];
-    for i in sites_for_J:
-        Jimp_val = tddmrg.conductance_wrapper(psi, eris_or_driver, i, block);
-        Jimp_val *= np.pi*params_dict["th"]/params_dict["Vb"];
-        print("<J  i={:.0f}>/Vb = {:.6f}".format(i, Jimp_val));
+        # mutual info
+        minfo = tddmrg.mutual_info_wrapper(psi, eris_or_driver, [RMdofs*Impi,RMdofs*Impi+1], True, block);
+        print("MI[{:.0f},{:.0f}] = {:.6f} (max = {:.6f})".format(*[RMdofs*Impi,RMdofs*Impi+1], minfo, np.log(2)));
+
+    # conductancethrough Imp
+    if(RMflag): sites_for_G = [2*Impi, 2*Impi+1];
+    else: sites_for_G = [Impi];
+    for i in sites_for_G:
+        Gval = tddmrg.conductance_wrapper(psi, eris_or_driver, i, block);
+        Gval *= np.pi*params_dict["th"]/params_dict["Vb"];
+        print("<G  site={:.0f}> = {:.6f}".format(i, Gval));
                            
 ##################################################################################
 #### run code
