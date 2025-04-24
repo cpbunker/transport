@@ -81,7 +81,8 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo, the_time, blo
                 print("<n  site={:.0f} = {:.6f}".format(mu, occ_val));
                 print("<sz site={:.0f} = {:.6f}".format(mu, sz_val));
                 
-    if(len(np.arange(Impi, Impi+params_dict["NFM"]))==1): # SR has 1 RM block -> 2 impurities
+    if( (params_dict["sys_type"] in ["SIETS_RM"]) and len(np.arange(Impi, Impi+params_dict["NFM"]))==1):
+        # SR has 1 RM block -> 2 impurities
         # (S1+S2)^2
         S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, [RMdofs*Impi,RMdofs*Impi+1], is_impurity=True, block=block);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));

@@ -55,7 +55,7 @@ elif(case in [1,2]): # observable as a function of time
         totalNe = np.sum(np.load(datafiles[datai]+"_arrays/occ_yjs_time{:.2f}.npy".format(times[-1])));
         NsiteNestring = "$N_{sites}=$"+"{:.0f}, $N_e =${:.0f}".format(Ntotal*block2site,totalNe); 
         if(params["sys_type"] in ["SIAM_RM","SIETS_RM"]):
-            band_edges = [np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)];
+            band_edges = np.array([np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)]);
             Egap = np.min(band_edges) - np.max(-band_edges);
             Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
             #NsiteNestring += Egap_str;
@@ -170,7 +170,7 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
             yjSR_vs_time = yjSR_vs_time - yjSR_vs_time[0];
             print("n_RL (0) = {:.4f}".format(yjR_vs_time[0]));
             yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
-            axes[0].set_ylim(0.0,np.max([0.01,np.max(yjSR_vs_time)]));
+            #axes[0].set_ylim(0.0,np.max([0.01,np.max(yjSR_vs_time)]));
         
         # plot occupancies
         axes[0].plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);

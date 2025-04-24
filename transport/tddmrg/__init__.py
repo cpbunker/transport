@@ -1282,6 +1282,7 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         # hybridization btwn scattering region and leads
         for j_hyb in [centrals[0]-1,centrals[-1]]: # should be interblock only, i.e. muB <-> muA_next
             muA, muB, muA_next = RMdofs*j_hyb, RMdofs*j_hyb+1, RMdofs*(j_hyb+1);
+            print("hybridization: j={:.0f} -> muB={:.0f}, muA_next={:.0f}".format(j_hyb, muB, muA_next));
             assert(th > 0.0); # to keep track of different sign conventions
             if(block):     
                 builder.add_term(spinstr,[muB, muA_next], -w -th); # REMOVE `w` already there
@@ -1290,7 +1291,6 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                 h1e[nloc*muB+sigma,nloc*muA_next+sigma] += -w -th; # REMOVE `w` already there
                 h1e[nloc*muA_next+sigma,nloc*muB+sigma] += -w -th;     
     
-
     # bias (NB this will be REMOVED by polarizer so that it is ABSENT for t<0
     # and PRESENT at t>0 (opposite to B fields in STT, but still "added"
     # by the polarizer
