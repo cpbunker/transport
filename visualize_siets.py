@@ -137,6 +137,14 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     for datai in range(len(datafiles)):
         params = json.load(open(datafiles[datai]+".txt"));
         title_or_label = open(datafiles[datai]+"_arrays/"+obs1+"title.txt","r").read().splitlines()[0][1:];
+        if(params["sys_type"] in ["SIAM_RM","SIETS_RM"]):
+            band_edges = np.array([np.sqrt(params["u"]**2 + (params["w"]+params["v"])**2),np.sqrt(params["u"]**2 + (params["w"]-params["v"])**2)]);
+            Egap = np.min(band_edges) - np.max(-band_edges);
+            Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
+            #NsiteNestring += Egap_str;
+            title_or_label = "$t_h =${:.2f}, $V_b =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["Vb"],params["u"],params["v"],params["w"]);
+            title_or_label += Egap_str;
+
         if(len(datafiles)==1): the_title = title_or_label[:]; the_label = "";
         else: the_title = ""; the_label = title_or_label[:];
 
@@ -213,8 +221,8 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     else: axes[0].set_ylabel("$n_{SR}(t)$", color=color2, fontsize=fontsize1);
     axes[0].set_title(the_title);
     if(len(times)>num_xticks):
-        #time_ticks = np.arange(times[0], times[-1], times[-1]//max(1,num_xticks-1))
-        time_ticks = [];
+        time_ticks = np.arange(times[0], times[-1], times[-1]//max(1,num_xticks-1))
+        #time_ticks = [];
         axes[-1].set_xticks(time_ticks);
     axes[-1].set_xlim((times[0], times[-1]));
 

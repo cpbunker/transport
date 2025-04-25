@@ -1268,7 +1268,7 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                             builder.add_term("CdP",[jmu,jmu,jmu],-Jsd/2);
                         else: # Jsd not supported for td-fci
                             assert(Jsd==0.0);
-        elif(params_dict["sys_type"] in ["SIAM_RM"]): # no impurities gate voltage
+        if("Vg" in params_dict.keys()): # apply gate voltage
             Vg = params_dict["Vg"];
             for j in centrals:
                 muA, muB = RMdofs*j, RMdofs*j+1;
@@ -1278,7 +1278,6 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                 else:
                     h1e[nloc*muA+sigma,nloc*muA+sigma] += Vg;
                     h1e[nloc*muB+sigma,nloc*muB+sigma] += Vg;
-        else: raise Exception("should not reach here");
         # hybridization btwn scattering region and leads
         for j_hyb in [centrals[0]-1,centrals[-1]]: # should be interblock only, i.e. muB <-> muA_next
             muA, muB, muA_next = RMdofs*j_hyb, RMdofs*j_hyb+1, RMdofs*(j_hyb+1);
