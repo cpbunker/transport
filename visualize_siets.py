@@ -19,6 +19,7 @@ obs2, color2 = "G_", "darkred";
 obs3, color3 = "Sdz_", "darkgreen";
 num_xticks = 4;
 datamarkers = ["s","^","d","*"];
+mycolors = ["darkblue","darkgreen","darkred"];
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -30,8 +31,6 @@ elif(case in [1,2]): # observable as a function of time
 
     # axes
     fig, ax = plt.subplots();
-    for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-    #ax.set_yticks(ticks1);
     ax.set_xlabel("Time $(\hbar/t_l)$");
 
     # plot observables for EACH datafile
@@ -59,11 +58,20 @@ elif(case in [1,2]): # observable as a function of time
             Egap = np.min(band_edges) - np.max(-band_edges);
             Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
             #NsiteNestring += Egap_str;
-            title_or_label = "$t_h =${:.2f}, $V_b =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["Vb"],params["u"],params["v"],params["w"]);
+            title_or_label = "$t_h =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["u"],params["v"],params["w"]);
             title_or_label += Egap_str;
         if(len(datafiles)==1):
             the_title = title_or_label[:]; the_label = "";
             print(NsiteNestring)
+        elif("triplet" in datafiles[-2] and "singlet" in datafiles[-1]):
+            # ticks
+            ticks1 = [];
+            # labels
+            if("nosd" in datafiles[datai]): the_label = " Qubits Decoupled";
+            elif("triplet" in datafiles[datai]): the_label = " Triplet";
+            elif("singlet" in datafiles[datai]): the_label = " Singlet";
+            else: the_label = datafiles[datai].split("/").split("_")[0];
+            the_title = NsiteNestring[-9:] + ", " + title_or_label;
         else:
             the_label = title_or_label[:];
             the_title = NsiteNestring[:];
@@ -85,11 +93,11 @@ elif(case in [1,2]): # observable as a function of time
         if(case in [1]): # conductance thru SR|RL interface (at same place for monatomic, diatomic blocks)
             # do not average !!
             xds_plotted = [xds_vs_time[0,NFM*block2site]]; 
-            ax.plot(times,yds_vs_time[:,NFM*block2site],color=color2, linestyle="dashed",marker=datamarkers[datai],label=the_label);
+            ax.plot(times,yds_vs_time[:,NFM*block2site],color=mycolors[datai], linestyle="dashed",marker=datamarkers[datai],label=the_label);
         elif(case in [2]): # conductance thru LL | SR interface, and SR | RL interface
             xds_plotted = [xds_vs_time[0,0], xds_vs_time[0,NFM*block2site]];
-            ax.plot(times,yds_vs_time[:,0], color=color2, marker=datamarkers[datai]);
-            ax.plot(times,yds_vs_time[:,NFM*block2site], color=color2, linestyle="dashed",  marker=datamarkers[datai], label=the_label);
+            ax.plot(times,yds_vs_time[:,0], color=mycolors[datai], marker=datamarkers[datai]);
+            ax.plot(times,yds_vs_time[:,NFM*block2site], color=mycolors[datai], linestyle="dashed",  marker=datamarkers[datai], label=the_label);
         for sitei in xds_plotted: print("G_ at site {:.0f}".format(sitei));
         
         # Sdz vs time
@@ -109,6 +117,7 @@ elif(case in [1,2]): # observable as a function of time
             time_ticks = np.arange(times[0], times[-1], times[-1]//(num_xticks-1))
             ax.set_xticks(time_ticks);
         ax.set_xlim((times[0], times[-1]));
+        for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
         if(params["sys_type"] == "SIETS"):
             ax3 = ax.twinx();
             ax3.yaxis.set_label_position("left");
