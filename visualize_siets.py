@@ -10,8 +10,14 @@ import json
 # top level
 case = int(sys.argv[1]);
 time0 = int(sys.argv[2]);
-Nupdates = int(sys.argv[3]);
+if(sys.argv[3][0]=="["): # trying to pass a list
+    Nupdates = sys.argv[3][1:-1].split(","); # convert str->list
+    Nupdates = np.array(Nupdates).astype(int);
+else:
+    Nupdates = int(sys.argv[3]);
+    Nupdates = np.array([Nupdates for _ in range(len(sys.argv[4:]))]);
 datafiles = sys.argv[4:];
+if(len(datafiles) != len(Nupdates)): print(Nupdates); raise Exception;
 
 # plotting
 obs1, color1, ticks1, linewidth1, fontsize1 = "occ_", "cornflowerblue", (-1.0,0.0,1.0), 3.0, 16;
@@ -19,7 +25,7 @@ obs2, color2 = "G_", "darkred";
 obs3, color3 = "Sdz_", "darkgreen";
 num_xticks = 4;
 datamarkers = ["s","^","d","*"];
-mycolors = ["darkblue","darkgreen","darkred"];
+mycolors = ["darkblue","darkgreen","darkred","darkcyan","gray","cornflowerblue"];
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -40,7 +46,7 @@ elif(case in [1,2]): # observable as a function of time
 
         # time evolution params
         tupdate = params["tupdate"];
-        times = np.zeros((Nupdates+1,),dtype=float);
+        times = np.zeros((Nupdates[datai]+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = time0 + ti*tupdate;
 
@@ -58,10 +64,11 @@ elif(case in [1,2]): # observable as a function of time
             Egap = np.min(band_edges) - np.max(-band_edges);
             Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
             #NsiteNestring += Egap_str;
-            title_or_label = "$t_h =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["u"],params["v"],params["w"]);
+            title_or_label = "$t_h =${:.2f}, $V_g =${:.2f}, $u =${:.2f}, $v =${:.1f}, $w =${:.1f}".format(params["th"],params["Vg"],params["u"],params["v"],params["w"]);
             title_or_label += Egap_str;
         if(len(datafiles)==1):
             the_title = title_or_label[:]; the_label = "";
+            the_title = NsiteNestring[-9:] + ", " + title_or_label;
             print(NsiteNestring)
         elif("triplet" in datafiles[-2] and "singlet" in datafiles[-1]):
             # ticks
@@ -101,13 +108,25 @@ elif(case in [1,2]): # observable as a function of time
         for sitei in xds_plotted: print("G_ at site {:.0f}".format(sitei));
         
         # Sdz vs time
-        if(params["sys_type"] == "SIETS"):
+        if(params["sys_type"] in ["SIETS"]):
             label3 = "$\langle S_{d}^{z} \\rangle$";
             print(obs3,"->",label3);
             Sdzs_vs_time = np.zeros((len(times),NFM*block2site),dtype=float);
             for ti in range(len(times)):
                 Sdzs_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
             ax.plot(times,Sdzs_vs_time[:,which_imp],color=color3, marker=datamarkers[datai]);
+
+        # MI vs time
+        elif(params["sys_type"] in ["SIETS_RM"]):
+            obs3 = "MI_";
+            label3 = "MI$/\ln(2)$";
+            print(obs3,"->",label3);
+            MI_vs_time = np.zeros((len(times),NFM*block2site),dtype=float);
+            for ti in range(len(times)):
+                MI_vs_time[ti] = np.load(datafiles[datai]+"_arrays/"+obs3+"yjs_time{:.2f}.npy".format(times[ti]));
+            delta_MI_normed = -(MI_vs_time)/np.log(2);
+            ax.plot(times,delta_MI_normed[:,0],color="black", marker=datamarkers[datai]);
+
 
 
         # formatting
@@ -138,10 +157,6 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
     if(case in [4]): difference=True;
     else: difference = False;
 
-    # axes
-    fig, axes = plt.subplots(2, sharex=True);
-    axes[-1].set_xlabel("Time $(\hbar/t_l)$");
-
     # plot observables for EACH datafile
     for datai in range(len(datafiles)):
         params = json.load(open(datafiles[datai]+".txt"));
@@ -151,7 +166,7 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
             Egap = np.min(band_edges) - np.max(-band_edges);
             Egap_str = ", $E_{gap} =$"+"{:.2f}".format(Egap);
             #NsiteNestring += Egap_str;
-            title_or_label = "$t_h =${:.2f}, $V_b =${:.2f}, $u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["th"],params["Vb"],params["u"],params["v"],params["w"]);
+            title_or_label = "$t_h =${:.2f}, $V_g =${:.2f}, $u =${:.2f}, $v =${:.1f}, $w =${:.1f}".format(params["th"],params["Vg"],params["u"],params["v"],params["w"]);
             title_or_label += Egap_str;
 
         if(len(datafiles)==1): the_title = title_or_label[:]; the_label = "";
@@ -159,7 +174,7 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
 
         # time evolution params
         tupdate = params["tupdate"];
-        times = np.zeros((Nupdates+1,),dtype=float);
+        times = np.zeros((Nupdates[datai]+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = time0 + ti*tupdate;
             
@@ -180,15 +195,21 @@ elif(case in [3,4]): # left lead, SR, right lead occupancy as a function of time
         yjL_vs_time = np.sum(yjs_vs_time[:,:block2site*params["NL"]], axis=1);
         yjSR_vs_time = np.sum(yjs_vs_time[:,block2site*params["NL"]:block2site*(params["NL"]+NFM)],axis=1);
         yjR_vs_time = np.sum(yjs_vs_time[:,block2site*(params["NL"]+NFM):], axis=1);
+        print("n_LL (0) = {:.8f}".format(yjL_vs_time[0]));
+        print("n_SR (0) = {:.8f}".format(yjSR_vs_time[0]));
+        print("n_RL (0) = {:.8f}".format(yjR_vs_time[0]));
         if(difference): # only plot occupancy difference vs time 0
-            print("n_LL (0) = {:.4f}".format(yjL_vs_time[0]));
             yjL_vs_time = yjL_vs_time - yjL_vs_time[0];
-            print("n_SR (0) = {:.4f}".format(yjSR_vs_time[0]));
             yjSR_vs_time = yjSR_vs_time - yjSR_vs_time[0];
-            print("n_RL (0) = {:.4f}".format(yjR_vs_time[0]));
             yjR_vs_time = yjR_vs_time - yjR_vs_time[0];
             #axes[0].set_ylim(0.0,np.max([0.01,np.max(yjSR_vs_time)]));
+            assert False;
         
+        # figure
+        if(datai==0):
+            fig, axes = plt.subplots(2, sharex=True);
+            axes[-1].set_xlabel("Time $(\hbar/t_l)$");
+
         # plot occupancies
         axes[0].plot(times, yjSR_vs_time,color=color2,marker=datamarkers[datai],label=the_label);
         if(not difference):
