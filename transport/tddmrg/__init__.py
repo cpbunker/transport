@@ -2147,6 +2147,222 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
     return driver, mpo_from_builder;
+
+
+def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
+    '''
+    Builds STT Hamiltonian in RM model at all time
+    The physical params are contained in a .json file. They are all in eV.
+    They are:
+    v, w (RM hoppings)
+
+    NL (number sites in left lead),  NR (number of sites in right lead).
+
+    Returns: a tuple of DMRGDriver, ExprBuilder objects
+    '''
+
+    # load data from json
+    v, w, u, th, Vb = params_dict["v"], params_dict["w"], params_dict["u"], params_dict["th"], params_dict["Vb"];
+    #assert(abs(w) == abs(params_dict["th"]));
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+    Ntotal = NL+NFM+NR;
+
+    Ne = params_dict["Ne"];   
+    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
+    TwoSz = 0;        # <------ !!!!
+
+    # classify site indices (spin not included)
+    RMdofs = 2;
+    lleads = np.arange(NL); # <-- blocks
+    centrals = np.arange(NL,NL+NFM);
+    rleads = np.arange(NL+NFM,Ntotal);
+    alls = np.arange(Ntotal);
+    Nmolorbs = RMdofs*Ntotal;
+
+    # construct ExprBuilder
+    if(block):
+        if(params_dict["symmetry"] == "Sz"):
+            driver = core.DMRGDriver(scratch="./block_scratch/"+scratch_dir, symm_type=core.SymmetryTypes.SZ|core.SymmetryTypes.CPX, n_threads=4);
+            driver.initialize_system(n_sites=Nmolorbs, n_elec=Ne, spin=TwoSz);
+            print(">>> driver(n_sites={:.0f}, n_elec={:.0f}, spin={:.0f})".format(Nmolorbs, Ne, TwoSz));
+        else: raise NotImplementedError;
+        
+        # def custom states and operators
+        if(params_dict["sys_type"] in ["SIETS_RM"]):
+            qnumber_wrapper = driver.bw.SX # quantum number wrapper function
+            custom_states, custom_ops = get_custom_states_ops(params_dict, qnumber_wrapper);
+            # input custom site basis states and ops to driver, and build builder
+            driver.ghamil = driver.get_custom_hamiltonian(custom_states, custom_ops)
+        builder = driver.expr_builder();
+        print("\n",40*"#","\nConstructed builder\n",40*"#","\n");     
+    # end of if(block) code
+
+    else:   
+        nloc = 2;
+        Nspinorbs = nloc*RMdofs*Ntotal;
+        h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float), np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
+
+    # j <-> j+1 hopping for fermions everywhere
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
+        for j in alls[:-1]:
+            # j is block -> spin orb index
+            muA, muB, muA_next = RMdofs*j, RMdofs*j+1, RMdofs*(j+1)
+            if(block):
+                builder.add_term(spinstr,[muA,muB],v); 
+                builder.add_term(spinstr,[muB,muA],v);
+                builder.add_term(spinstr,[muB, muA_next],w);
+                builder.add_term(spinstr,[muA_next, muB],w);
+                builder.add_term(spinstr,[muA,muA], u); # staggered intra-dimer **potential**
+                builder.add_term(spinstr,[muB,muB],-u);
+            else:
+                h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA_next+sigma] += w;
+                h1e[nloc*muA_next+sigma,nloc*muB+sigma] += w;
+                h1e[nloc*muA+sigma,nloc*muA+sigma] +=  u; # staggered intra-dimer **potential**
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -u;
+        for j in [alls[-1]]: # last block needs intra-block only
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            if(block):
+                builder.add_term(spinstr,[muA,muB],v);
+                builder.add_term(spinstr,[muB,muA],v);
+                builder.add_term(spinstr,[muA,muA], u); # staggered intra-dimer **potential**
+                builder.add_term(spinstr,[muB,muB],-u);
+            else:
+                h1e[nloc*muA+sigma,nloc*muB+sigma] += v;
+                h1e[nloc*muB+sigma,nloc*muA+sigma] += v;
+                h1e[nloc*muA+sigma,nloc*muA+sigma] +=  u; # staggered intra-dimer **potential**
+                h1e[nloc*muB+sigma,nloc*muB+sigma] += -u;
+
+    # sd exchange btwn impurities & charge density on their site
+    for sigma in [0,1]:
+        spinstr = ["cd","CD"][sigma];
+        if(params_dict["sys_type"] in ["SIETS_RM"]): 
+            Jsd = params_dict["Jsd"];
+            for j in centrals:
+                if(sigma==0): # only do once since spin independent (hacky code)
+                    muA, muB = RMdofs*j, RMdofs*j+1;
+                    for jmu in [muA, muB]: # since these terms are identical for A, B orbitals
+                        if(block):
+                            # z terms
+                            builder.add_term("cdZ",[jmu,jmu,jmu],-Jsd/2);
+                            builder.add_term("CDZ",[jmu,jmu,jmu], Jsd/2);
+                            # plus minus terms
+                            builder.add_term("cDM",[jmu,jmu,jmu],-Jsd/2);
+                            builder.add_term("CdP",[jmu,jmu,jmu],-Jsd/2);
+                        else: # Jsd not supported for td-fci
+                            assert(Jsd==0.0);
+
+    # XXZ exchange between neighboring impurities
+    if("Jz" in params_dict.keys() and "Jx" in params_dict.keys()):
+        Jz, Jx = params_dict["Jz"], params_dict["Jx"];
+        assert(Jz==0.0 and Jx==0.0);
+        if("MSQ_spacer" in params_dict.keys()):
+            raise NotImplementedError("code assumes MSQs are neighbors");
+
+    if(block): return driver, builder;
+    else: return h1e, g2e;
+
+def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
+    '''
+    Adds terms specific to the t<0 STT Hamiltonian in RM model
+    (REMOVES Vb)
+
+    Args:
+    Params_dict: dict containing physical param values, these are defined in Hsys_base
+    to_add_to, tuple of objects to add terms to:
+        if block is True: these will be DMRGDriver, ExprBuilder objects
+        else: these will be 1-body and 2-body parts of the second quantized
+        Hamiltonian
+
+    Returns: a tuple of DMRGDriver, MPO
+    '''
+
+    # load data from json
+    NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
+    Nconf = params_dict["Nconf"];
+    Ntotal = NL+NFM+NR;
+
+    # classify site indices (spin not included)
+    RMdofs = 2;
+    lleads = np.arange(NL); # <-- blocks
+    confs = np.arange(Nconf);
+    centrals = np.arange(NL,NL+NFM);
+    rleads = np.arange(NL+NFM,Ntotal);
+    alls = np.arange(Ntotal);
+
+    # unpack ExprBuilder
+    if(block):
+        driver, builder = to_add_to;
+        if(driver.n_sites != RMdofs*Ntotal): raise ValueError; # 2 * number of blocks
+    else:
+        h1e, g2e = to_add_to;
+        nloc = 2;
+        Nspinorbs = nloc*RMdofs*Ntotal;
+        if(len(h1e) != Nspinorbs): raise ValueError;
+
+    # confining potential in left lead
+    for j in confs:
+        muA, muB = RMdofs*j, RMdofs*j+1;
+        for jmu in [muA, muB]:
+            if(block):
+                builder.add_term("cd",[jmu,jmu],-Vconf); 
+                builder.add_term("CD",[jmu,jmu],-Vconf);
+             else:
+                 h1e[nloc*jmu, nloc*jmu] += -Vconf;
+                 h1e[nloc*jmu+1, nloc*jmu+1] += -Vconf;
+
+    # B fields
+    if(params_dict["sys_type"] in ["STT_RM"]):
+
+        # B field on the loc spins
+        BFM = params_dict["BFM"];
+        for j in centrals:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            for jmu in [muA,muB]:
+                if(block):
+                    builder.add_term("Z",[jmu],-BFM);
+                else: assert(BFM==0.0);
+
+        # B field in the confined region ----------> ASSUMED IN THE Z
+        # only within the region of confining potential
+        Be = params_dict["Be"];
+        for j in confs:
+            muA, muB = RMdofs*j, RMdofs*j+1;
+            for jmu in [muA,muB]:
+                if(block):
+                    builder.add_term("cd",[jmu,jmu],-Be/2);
+                    builder.add_term("CD",[jmu,jmu], Be/2);
+                else:
+                    h1e[nloc*jmu,nloc*jmu] += -Be/2;
+                    h1e[nloc*jmu+1,nloc*jmu+1] += Be/2;
+
+    # special case initialization
+    if("Bent" in params_dict.keys() and len(centrals)==1): # B field that entangles 2 loc spins
+        Bent = params_dict["Bent"];
+        for j in central_sites[:-1]: # every site in centrals hosts MSQ
+            # jpair is a list of two sites to entangle
+            jpair = (RMdofs*j, RMdofs*j+1);
+            assert(len(centrals)==1); # as written only entangles intra-block
+
+            if(block):
+                if(not ("triplet_flag" in params_dict.keys())):
+                    print("no triplet flag")
+                    builder.add_term("ZZ",jpair,-Bent);
+                else: print("triplet flag");
+                builder.add_term("PM",jpair,-Bent/2);
+                builder.add_term("MP",jpair,-Bent/2);
+            else: assert(Bent==0.0);
+        
+    # return
+    if(block):
+        print("Finalizing builder")
+        mpo_from_builder = driver.get_mpo(builder.finalize());
+        print("Finalized builder");
+        return driver, mpo_from_builder;
+    else:
+        return h1e, g2e;
     
 def get_custom_states_ops(params_dict, qnumber):
     '''

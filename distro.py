@@ -185,10 +185,10 @@ for key in to_override: params[key] = np.nan;
 #pairvals = np.array([(1,1,20,0),(5,5,20,0), (5,5,40,0),(5,5,60,0)]); # mix of interesting cases
 #pairvals = np.array([(1,1,20,0),(5,5,20,0)]); # mix of interesting cases
 
-#pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
+pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
 #pairvals = np.array([(1,1,40,0),(2,2,40,0),(5,5,40,0), (10,10,40,0)]); # Nconf=40 fixed, spin polarized
 
-pairvals = np.array([(5,5,5,0),(10,10,10,0),(20,20,20,0)]); # half filling, spin pol
+#pairvals = np.array([(5,5,5,0),(10,10,10,0),(20,20,20,0)]); # half filling, spin pol
 
 # plot either individual wfs or real-space PDFs
 plot_wfs = True;
