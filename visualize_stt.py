@@ -507,15 +507,18 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
             
+        # rice-mele ?
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: block2site = 1;
+
         # get data
-        Nconf = params["Nconf"];
-        Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
-        yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
+        Ntotal = block2site*(params["NL"]+params["NFM"]+params["NR"]); # number of j sites
+        yjs_vs_time = np.zeros((len(times),Ntotal),dtype=float);
         for ti in range(len(times)):
             yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
         
         # mesh grids for time (x) and site (y) plotting heatmap
-        timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Nsites];
+        timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Ntotal];
         
         # plot heatmap
         axes[axi].set_facecolor("steelblue");
@@ -525,13 +528,15 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         # plot mutual info  
         which_imp = 0; # d=N_L 
         #label4 = get_ylabel(obs4, factor4, dstring=which_imp, ddt=take_gradient);
-        if("MSQ_spacer" in params.keys()): NFM_numsites = 2;
-        else: NFM_numsites = params["NFM"];
+        if("MSQ_spacer" in params.keys()): NFM_numsites = 2; assert("_RM" not in params_dict["sys_type"]);
+        else: NFM_numsites = block2site*params["NFM"];
         MI_vs_time = np.zeros((len(times),NFM_numsites),dtype=float);
-        print("Loading "+dfile+"_arrays/"+obs4+"yjs_time0.00.npy");
-        for ti in range(len(times)):
-            MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
-        MIaxes[axi].plot(times, factor4*MI_vs_time[:,which_imp], color=color4, linewidth=2);
+        if(add_MI):
+            print("Loading "+dfile+"_arrays/"+obs4+"yjs_time0.00.npy");
+            for ti in range(len(times)):
+                MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
+            # plot
+            MIaxes[axi].plot(times, factor4*MI_vs_time[:,which_imp], color=color4, linewidth=2);
         
         # format colorbar
         if(axi==len(axes)-2): 
@@ -540,28 +545,32 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
             axes[-1].text(-0.90,1.03,"$\langle n_j \\rangle $",
             transform=axes[-1].transAxes, fontsize=myfontsize);
             axes[-1].axis('off');
-            MIaxes[-1].axis('off');
+            if(add_MI): MIaxes[-1].axis('off');
         
     # format axes
     axes[0].set_ylabel("Site $j$",fontsize=myfontsize); 
-    MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(params["NL"], params["NL"]+params["NFM"]-1),fontsize=myfontsize);
-    MIaxes[0].set_ylabel("$I/\ln(2)$",fontsize=myfontsize);
     for axi in range(len(datafiles)): 
         axes[axi].text(0.05,0.9,myaxlabels[axi], color="white",
             transform=axes[axi].transAxes,fontsize=myfontsize);
         axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
         if(len(datafiles)%2 != 0): axes[len(datafiles)//2].set_title( get_title(datafiles[-1]),fontsize=myfontsize);
         else: axes[axi].set_title(get_title(datafiles[axi]),loc="left",fontsize=myfontsize);
-        MIaxes[axi].set_ylim(-0.1,1.1);
-        MIticks = [0,0.5,1.0];
-        for tick in MIticks: MIaxes[axi].axhline(tick, color="gray",linestyle="dashed");
-        MIaxes[axi].set_yticks([0,1]);
+
+    # format MIaxes
+    if(add_MI):
+        MIaxes[0].set_ylabel("$I({:.0f},{:.0f})/\ln(2)$".format(block2site*params["NL"], block2site*(params["NL"]+params["NFM"])-1),fontsize=myfontsize);
+        MIaxes[0].set_ylabel("$I/\ln(2)$",fontsize=myfontsize);
+        for axi in range(len(datafiles)):
+            MIaxes[axi].set_ylim(-0.1,1.1);
+            MIticks = [0,0.5,1.0];
+            for tick in MIticks: MIaxes[axi].axhline(tick, color="gray",linestyle="dashed");
+            MIaxes[axi].set_yticks([0,1]);
         
     #### iter over triplet/singlet to mark 
     for axi, dfile in enumerate(datafiles):
         # qubit positions
         params = json.load(open(dfile+".txt"));
-        qubit_sites = params["NL"], params["NL"]+params["NFM"]-1; 
+        qubit_sites = block2site*params["NL"], block2site*(params["NL"]+params["NFM"]) -1
         if(params["Jsd"] != 0.0):
             rightax = axes[axi].twinx();
             rightax.set_ylim(axes[axi].get_ylim());
@@ -578,7 +587,7 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
     else: plt.show();
     
 
-if(case in [10,11]): # animate time evol
+elif(case in [10,11]): # animate time evol
     datafile = datafiles[0];
     params = json.load(open(datafile+".txt"));
     if(case in [11]): plot_S2 = True;
@@ -665,7 +674,6 @@ if(case in [10,11]): # animate time evol
         # (S1+S2)^2 / 2
         yds_4_t = np.load(datafile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(time));
         S2.set_ydata(factor4*yds_4_t);
-        #ax.set_ylim([0.0,0.25]);
 
     # animate
     if(Nupdates > 0): interval = 1000*(10/Nupdates); # so total animation time is 10 sec

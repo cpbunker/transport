@@ -64,8 +64,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         ylabels = ["$\langle n_{j} \\rangle $","$ \langle s_{j}^{z} \\rangle $",
         "$ \langle S_{d}^{z} \\rangle $","$\langle J_j\\rangle$","$(\mathbf{S}_d + \mathbf{S}_{d+1})^2 $","MI"];
         axlines = [ [1.0,0.0],[0.5,0.0,-0.5],[0.5,0.0,-0.5],[1.0,-1.0],[2.0,0.0],[np.log(2),0.0]];
-        if(params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
-            obs_strs, ylabels, axlines = obs_strs[:-2], ylabels[:-2], axlines[:-2];
+        if(not(params_dict["sys_type"] in ["STT_RM", "SIETS_RM","SIAM_RM"]) and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
+            raise NotImplementedError;
     elif(sys_type in ["SIAM", "SIAM_RM"]):
         is_impurity = False;
         NFM, Ne = 1, NL+1+NR;
@@ -91,11 +91,11 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     alls = np.arange(Nsites);
 
     # is Rice-Mele ?
-    if(params_dict["sys_type"] in ["SIAM_RM", "SIETS_RM"]):
+    if(params_dict["sys_type"] in ["STT_RM","SIAM_RM", "SIETS_RM"]):
         assert("v" in params_dict.keys());
         #assert(abs(params_dict["w"]) == abs(params_dict["th"]));
         is_RM = True;
-        if(params_dict["sys_type"] in ["SIAM_RM"]):
+        if(params_dict["sys_type"] in ["SIAM_RM", "SIETS_RM"]):
             obs_strs.append("nB_"); ylabels.append("nB"); axlines.append([1.0,0.0]);
     else: is_RM = False;
     
@@ -115,12 +115,16 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             if(obs_strs[obsi] in ["G_"]): 
                 if(sys_type in ["SIAM", "SIAM_RM","SIETS","SIETS_RM"]): 
                     prefactor = np.pi*params_dict["th"]/params_dict["Vb"]; # prefactor needed for G/G0
-                else: raise NotImplementedError;
+                else: raise NotImplementedError("sys_type =",sys_type);
                 js_pass = np.append(centrals, [centrals[-1]+1]); # one extra
             elif(obs_strs[obsi] in ["J_"]): 
                 if(sys_type in ["SIAM", "SIAM_RM", "SIETS", "SIETS_RM"]):
                     prefactor = params_dict["th"]; # prefactor needed for J
-                else: prefactor = params_dict["tl"];
+                elif(sys_type in ["STT_RM"]):
+                    prefactor = abs(params_dict["w"]);
+                elif(sys_type in ["STT"]): 
+                    prefactor = params_dict["tl"];
+                else: raise NotImplementedError("sys_type =",sys_type);
                 js_pass = [params_dict["Nconf"], NL, NL+NFM]; 
             else: prefactor = 1.0;
 

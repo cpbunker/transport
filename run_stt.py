@@ -40,13 +40,24 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
     check_norm = eris_or_driver.expectation(psi, impo, psi)
     print("WF norm = {:.6f}".format(check_norm));
 
+    # rice mele or not
+    if(params_dict["sys_type"] in ["STT_RM"]): RMdofs = 2;
+    elif(params_dict["sys_type"] in ["STT"]): pass;
+
     # divide sites                              
-    Nsites = params_dict["NL"] + params_dict["NFM"] + params_dict["NR"];      
-    if("MSQ_spacer" in params_dict.keys()):
-        central_j = np.array([params_dict["NL"],params_dict["NL"]+params_dict["NFM"]-1]);
-    else:
-        central_j = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
-    all_j = np.arange(0, Nsites);
+    if(params_dict["sys_type"] in ["STT"]):
+        Nsites = params_dict["NL"] + params_dict["NFM"] + params_dict["NR"];
+        #all_j = np.arange(0, Nsites);
+        if("MSQ_spacer" in params_dict.keys()):
+            central_j = np.array([params_dict["NL"],params_dict["NL"]+params_dict["NFM"]-1]);
+        else:
+            central_j = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]);
+    elif(params_dict["sys_type"] in ["STT_RM"]):
+        central_j = [];
+        for j in np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"]):
+            central_j.append(RMdofs*j);
+            central_j.append(RMdofs*j+1);
+    else: raise NotImplementedError;
 
     # impurity Sz 
     if(np.any(central_j)):
@@ -100,17 +111,23 @@ special_cases_flag = False;
 for case in special_cases:
     if(case in params.keys()):print(">>> special case: ",case); special_cases_flag = True;
 if(not special_cases_flag): assert(espin+locspin == myTwoSz);
-
+del myNL, myNFM, myNR, myNe, myTwoSz, myNbuffer
 #### Initialization
 ####
 ####
 init_start = time.time();
     
 # init ExprBuilder object with terms that are there for all times
-H_driver, H_builder = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+if(params["sys_type"] in ["STT"]):
+    H_driver, H_builder = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose); # returns DMRGDriver, ExprBuilder
+elif(params["sys_type"] in ["STT_RM"]):
+    H_driver, H_builder = tddmrg.H_STTRM_builder(params, is_block, scratch_dir=json_name, verbose=verbose); 
 
 # add in t<0 terms
-H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
+if(params["sys_type"] in ["STT"]):
+    H_driver, H_mpo_initial = tddmrg.H_STT_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
+elif(params["sys_type"] in ["STT_RM"]):
+    H_driver, H_mpo_initial = tddmrg.H_STTRM_polarizer(params, (H_driver,H_builder), is_block, verbose=verbose);
     
 # gd state
 gdstate_mps_inst = H_driver.get_random_mps(tag="gdstate",nroots=1,
@@ -138,8 +155,16 @@ plot.snapshot_bench(gdstate_mps_inst, H_driver,
 #### Time evolution
 ####
 ####
-H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+if(params["sys_type"] in ["STT"]):
+    H_driver_dyn, H_builder_dyn = tddmrg.H_STT_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+elif(params["sys_type"] in ["STT_RM"]):
+    H_driver_dyn, H_builder_dyn = tddmrg.H_STTRM_builder(params, is_block, scratch_dir=json_name, verbose=verbose);
+
+# construct matrix product operator
+assert(is_block);
 H_mpo_dyn = H_driver_dyn.get_mpo(H_builder_dyn.finalize(), iprint=verbose);
+
+# time evolve
 tddmrg.kernel(params, H_driver_dyn, H_mpo_dyn,
                   gdstate_mps_inst,check_observables,tddmrg.plot.snapshot_bench,json_name,verbose=0) # set to 2 to see mmps
 

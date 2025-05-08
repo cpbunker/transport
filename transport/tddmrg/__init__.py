@@ -860,6 +860,8 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
 def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
     '''
     '''
+    assert(params_dict["sys_type"] in ["SIAM_RM","SIETS_RM"]);
+    # ^ change when we modify to not always call H_RM_builder
 
     # load data from json
     v, w, Vg = params_dict["v"], params_dict["w"], params_dict["Vg"];
@@ -1202,7 +1204,7 @@ def H_RM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         else: raise NotImplementedError;
         
         # def custom states and operators
-        if(params_dict["sys_type"] in ["SIETS_RM"]):
+        if(params_dict["sys_type"] in ["SIETS_RM","STT_RM"]):
             qnumber_wrapper = driver.bw.SX # quantum number wrapper function
             custom_states, custom_ops = get_custom_states_ops(params_dict, qnumber_wrapper);
             # input custom site basis states and ops to driver, and build builder
@@ -2162,14 +2164,13 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     '''
 
     # load data from json
-    v, w, u, th, Vb = params_dict["v"], params_dict["w"], params_dict["u"], params_dict["th"], params_dict["Vb"];
+    v, w, u = params_dict["v"], params_dict["w"], params_dict["u"];
     #assert(abs(w) == abs(params_dict["th"]));
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 
     Ne = params_dict["Ne"];   
-    assert(Ne%2 ==0); # need even number of electrons for TwoSz=0
-    TwoSz = 0;        # <------ !!!!
+    TwoSz = params_dict["TwoSz"]; # fermion spin + impurity spin
 
     # classify site indices (spin not included)
     RMdofs = 2;
@@ -2188,7 +2189,7 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
         else: raise NotImplementedError;
         
         # def custom states and operators
-        if(params_dict["sys_type"] in ["SIETS_RM"]):
+        if(params_dict["sys_type"] in ["STT_RM","SIETS_RM"]):
             qnumber_wrapper = driver.bw.SX # quantum number wrapper function
             custom_states, custom_ops = get_custom_states_ops(params_dict, qnumber_wrapper);
             # input custom site basis states and ops to driver, and build builder
@@ -2238,21 +2239,20 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     # sd exchange btwn impurities & charge density on their site
     for sigma in [0,1]:
         spinstr = ["cd","CD"][sigma];
-        if(params_dict["sys_type"] in ["SIETS_RM"]): 
-            Jsd = params_dict["Jsd"];
-            for j in centrals:
-                if(sigma==0): # only do once since spin independent (hacky code)
-                    muA, muB = RMdofs*j, RMdofs*j+1;
-                    for jmu in [muA, muB]: # since these terms are identical for A, B orbitals
-                        if(block):
-                            # z terms
-                            builder.add_term("cdZ",[jmu,jmu,jmu],-Jsd/2);
-                            builder.add_term("CDZ",[jmu,jmu,jmu], Jsd/2);
-                            # plus minus terms
-                            builder.add_term("cDM",[jmu,jmu,jmu],-Jsd/2);
-                            builder.add_term("CdP",[jmu,jmu,jmu],-Jsd/2);
-                        else: # Jsd not supported for td-fci
-                            assert(Jsd==0.0);
+        Jsd = params_dict["Jsd"];
+        for j in centrals:
+            if(sigma==0): # only do once since spin independent (hacky code)
+                muA, muB = RMdofs*j, RMdofs*j+1;
+                for jmu in [muA, muB]: # since these terms are identical for A, B orbitals
+                    if(block):
+                        # z terms
+                        builder.add_term("cdZ",[jmu,jmu,jmu],-Jsd/2);
+                        builder.add_term("CDZ",[jmu,jmu,jmu], Jsd/2);
+                        # plus minus terms
+                        builder.add_term("cDM",[jmu,jmu,jmu],-Jsd/2);
+                        builder.add_term("CdP",[jmu,jmu,jmu],-Jsd/2);
+                    else: # Jsd not supported for td-fci
+                        assert(Jsd==0.0);
 
     # XXZ exchange between neighboring impurities
     if("Jz" in params_dict.keys() and "Jx" in params_dict.keys()):
@@ -2303,19 +2303,19 @@ def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
         if(len(h1e) != Nspinorbs): raise ValueError;
 
     # confining potential in left lead
+    Vconf = params_dict["Vconf"];
     for j in confs:
         muA, muB = RMdofs*j, RMdofs*j+1;
         for jmu in [muA, muB]:
             if(block):
                 builder.add_term("cd",[jmu,jmu],-Vconf); 
                 builder.add_term("CD",[jmu,jmu],-Vconf);
-             else:
-                 h1e[nloc*jmu, nloc*jmu] += -Vconf;
-                 h1e[nloc*jmu+1, nloc*jmu+1] += -Vconf;
+            else:
+                h1e[nloc*jmu, nloc*jmu] += -Vconf;
+                h1e[nloc*jmu+1, nloc*jmu+1] += -Vconf;
 
     # B fields
-    if(params_dict["sys_type"] in ["STT_RM"]):
-
+    if(True):
         # B field on the loc spins
         BFM = params_dict["BFM"];
         for j in centrals:
@@ -2341,10 +2341,10 @@ def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
     # special case initialization
     if("Bent" in params_dict.keys() and len(centrals)==1): # B field that entangles 2 loc spins
         Bent = params_dict["Bent"];
-        for j in central_sites[:-1]: # every site in centrals hosts MSQ
+        assert(len(centrals)==1); # as written only entangles intra-block
+        for j in centrals: # every site in centrals hosts MSQ
             # jpair is a list of two sites to entangle
             jpair = (RMdofs*j, RMdofs*j+1);
-            assert(len(centrals)==1); # as written only entangles intra-block
 
             if(block):
                 if(not ("triplet_flag" in params_dict.keys())):
@@ -2386,7 +2386,7 @@ def get_custom_states_ops(params_dict, qnumber):
     assert(TwoSd == 1); # for now, to get degeneracies right
 
     # classify site indices (spin not included)
-    if(params_dict["sys_type"] in ["SIAM_RM", "SIETS_RM"]): block2site = 2;
+    if(params_dict["sys_type"] in ["STT_RM", "SIAM_RM", "SIETS_RM"]): block2site = 2;
     else: block2site = 1;
     llead_sites = np.arange(NL*block2site);
     if("MSQ_spacer" in params_dict.keys()): # MSQs on either end of NFM only
@@ -2396,7 +2396,6 @@ def get_custom_states_ops(params_dict, qnumber):
         central_sites = np.arange(NL*block2site,(NL+NFM)*block2site);
     rlead_sites = np.arange((NL+NFM)*block2site,Nsites*block2site);
     all_sites = np.arange(Nsites*block2site);
-    
     
     # Szd blocks for fermion-impurity operators
     # squares are diagonal blocks and triangles are one off diagonal
