@@ -599,6 +599,10 @@ elif(case in [10,11]): # animate time evol
     ax.set_yticks(ticks1);
     ax.set_xlabel("$j(d)$", fontsize=fontsize1);
     ax.set_title(get_title(datafile));
+
+    # rice-mele ?
+    if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+    else: block2site = 1;
     
     # time evolution params
     Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
@@ -639,7 +643,7 @@ elif(case in [10,11]): # animate time evol
         ax.set_yticks([0.0,0.20]);
 
     # pairwise observable
-    if(params["NFM"]>1):
+    if(block2site*params["NFM"]>1):
         if(plot_S2): # plot (S1+S2)^2 /2
             obs4, factor4, color4, mark4 = "S2_", 0.5, "black", "^";
             xds_4 = np.load(datafile+"_arrays/"+obs4+"xjs_time{:.2f}.npy".format(update0*tupdate));
