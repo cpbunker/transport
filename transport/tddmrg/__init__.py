@@ -10,7 +10,7 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 from transport import tdfci
 from transport.tdfci import utils
 from pyblock2.driver import core
-from pyblock3.block2.io import MPSTools, MPOTools
+#from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
 import time
     
@@ -1375,25 +1375,8 @@ def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
             else:
                 h1e[nloc*muA+sigma,nloc*muA+sigma] += Vb/2;
                 h1e[nloc*muB+sigma,nloc*muB+sigma] += Vb/2;
-
-    # B field on the loc spins
-    if(params_dict["sys_type"] in ["SIETS_RM"]):
-        BFM = params_dict["BFM"];
-        for j in centrals:
-            muA, muB = RMdofs*j, RMdofs*j+1;
-            for jmu in [muA,muB]:
-                if(block):
-                    builder.add_term("Z",[jmu],-BFM);
-                else: raise NotImplementedError;
         
-    # special case initialization 
-    if("BFM_first" in params_dict.keys() ): # B field that targets 1st loc spin only
-        BFM_first = params_dict["BFM_first"];
-        j = centrals[0];
-        muA = RMdofs*j;
-        if(block):
-            builder.add_term("Z",[muA], -BFM_first+BFM); # first orb of first block
-        else: raise NotImplementedError;                
+    # special case initialization                
     if("Bent" in params_dict.keys() and len(centrals)==1): # B field that entangles 2 loc spins
         Bent = params_dict["Bent"];
         if("MSQ_spacer" in params_dict.keys()): # MSQs at each end of NFM only
@@ -1409,12 +1392,14 @@ def H_RM_polarizer(params_dict, to_add_to, block, verbose=0):
                 sitepairs.append([muA, muB]); # inter-block pair only
         print("entangled pairs = ",sitepairs)
         for sitepair in sitepairs: # sitepair is a list of two sites (not blocks!) to entangle
-            if(not ("triplet_flag" in params_dict.keys())):
-                print("no triplet flag");           # sometimes we need to skip ZZ term to get |T0>
-                builder.add_term("ZZ",sitepair,-Bent); # rather than |T+>. Can ask for this with triplet_flag
-            else: print("triplet flag");
-            builder.add_term("PM",sitepair,-Bent/2);
-            builder.add_term("MP",sitepair,-Bent/2);
+            if(block):
+                if(not ("triplet_flag" in params_dict.keys())):
+                    print("no triplet flag");           # sometimes we need to skip ZZ term to get |T0>
+                    builder.add_term("ZZ",sitepair,-Bent); # rather than |T+>. Can ask for this with triplet_flag
+                else: print("triplet flag");
+                builder.add_term("PM",sitepair,-Bent/2);
+                builder.add_term("MP",sitepair,-Bent/2);
+            else: assert(Bent == 0.0);
 
     # return
     if(block):
@@ -2156,7 +2141,9 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
     Builds STT Hamiltonian in RM model at all time
     The physical params are contained in a .json file. They are all in eV.
     They are:
-    v, w (RM hoppings)
+    v, w (RM staggered hoppings)
+    u (RM staggered potential)
+    Jsd (exchange between electrons and impurities)
 
     NL (number sites in left lead),  NR (number of sites in right lead).
 
@@ -2165,7 +2152,6 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
 
     # load data from json
     v, w, u = params_dict["v"], params_dict["w"], params_dict["u"];
-    #assert(abs(w) == abs(params_dict["th"]));
     NL, NFM, NR = params_dict["NL"], params_dict["NFM"], params_dict["NR"];
     Ntotal = NL+NFM+NR;
 
@@ -2254,20 +2240,12 @@ def H_STTRM_builder(params_dict, block, scratch_dir="tmp",verbose=0):
                     else: # Jsd not supported for td-fci
                         assert(Jsd==0.0);
 
-    # XXZ exchange between neighboring impurities
-    if("Jz" in params_dict.keys() and "Jx" in params_dict.keys()):
-        Jz, Jx = params_dict["Jz"], params_dict["Jx"];
-        assert(Jz==0.0 and Jx==0.0);
-        if("MSQ_spacer" in params_dict.keys()):
-            raise NotImplementedError("code assumes MSQs are neighbors");
-
     if(block): return driver, builder;
     else: return h1e, g2e;
 
 def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
     '''
     Adds terms specific to the t<0 STT Hamiltonian in RM model
-    (REMOVES Vb)
 
     Args:
     Params_dict: dict containing physical param values, these are defined in Hsys_base
@@ -2353,7 +2331,7 @@ def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
                 else: print("triplet flag");
                 builder.add_term("PM",jpair,-Bent/2);
                 builder.add_term("MP",jpair,-Bent/2);
-            else: assert(Bent==0.0);
+            else: pass #assert(Bent==0.0);
         
     # return
     if(block):

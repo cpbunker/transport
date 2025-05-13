@@ -14,6 +14,16 @@ from transport.tdfci import utils as fci_mod
 import numpy as np
 
 ##################################################################################
+#### figure standardization
+
+UniversalColors = ["darkblue", "darkgreen", "darkred", "darkcyan", "darkgray","darkorange", "darkmagenta","hotpink", "saddlebrown"];
+UniversalAccents = ["black","red"];
+ColorsMarkers = ["o","^","s","d","*"];
+AccentsMarkers = ["X","+"];
+UniversalMarkevery = (40,40);
+UniversalPanels = ["(a)","(b)","(c)","(d)","(e)","(f)","(g)"];
+
+##################################################################################
 #### driver of transmission coefficient calculations
 
 def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma, 
@@ -298,7 +308,7 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     if(inoutsign not in [1,-1]): raise ValueError;
     # check diagonality
     if(np.any(diag-np.diagflat(np.diagonal(diag)))): raise Exception("Not diagonal:\n"+str(diag)); 
-    
+    raise NotImplementedError("everything should call g_RiceMele");
     # everything is vectorized by channel
     diag = np.diagonal(diag);
     offdiag = np.diagonal(offdiag);
@@ -347,11 +357,14 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
     
     # decompose into u, w, v
     # for spin included, these will be vectors over spin channels (length nspin)
-    u0 = (np.diagonal(diag)[:n_spin]+np.diagonal(diag)[n_spin:])/2;
-    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10); # ??
     u = (np.diagonal(diag)[:n_spin]-np.diagonal(diag)[n_spin:])/2; 
     v = np.diagonal(diag[:n_spin,n_spin:]);
     w = np.diagonal(offdiag[n_spin:,:n_spin]);
+
+    # not totally sure how to deal with u0 at this point
+    u0 = (np.diagonal(diag)[:n_spin]+np.diagonal(diag)[n_spin:])/2;
+    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10); # ??
+    del u0; # I don't use it in ny of the formulas below
 
     # functional form
     squared_val = np.power((E+u)*(E-u)+(w+v)*(w-v),2);
@@ -360,17 +373,6 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
     for sigma in range(n_spin):   # Enforce Im[g_ret]<0
         if(np.imag(sqrt_val[sigma]*prefactor[sigma]) > 0): sqrt_val[sigma] = (-1)*sqrt_val[sigma]; 
     g = prefactor*((E+u)*(E-u)+(w+v)*(w-v) + sqrt_val);
-
-    if False:
-        polynomial_coefs = np.polynomial.Polynomial([-E-u, E*E+w*w-u*u-v*v,-E*w*w+u*w*w]);
-        gs = polynomial_coefs.roots();
-        print(np.imag(gs))
-        if(E==u): g = complex(np.nan, np.nan);
-        else: g = gs[np.argmin(np.imag(gs))]
-        #assert False
-
-    band_edges = np.array([np.sqrt(u*u+(w+v)*(w+v)),
-                           np.sqrt(u*u+(w-v)*(w-v))]);
 
     # return as same sized array
     gmat = np.zeros(np.shape(diag), dtype=complex);
@@ -382,9 +384,61 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
         gmat[:n_spin,:n_spin] = np.diagflat(g);
     return gmat;
 
+def dispersion_RiceMele(diag, offdiag, ks) -> np.ndarray:
+    '''
+    *Vectorized in ks* dispersion function E(k)
+    Returns an array of shape (2,len(ks)) where 2 runs over the plus, minus bands
+    '''
+
+    # decompose into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); 
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    band = np.sqrt(u*u+v*v+w*w+2*v*w*np.cos(ks));
+    return np.array([u0-band,u0+band]);
+
+def bandedges_RiceMele(diag, offdiag) -> np.ndarray:
+    '''
+    '''
+
+    # decompose into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); 
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    B_pm = np.array([np.sqrt(u*u+(w+v)*(w+v)),
+                       np.sqrt(u*u+(w-v)*(w-v))]);
+    B_edges = np.array([u0 - np.max(B_pm), u0-np.min(B_pm), u0+np.min(B_pm), u0+np.max(B_pm)]);
+    return B_edges
+
+def string_RiceMele(diag, offdiag, energies=True, tex=True) -> str:
+    '''
+    '''
+
+    # decompose into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); 
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    B_pm = np.array([np.sqrt(u*u+(w+v)*(w+v)),
+                       np.sqrt(u*u+(w-v)*(w-v))]);
+    B_edges = np.array([u0 - np.max(B_pm), u0-np.min(B_pm), u0+np.min(B_pm), u0+np.max(B_pm)]);
+
+    # strings
+    params_str = "$u = ${:.2f}, $v =${:.2f}, $w =${:.2f}".format(u,v,w);
+    energies_str = ", $E_{gap}=$"+"{:.2f}".format(B_edges[2]-B_edges[1])+", $E_{band}=$"+"{:.2f}".format(B_edges[1]-B_edges[0]);
+    if(energies): params_str += energies_str;
+    if(not tex): params_str = params_str.replace("$","");
+    return params_str;
+
 def velocity_RiceMele(diag, offdiag, E) -> np.ndarray:
     '''
     '''
+    raise NotImplementedError("should get velocities from Im[self energy]")
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
     # check RM compatibility
     offdiag_check = 1*offdiag;

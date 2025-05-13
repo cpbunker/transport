@@ -222,20 +222,12 @@ def h_cicc_hacked(J, t, i1, i2, Nsites, pair_to_entangle, unitcell):
             raise Exception;
     h_cicc = np.array(h_cicc, dtype = complex);
     return h_cicc;
-
-    
-def dispersion_RiceMele(u,v,w,ks):
-    '''
-    *Vectorized in ks* dispersion function E(k)
-    Returns an array of shape (2,len(ks)) where 2 runs over the plus, minus bands
-    '''
-    band = np.sqrt(u*u+v*v+w*w+2*v*w*np.cos(ks));
-    return np.array([+band,-band]);
     
 def dos_RiceMele(u,v,w,Es):
     '''
     *Vectorized in Es* density of states of the *infinite* system (no relation to surface green's funct)
     '''
+    raise NotImplementedError("replace with wfm universal");
     
     # invert Es to get ks
     ks = np.arccos(1/(2*v*w)*(Es*Es - u*u - v*v - w*w));
@@ -253,12 +245,7 @@ if(__name__=="__main__"):
     # fig standardizing
     myxvals = 99; # number of pts on the x axis
     myfontsize = 14;
-    mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
-    accentcolors = ["black","red"];
-    mymarkers = ["+","o","^","s","d","*","X"];
-    mymarkevery = (40, 40);
     mylinewidth = 1.0;
-    mypanels = ["(a)","(b)","(c)","(d)"];
     plt.rcParams.update({"font.family": "serif"})
     plt.rcParams.update({"text.usetex": True})
     

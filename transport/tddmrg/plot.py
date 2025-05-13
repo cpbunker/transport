@@ -6,12 +6,7 @@ import matplotlib.pyplot as plt
 from transport import tddmrg, tdfci
 
 # fig standardizing
-mycolors = ["darkblue", "darkred", "darkorange", "darkcyan", "darkgray","hotpink", "saddlebrown"];
-accentcolors = ["black","red"];
-mymarkers = ["o","+","^","s","d","*","X"];
 mylinewidth = 3.0;
-mypanels = ["(a)","(b)","(c)","(d)"];
-#plt.rcParams.update({"text.usetex": True,"font.family": "Times"});
 
 def vs_site(params_dict, js,psi,eris_or_driver,which_obs, is_impurity, block, prefactor):
     '''
