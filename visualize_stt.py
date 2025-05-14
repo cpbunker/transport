@@ -41,7 +41,7 @@ def get_ylabel(the_obs, the_factor, dstring="d", ddt=False):
     print(the_obs,"-->",ret);
     return ret;
     
-def get_title(f, to_exclude=["J_x", "J_z"]):
+def get_title(f, to_exclude=[]):
     '''
     '''
     
@@ -501,8 +501,7 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         
         # time evolution params
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
-        if("Vdelta" in params.keys()): print("\n    Electric field w/ Delta V = {:.3f}".format(params["Vdelta"]));
+        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));;
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
@@ -523,7 +522,7 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         # plot heatmap
         axes[axi].set_facecolor("steelblue");
         heatmap=axes[axi].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
-        print("    vmax = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
+        print("    np.max(yjs_vs_time) = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
         
         # plot mutual info  
         which_imp = 0; # d=N_L 
@@ -540,7 +539,6 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         
         # format colorbar
         if(axi==len(axes)-2): 
-            #heatmap = axes[-1].pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr',vmin=0.0,vmax=np.max(yjs_vs_time));
             cbar = fig.colorbar(heatmap,ax=axes[-1], pad=0.35,location='left');
             axes[-1].text(-0.90,1.03,"$\langle n_j \\rangle $",
             transform=axes[-1].transAxes, fontsize=myfontsize);
@@ -548,11 +546,11 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
             if(add_MI): MIaxes[-1].axis('off');
         
     # format axes
-    axes[0].set_ylabel("Site $j$",fontsize=myfontsize); 
+    axes[0].set_ylabel("Site",fontsize=myfontsize); 
     for axi in range(len(datafiles)): 
         axes[axi].text(0.05,0.9,myaxlabels[axi], color="white",
             transform=axes[axi].transAxes,fontsize=myfontsize);
-        axes[axi].set_xlabel("Time $(\hbar/t_l)$",fontsize=myfontsize);
+        axes[axi].set_xlabel("Time $(\hbar/|v|)$",fontsize=myfontsize);
         if(len(datafiles)%2 != 0): axes[len(datafiles)//2].set_title( get_title(datafiles[-1]),fontsize=myfontsize);
         else: axes[axi].set_title(get_title(datafiles[axi]),loc="left",fontsize=myfontsize);
 

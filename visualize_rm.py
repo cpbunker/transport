@@ -238,25 +238,25 @@ elif(case in ["dos"]):
 
     # construct Time=0 single-body Hamiltonian as matrix
     if(params["sys_type"] in ["SIETS_RM"]):
-        h1e_t0, g2e_dummy = tddmrg.H_RM_builder(params, block=False);
-        h1e_t0, g2e_dummy = tddmrg.H_RM_polarizer(params, (h1e_t0, g2e_dummy), block=False);
+        h1e_twhen, g2e_dummy = tddmrg.H_RM_builder(params, block=False);
+        h1e_twhen, g2e_dummy = tddmrg.H_RM_polarizer(params, (h1e_twhen, g2e_dummy), block=False);
         # for siets_rm, perturber Vb removed by polarizer
     elif(params["sys_type"] in ["STT_RM"]):
-        h1e_t0, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
+        h1e_twhen, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
         # for stt_rm, perturber Vconf added by polarizer, so we skip polarizer       
 
     # eigenstates
     del g2e_dummy
-    h1e_t0 = h1e_t0[::2,::2]; # <- make spinless !!
-    vals_t0, vecs_t0 = tdfci.solver(h1e_t0);
+    h1e_twhen = h1e_twhen[::2,::2]; # <- make spinless !!
+    vals_twhen, vecs_twhen = tdfci.solver(h1e_twhen);
 
     # printout
     centrals = np.arange(params["NL"],params["NL"]+params["NFM"]);
     RMdofs = 2;
     print("h1e_t0 = ");
-    print(h1e_t0[:8,:8]); 
-    print(h1e_t0[RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1),RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1)]); 
-    print(h1e_t0[-8:,-8:]);
+    print(h1e_twhen[:8,:8]); 
+    print(h1e_twhen[RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1),RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1)]); 
+    print(h1e_twhen[-8:,-8:]);
 
     if(True):
         # load data from json
@@ -288,7 +288,7 @@ elif(case in ["dos"]):
 	####
 	####
 	# DOS from manual hamiltonian diagonalization
-        Es_direct = vals_t0 ;
+        Es_direct = 1*vals_twhen;
         E_gap_tilde = np.min(Es_direct[len(Es_direct)//2:]) - np.max(Es_direct[:len(Es_direct)//2]);
         print("E_gap_tilde = {:.6f}".format(E_gap_tilde));
 

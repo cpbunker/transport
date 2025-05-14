@@ -1,8 +1,0 @@
-{
-"is_ring":1, "is_triangular":0,"tol":1e-2,
-"tdfci":1,"TwoSz":0,"symmetry":"Sz",
-"Nsites":4, "Ne":4,
-"tl":1.0,"tp":0.0,"Vg":0.0,"U":0.0,
-"Bx":0.0, "Bz":-1e-6,
-"bdim_0":[150,150,150,200,200], "noises":[1e-2,1e-3,1e-4,1e-5],"dmrg_sweeps":20,"cutoff":-1.00
-}

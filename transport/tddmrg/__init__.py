@@ -518,7 +518,8 @@ def mutual_info_wrapper(psi, eris_or_driver, whichsites, are_all_impurities, blo
 
 def get_sz(eris_or_driver, whichsite, block, verbose=0):
     '''
-    Constructs an operator (either MPO or ERIs) representing <Sz> of site whichsite
+    Constructs an operator (either MPO or ERIs) representing <Sz>
+    of electron on site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else: 
@@ -540,7 +541,8 @@ def get_sz(eris_or_driver, whichsite, block, verbose=0):
 
 def get_sz2(eris_or_driver, whichsite, block, verbose=0):
     '''
-    Constructs an operator (either MPO or ERIs) representing <Sz * Sz> of site whichsite
+    Constructs an operator (either MPO or ERIs) representing <Sz * Sz>
+    of *electron* on site whichsite
     '''
     #return eris_or_driver.get_spin_square_mpo(); this method works for *entire* system not site
     if(block): builder = eris_or_driver.expr_builder()
@@ -579,7 +581,8 @@ def get_sz2(eris_or_driver, whichsite, block, verbose=0):
 
 def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
     '''
-    Constructs an operator (either MPO or ERIs) representing <Sx>,<Sx^2>,<Sy>, or <Sy^2> of site whichsite
+    Constructs an operator (MPO or ERIs) representing <Sx>,<Sx^2>,<Sy>, or <Sy^2>
+    of *electron* on site whichsite
     '''
     if(block): builder = eris_or_driver.expr_builder()
     else: 
@@ -621,7 +624,7 @@ def get_sxy(eris_or_driver, whichsite, block, sigmax, squared, verbose=0):
 
 def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
     '''
-    MPO representing <Sz> of site impurity at site whichsite
+    MPO representing <Sz> of impurity at site whichsite
     '''
     if(not block): raise NotImplementedError;
     builder = eris_or_driver.expr_builder();
@@ -640,6 +643,20 @@ def get_Sd_mu(eris_or_driver, whichsite, block, component="z", verbose=0):
     else: raise NotImplementedError;
 
     return eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+
+def purity_wrapper(psi,eris_or_driver, whichsite, block):
+    '''
+    Using x,y,z components of <Sd>, get purity of impurity at site whichsite
+    '''
+    components = ["x01","x10","y01","y10","z"];
+    sterms = [];
+    for comp in components:
+        op = get_Sd_mu(eris_or_driver, whichsite, block, component=comp);
+        sterms.append( compute_obs(psi, op, eris_or_driver));
+    purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
+    ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
+    if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
+    return np.real(ret);
     
 def get_Sd_z2(eris_or_driver, whichsite, block, verbose=0):
     '''
@@ -688,17 +705,24 @@ def S2_wrapper(psi, eris_or_driver, whichsites, is_impurity, block, verbose=0):
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
-def purity_wrapper(psi,eris_or_driver, whichsite, block):
+def spin1_wrapper(psi, eris_or_driver, whichsites, is_impurity, block, verbose=0):
     '''
-    Need to combine ops for x,y,z components of Sd to get purity
+    Decompose the two-spin-system S1, S2 in the spin-1 basis |T+>,|T0>,|T->,|S0>
+
+    Typically the pair of spins will be impurity sites rather than molecular orbitals, but both options are supported as long as each spin is same category
     '''
-    components = ["x01","x10","y01","y10","z"];
-    sterms = [];
-    for comp in components:
-        op = get_Sd_mu(eris_or_driver, whichsite, block, component=comp);
-        sterms.append( compute_obs(psi, op, eris_or_driver));
-    purity_vec = np.array([sterms[0]+sterms[1], sterms[2]+sterms[3], sterms[4]]);    
-    ret = np.sqrt( np.dot(np.conj(purity_vec), purity_vec));
+    if(not block): raise NotImplementedError;
+    if(not is_impurity): raise NotImplementedError;
+    if(len(whichsites) != 2): raise ValueError; # pairwise qubit observable
+    assert(not(whichsites[0] == whichsites[1])); # sites have to be distinct
+    if(not isinstance(is_impurity, bool)): raise TypeError;
+    builder = eris_or_driver.expr_builder();
+
+    # add builder terms
+
+    # return
+    mpo = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+    ret = compute_obs(psi, mpo, eris_or_driver);
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 
@@ -859,35 +883,27 @@ def conductance_wrapper(psi, eris_or_driver, whichsite, block, verbose=0):
 
 def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
     '''
+    Observable = occupation of each of the translation invariant eigenstates of the system
+    NB the three kinds of systems:
+    STT_RM:
+        -ham constructor is H_STTRM
+        -the perturbation Vconf is added by polarizer, so don't call polarizer
+    SIAM_RM, SIETS_RM
+        -ham constructor is H_RM
+        -the perturbation Vb is removed by polarizer, so call polarizer
     '''
-    assert(params_dict["sys_type"] in ["SIAM_RM","SIETS_RM"]);
-    # ^ change when we modify to not always call H_RM_builder
-
-    # load data from json
-    v, w, Vg = params_dict["v"], params_dict["w"], params_dict["Vg"];
-    Ntotal = params_dict["NL"]+params_dict["NFM"]+params_dict["NR"];
-
-    # classify site indices (spin not included)
-    RMdofs = 2;
-    lleads = np.arange(params_dict["NL"]); # <-- blocks
-    centrals = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"])
-    rleads = np.arange(params_dict["NL"]+params_dict["NFM"],Ntotal);
-    alls = np.arange(Ntotal);
-    Nmolorbs = RMdofs*Ntotal;
-
-    # which lead to project onto
-    whichblock = whichsite // 2; 
-    if(whichblock in lleads): site_projector = np.arange(RMdofs*params_dict["NL"]); 
-    elif(whichblock in centrals): site_projector = np.arange(RMdofs*params_dict["NL"],RMdofs*(params_dict["NL"]+params_dict["NFM"]));
-    elif(whichblock in rleads): site_projector = np.arange(RMdofs*(params_dict["NL"]+params_dict["NFM"]),RMdofs*Ntotal);
-    else: print(whichblock); raise NotImplementedError;
-    # override - all sites
-    site_projector = np.arange(RMdofs*Ntotal);
+    assert(params_dict["sys_type"] in ["STT_RM","SIAM_RM","SIETS_RM"]);
 
     # construct single-body Hamiltonian as matrix
-    h1e_twhen, g2e_dummy = H_RM_builder(params_dict, block=False);
-    h1e_twhen, g2e_dummy = H_RM_polarizer(params_dict, (h1e_twhen, g2e_dummy), block=False);
+    if(params_dict["sys_type"] in ["SIAM_RM", "SIETS_RM"]):
+        h1e_twhen, g2e_dummy = H_RM_builder(params_dict, block=False);
+        h1e_twhen, g2e_dummy = H_RM_polarizer(params_dict, (h1e_twhen, g2e_dummy), block=False);
+    elif(params_dict["sys_type"] in ["STT_RM"]):
+        h1e_twhen, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
+        # for stt_rm, perturber Vconf added by polarizer, so we skip polarizer       
+
     h1e_twhen = h1e_twhen[::2,::2]; # <- make spinless !!
+    print("h1e_twhen = ");
     print(h1e_twhen[:8,:8]);
     print(h1e_twhen[-8:,-8:]);
 
@@ -895,34 +911,44 @@ def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
     vals_twhen, vecs_twhen = np.linalg.eigh(h1e_twhen);
     vecs_twhen = vecs_twhen.T;
 
-    # output for density of states
-    print("\n\nH_RM_builder + H_RM_polarizer energies");
-    print([val for val in vals_twhen]);
-    assert(Nmolorbs == len(vals_twhen)); # 1 eigenval for each spinless orb
+    # may want to only count electrons in a certain spatial region
+    # of the system towards band occupancy
+    Ntotal = params_dict["NL"]+params_dict["NFM"]+params_dict["NR"];
+    RMdofs = 2;
+    whichblock = whichsite // RMdofs;
+    j_projector = np.arange(RMdofs*Ntotal);
+    if(False): # this block defines spatial region to project onto
+
+        # what unit cells belong to what region
+        lleads = np.arange(params_dict["NL"]); # <-- blocks
+        centrals = np.arange(params_dict["NL"],params_dict["NL"]+params_dict["NFM"])
+        rleads = np.arange(params_dict["NL"]+params_dict["NFM"],Ntotal);
+        alls = np.arange(Ntotal);
+        
+        # which lead to project onto   
+        if(whichblock in lleads): j_projector = np.arange(RMdofs*params_dict["NL"]); 
+        elif(whichblock in centrals): j_projector = np.arange(RMdofs*params_dict["NL"],RMdofs*(params_dict["NL"]+params_dict["NFM"]));
+        elif(whichblock in rleads): j_projector = np.arange(RMdofs*(params_dict["NL"]+params_dict["NFM"]),RMdofs*Ntotal);
+        else: print(whichblock); raise NotImplementedError;
 
     # which band to project onto
     # valence band
-    if(whichsite % 2 ==0): band_divider = np.arange(0,len(vals_twhen)//2);
-    # conduction band
-    elif(whichsite % 2 == 1): band_divider = np.arange(len(vals_twhen)//2,len(vals_twhen));
     print("in band_wrapper");
     print("whichblock = {:.0f}, whichsite = {:.0f}".format(whichblock, whichsite)+"->")
-    print("band_divider = ", band_divider, "\n({:.0f} total k states)".format(len(vecs_twhen)));
-    print("site_projector = ", site_projector, "\n({:.0f} total sites)".format(len(vecs_twhen[0])))
-    #assert False;
+    print("{:.0f} total k states".format(len(vecs_twhen)));
+    print("{:.0f} total sites".format(len(vecs_twhen[0])),"\nj_projector = ",j_projector);
 
     # observable for band occupancy
     if(block):
         builder = eris_or_driver.expr_builder();
     else:
-        nloc = 2;
-        Nspinorbs = nloc*RMdofs*Ntotal;
+        Nspinorbs = 2*RMdofs*Ntotal; # for ERIs to work, needs to be spinful
         h1e, g2e = np.zeros((Nspinorbs, Nspinorbs),dtype=float);
         g2e_zeros = np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
     # coefs for this observable come from energy eigenstates
-    assert(len(vecs_twhen[0]) == Nmolorbs); # spatial extent of vecs = number of spinless orbs 
-    for kmvali in band_divider: #iter over states in band
+    assert(len(vecs_twhen[0]) == Rmdofs*Ntotal); # spatial extent of vecs = number of spinless orbs 
+    for kmvali in [whichsite]: # 0th site stores occ of m=0 level, etc
         for j in site_projector:
             for jp in site_projector:
                 for sigma in [0,1]:
@@ -1943,6 +1969,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("CD",[j+1,j],-tl);
 
     # XXZ exchange between neighboring impurities
+    # NB we need this to replicate Adrian's results
     if("Jz" in params_dict.keys() and "Jx" in params_dict.keys()):
         Jz, Jx = params_dict["Jz"], params_dict["Jx"];
         if("MSQ_spacer" in params_dict.keys()):
@@ -1960,49 +1987,7 @@ def H_STT_builder(params_dict, block, scratch_dir="tmp", verbose=0):
         builder.add_term("CDZ",[j,j,j], Jsd/2);
         # plus minus terms
         builder.add_term("cDM",[j,j,j],-Jsd/2);
-        builder.add_term("CdP",[j,j,j],-Jsd/2);
-        #pass;
-        
-    # special case terms
-    if("tunnel" in params_dict.keys()):
-        raise NotImplementedError;
-        # tunnel barrier on last few sites of left lead
-        tunnel = params_dict["tunnel"];
-        tunnel_size = 3; # last tunnel_size sites
-        assert(NL-Nconf>tunnel_size);
-        for j in llead_sites[-tunnel_size:]:
-            builder.add_term("cd",[j,j],tunnel);
-            builder.add_term("CD",[j,j],tunnel);
-    if("Vdelta" in params_dict.keys()):
-        # voltage gradient from site to site, ie constant applied Electric field
-        Vdelta = params_dict["Vdelta"];
-        for j in all_sites:
-            builder.add_term("cd",[j,j],-Vdelta*j);
-            builder.add_term("CD",[j,j],-Vdelta*j);
-    if("tp" in params_dict.keys()):
-        # different hopping (t') in confinement region 
-        tp = params_dict["tp"];
-        conf_sites = np.arange(Nconf);
-        tp_symmetry = 1;
-        if("tp_symmetry" in params_dict.keys()): tp_symmetry = params_dict["tp_symmetry"];
-        assert(tp_symmetry in [1,0]);
-        if(tp_symmetry==1): # different hopping for first AND last Nconf sites (preserves left-right symmetry)
-            assert(NL+NFM+NR - Nconf > Nconf);
-            anticonf_sites = np.arange(NL+NFM+NR - Nconf, NL+NFM+NR);
-        else:
-            anticonf_sites = np.array([]);
-        for j in conf_sites:
-            print("j={:.0f} -> tp={:.2f}".format(j,tp));
-            builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
-            builder.add_term("CD",[j,j+1],tl-tp);
-            builder.add_term("cd",[j+1,j],tl-tp);
-            builder.add_term("CD",[j+1,j],tl-tp);
-        for j in (anticonf_sites-1):
-            print("j={:.0f} -> tp={:.2f}".format(j,tp));
-            builder.add_term("cd",[j,j+1],tl-tp); # <-- replace tl with tp
-            builder.add_term("CD",[j,j+1],tl-tp);
-            builder.add_term("cd",[j+1,j],tl-tp);
-            builder.add_term("CD",[j+1,j],tl-tp);     
+        builder.add_term("CdP",[j,j,j],-Jsd/2);        
 
     return driver, builder;
 
@@ -2055,30 +2040,6 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
         builder.add_term("cd",[j,j],-Vconf); 
         builder.add_term("CD",[j,j],-Vconf);
 
-    # eigenstates of the confined, spinless, t<0 system
-    if("Bstate" in params_dict.keys()):
-        Bstate = params_dict["Bstate"];
-        h1e_t0 = np.zeros((Nsites,Nsites),dtype=float);
-        nloc = 1; # spinless
-        # j <-> j+1 hopping for fermions
-        for j in all_sites[:-1]:
-            h1e_t0[nloc*j+0,nloc*(j+1)+0] += -tl; # spinless
-            h1e_t0[nloc*(j+1)+0,nloc*j+0] += -tl;
-        # confinement
-        for j in conf_sites:
-            h1e_t0[nloc*j+0,nloc*j+0] += -Vconf; # spinless!
-        # t<0 eigenstates (|k_m> states)
-        vals_t0, vecs_t0 = np.linalg.eigh(h1e_t0);
-        vecs_t0 = vecs_t0.T;
-        # now we have the eigenstates that span the confined well at t<0
-        # use them to apply B field *directly to these states*
-        how_many_states = params_dict["Bstate_num"]; # we block only lowest (this number) of states
-        for kmvali in range(how_many_states): #iter over states
-            for j in all_sites:
-                for jp in all_sites:
-                    builder.add_term("cd",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
-                    builder.add_term("CD",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
-
     # B field in the confined region ----------> ASSUMED IN THE Z
     # only within the region of confining potential
     for j in conf_sites:
@@ -2113,23 +2074,35 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             else: print("triplet flag");
             builder.add_term("PM",jpair,-Bent/2);
             builder.add_term("MP",jpair,-Bent/2);
-    if("DSz2" in params_dict.keys()):
-        # hard z-axis for cases where Bent is applied
-        raise NotImplementedError("pointless for s-1/2 systems");
-        DSz2 = params_dict["DSz2"];
-        for j in central_sites:
-            builder.add_term("ZZ",[j,j],DSz2);
     if("Bx" in params_dict.keys()): # B in the x direction, w/in the confining region
         Bx = params_dict["Bx"];
         for j in conf_sites:
             builder.add_term("cD",[j,j],-Bx/2);
             #builder.add_term("Cd",[j,j],-Bx/2);
-    if("Vdelta" in params_dict.keys()):
-        # REMOVE the voltage gradient for time < 0, so it doesn't affect initialization
-        Vdelta = params_dict["Vdelta"];
-        for j in all_sites:
-            builder.add_term("cd",[j,j],Vdelta*j);
-            builder.add_term("CD",[j,j],Vdelta*j);
+            
+    # eigenstates of the confined, spinless, t<0 system
+    if("Bstate" in params_dict.keys()):
+        Bstate = params_dict["Bstate"];
+        h1e_t0 = np.zeros((Nsites,Nsites),dtype=float);
+        nloc = 1; # spinless
+        # j <-> j+1 hopping for fermions
+        for j in all_sites[:-1]:
+            h1e_t0[nloc*j+0,nloc*(j+1)+0] += -tl; # spinless
+            h1e_t0[nloc*(j+1)+0,nloc*j+0] += -tl;
+        # confinement
+        for j in conf_sites:
+            h1e_t0[nloc*j+0,nloc*j+0] += -Vconf; # spinless!
+        # t<0 eigenstates (|k_m> states)
+        vals_t0, vecs_t0 = np.linalg.eigh(h1e_t0);
+        vecs_t0 = vecs_t0.T;
+        # now we have the eigenstates that span the confined well at t<0
+        # use them to apply B field *directly to these states*
+        how_many_states = params_dict["Bstate_num"]; # we block only lowest (this number) of states
+        for kmvali in range(how_many_states): #iter over states
+            for j in all_sites:
+                for jp in all_sites:
+                    builder.add_term("cd",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
+                    builder.add_term("CD",[j,jp], Bstate*vecs_t0[kmvali,j]*np.conj(vecs_t0[kmvali,jp]));
 
     # return
     mpo_from_builder = driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
