@@ -62,10 +62,10 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}".format(params_dict["Jsd"])+tlstring+", $N_e = ${:.0f}".format(Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
-        if(is_RM): title_str = "$w =${:.2f}".format(params["w"])+tlstring;
+        if(is_RM): title_str = "$w =${:.2f}".format(params_dict["w"])+tlstring;
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_","nB_"];
-       if(noot is_RM and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
+        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_"];
+        if(not is_RM and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
             raise NotImplementedError;
     elif(sys_type in ["SIAM", "SIAM_RM"]):
         is_impurity = False;
@@ -73,12 +73,12 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         if("Ne_override" in params_dict.keys()): Ne = params_dict["Ne_override"];
         title_str = "$U =${:.2f}$, t_h =$ {:.2f}$, V_g =${:.2f}$, V_b =${:.2f}".format(params_dict["U"], params_dict["th"], params_dict["Vg"], params_dict["Vb"]);
         obs_strs = ["occ_", "sz_", "G_"];
-   elif(sys_type in ["SIETS", "SIETS_RM"]):
+    elif(sys_type in ["SIETS", "SIETS_RM"]):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM, Ne = params_dict["NFM"], params_dict["Ne"];
         title_str = "$J_{sd} = $"+"{:.2f}, ".format(params_dict["Jsd"])+"$t_h = ${:.2f}, $V_g =${:.2f}$, V_b =${:.2f}".format(params_dict["th"], params_dict["Vg"], params_dict["Vb"]);
         obs_strs = ["occ_", "sz_", "Sdz_", "G_", "MI_"];
-   else:
+    else:
         raise Exception("System type = "+sys_type+" not supported");
 
     # system geometry
@@ -97,9 +97,8 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
             # what sites to find <operator> over
             if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_"]): 
                 js_pass = centrals; # operators on impurity sites only
-            #elif(obs_strs[obsi] in ["nB_"]):
-            #assert False # ideally remove this whole block
-            #js_pass = centrals[:1]; # 1st block, A and B sites
+            elif(obs_strs[obsi] in ["nB_"]):
+                js_pass = np.arange(Nsites//2);
             else: js_pass = alls;
 
             # what prefactors to apply to <operator>
@@ -125,10 +124,11 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
                     new_js_pass.append(2*j);
                     new_js_pass.append(2*j+1);
                 js_pass = new_js_pass;
-            print(obs_strs[obsi], "\njs = "js_pass)
+            print(obs_strs[obsi], "\njs = ", js_pass)
+
+            # calculate expectation values
             x_js, y_js = vs_site(params_dict,js_pass,psi_mps,driver_inst,obs_strs[obsi],is_impurity,block,prefactor);
-            axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth,
-                               label = "DMRG (te_type = "+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
+            axes[obsi].plot(x_js,y_js,label="DMRG (te_type="+str(params_dict["te_type"])+", dt= "+str(params_dict["time_step"])+")");
             print("Total <"+obs_strs[obsi]+"> = {:.6f}".format(np.sum(y_js)));            
 
             # save DMRG data
@@ -156,7 +156,7 @@ def snapshot_fromdata(loadname, time, sys_type):
     # plot charge and spin vs site
     if(sys_type in ["STT", "STT_RM"]):
         obs_strs = ["occ_", "sz_", "Sdz_", "MI_"];
-   elif(sys_type in ["SIAM", "SIAM_RM"]):
+    elif(sys_type in ["SIAM", "SIAM_RM"]):
         obs_strs = ["occ_", "sz_", "G_"];
     elif(sys_type in ["SIETS", "SIETS_RM"]):
         obs_strs = ["occ_", "sz_", "Sdz_", "G_", "MI_"];
@@ -168,7 +168,7 @@ def snapshot_fromdata(loadname, time, sys_type):
     for obsi in range(len(obs_strs)):
         y_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"yjs_time{:.2f}.npy".format(time));
         x_js = np.load(loadname+"_arrays/"+obs_strs[obsi]+"xjs_time{:.2f}.npy".format(time));
-        axes[obsi].plot(x_js,y_js,color=mycolors[0],marker='o',linewidth=mylinewidth);
+        axes[obsi].plot(x_js,y_js);
 
     #format
     for obsi in range(len(obs_strs)):

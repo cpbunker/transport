@@ -1,0 +1,4 @@
+Benchmark Ciccarello results with a single electron
+Geometric params:
+Nconf = 10, NL = 12, NFM = 1, NR = 15 -> 56 total site
+Rice Mele: u=0, v=-1 fixed. Tune w

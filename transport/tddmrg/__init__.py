@@ -899,13 +899,10 @@ def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
         h1e_twhen, g2e_dummy = H_RM_builder(params_dict, block=False);
         h1e_twhen, g2e_dummy = H_RM_polarizer(params_dict, (h1e_twhen, g2e_dummy), block=False);
     elif(params_dict["sys_type"] in ["STT_RM"]):
-        h1e_twhen, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
+        h1e_twhen, g2e_dummy = H_STTRM_builder(params_dict, block=False);
         # for stt_rm, perturber Vconf added by polarizer, so we skip polarizer       
 
     h1e_twhen = h1e_twhen[::2,::2]; # <- make spinless !!
-    print("h1e_twhen = ");
-    print(h1e_twhen[:8,:8]);
-    print(h1e_twhen[-8:,-8:]);
 
     # diagonalize single-body Hamiltonian -> energy eigenstates
     vals_twhen, vecs_twhen = np.linalg.eigh(h1e_twhen);
@@ -934,9 +931,8 @@ def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
     # which band to project onto
     # valence band
     print("in band_wrapper");
-    print("whichblock = {:.0f}, whichsite = {:.0f}".format(whichblock, whichsite)+"->")
+    print("whichblock = {:.0f}, whichsite = {:.0f}".format(whichblock, whichsite));
     print("{:.0f} total k states".format(len(vecs_twhen)));
-    print("{:.0f} total sites".format(len(vecs_twhen[0])),"\nj_projector = ",j_projector);
 
     # observable for band occupancy
     if(block):
@@ -947,10 +943,10 @@ def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
         g2e_zeros = np.zeros((Nspinorbs, Nspinorbs, Nspinorbs, Nspinorbs),dtype=float);
 
     # coefs for this observable come from energy eigenstates
-    assert(len(vecs_twhen[0]) == Rmdofs*Ntotal); # spatial extent of vecs = number of spinless orbs 
+    assert(len(vecs_twhen[0]) == RMdofs*Ntotal); # spatial extent of vecs = number of spinless orbs 
     for kmvali in [whichsite]: # 0th site stores occ of m=0 level, etc
-        for j in site_projector:
-            for jp in site_projector:
+        for j in j_projector:
+            for jp in j_projector:
                 for sigma in [0,1]:
                     spinstr = ["cd","CD"][sigma];
                     alpha_alpha = vecs_twhen[kmvali,j]*np.conj(vecs_twhen[kmvali,jp]);
@@ -960,11 +956,13 @@ def band_wrapper(psi, eris_or_driver, whichsite, params_dict, block, verbose=0):
                         h1e[nloc*j+sigma,nloc*jp+sigma] += alpha_alpha;
 
     # fci operator
-    if(not block): op = tdfci.ERIs(h1e, g2e_zeros, eris_or_driver.mo_coeff);
+    if(not block): 
+        op = tdfci.ERIs(h1e, g2e_zeros, eris_or_driver.mo_coeff);
+    else: # matrix product operator
+        band_mpo = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
+        ret = compute_obs(psi, band_mpo, eris_or_driver);
 
-    # matrix product operator
-    band_mpo = eris_or_driver.get_mpo(builder.finalize(adjust_order=True, fermionic_ops="cdCD"), iprint=verbose);
-    ret = compute_obs(psi, band_mpo, eris_or_driver);
+    # return
     if(abs(np.imag(ret)) > 1e-10): print(ret); raise ValueError;
     return np.real(ret);
 

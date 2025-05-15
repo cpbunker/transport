@@ -75,7 +75,7 @@ if(__name__=="__main__"):
     obs3, factor3, color3, mark3 = "sz_", 2, "darkblue", "o";
     obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
     num_xticks = 4;
-    datamarkers = ["s","^","d","*"];
+    datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
     #plt.rcParams.update({"text.usetex": True});
 
@@ -501,7 +501,7 @@ elif(case in [15,16]): # occupancy vs site vs time heatmap
         
         # time evolution params
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));;
+        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
