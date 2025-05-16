@@ -398,6 +398,22 @@ def dispersion_RiceMele(diag, offdiag, ks) -> np.ndarray:
 
     band = np.sqrt(u*u+v*v+w*w+2*v*w*np.cos(ks));
     return np.array([u0-band,u0+band]);
+    
+def inverted_RiceMele(diag, offdiag, Es) -> np.ndarray:
+    '''
+    inverted dispersion function E(k)
+    Returns an array of shape (2,len(ks)) where 2 runs over the plus, minus bands
+    '''
+
+    # decompose into u, w, v
+    u0 = np.sum(np.diagonal(diag))/len(diag); 
+    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
+    v = diag[0,-1];
+    w = offdiag[-1,0];
+
+    ret = np.arccos(1/(2*v*w)*((Es-u0)**2 - u**2 - v**2 - w**2));
+    print(ret)
+    return ret;
 
 def bandedges_RiceMele(diag, offdiag) -> np.ndarray:
     '''

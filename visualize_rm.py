@@ -43,23 +43,24 @@ def tb_hamiltonian(the_params, initialize, verbose=0):
     '''
 
     # construct Time=0 single-body Hamiltonian as matrix
-    if(params["sys_type"] in ["SIETS_RM"]):
-        h1e_t0, g2e_dummy = tddmrg.H_RM_builder(params, block=False);
-    elif(params["sys_type"] in ["STT_RM"]):
-        h1e_t0, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
+    if(the_params["sys_type"] in ["SIETS_RM"]):
+        h1e_t0, g2e_dummy = tddmrg.H_RM_builder(the_params, block=False);
+    elif(the_params["sys_type"] in ["STT_RM"]):
+        h1e_t0, g2e_dummy = tddmrg.H_STTRM_builder(the_params, block=False);
 
     # if Time = 0, add polarizer
     if(initialize):
-        if(params["sys_type"] in ["SIETS_RM"]):
-            h1e_t0, g2e_dummy = tddmrg.H_RM_polarizer(params, (h1e_t0, g2e_dummy), block=False);
-        elif(params["sys_type"] in ["STT_RM"]):
-            h1e_t0, g2e_dummy = tddmrg.H_STTRM_polarizer(params, (h1e_t0, g2e_dummy), block=False);
+        if(the_params["sys_type"] in ["SIETS_RM"]):
+            h1e_t0, g2e_dummy = tddmrg.H_RM_polarizer(the_params, (h1e_t0, g2e_dummy), block=False);
+        elif(the_params["sys_type"] in ["STT_RM"]):
+            h1e_t0, g2e_dummy = tddmrg.H_STTRM_polarizer(the_params, (h1e_t0, g2e_dummy), block=False);
 
     # eigenstates
     del g2e_dummy
     h = h1e_t0[::2,::2]; # <- make spinless !!
     Evals, Evecs = tdfci.solver(h);
-    kvals = np.arccos(1/(2*params["v"]*params["w"])*((Evals)**2 - params["u"]**2 - params["v"]**2 - params["w"]**2));
+    kvals = np.arccos(1/(2*the_params["v"]*the_params["w"])*((Evals)**2 - the_params["u"]**2 - the_params["v"]**2 - the_params["w"]**2));
+    #del kvals; # switch to wfm.inverted_RiceMele?
     return kvals, Evals, Evecs, h;
 
 
@@ -100,7 +101,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
 
     # t<0 eigenstates (|k_m> states)
     m_HOMO = len(the_occs) - 1; # m value of the highest occupied k state
-    kmvals, Emvals, Emvecs, h1e_t0 = tb_hamiltonian(params, initialize=True, verbose=1); 
+    kmvals, Emvals, Emvecs, h1e_t0 = tb_hamiltonian(the_params, initialize=True, verbose=1); 
     the_occs_final = np.zeros_like(Emvals, dtype = the_occs.dtype);
     the_occs_final[:len(the_occs)] = the_occs[:];
     print(the_occs,"-->\n", the_occs_final);
@@ -119,10 +120,10 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     the_axes[0,0].legend(loc="lower right");
     the_axes[0,0].set_xlabel("$j$");
     the_axes[0,0].set_ylabel("$\langle j | k_m \\rangle$");
-    the_axes[0,0].set_title("$u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(params["u"], params["v"], params["w"]));
+    the_axes[0,0].set_title("$u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(the_params["u"], the_params["v"], the_params["w"]));
 
     # t>0 eigenstates (|k_n> states)
-    knvals, Envals, Envecs, h1e = tb_hamiltonian(params, initialize=False, verbose=0);
+    knvals, Envals, Envecs, h1e = tb_hamiltonian(the_params, initialize=False, verbose=0);
     for n in range(4):
         the_axes[1,0].plot(Envecs[n], label="$n =${:.0f}, $k_n=${:.4f}".format(n,knvals[n]));
     diag_norm = np.max(abs(np.diag(h1e)));
@@ -153,7 +154,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     the_axes[1,1].plot(Envals[band_divider:], the_pdfs[band_divider:], color="red");
     
     # visualize the k-state wavefunctions
-    the_fig.suptitle("$N_e =${:.0f}".format(np.sum(the_occs))+", $N_{conf} =$"+"{:.0f}".format(params["Nconf"])
+    the_fig.suptitle("$N_e =${:.0f}".format(np.sum(the_occs))+", $N_{conf} =$"+"{:.0f}".format(the_params["Nconf"])
             +", $m_{HOMO} =$"+"{:.0f}".format(m_HOMO));
     if(plotwfs): plt.tight_layout(), plt.show();
     else: plt.close();
@@ -171,7 +172,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
         spin_pdf += the_occs[kmvali]*(2-the_occs[kmvali])*np.conj(Emvecs[kmvali])*Emvecs[kmvali];
         
     # return
-    return knvals, the_pdfs, charge_pdf, spin_pdf;
+    return Envals, knvals, the_pdfs, charge_pdf, spin_pdf;
 
 
 if(__name__ == "__main__"):
@@ -184,11 +185,11 @@ if(__name__ == "__main__"):
     json_name = sys.argv[2];
     try:
         try:
-            params = json.load(open(json_name+".txt"));
+            myparams = json.load(open(json_name+".txt"));
         except:
-            params = json.load(open(json_name));
+            myparams = json.load(open(json_name));
             json_name = json_name[:-4];
-        print(">>> Params = ",params);
+        print(">>> Params = ",myparams);
     except:
         raise Exception(json_name+" cannot be found");
 
@@ -196,9 +197,50 @@ if(__name__ == "__main__"):
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     mylinewidth = 1.0;
     myfontsize = 14;
+    
+else: # name NOT main 
+      # code here just keeps this script from failing when it is imported
+    case = "None";
 
 #### Rice Mele Time > 0 occupation distribution
-if(case in ["distro"]):
+if(case in ["None"]): pass;
+
+elif(case in ["distro"]):
+
+    # iter over Ne, excited_state values
+    wvals = np.array([-1.0,-0.2]);
+    myNe, my_levels_skip = 5, 0; # fixed
+    is_spinpol = True;
+    if(is_spinpol): myTwoSz = 1*myNe;
+    else: myTwoSz=0; assert(myNe%2==0);
+    
+    # set up figure
+    fig, axes = plt.subplots();
+    distax = axes;
+    distax.set_xlabel("$E_n$",fontsize=myfontsize);
+    distax.set_ylabel("Ocuupation",fontsize=myfontsize);
+    distax.set_ylim(0,1);
+
+    for pairi in range(len(wvals)):
+
+        # repack overridden params
+        myparams["w"] = wvals[pairi];
+
+        # occupation
+        my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
+
+        # get time=0 and time>0 wavefunctions etc
+        my_E, _, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
+
+        distax.plot(my_E[:len(my_E)//2], my_dist[:len(my_E)//2], color="black");
+        distax.plot(my_E[len(my_E)//2:], my_dist[len(my_E)//2:], color="red");
+        
+    # show
+    distax.legend();
+    plt.tight_layout();
+    plt.show();
+ 
+elif(case in ["distroNe"]):
 
     # plot either individual wfs or total charge density
     plot_wfs = True;
@@ -215,34 +257,25 @@ if(case in ["distro"]):
         if(is_spinpol): myTwoSz = 1*myNe;
         else: myTwoSz=0; assert(myNe%2==0);
         # repack overridden params
-        params["Ne"] = myNe;
-        params["TwoSz"] = myTwoSz;
+        myparams["Ne"] = myNe;
+        myparams["TwoSz"] = myTwoSz;
 
         # occupation
         my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
         # get time=0 and time>0 wavefunctions etc
-        _, _, my_charge, my_spin = get_overlaps(params, my_occs, plotwfs=plot_wfs);
-        if(not plot_wfs): # <-- this makes a time=0 charge density plot
-                          # which can validate DMRG initialization
-            pairfig, pairax = plt.subplots();
-            pairax.fill_between(np.arange(len(my_charge)),my_charge, color="cornflowerblue");
-            pairax.plot(np.arange(len(my_spin)),my_spin, color="darkblue",marker="o");
-            pairax.set_title("$N_e =${:.0f}, $2S_z=${:.0f}".format(myNe,myTwoSz)+", $N_{conf} =$"+"{:.0f}".format(myNconf));
-            for tick in [-1.0,-0.5,0.0,0.5,1.0]: pairax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-            plt.show();
-
+        _, _, _, my_charge, my_spin = get_overlaps(myparams, my_occs, plotwfs=plot_wfs);
 
 #### Rice-Mele dos (continuous DOS, not surface DOS)
 elif(case in ["dos"]):
 
     # construct Time=0 single-body Hamiltonian as matrix
-    if(params["sys_type"] in ["SIETS_RM"]):
-        h1e_twhen, g2e_dummy = tddmrg.H_RM_builder(params, block=False);
-        h1e_twhen, g2e_dummy = tddmrg.H_RM_polarizer(params, (h1e_twhen, g2e_dummy), block=False);
+    if(myparams["sys_type"] in ["SIETS_RM"]):
+        h1e_twhen, g2e_dummy = tddmrg.H_RM_builder(myparams, block=False);
+        h1e_twhen, g2e_dummy = tddmrg.H_RM_polarizer(myparams, (h1e_twhen, g2e_dummy), block=False);
         # for siets_rm, perturber Vb removed by polarizer
-    elif(params["sys_type"] in ["STT_RM"]):
-        h1e_twhen, g2e_dummy = tddmrg.H_STTRM_builder(params, block=False);
+    elif(myparams["sys_type"] in ["STT_RM"]):
+        h1e_twhen, g2e_dummy = tddmrg.H_STTRM_builder(myparams, block=False);
         # for stt_rm, perturber Vconf added by polarizer, so we skip polarizer       
 
     # eigenstates
@@ -251,16 +284,16 @@ elif(case in ["dos"]):
     vals_twhen, vecs_twhen = tdfci.solver(h1e_twhen);
 
     # printout
-    centrals = np.arange(params["NL"],params["NL"]+params["NFM"]);
+    centrals = np.arange(myparams["NL"],myparams["NL"]+myparams["NFM"]);
     RMdofs = 2;
     print("h1e_t0 = ");
     print(h1e_twhen[:8,:8]); 
-    print(h1e_twhen[RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1),RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1)]); 
+    print(h1e_twhen[RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1), RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1)]); 
     print(h1e_twhen[-8:,-8:]);
 
     if(True):
         # load data from json
-        uval, vval, wval = params["u"], params["v"], params["w"];
+        uval, vval, wval = myparams["u"], myparams["v"], myparams["w"];
         
         # from Rice-Mele parameters, construct matrices that act on mu dofs
         h00 = np.array([[uval, vval], [vval,-uval]]);
@@ -274,7 +307,8 @@ elif(case in ["dos"]):
 	####
 	####
 	# DOS from analytical dispersion
-        dos_Es = (2/np.pi)/abs(np.array([np.gradient(Es[0],ks),np.gradient(Es[0],ks)])); # handles both bands at once
+        dos_Es = (2/np.pi)/abs(np.array([np.gradient(Es[0],ks),
+                                         np.gradient(Es[1],ks)])); # handles both bands at once
         dos_mins = np.min(dos_Es,axis=1);
 
 	# plotting
@@ -309,8 +343,8 @@ elif(case in ["dos"]):
                     dosax.plot([0.5*np.mean(fixed_rho_points),1.5*np.mean(fixed_rho_points)],[E,E],color=UniversalAccents[-1]);
 
 	# title
-        if(params["sys_type"] in ["SIETS_RM"]): title_or_label = "$t_h =${:.2f}, ".format(params["th"]);
-        elif(params["sys_type"] in ["STT_RM"]): title_or_label = "";
+        if(myparams["sys_type"] in ["SIETS_RM"]): title_or_label = "$t_h =${:.2f}, ".format(params["th"]);
+        elif(myparams["sys_type"] in ["STT_RM"]): title_or_label = "";
         title_or_label += wfm.string_RiceMele(h00, h01);
         fig.suptitle(title_or_label, fontsize = myfontsize);
 
@@ -320,8 +354,8 @@ elif(case in ["dos"]):
         if(not use_dos_direct): dosax.set_xlim(*fixed_rho_points);
         else: dosax.set_xlim(*fixed_rho_points);
         dosax.set_xlabel("$\\rho, \\rho_{min} = $"+str(dos_mins),fontsize=myfontsize);
-        if(params["u"] > 0 or params["w"] != -1.0):
-            dosax.annotate("  $N_{sites} =$"+"{:.0f}".format(len(h1e_t0))+", $\\tilde{E}_{gap} = $"+"{:.4f}".format(E_gap_tilde),(0,0),color=UniversalAccents[-1]);
+        if(myparams["u"] > 0 or myparams["w"] != -1.0):
+            dosax.annotate("  $N_{sites} =$"+"{:.0f}".format(len(h1e_twhen))+", $\\tilde{E}_{gap} = $"+"{:.4f}".format(E_gap_tilde),(0,0),color=UniversalAccents[-1]);
         for bedge in band_edges:
             dispax.axhline(bedge, color="grey", linestyle="dashed");
             dosax.axhline( bedge, color="grey", linestyle="dashed");

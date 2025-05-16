@@ -19,19 +19,18 @@ if(__name__=="__main__"):
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     mylinewidth = 1.0;
     plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True}) 
+    plt.rcParams.update({"text.usetex": True}) 
     
     # tight binding parameters
     u0val = 0.0; # in-cell energies are u_0 + u, u_0 - u;
     vval = -1.0; # intradimer hopping, fixed reference param akin to tl
     wvals = np.array([vval, float(sys.argv[2])]);
-    uvals = np.array([0.0, float(sys.argv[3])]);
+    uvals = np.array([0.0,  float(sys.argv[3])]);
 
     # set up figure
     mustrings = ["A","B"];
     n_mu_dof = len(mustrings); # runs over d orbitals and p orbitals
-    n_w_dof = len(wvals); # display results for different RiceMele parameter sets
-
+    
     # iterative parameters
     n_iterations = 21 # 201 #raise Exception("change all niter to conv_tol");
     imag_pt_E = 1e-2;
@@ -39,60 +38,87 @@ if(__name__=="__main__"):
 if(case in ["sdos"]): 
 
     # set up figure
-    nrow, ncol = n_w_dof, 2;
-    fig, axes = plt.subplots(nrow, ncol, sharex=True);
-    fig.set_size_inches(ncol*2*3.6, nrow*3.6);
+    nrow, ncol = 2, 2;
+    fig, axes = plt.subplots(nrow, ncol, sharey=True);
+    fig.set_size_inches(ncol*4, nrow*3);
+    dispax, dosax, sdosax, veloax = axes[0,0], axes[0,1], axes[1,0], axes[1,1];
+    
+    # format figure
+    for rowi in range(nrow):
+        axes[rowi,0].set_ylabel("$E$", fontsize=myfontsize);
+    dispax.set_xlabel("$ka/\pi$", fontsize=myfontsize);
+    dispax.set_xlim(0.0,1.0);
+    dosax.set_xlabel("$\\rho$", fontsize=myfontsize);
+    dosax.set_xlim(0.0,10.0);
+    sdosax.set_xlabel("Right Lead Surface DOS", fontsize=myfontsize);
+    veloax.set_xlabel("Right Lead Velocities", fontsize=myfontsize);
+    
+    # we will compare different Rice-mele parameter values
+    wvals = np.linspace(wvals[0], wvals[-1], 5);
+    wcolors = matplotlib.colormaps['bwr'](np.linspace(0,1,1+len(wvals)));
+    uvals = float(sys.argv[3])*np.ones_like(wvals);
+    dispax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval));
 
-    # run over tau values
+    # run over different RM params
     for wi in range(len(wvals)):
 
-        # from tight binding parameters, construct matrices that act on mu dofs
+        # from tight binding parameters, construct diatomic matrices
         h00 = np.array([[u0val+uvals[wi], vval], [vval,u0val-uvals[wi]]]);
         h01 = np.array([[0.0, 0.0],[wvals[wi], 0.0]]);
         houtgoing = 1
-        print("\n\nRice-Mele "+wfm.string_RiceMele(h00, h01, tex=False));
+        title_or_label = wfm.string_RiceMele(h00, h01, energies=False, tex=True)
+        print("\n\nRice-Mele "+title_or_label);
+        title_or_label = "$w = {:.2f}$".format(wvals[wi]); assert(len(wvals)==5);
         print("h00 =\n",h00);
         print("h01 =\n",h01);
-        Evals = np.linspace(-2*abs(vval), 2*abs(vval), myxvals, dtype=complex);     
+        band_edges = wfm.bandedges_RiceMele(h00, h01);
+        Evals = np.linspace(np.min(band_edges), np.max(band_edges), myxvals, dtype=complex);
+        kvals = np.linspace(-np.pi,np.pi, myxvals, dtype=float);
+        Evals_forkvals = wfm.dispersion_RiceMele(h00, h01, kvals);    
 
-        if(wi == 0): # monatomic case -- closed form solution
-            sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
-            for Evali in range(len(Evals)): 
-                sdos_closed[Evali] =(-1/np.pi)*np.imag(wfm.g_closed(h00[:1,:1],h01[1:,:1], Evals[Evali], houtgoing))[0,0];
-            axes[wi,0].plot(np.real(Evals),sdos_closed,label="$\infty$ (monatomic cell)",color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
-            # monatomic velocities
-            velocities_closed = 2*abs(vval)*np.sqrt(1-np.power(np.real(Evals/(2*abs(vval))),2))
-            axes[wi,1].plot(np.real(Evals), velocities_closed, color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
-
-        # diatomic case -- closed form solution
+        #### diatomic case -- closed form solution
+        ####
+        
+        # dispersion
+        for bandi in range(np.shape(Evals_forkvals)[0]):
+            if(bandi==0):
+                dispax.plot(kvals/np.pi, Evals_forkvals[bandi],color=wcolors[wi],label=title_or_label);
+            else:
+                dispax.plot(kvals/np.pi, Evals_forkvals[bandi],color=wcolors[wi]);
+        
+        # continuum density of states
+        Evals_gradient = np.array([np.gradient(Evals_forkvals[0],kvals),
+                                   np.gradient(Evals_forkvals[1],kvals)]); # handles both bands at once
+        for bandi in range(np.shape(Evals_forkvals)[0]):
+            dosax.plot(2/np.pi*abs(1/Evals_gradient[bandi]),Evals_forkvals[bandi],color=wcolors[wi]);
+        
+        # surface density of states
         sdos_dia = np.zeros_like(Evals, dtype=float); 
         for Evali in range(len(Evals)):
             sdos_dia[Evali] =(-1/np.pi)*np.imag(wfm.g_RiceMele(h00,h01,Evals[Evali],houtgoing)[0,0]); 
-        axes[wi,0].plot(np.real(Evals),sdos_dia,color=UniversalColors[0],label="$\infty$ (diatomic cell)");
+        sdosax.plot(sdos_dia,np.real(Evals),color=wcolors[wi],label=title_or_label);
 
-        # diatomic velocities from closed form self energy
+        # velocities from self energy
         velocities_Sigma = np.zeros_like(sdos_dia);
         for Evali in range(len(Evals)):
             SigmaRmat = np.matmul(h01, np.matmul( wfm.g_RiceMele(h00,h01,Evals[Evali],houtgoing), np.conj(h01).T));
             velocities_Sigma[Evali] = -2*np.imag(SigmaRmat)[1,1]; # <- get B,B component
-        axes[wi,1].plot(np.real(Evals),velocities_Sigma,color=UniversalColors[0]); 
+        veloax.plot(velocities_Sigma,np.real(Evals),color=wcolors[wi]); 
 
-        # format
-        axes[wi,0].set_title(wfm.string_RiceMele(h00, h01), fontsize=myfontsize);
-        axes[0,0].legend(title="# iterations");
-        # show band edges
-        band_edges = wfm.bandedges_RiceMele(h00, h01);
-        for ax in axes[wi]:
-            for edge in band_edges:
-                ax.axvline(edge, color="gray",linestyle="dashed");
-
+        if(False): # monatomic case -- closed form solution
+            sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
+            for Evali in range(len(Evals)): 
+                sdos_closed[Evali] =(-1/np.pi)*np.imag(wfm.g_closed(h00[:1,:1],h01[1:,:1], Evals[Evali], houtgoing))[0,0];
+            sdosax.plot(sdos_closed,np.real(Evals),label="$\infty$ (monatomic cell)",color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
+            # monatomic velocities
+            velocities_closed = 2*abs(vval)*np.sqrt(1-np.power(np.real(Evals/(2*abs(vval))),2))
+            veloax.plot(velocities_closed, np.real(Evals), color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
         #
         # **iterative **
         #
         # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
         last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
         last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-
         # right lead surface Green's function
         # exists as a matrix acting on mu dofs
         gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
@@ -109,25 +135,18 @@ if(case in ["sdos"]):
         if(False): # plot iterative
             # get density of states
             dos = (-1/np.pi)*np.imag(gsurf)[0,0]; # real-valued function of E
-            axes[wi,0].plot(np.real(Evals), dos, color=UniversalColors[0], label=str(n_iterations-1));
+            sdosax.plot(np.real(Evals), dos, color=UniversalColors[0], label=str(n_iterations-1));
 
             # get change in density of states at last iteration
             dos_change = (-1/np.pi)*np.imag(last_change)[0,0]; # real-valued function of E
-            axes[wi,0].plot(np.real(Evals), dos_change, color=UniversalColors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
+            sdosax.plot(dos_change,np.real(Evals),color=UniversalColors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
 
             # get velocities
             velocities_dos = dos*(-np.pi)*abs(vval)*abs(vval)*(-2); # -2Im[\Sigma]
-            axes[wi,1].plot(np.real(Evals), velocities_dos, color=UniversalColors[0]);
-
-    # format
-    for coli in range(ncol):
-        axes[-1,coli].set_xlabel("$E$", fontsize=myfontsize);
-        #axes[-1,coli].set_xlim(min(np.real(Evals)), max(np.real(Evals)));
-    for wi in range(len(wvals)): 
-        axes[wi,0].set_ylabel("Right Lead Surface DOS", fontsize=myfontsize);
-        axes[wi,1].set_ylabel("Right Lead Velocities", fontsize=myfontsize);
+            veloax.plot(velocities_dos,np.real(Evals),color=UniversalColors[0]);
 
     # show
+    dispax.legend();
     plt.tight_layout();
     plt.show(); 
 
