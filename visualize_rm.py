@@ -9,35 +9,6 @@ import matplotlib.pyplot as plt
 import sys
 import json
 
-def lorentzian(xarr, x0, Gamma):
-    return (1/np.pi)*(0.5*Gamma)/((xarr-x0)**2 + (0.5*Gamma)**2);
-
-def square(xarr, x0, xlim,height):
-    zs = 0*xarr;
-    zs[abs(xarr-x0)<xlim] += height+zs[abs(xarr-x0)<xlim];
-    #plt.plot(zs)
-    #plt.show()
-    return zs
-
-def energies_to_dos(Evals, discretes, Gamma, height):
-    dosvals = np.zeros_like(Evals);
-    for E in discretes:
-        dosvals += square(Evals, E, Gamma, height);
-
-    return dosvals;
-    
-def snapshot(state,time):
-    '''
-    '''
-    n_yjs = np.full((len(state),),np.nan,dtype=float);
-    for ni in range(len(n_yjs)):
-        nop = 0*np.eye(len(state));
-        nop[ni,ni] = 1;
-        n_yjs[ni] = np.real(np.dot( np.conj(state), np.matmul(nop, state)));
-    plt.plot(range(len(n_yjs)), n_yjs);
-    plt.suptitle("Time = {:.2f}".format(time));
-    plt.show();
-
 def tb_hamiltonian(the_params, initialize, verbose=0):
     '''
     '''
@@ -197,6 +168,9 @@ if(__name__ == "__main__"):
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     mylinewidth = 1.0;
     myfontsize = 14;
+    plt.rcParams.update({"font.family": "serif"});
+    #plt.rcParams.update({"text.usetex": True});
+    UniversalFigRatios = [4.5,5.5/1.25];
     
 else: # name NOT main 
       # code here just keeps this script from failing when it is imported
@@ -207,21 +181,19 @@ if(case in ["None"]): pass;
 
 elif(case in ["distro"]):
 
-    # iter over Ne, excited_state values
+    # parameters
     wvals = np.array([-1.0,-0.2]);
-    myNe, my_levels_skip = 5, 0; # fixed
-    is_spinpol = True;
-    if(is_spinpol): myTwoSz = 1*myNe;
-    else: myTwoSz=0; assert(myNe%2==0);
+    my_levels_skip = 0; # fixed
+    myNe, myTwoSz = myparams["Ne"], myparams["TwoSz"];
     
     # set up figure
     fig, axes = plt.subplots();
+    fig.set_size_inches(*UniversalFigRatios)
     distax = axes;
-    distax.set_xlabel("$E_n$",fontsize=myfontsize);
-    distax.set_ylabel("Ocuupation",fontsize=myfontsize);
-    distax.set_ylim(0,1);
+    distax.set_ylabel("$E_n$",fontsize=myfontsize);
+    distax.set_xlabel("$\sum_m |\langle k_m|k_n \\rangle |^2$",fontsize=myfontsize);
 
-    for pairi in range(len(wvals)):
+    for pairi in range(len(wvals)): # iter over w
 
         # repack overridden params
         myparams["w"] = wvals[pairi];
@@ -232,18 +204,74 @@ elif(case in ["distro"]):
         # get time=0 and time>0 wavefunctions etc
         my_E, _, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
 
-        distax.plot(my_E[:len(my_E)//2], my_dist[:len(my_E)//2], color="black");
-        distax.plot(my_E[len(my_E)//2:], my_dist[len(my_E)//2:], color="red");
+        # plot
+        mylabel = "$v = {:.2f}, w = {:.2f}$".format( myparams["v"], myparams["w"]);
+        distax.plot(my_dist[:len(my_E)//2],my_E[:len(my_E)//2],label=mylabel, color=UniversalColors[pairi]);
+        distax.plot(my_dist[len(my_E)//2:],my_E[len(my_E)//2:], color=UniversalColors[pairi]);
+
+    # format
+    distax.set_xticks([]);
+    distax.set_title("$N_e = {:.0f}$".format(myparams["Ne"])+", $N_{conf} =$"+"{:.0f}".format(myparams["Nconf"]));
         
+    # show
+    distax.legend();
+    plt.tight_layout();
+    plt.show();
+
+elif(case in ["distroNconf"]):
+
+    # parameters
+    # wval is fixed
+    my_levels_skip = 0; # fixed
+    myNe, myTwoSz = myparams["Ne"], myparams["TwoSz"];
+    Nconfvals = [2,5,10,20];
+
+    # whether to plt vs En or kn
+    plot_vs_kn = True;
+    
+    # set up figure
+    fig, axes = plt.subplots();
+    fig.set_size_inches(*UniversalFigRatios)
+    distax = axes;
+    if(plot_vs_kn): distax.set_ylabel("$k_n a/\pi$",fontsize=myfontsize);
+    else: distax.set_ylabel("$E_n$",fontsize=myfontsize);
+    distax.set_xlabel("$\sum_m |\langle k_m|k_n \\rangle |^2$",fontsize=myfontsize);
+
+    for pairi in range(len(Nconfvals)): # iter over Nconf
+
+        # repack overridden params
+        myparams["Nconf"] = Nconfvals[pairi];
+
+        # occupation
+        my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
+
+        # get time=0 and time>0 wavefunctions etc
+        my_E, my_k, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
+        if(plot_vs_kn): indep_vals = 1*my_k/np.pi;
+        else: indep_vals = 1*my_E
+
+        # plot
+        mylabel = "$N_{conf} = $"+"{:.0f}".format(myparams["Nconf"]);
+        distax.plot(my_dist[:len(my_E)//2],indep_vals[:len(my_E)//2],label=mylabel, color=UniversalColors[pairi]);
+        distax.plot(my_dist[len(my_E)//2:],indep_vals[len(my_E)//2:], color=UniversalColors[pairi]);
+
+    # format
+    distax.set_xticks([]);
+    distax.set_title("$N_e = {:.0f}, v = {:.2f}, w = {:.2f}$".format(myparams["Ne"], myparams["v"], myparams["w"]));
+    if(myparams["Ne"]==1 and not plot_vs_kn): distax.set_ylim(np.min(indep_vals), 0.0);
+    ktarget = np.pi/20;
+    h00 = np.array([[myparams["u"], myparams["v"]],[myparams["v"],-myparams["u"]]]);
+    h01 = np.array([[0,0],[myparams["w"],0]]);
+    Etarget = wfm.dispersion_RiceMele(h00, h01, [ktarget])[0];
+    if(plot_vs_kn): distax.axhline(ktarget/np.pi, color="black", linestyle="dashed");
+    else: distax.axhline(Etarget, color="black", linestyle="dashed");
+    
     # show
     distax.legend();
     plt.tight_layout();
     plt.show();
  
 elif(case in ["distroNe"]):
-
-    # plot either individual wfs or total charge density
-    plot_wfs = True;
 
     # iter over Ne, excited_state values
     pairvals = np.array([(1,0),(2,0),(5,0), (10,0)]);
@@ -264,7 +292,7 @@ elif(case in ["distroNe"]):
         my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
         # get time=0 and time>0 wavefunctions etc
-        _, _, _, my_charge, my_spin = get_overlaps(myparams, my_occs, plotwfs=plot_wfs);
+        _, _, _, my_charge, my_spin = get_overlaps(myparams, my_occs, plotwfs=True);
 
 #### Rice-Mele dos (continuous DOS, not surface DOS)
 elif(case in ["dos"]):
@@ -291,19 +319,19 @@ elif(case in ["dos"]):
     print(h1e_twhen[RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1), RMdofs*(centrals[0]-1):RMdofs*(centrals[-1]+1)]); 
     print(h1e_twhen[-8:,-8:]);
 
-    if(True):
-        # load data from json
-        uval, vval, wval = myparams["u"], myparams["v"], myparams["w"];
+    # load data from json
+    uval, vval, wval = myparams["u"], myparams["v"], myparams["w"];
         
-        # from Rice-Mele parameters, construct matrices that act on mu dofs
-        h00 = np.array([[uval, vval], [vval,-uval]]);
-        h01 = np.array([[0.0, 0.0],[wval, 0.0]]);
-        band_edges = wfm.bandedges_RiceMele(h00, h01);
-        print("\n\nRice-Mele "+wfm.string_RiceMele(h00, h01, tex=False));
-        ks = np.linspace(-np.pi, np.pi, myxvals);
-        Es = wfm.dispersion_RiceMele(h00, h01, ks); # includes band index
-        fixed_rho_points = np.array([0,10]);
-        
+    # from Rice-Mele parameters, construct matrices that act on mu dofs
+    h00 = np.array([[uval, vval], [vval,-uval]]);
+    h01 = np.array([[0.0, 0.0],[wval, 0.0]]);
+    band_edges = wfm.bandedges_RiceMele(h00, h01);
+    print("\n\nRice-Mele "+wfm.string_RiceMele(h00, h01, tex=False));
+    ks = np.linspace(-np.pi, np.pi, myxvals);
+    Es = wfm.dispersion_RiceMele(h00, h01, ks); # includes band index
+    fixed_rho_points = np.array([0,10]);
+
+    if(True): 
 	####
 	####
 	# DOS from analytical dispersion
@@ -328,20 +356,15 @@ elif(case in ["dos"]):
 
 	# analyze
         direct_spacings = (Es_direct[1:] - Es_direct[:-1]);
-        myGamma = np.mean(direct_spacings);
-        myHeight = 1;
-        print("Gamma = mean(E_spacing) = {:.6f}, height = {:.6f}".format(myGamma, myHeight));
-        use_dos_direct = False;
 
 	# plotting
         for bandi in [0,1]:
             band_direct = Es_direct[bandi*len(Es_direct)//2:(bandi+1)*len(Es_direct)//2];
-            dos_direct = energies_to_dos(Es[bandi], band_direct, myGamma, myHeight);
-            if(use_dos_direct): dosax.plot(dos_direct, Es[bandi]);
-            else:
-                for E in band_direct:
-                    dosax.plot([0.5*np.mean(fixed_rho_points),1.5*np.mean(fixed_rho_points)],[E,E],color=UniversalAccents[-1]);
-
+            ks_direct = np.arccos(1/(2*myparams["v"]*myparams["w"])*((band_direct)**2 - myparams["u"]**2 - myparams["v"]**2 - myparams["w"]**2))
+            dispax.scatter(ks_direct/np.pi, band_direct, marker=AccentsMarkers[1],color=UniversalAccents[1]);
+            dos_direct = (2/np.pi)/abs(np.gradient(band_direct, ks_direct))
+            dosax.scatter(dos_direct, band_direct, marker=AccentsMarkers[1],color=UniversalAccents[1]);
+           
 	# title
         if(myparams["sys_type"] in ["SIETS_RM"]): title_or_label = "$t_h =${:.2f}, ".format(params["th"]);
         elif(myparams["sys_type"] in ["STT_RM"]): title_or_label = "";
@@ -351,8 +374,7 @@ elif(case in ["dos"]):
         # format
         dispax.set_xlim(-1.0,1.0);
         dispax.set_xlabel("$ka/\pi$",fontsize=myfontsize);
-        if(not use_dos_direct): dosax.set_xlim(*fixed_rho_points);
-        else: dosax.set_xlim(*fixed_rho_points);
+        dosax.set_xlim(*fixed_rho_points);
         dosax.set_xlabel("$\\rho, \\rho_{min} = $"+str(dos_mins),fontsize=myfontsize);
         if(myparams["u"] > 0 or myparams["w"] != -1.0):
             dosax.annotate("  $N_{sites} =$"+"{:.0f}".format(len(h1e_twhen))+", $\\tilde{E}_{gap} = $"+"{:.4f}".format(E_gap_tilde),(0,0),color=UniversalAccents[-1]);
@@ -372,6 +394,18 @@ elif(case in ["dos"]):
 
 
 elif(case in ["transport"]):
+
+    def snapshot(state,time):
+        '''
+        '''
+        n_yjs = np.full((len(state),),np.nan,dtype=float);
+        for ni in range(len(n_yjs)):
+            nop = 0*np.eye(len(state));
+            nop[ni,ni] = 1;
+            n_yjs[ni] = np.real(np.dot( np.conj(state), np.matmul(nop, state)));
+        plt.plot(range(len(n_yjs)), n_yjs);
+        plt.suptitle("Time = {:.2f}".format(time));
+        plt.show();
 
     # construct Time=0 single-body Hamiltonian as matrix
     h1e_t0, g2e_dummy = tddmrg.H_RM_builder(params, block=False);

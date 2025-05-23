@@ -179,13 +179,13 @@ to_override = ["Ne", "TwoSz", "Nconf"];
 for key in to_override: params[key] = np.nan;
 
 # iter over Ne, TwoSz, Nconf, excited_state values
-#pairvals = np.array([(1,1,20,0),(1,1,20,4),(1,1,20,9),(1,1,20,14),(1,1,20,19)]); # Ne=1 fixed, ground vs excited states
+pairvals = np.array([(1,1,2,0),(1,1,5,0),(1,1,10,0),(1,1,20,0)]); # Ne=1 fixed, ground vs excited states
 
 
 #pairvals = np.array([(1,1,20,0),(5,5,20,0), (5,5,40,0),(5,5,60,0)]); # mix of interesting cases
 #pairvals = np.array([(1,1,20,0),(5,5,20,0)]); # mix of interesting cases
 
-pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
+#pairvals = np.array([(1,1,20,0),(2,2,20,0),(5,5,20,0), (10,10,20,0)]); # Nconf=20 fixed, spin polarized
 #pairvals = np.array([(1,1,40,0),(2,2,40,0),(5,5,40,0), (10,10,40,0)]); # Nconf=40 fixed, spin polarized
 
 #pairvals = np.array([(5,5,5,0),(10,10,10,0),(20,20,20,0)]); # half filling, spin pol

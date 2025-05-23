@@ -10,7 +10,6 @@ Use density matrix renormalization group (DMRG) code (block2) from Huanchen Zhai
 from transport import tdfci
 from transport.tdfci import utils
 from pyblock2.driver import core
-#from pyblock3.block2.io import MPSTools, MPOTools
 import numpy as np
 import time
     
