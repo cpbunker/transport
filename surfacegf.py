@@ -40,7 +40,7 @@ if(case in ["sdos"]):
     # set up figure
     nrow, ncol = 2, 2;
     fig, axes = plt.subplots(nrow, ncol, sharey=True);
-    fig.set_size_inches(ncol*4, nrow*3);
+    fig.set_size_inches(ncol*3.5, nrow*3);
     dispax, dosax, sdosax, veloax = axes[0,0], axes[0,1], axes[1,0], axes[1,1];
     
     # format figure

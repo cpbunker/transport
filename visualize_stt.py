@@ -83,7 +83,8 @@ if(__name__=="__main__"):
     datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
     plt.rcParams.update({"text.usetex": True});
-    UniversalFigRatios = [4.5/1.3,5.5/1.3];
+    UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
+    UniversalPanels = ["(a)","(b)","(c)","(d)","(e)","(f)","(g)"];
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -470,7 +471,6 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
 elif(case in [20,21]): # occupancy vs orbital vs time heatmap
 
     # axes
-    UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     horizontal = True; # puts heatmaps side by side, else stack
     if(horizontal): fignrows, figncols = 1, len(datafiles)+1;
     else: fignrows, figncols = len(datafiles)+1, 1;
@@ -598,23 +598,9 @@ elif(case in [20,21]): # occupancy vs orbital vs time heatmap
 elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density profile and <k_m|k_n> distro
     assert(len(datafiles)==1);
     dfile = datafiles[0];
+
     
     # axes
-    '''
-    change_ratios = {"width_ratios":[1.0,0.25]};
-    change_ratios = [1.0,0.25];
-    fig = plt.figure(layout="constrained");
-    density_plus_map_fig, distro_fig = fig.subfigures(1,2, width_ratios=change_ratios);
-    densityax, heatmapax = density_plus_map_fig.subplots(1,2,sharey=True, gridspec_kw = {"width_ratios":change_ratios[::-1]});
-    distroax = distro_fig.subplots();
-    distroax.axis('off');
-    distroax = distroax.twinx();
-    #fig, axes = plt.subplots(ncols=figncols,nrows=fignrows)#, gridspec_kw=change_ratios);
-    #fig.set_size_inches((4.5/1.3)*figncols,5.5/1.3)
-    '''
-    
-    # axes
-    UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     fignrows, figncols = 1, 3;
     fig = plt.figure(layout="constrained");
     change_ratios = {"width_ratios":[0.33,1.0,0.33]};
@@ -649,38 +635,30 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
     for ti in range(len(times)):
         yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
     
-    #### heatmap 
-    if(True):        
-        # mesh grids for time (x) and site (y) plotting heatmap
-        timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Ntotal];
+    #### heatmap        
+    # mesh grids for time (x) and site (y) plotting heatmap
+    timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Ntotal];
         
-        # plot heatmap
-        heatmapax.set_facecolor("steelblue");
-        heatmap=heatmapax.pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
-        print("    np.max(yjs_vs_time) = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
+    # plot heatmap
+    heatmapax.set_facecolor("steelblue");
+    heatmap=heatmapax.pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
+    print("    np.max(yjs_vs_time) = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
         
-        # format colorbar
-        #cbar = fig.colorbar(heatmap,ax=axes[-1], pad=0.35,location='left');
-        #axes[-1].text(-0.90,1.03,"$\langle n_{j\mu} \\rangle $",
-        #transform=axes[-1].transAxes, fontsize=myfontsize);
-        #axes[-1].axis('off');
-        
-        # format heatmap
-        heatmapax.text(0.05,0.9,myaxlab, color="white",
+    # format heatmap
+    heatmapax.text(0.05,0.9,myaxlab, color="white",
             transform=heatmapax.transAxes,fontsize=myfontsize);
-        heatmapax.set_xlabel("Time $(\hbar/|v|)$",fontsize=myfontsize);
-        cbar = fig.colorbar(heatmap,ax=heatmapax, location='top',pad=0.01);
-        if(True):
-            cbar_ticks = cbar.ax.get_xticks().tolist();
-            cbar_ticks = cbar.ax.get_xticklabels();
-            print(cbar_ticks);
-            cbar_ticks[-1] = "$\langle n_{j\mu} \\rangle $";
-            print(cbar_ticks);
-            cbar.ax.set_xticklabels(cbar_ticks);
-           
+    heatmapax.set_xlabel("Time $(\hbar/|v|)$",fontsize=myfontsize);
+    cbar = fig.colorbar(heatmap,ax=heatmapax, location='top',pad=0.01);
+    if(True):
+        cbar_ticks = cbar.ax.get_xticks() #.tolist();
+        cbar_labels = np.copy(cbar_ticks).round(1).astype(str);
+        cbar_labels[0] = "$\langle n_{j\mu} \\rangle $";
+        print("\n",cbar_ticks,"\n",cbar_labels);
+        cbar.ax.set_xticks(cbar_ticks, labels=cbar_labels);           
+        cbar.ax.set_xlim(0.0,np.max(yjs_vs_time))    
         
-        
-    ####  E_n state occupation distribution and time-zero charge density profile
+    ####  
+    #### E_n state occupation distribution and time-zero charge density profile
     if(True): # use visualize_rm get_overlaps function to get time-zero charge density, energy distro
         
         # occupation of |km>
@@ -692,34 +670,33 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         distroax.plot(rm_distro*np.max(fixed_rho_points), rm_En, color = "black");
         
         # format distribution over E_n states
-        distroax_forxlabel.set_xlabel("$|\langle k_n | k_m \\rangle |^2 $ (a.u.)",fontsize=myfontsize);
-        distroax.set_ylabel("$E_n$",fontsize=myfontsize); 
+        distroax_forxlabel.set_xlabel("$\sum_m |\langle k_n | k_m \\rangle |^2 $ (a.u.)",fontsize=myfontsize);
+        distroax.set_ylabel("$E_n \, (|v|$)",fontsize=myfontsize); 
+        distroax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
         for edge in band_edges: distroax.axhline(edge, color="gray", linestyle="dashed");
-        
-        # format E_n density of states
-        #dosax = distroax.twiny();
-        #dosax.set_xlim(fixed_rho_points);
-        #dosax.set_xlabel("$\\rho(E_n)$",fontsize=myfontsize,color="cornflowerblue");
-
-                
+                     
         # E_n density of states;
         if(True):
-            rm_dos = 2/np.pi*abs(1/np.gradient(rm_En, rm_kn));
-            distroax.plot(rm_dos, rm_En, color="cornflowerblue");
-            distroax.text(0,-0.3,"$\\rho(E_n)$",transform=distroax.transAxes, fontsize=myfontsize,color="cornflowerblue");
+            rm_En_banded = np.array([rm_En[:len(rm_En)//2],rm_En[len(rm_En)//2:]]);
+            rm_gradient = np.array([np.gradient(rm_En[:len(rm_En)//2],rm_kn[:len(rm_En)//2]),
+                                    np.gradient(rm_En[len(rm_En)//2:],rm_kn[len(rm_En)//2:])]); 
+            # ^ handles both bands at once
+            for bandi in range(len(rm_gradient)):
+                distroax.plot(2/np.pi*abs(1/rm_gradient[bandi]),rm_En_banded[bandi], color="cornflowerblue");
+            distroax.text(0,-0.3,"$\\rho(E_n) \, (|v|^{-1} a^{-1})$",transform=distroax.transAxes, fontsize=myfontsize,color="cornflowerblue");
             distroax.set_xlim(*fixed_rho_points);
         else:
             distroax.set_xticks([])
           
         # format plot and format time-zero charge density
         densityax.plot(rm_charge, np.arange(0,Ntotal), color = matplotlib.colormaps['bwr'](np.linspace(0,1,10))[9]); 
-        densityax.set_xlabel("$n_{j\mu}$",fontsize=myfontsize);
+        densityax.set_xlabel("$\langle n_{j\mu} \\rangle$",fontsize=myfontsize);
         densityax.set_ylabel("Orbital",fontsize=myfontsize); 
-           
-    if(False):  # get direct from stored observables  
+    ####  
+    #### E_n state occupation distribution and time-zero charge density profile           
+    else:  # get direct from stored observables  
         # plot time-zero charge density profile
-        densityax.plot(yjs_vs_time[0], np.arange(0,Ntotal), color="black",linestyle="dashed"); 
-                        
+        densityax.plot(yjs_vs_time[0], np.arange(0,Ntotal), color="black",linestyle="dashed");                    
         # plot En distribution
         nB_vs_time = np.zeros((len(times),Ntotal),dtype=float);
         for ti in [0]: # only need initial
@@ -727,12 +704,13 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         distroax.plot(nB_vs_time[0], np.arange(0,Ntotal),color="black",linestyle="dashed");
         
     # format
-    #heatmapax.set_title(get_title(dfile,["N_{conf}"]),loc="left",fontsize=myfontsize);
     fig.suptitle(get_title(dfile,["N_{conf}"]),fontsize=myfontsize);
+    for axi, ax in enumerate([densityax, heatmapax, distroax]):
+        ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
 
     # show
     #fig.tight_layout();
-    folder = os.getcwd().split("/")[-1].split("_")[-1];
+    folder = datafiles[-1].split("_")[-1];
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf"
     if(case in [31]): 
         print("Saving to "+savename);
