@@ -35,12 +35,17 @@ if(__name__=="__main__"):
     n_iterations = 21 # 201 #raise Exception("change all niter to conv_tol");
     imag_pt_E = 1e-2;
     
-if(case in ["sdos"]): 
+if(case in ["dispersion","dispersion_pdf"]): 
 
     # set up figure
     nrow, ncol = 2, 2;
-    fig, axes = plt.subplots(nrow, ncol, sharey=True);
-    fig.set_size_inches(ncol*3.5, nrow*3);
+    
+    if("_pdf" in case):
+        fig, axes = plt.subplots(nrow, ncol, sharey=True, gridspec_kw = {"height_ratios":[1.0, 0.001]});
+        fig.set_size_inches(ncol*3.5, 3);
+    else:
+        fig, axes = plt.subplots(nrow, ncol, sharey=True);
+        fig.set_size_inches(ncol*3.5, nrow*3);
     dispax, dosax, sdosax, veloax = axes[0,0], axes[0,1], axes[1,0], axes[1,1];
     
     # format figure
@@ -81,11 +86,10 @@ if(case in ["sdos"]):
         
         # dispersion
         for bandi in range(np.shape(Evals_forkvals)[0]):
-            if(bandi==0):
-                dispax.plot(kvals/np.pi, Evals_forkvals[bandi],color=wcolors[wi],label=title_or_label);
-            else:
-                dispax.plot(kvals/np.pi, Evals_forkvals[bandi],color=wcolors[wi]);
-        
+            if(bandi==0): label_fordispax = title_or_label[:];
+            else: label_fordispax = "_";
+            dispax_line2d = dispax.plot(kvals/np.pi, Evals_forkvals[bandi],color=wcolors[wi],label=label_fordispax);
+
         # continuum density of states
         Evals_gradient = np.array([np.gradient(Evals_forkvals[0],kvals),
                                    np.gradient(Evals_forkvals[1],kvals)]); # handles both bands at once
@@ -113,42 +117,23 @@ if(case in ["sdos"]):
             # monatomic velocities
             velocities_closed = 2*abs(vval)*np.sqrt(1-np.power(np.real(Evals/(2*abs(vval))),2))
             veloax.plot(velocities_closed, np.real(Evals), color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
-        #
-        # **iterative **
-        #
-        # i.e. \textbf{g}_{00}^{(i)}, the i^th recursive solution to the self-consistent equation
-        last_iter = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-        last_change = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-        # right lead surface Green's function
-        # exists as a matrix acting on mu dofs
-        gsurf = np.zeros((n_mu_dof, n_mu_dof, len(Evals)), dtype=complex);
-
-        # NB this is the right lead, so we need outgoing=1
-        for ith_iter in range(n_iterations):
-            # energy values
-            for Evali in range(len(Evals)):
-                gsurf[:,:,Evali] = wfm.g_ith(h00, h01, Evals[Evali], houtgoing,
-                    imag_pt_E, ith_iter, last_iter[:,:,Evali]); 
-                last_change[:,:,Evali] = gsurf[:,:,Evali]-last_iter[:,:,Evali];
-                last_iter[:,:,Evali] = 1*gsurf[:,:,Evali]; # for passing to next iteration
-
-        if(False): # plot iterative
-            # get density of states
-            dos = (-1/np.pi)*np.imag(gsurf)[0,0]; # real-valued function of E
-            sdosax.plot(np.real(Evals), dos, color=UniversalColors[0], label=str(n_iterations-1));
-
-            # get change in density of states at last iteration
-            dos_change = (-1/np.pi)*np.imag(last_change)[0,0]; # real-valued function of E
-            sdosax.plot(dos_change,np.real(Evals),color=UniversalColors[1], label="$\Delta_{"+str(n_iterations-1)+"}$");
-
-            # get velocities
-            velocities_dos = dos*(-np.pi)*abs(vval)*abs(vval)*(-2); # -2Im[\Sigma]
-            veloax.plot(velocities_dos,np.real(Evals),color=UniversalColors[0]);
-
+            
+    # truncate axes
+    if("_pdf" in case):
+        fig.delaxes(sdosax);
+        fig.delaxes(veloax);
+        
     # show
     dispax.legend();
     plt.tight_layout();
-    plt.show(); 
+    
+    # save to pdf, if asked
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/dispersion_RiceMele.pdf";
+    if("_pdf" in case):
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else:
+        plt.show();
 
 elif(case in ["sdos_conv","sdos_log","sdos_adapt"]):
 

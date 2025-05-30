@@ -40,7 +40,10 @@ def load_data(fname, nind, nloc):
     # transmission and reflection coefficients
     myTvals = data[1+nind:1+nind+nloc];
     myRvals = data[1+nind+nloc:1+nind+2*nloc]; # this is also sometimes overloaded
-    assert(1+nind+2*nloc == np.shape(data)[0]);
+    if(not(1+nind+2*nloc == np.shape(data)[0])):
+        print("shape data = ", np.shape(data));
+        print("nind = {:.0f}, nloc = {:.0f}".format(nind, nloc));
+        raise ValueError;
     
     # return
     print("- sigmavals = ", mysigmavals);
@@ -160,7 +163,7 @@ def h_cicc_eff(J, t, i1, i2, Nsites, pair_to_entangle):
     
     return h_cicc, tblocks;
     
-def h_cicc_hacked(J, t, i1, i2, Nsites, pair_to_entangle, unitcell):
+def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
     '''
     Construct tight binding blocks (each block has many body dofs) to implement
     cicc model in quasi many body GF method
@@ -168,10 +171,10 @@ def h_cicc_hacked(J, t, i1, i2, Nsites, pair_to_entangle, unitcell):
     Args:
     - J, float, eff heisenberg coupling
     - t, float, hopping btwn sites - corresponds to t' in my setup
-    - i1, list of sites for first spin. Must start at 0
-    - i2, list of sites for second spin. Last site is N -> N sites in the SR
-    - Nsites, int, total number of sites (typically N sites in SR, plus 1 from each lead, for N+2 total sites)
-    - pair_to_entangle, tuple,  channels that form entangled states
+    - i1, list of unit cell indices containing 1st spin. Must start at 1
+    - i2, list of unit cell indices containing 2nd spin. Last site is N -> N sites in the SR
+    - Nunits, int, total number of unit cells (typically SR contains N, plus 1 from each lead, for N+2 total)
+    - pair_to_entangle, tuple,  channel indices that form entangled states
     - unitcell, int, how many matrix elements define a unit cell
     '''
 
@@ -199,19 +202,21 @@ def h_cicc_hacked(J, t, i1, i2, Nsites, pair_to_entangle, unitcell):
                         [0, 0, 0, 0, 0, 1, 0,0],
                         [0, 0, 0, 2, 0, 0,-1,0],
                         [0, 0, 0, 0, 0,0 , 0,1] ]);
-    Se_dot_S1 = entangle(Se_dot_S1,*pair_to_entangle); # verified correct
-    Se_dot_S2 = entangle(Se_dot_S2,*pair_to_entangle); # verified correct
+    Se_dot_S1 = entangle(Se_dot_S1,*pair_to_entangle); # change from product to triplet-singlet basis|verified 
+    Se_dot_S2 = entangle(Se_dot_S2,*pair_to_entangle);
     
     # expand into unit cell space
+    # Currently all the S dot S terms get localized to the A orbital of the unit cell only
     n_spin_dof = len(Se_dot_S1);
     Se_dot_S1_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
     Se_dot_S1_unit[:n_spin_dof,:n_spin_dof] = Se_dot_S1[:,:];
+    # ^ only puts S dot S on first orbital of unit cell, mu=A
     Se_dot_S2_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
     Se_dot_S2_unit[:n_spin_dof,:n_spin_dof] = Se_dot_S2[:,:];
     
     # insert these local interactions
     h_cicc =[];
-    for sitei in range(Nsites): # iter over all sites
+    for sitei in range(Nunits): # iter over all sites
         if(sitei in i1 and sitei not in i2):
             h_cicc.append(Se_dot_S1_unit);
         elif(sitei in i2 and sitei not in i1):
@@ -227,7 +232,6 @@ def dos_RiceMele(u,v,w,Es):
     '''
     *Vectorized in Es* density of states of the *infinite* system (no relation to surface green's funct)
     '''
-    raise NotImplementedError("replace with wfm universal");
     
     # invert Es to get ks
     ks = np.arccos(1/(2*v*w)*(Es*Es - u*u - v*v - w*w));
@@ -246,6 +250,7 @@ if(__name__=="__main__"):
     myxvals = 99; # number of pts on the x axis
     myfontsize = 14;
     mylinewidth = 1.0;
+    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
     plt.rcParams.update({"text.usetex": True})
     
@@ -452,7 +457,8 @@ elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
     np.save(fname, data);
 
 #################################################################
-#### **DIATOMIC HAMILTONIAN**
+#### **DIATOMIC UNIT CELL**
+#### Rice-Mele model
 
 elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N variable
     my_unit_cell = 2; # since diatomic
@@ -465,11 +471,9 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     vval = float(sys.argv[3]);
     uval = float(sys.argv[4]); 
     # w is always -tl;
-    band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
-                           np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
 
     # Rice-Mele matrices
-    n_loc_dof = 8;
+    n_loc_dof = 8; # spin dofs
     diag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
     diag_base_RM_spin[:n_loc_dof,:n_loc_dof] = uval*np.eye(n_loc_dof);
     diag_base_RM_spin[n_loc_dof:,n_loc_dof:] = -uval*np.eye(n_loc_dof);
@@ -477,6 +481,17 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     diag_base_RM_spin[n_loc_dof:,:n_loc_dof] = vval*np.eye(n_loc_dof);
     offdiag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
     offdiag_base_RM_spin[n_loc_dof:,:n_loc_dof] = -tl*np.eye(n_loc_dof);
+    diag_base_nospin = diag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+    offdiag_base_nospin = offdiag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+    assert(abs(np.sum(np.diagonal(diag_base_nospin))/len(diag_base_nospin)) < 1e-10); # u0 = 0
+    band_edges = wfm.bandedges_RiceMele(diag_base_nospin, offdiag_base_nospin)[-2:];
+
+    
+    # output Rice-Mele
+    title_RiceMele = wfm.string_RiceMele(diag_base_nospin, offdiag_base_nospin, energies=False, tex=True)
+    print("\n\nRice-Mele "+title_RiceMele);
+    print("h00 =\n",diag_base_nospin);
+    print("h01 =\n",offdiag_base_nospin);
                                    
     # channels
     pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
@@ -486,42 +501,57 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     # rhoJa = fixed throughout, thus fixing energy and wavenumber
     rhoJval = float(sys.argv[2]);
 
-    # graphical solution for fixed energy
+    # graphical dispersion for fixed energy
     fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
-    Ks_for_solution = np.logspace(-6,1,499);
+    Ks_for_solution = np.logspace(-6,1,499); # creates a discrete set of energy points, 
+                                             # logarithmic w/r/t desired band edge
     if(case in ["CB"]): 
-        this_band = np.min(band_edges)+Ks_for_solution;
-        this_band = this_band[this_band < np.max(band_edges)]; # stay w/in band
-    else: 
-        this_band = np.min(-band_edges)+Ks_for_solution;
-        this_band = this_band[this_band < np.max(-band_edges)]; # stay w/in band
-    bandks = np.linspace(-np.pi, np.pi,len(this_band));
-    disp = dispersion_RiceMele(uval, vval, -tl, bandks);
-    for dispvals in disp: dispax.plot(bandks/np.pi, dispvals,color="cornflowerblue");
-    dispax.plot(np.arccos(1/(-2*vval*tl)*(this_band**2 - uval**2 - vval**2 - tl**2))/np.pi, this_band, color="black");
-    dispax.set_xlabel("$ka/\pi$", fontsize = myfontsize);
-    dispax.set_ylabel("$E(k)$", fontsize = myfontsize);
+        discrete_band = np.min(band_edges)+Ks_for_solution;
+        discrete_band = discrete_band[discrete_band < np.max(band_edges)]; # stay w/in conduction band
+    elif(case in ["VB"]): 
+        discrete_band = np.min(-band_edges)+Ks_for_solution;
+        discrete_band = discrete_band[discrete_band < np.max(-band_edges)]; # stay w/in valence band
+    else: raise NotImplementedError("case = "+case);
+    dispks = np.linspace(-np.pi, np.pi,myxvals);
+    disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
+    # plot and format the dispersion
+    for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
+    dispax.set_xlabel("$k_i a/\pi$", fontsize = myfontsize);
+    dispax.set_ylabel("$E(k_i)$", fontsize = myfontsize);
+    dispax.set_title(title_RiceMele, fontsize = myfontsize);
     
-    banddos = dos_RiceMele(uval, vval, -tl, this_band);
-    dosax.plot(banddos,this_band, color="black");
+    # highlight the parts of the band we are considering
+    discrete_ks = np.arccos(1/(-2*vval*tl)*(discrete_band**2 - uval**2 - vval**2 - tl**2))
+    dispax.scatter(discrete_ks/np.pi, discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]); 
+    
+    # graphical density of states for fixed energy
+    #discrete_dos = dos_RiceMele(uval, vval, -tl, discrete_band); # must correspond exactly to discrete this_band points
+    discrete_dos = 2/np.pi*abs(1/np.gradient(discrete_band, discrete_ks));
+    
+    dosax.scatter(discrete_dos,discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]);
     dosline_from_rhoJ = rhoJval/abs(Jval);
-    dosax.axvline(dosline_from_rhoJ, color="red");
-    # solve graphically for E *specifically in VB/CB* that gives desired rhoJa
-    fixed_Energy = complex(this_band[np.argmin(abs(banddos-dosline_from_rhoJ))],0);
-    fixed_knumber = np.arccos(1/(-2*vval*tl)*(np.real(fixed_Energy)**2 - uval**2 - vval**2 - tl**2));
-    fixed_rhoJ = banddos[np.argmin(abs(banddos-dosline_from_rhoJ))]*abs(Jval);
+    dosax.axvline(dosline_from_rhoJ, color=UniversalAccents[1], linestyle = "dashed");
+    # solve graphically for fixed E *specifically in VB/CB* that gives desired rhoJa
+    fixed_Energy = complex(discrete_band[np.argmin(abs(discrete_dos-dosline_from_rhoJ))],0);
+    # ^ grabs one of the discrete energy points in this_band, based on having closest to desired rho(E)
+    # v grabs corresponding k and rho(E) values
+    fixed_knumber = discrete_ks[np.argmin(abs(discrete_dos-dosline_from_rhoJ))];
+    fixed_rhoJ = discrete_dos[np.argmin(abs(discrete_dos-dosline_from_rhoJ))]*abs(Jval);
+    # NB we use this, the closest discrete rhoJ, rather than command-line rhoJ
+    del rhoJval;
     print("fixed_Energy = {:.6f}".format(np.real(fixed_Energy)));
     print("fixed_knumber = {:.6f}".format(fixed_knumber));
-    dosax.axhline(np.real(fixed_Energy), color="gray", linestyle="dashed");
-    dispax.axhline(np.real(fixed_Energy), color="gray", linestyle="dashed");
+    print("fixed_rhoJ = {:.6f}".format(fixed_rhoJ));
+    dosax.axhline(np.real(fixed_Energy), color=UniversalAccents[1], linestyle="dashed");
+    dispax.axhline(np.real(fixed_Energy), color=UniversalAccents[1], linestyle="dashed");
      
-    #
-    RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(np.array([this_band[0],this_band[-1]])**2 - uval**2 - vval**2 - tl**2));
-    RiceMele_shift_str = "$, E_{min}^{(VB)}=$"+"{:.2f}".format(np.min(-band_edges))
-    if(case=="CB"): RiceMele_shift_str="$,  E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
-    RiceMele_shift_str += ",  $ka/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
-    dispax.set_ylabel("$E(k)$"+RiceMele_shift_str, fontsize = myfontsize);
-    dosax.set_xlabel("$\\rho, \\rho Ja =${:.2}, $J =${:.2f}".format(rhoJval, Jval), fontsize = myfontsize);
+    # plotting
+    if(case in ["VB"]): RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
+    elif(case in ["CB"]): RiceMele_shift_str="$,  E_{min}^{(CB)}="+"{:.2f}$".format(np.min(band_edges))
+    RiceMele_shift_str += ",  $k_i a/\pi \in [{:.2f},{:.2f}]$".format(discrete_ks[0]/np.pi, discrete_ks[-1]/np.pi);
+    dispax.set_ylabel("$E(k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
+    dosax.set_xlabel("$\\rho, \\rho J_{sd} a ="+"{:.1f}".format(fixed_rhoJ)+", J_{sd} ="+"{:.2f}$".format( Jval), fontsize = myfontsize);
+    dosax.set_xlim(0,10);
     
     # show
     plt.tight_layout();
@@ -529,7 +559,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     stopflag = False;
     try: 
         if(sys.argv[5]=="stop"): stopflag = True;
-    except: print("Not flagged to stop");
+    except: print(">>> Not flagged to stop");
     assert(not stopflag); 
 
     
@@ -538,7 +568,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     widelimsflag = False;
     try: 
         if(sys.argv[5]=="widelims"): widelimsflag = True;
-    except: print("Not flagged to widen kda limits");
+    except: print(">>> Not flagged to widen kda limits");
     if(widelimsflag): kdalims = 0.01*np.pi, 100*np.pi; 
     
     # determine the number of lattice constants across this range
@@ -547,7 +577,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     kdavals = kdavals[Distvals > 0];
     indep_vals = kdavals/np.pi;
     Distvals = Distvals[Distvals > 0];
-    print(Distvals)
+    print("Nd values covered =\n",Distvals)
     
     # iter over d, getting T
     # here T is *diagonal* in that we only save T in the channel of the source!
@@ -561,7 +591,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = [1], [Distvals[Distvali]+1];
         hblocks_noRM = h_cicc_hacked(Jval, tl, i1, i2, i2[-1]+2, pair, my_unit_cell); 
-        #print("shape hblocks = "+str(np.shape(hblocks_noRM))+", should be ({:.0f}, 16,16)".format(i2[-1]+2));
+        print("shape hblocks = "+str(np.shape(hblocks_noRM))+", should be ({:.0f}, 16,16)".format(i2[-1]+2));
         # +2 for each lead site
         hblocks = 1*hblocks_noRM;
         tnn = np.zeros_like(hblocks);
@@ -572,7 +602,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
         if(Distvali==0): 
             print("hblocks =\n");
-            blockstoprint = 0
+            blockstoprint = 3;
             for blocki in range(blockstoprint):
                 print("\n\n");
                 for chunki in range(my_unit_cell):
@@ -584,8 +614,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
                 print(np.real(tnn[blocki][n_loc_dof:,:n_loc_dof]));
             print("J = {:.4f}".format(Jval));
             print("rhoJ = {:.4f}".format(fixed_rhoJ));
-            print("\nmax N = {:.0f}".format(np.max(Distvals)+2));
-            #assert False
+            print("max N = {:.0f}\n".format(np.max(Distvals)+2));
 
         for sigmai in range(len(sigmas)):   
             # sourcei is one of the pairs always 
@@ -618,7 +647,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     # saved sigma-> sigma and sigma-> \sum_\sigma Transmission coefs
     data[1+nind:1+nind+n_loc_dof,:] = Tvals.T; # 8 spin dofs
     data[1+nind+n_loc_dof:1+nind+2*n_loc_dof,:] = Tsummed.T;
-    fname = "data/model12/"+case+"/{:.1f}_{:.1f}_{:.1f}".format(rhoJval, vval, uval);
+    fname = "data/model12/"+case+"/{:.1f}_{:.1f}_{:.1f}".format(fixed_rhoJ, vval, uval);
     print("Saving data to "+fname);
     np.save(fname, data);
 
@@ -641,16 +670,16 @@ elif(case in ["rhoJ_visualize"]):
     dataf = sys.argv[2];
     datacase = dataf.split("/")[-2];
     if(datacase in ["CB", "VB"]):
-        xretrievalinteger = 2;
+        xretrievalinteger = 2; # how many different types of x axis values to retrieve
         kval, Jval, sigmavals, xlist, Tsummed, Tvals = load_data(dataf, xretrievalinteger, 8);
-        xvals, dvals = xlist[0], xlist[1];
+        xvals, Ndvals = xlist[0], xlist[1];
     else: 
         xretrievalinteger = 1;
         kval, Jval, sigmavals, xvals, Tsummed, Tvals = load_data(dataf, xretrievalinteger, 8);
         kval = np.nan; # because I have not run new data yet
         xvals = xvals[0];
-        dvals = np.nan*np.ones_like(xvals);
-    print(dvals)
+        Ndvals = np.nan*np.ones_like(xvals);
+    print("Nd values covered =\n",Ndvals)
         
     
     # get channels
@@ -658,10 +687,11 @@ elif(case in ["rhoJ_visualize"]):
 
     # plot T(|+> -> |+>) and T(|-> -> |->) 
     for sigmai in range(len(sigmavals)):
-        axes[0].plot(xvals, Tvals[sigmavals[sigmai]], color = mycolors[sigmai], marker =
-                mymarkers[sigmai+1],markevery=mymarkevery,linewidth = mylinewidth,
+        axes[0].plot(xvals, Tvals[sigmavals[sigmai]], color = UniversalColors[sigmai], marker =
+                ColorsMarkers[sigmai],markevery=UniversalMarkevery,linewidth = mylinewidth,
                 label = "$|"+["+","-"][sigmai]+"\\rangle \\rightarrow |"+["+","-"][sigmai]+"\\rangle$");
-        axes[0].plot(xvals, Tsummed[sigmavals[sigmai]], color = mycolors[sigmai], linestyle="dashed",
+        axes[0].plot(xvals, Tsummed[sigmavals[sigmai]], color = UniversalColors[sigmai], linestyle="dashed",
+                marker =ColorsMarkers[sigmai],markevery=UniversalMarkevery,linewidth = mylinewidth,
                 label = "$|"+["+","-"][sigmai]+"\\rangle \\rightarrow \sum_\sigma|\sigma\\rangle$");
     print(">>> T+ max = ",np.max(Tvals[sigmavals[0]])," at indep = ",xvals[np.argmax(Tvals[sigmavals[0]])]);
     print(">>> T- max = ",np.max(Tvals[sigmavals[1]])," at indep = ",xvals[np.argmax(Tvals[sigmavals[1]])]);
@@ -671,20 +701,26 @@ elif(case in ["rhoJ_visualize"]):
     axes[0].set_ylim(0-offset_y, 1.0+offset_y);
     
     # format
-    if(datacase in ["CB","VB"]): datarhoJ, datav, datau = tuple(dataf.split("/")[-1][:-4].split("_"));
+    if(datacase in ["CB","VB"]): datarhoJ, datav, datau = tuple(dataf.split("/")[-1][:-4].split("_")); 
+    # ^^ need better way ^^
+    
+    
     else: datarhoJ = dataf.split("/")[-1][:-4];
     title_str = "$\\rho J a = ${:.1f}, $J =${:.4f}".format(float(datarhoJ),Jval);
     if(datacase in ["VB"]): title_str = "$\mathbf{Valence\,Band}$"+", $u =${:.2f}, $v =${:.2f}, ".format(float(datau), float(datav))+title_str;
     if(datacase in ["CB"]): title_str = "$\mathbf{Conduction\,Band}$"+", $u =${:.2f}, $v =${:.2f}, ".format(float(datau), float(datav))+title_str;
-    axes[0].set_title(title_str, fontsize = myfontsize) #, x=0.5, y = 0.0);
-    axes[-1].set_xlabel('$k_i d/\pi, k_i =${:.4f}, $d \in [${:.0f}$a$,{:.0f}$a]$'.format(kval, dvals[0], dvals[-1]),fontsize = myfontsize);
+    axes[0].set_title(title_str, fontsize = myfontsize) 
+    print(title_str)
+    axes[-1].set_xlabel('$k_i N_d a /\pi, k_i a =${:.4f}, $N_d \in [{:.0f},{:.0f}]$'.format(kval, Ndvals[0], Ndvals[-1]),fontsize = myfontsize);
     for _ in range(int(np.floor(np.max(xvals)))+1): axes[-1].axvline(_, linestyle="dotted", color="gray");
     axes[0].legend(fontsize=myfontsize);
     
     # show
     plt.tight_layout();
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/model12.pdf"
     if False:
-        plt.savefig('figs/double/model12.pdf');
+        print("Saving plot to "+savename);
+        plt.savefig(savename);
     else:
         plt.show();
 

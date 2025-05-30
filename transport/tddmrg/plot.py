@@ -64,7 +64,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         title_str = "$J_{sd} = $"+"{:.2f}".format(params_dict["Jsd"])+tlstring+", $N_e = ${:.0f}".format(Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
         if(is_RM): title_str = "$w =${:.2f}".format(params_dict["w"])+tlstring+", "+title_str;
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_","nB_"];
+        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_"];
         if(not is_RM and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
             raise NotImplementedError;
     elif(sys_type in ["SIAM", "SIAM_RM"]):

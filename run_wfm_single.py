@@ -77,7 +77,8 @@ if(__name__=="__main__"):
     Kvals = np.logspace(*logKlims,myxvals, dtype=complex);
 
 #################################################################
-#### **DIATOMIC HAMILTONIAN**
+#### **DIATOMIC UNIT CELL**
+#### Rice-Mele model
 
 if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     my_unit_cell = 2; # since diatomic
@@ -85,7 +86,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     # Rice-Mele tight binding
     vval = float(sys.argv[3]);
     uval = float(sys.argv[4]); 
-    # w is always -tl;
+    # w is always -tl; # <- change
     band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
                            np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
     RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
@@ -125,6 +126,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
         hSR = h_kondo(Jval,0.5,(1,3),my_unit_cell); # 4x4 matrix
                                                     # 2 for A/B orbs, 2 for up,dw/dw,up
         hSR += diag_base_RM_spin
+        print("shape h_kondo = ",np.shape(hSR));
 
         # leads
         hLL = 1*diag_base_RM_spin;
@@ -139,10 +141,10 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
         # package together hamiltonian blocks
         hblocks = [hLL];
-        for _ in range(Msites): hblocks.append(np.copy(hSR));
+        for _ in range(Msites): hblocks.append(np.copy(hSR)); # Msites is size of scattering region
         assert(Msites==1);
         hblocks.append(hRL);
-        hblocks = np.array(hblocks);
+        hblocks = np.array(hblocks); # len(hblocks = 1 + Msites + 1)
 
         # hopping
         tnn = [];
@@ -233,7 +235,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     plt.show();
 
 #################################################################
-#### replication of continuum solution
+#### replication of continuum solution, monatomic unit cell
 
 elif(myconverger=="g_closed" and case in ["continuum", "inelastic"]):
     my_unit_cell = 1;

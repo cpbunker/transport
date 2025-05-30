@@ -445,8 +445,8 @@ def string_RiceMele(diag, offdiag, energies=True, tex=True) -> str:
     B_edges = np.array([u0 - np.max(B_pm), u0-np.min(B_pm), u0+np.min(B_pm), u0+np.max(B_pm)]);
 
     # strings
-    params_str = "$u = ${:.2f}, $v =${:.2f}, $w =${:.2f}".format(u,v,w);
-    energies_str = ", $E_{gap}=$"+"{:.2f}".format(B_edges[2]-B_edges[1])+", $E_{band}=$"+"{:.2f}".format(B_edges[1]-B_edges[0]);
+    params_str = "$u = {:.2f}, v ={:.2f}, w ={:.2f}$".format(u,v,w);
+    energies_str = ", $E_{gap}="+"{:.2f}".format(B_edges[2]-B_edges[1])+", E_{band}=$"+"{:.2f}$".format(B_edges[1]-B_edges[0]);
     if(energies): params_str += energies_str;
     if(not tex): params_str = params_str.replace("$","");
     return params_str;

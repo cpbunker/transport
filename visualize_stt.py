@@ -35,6 +35,7 @@ def get_ylabel(the_obs, the_factor, dstring="d", ddt=False):
     elif(the_obs=="sz_"): ret = "${:.0f}\langle s_j^z \\rangle /\hbar$".format(the_factor);
     elif(the_obs=="pur_"): ret = "{:.0f}".format(the_factor)+"$|\mathbf{S}_"+dstring+"|$";
     elif(the_obs== "conc_"): ret = "{:.0f}".format(the_factor)+"$ C_{"+dstring+", "+dstring+"+1}$";
+    elif(the_obs== "J_"): ret = "max$(J_{"+dstring+"})$";
     elif(the_obs=="S2_"): ret = "{:.1f}".format(the_factor)+"$\langle (\mathbf{S}_"+dstring+" + \mathbf{S}_{"+dstringp1+"})^2 \\rangle/\hbar^2$";
     elif(the_obs=="MI_"): ret = "$\\frac{1}{\ln(2)}MI["+dstring+", "+dstringp1+"]$";
     else: print(the_obs); raise NotImplementedError;
@@ -84,7 +85,7 @@ if(__name__=="__main__"):
     plt.rcParams.update({"font.family": "serif"});
     plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
-    UniversalPanels = ["(a)","(b)","(c)","(d)","(e)","(f)","(g)"];
+    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
 if(case in [0]): # standard charge density vs site snapshot
     from transport import tddmrg
@@ -306,7 +307,10 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         # which imps to get data for
         which_imp = 0;
         assert(which_imp == 0);
-        assert(params["NFM"] == 2); # number of d sites
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: 
+            block2site = 1;
+            assert(params["NFM"] == 2); # number of d sites
         Nconf = params["Nconf"];
         Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
 
@@ -362,11 +366,15 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 assert(take_gradient);
                 
                 obs2, label2 = "J_", "$J_{conf}$";
-                if(norm_to_Jconf): label2 += "$/$max$\left( J_{conf}^{norm} \\right)$";
+                normalizer_label = " (normalized)"
+                if(norm_to_Jconf): label2 += normalizer_label;
                 print(obs2,"-->",label2);
-                yjs_vs_time = np.zeros((len(times),3),dtype=float);
+                yjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
+                xjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
                 for ti in range(len(times)):
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+                    xjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"xjs_time{:.2f}.npy".format(times[ti]));
+                print("orbital_index = ",xjs_vs_time[0]);
 
                 # normalize by max incoming electron pcurrent
                 # Jconf = particle current through site Nconf
@@ -377,23 +385,22 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 print("Jconf = {:.6f}".format(Jconf));
              
                 # plot particle currents -> NO FACTORS
-                ax.plot(times, yjs_vs_time[:,0]/Jconf, 
-                        color=color2,linestyle=mylinestyle); # current through site Nconf
-                ax.plot(times, yjs_vs_time[:,1]/Jconf, 
-                        color=color1,linestyle=mylinestyle); # current through site NL
-                ax.plot(times, yjs_vs_time[:,2]/Jconf, 
+                #ax.plot(times, yjs_vs_time[:,0*block2site]/Jconf, 
+                #        color=color2,linestyle=mylinestyle); # current through site Nconf
+                #ax.plot(times, yjs_vs_time[:,1*block2site]/Jconf, 
+                #        color=color1,linestyle=mylinestyle); # current through site NL
+                ax.plot(times, yjs_vs_time[:,2*block2site]/Jconf, 
                         color=color4,linestyle=mylinestyle); # current through site NR
                 # current through NR, plateau-averaged
-                plateau = np.mean((yjs_vs_time[:,2]/Jconf)[time_window_mask]);
-                print("plateau = {:.6f}".format(plateau));
-                print(time_window_limits);
+                plateau = np.mean((yjs_vs_time[:,2*block2site]/Jconf)[time_window_mask]);
+                print("plateau = {:.6f}".format(plateau), "plateau limits = ",time_window_limits);
 
                 # labels
                 label1 = "$J_{L}(t)$";
                 label4 = "$J_{R}(t)$";
                 if(norm_to_Jconf):
-                    label1 += "$/$max$\left( J_{conf}^{norm} \\right)$";
-                    label4 += "$/$max$\left( J_{conf}^{norm} \\right)$";
+                    label1 += normalizer_label;
+                    label4 += normalizer_label;
                     
             else: # occ rate of change expressed with dn/dt
             
@@ -454,7 +461,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     if(plot_occ and norm_to_Jconf): ticks1 = [0.0, 1.0];
     else: ticks1 = [0.0, 1.0];
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-    if(plot_occ and use_Jobs): 
+    if(plot_occ and use_Jobs and False): 
         for limit in time_window_limits: ax.axvline(limit,linestyle="solid",color="gray");
     
     # labels
@@ -462,11 +469,87 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # observable rate of change on left
     ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt normalizing quantity on right
     ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( get_title(datafiles[-1]));
+    ax.set_title( get_title(datafiles[-1]), fontsize = fontsize1);
 
     # show
     plt.tight_layout();
     plt.show();
+    
+elif(case in [10,11]): # time-independent transport metric vs band structure metric
+
+    # axes
+    fignrows, figncols = 1, 1
+    change_ratios = {};
+    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
+    metricax = axes;
+    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
+
+    #### iter over triplet/singlet
+    qubitstate_magicnumber = 3;
+    # here we label triplet/singlet but plot against w on the x axis
+    wvals = np.full((len(datafiles),),np.nan);
+    maxJvals = np.full((len(datafiles),),np.nan); # metric plotted against w
+    myaxlabels = np.full((len(datafiles),),        "                ");
+    
+    # iter over input files
+    assert(len(datafiles) % qubitstate_magicnumber == 0);
+    for di, dfile in enumerate(datafiles):
+        if("nosd" in dfile):      myaxlabels[di] = "Qubits Decoupled";
+        elif("triplet" in dfile): myaxlabels[di] = "Triplet         ";
+        elif("singlet" in dfile): myaxlabels[di] = "Singlet         ";
+        else: raise NotImplementedError;
+
+        params = json.load(open(dfile+".txt"));
+        wvals[di] = params["w"];
+        
+        # time evolution params
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+            
+        # rice-mele ?
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: block2site = 1;
+        
+        # get current scattering region -> right lead
+        yjs_observable = "J_";
+        yjs_vs_time = np.zeros((len(times),qubitstate_magicnumber*block2site),dtype=float);
+        xjs_vs_time = np.zeros((len(times),qubitstate_magicnumber*block2site),dtype=float);
+        print("Loading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
+        for ti in range(len(times)):
+            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
+            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
+        print("orbital_index = ",xjs_vs_time[0]);
+        current_index = np.shape(yjs_vs_time)[1] - 1*block2site;
+        yjs_label = get_ylabel("J_", None, dstring = int(xjs_vs_time[0,current_index]));
+        maxJvals[di] = np.max(yjs_vs_time[:,current_index]);
+        
+    # set aside qubits decoupled maxima for normalization
+    for qubitstate_formask in ["Qubits Decoupled"]:
+        metric_normalizers = maxJvals[np.isin(myaxlabels, [qubitstate_formask])];
+
+    # plot
+    for colori, qubitstate_formask in enumerate(myaxlabels[:qubitstate_magicnumber]):
+        print(qubitstate_formask)
+        print(wvals)
+        label_mask = np.isin(myaxlabels, [qubitstate_formask]);
+        metricax.plot(wvals[label_mask], maxJvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
+        print(  "x >>> ",wvals[label_mask], 
+              "\ny >>> ",maxJvals[label_mask]);
+    # format
+    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
+    metricax.set_ylabel(yjs_label+" (normalized)", fontsize = myfontsize);
+    metricax.set_xlabel("$w/|v|$", fontsize = myfontsize);
+    
+    
+    # show
+    plt.legend();
+    plt.tight_layout();
+    plt.show();
+    
+        
     
 elif(case in [20,21]): # occupancy vs orbital vs time heatmap
 
@@ -490,9 +573,9 @@ elif(case in [20,21]): # occupancy vs orbital vs time heatmap
     #### iter over triplet/singlet
     myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " Qubits Decoupled";
-        elif("triplet" in dfile): myaxlab = " Triplet";
-        elif("singlet" in dfile): myaxlab = " Singlet";
+        if("nosd" in dfile):      myaxlab = " Qubits Removed";
+        elif("triplet" in dfile): myaxlab = " $|T_0 \\rangle$";
+        elif("singlet" in dfile): myaxlab = " $|S \\rangle$";
         elif("nofield" in dfile): myaxlab = " Field Removed";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];
 
@@ -554,7 +637,7 @@ elif(case in [20,21]): # occupancy vs orbital vs time heatmap
             if(add_MI): MIaxes[-1].axis('off');
         
     # format axes
-    axes[0].set_ylabel("Orbital",fontsize=myfontsize); 
+    axes[0].set_ylabel("Site",fontsize=myfontsize); 
     for axi in range(len(datafiles)): 
         axes[axi].text(0.05,0.9,myaxlabels[axi], color="white",
             transform=axes[axi].transAxes,fontsize=myfontsize);
@@ -609,7 +692,7 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
     distroax = distroax.twinx();
     fig.set_size_inches(UniversalFigRatios[0]*np.sum(change_ratios["width_ratios"]),UniversalFigRatios[1])
 
-    if("nosd" in dfile):      myaxlab = " Qubits Decoupled";
+    if("nosd" in dfile):      myaxlab = " Qubits Removed";
     else: raise NotImplementedError;
 
     # time evolution params
@@ -691,7 +774,7 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         # format plot and format time-zero charge density
         densityax.plot(rm_charge, np.arange(0,Ntotal), color = matplotlib.colormaps['bwr'](np.linspace(0,1,10))[9]); 
         densityax.set_xlabel("$\langle n_{j\mu} \\rangle$",fontsize=myfontsize);
-        densityax.set_ylabel("Orbital",fontsize=myfontsize); 
+        densityax.set_ylabel("Site",fontsize=myfontsize); 
     ####  
     #### E_n state occupation distribution and time-zero charge density profile           
     else:  # get direct from stored observables  
@@ -705,13 +788,12 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         
     # format
     fig.suptitle(get_title(dfile,["N_{conf}"]),fontsize=myfontsize);
-    for axi, ax in enumerate([densityax, heatmapax, distroax]):
-        ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
+    #for axi, ax in enumerate([densityax, heatmapax, distroax]):ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
 
     # show
     #fig.tight_layout();
     folder = datafiles[-1].split("_")[-1];
-    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf"
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf";
     if(case in [31]): 
         print("Saving to "+savename);
         plt.savefig(savename);
