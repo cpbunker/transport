@@ -83,7 +83,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
-    plt.rcParams.update({"text.usetex": True});
+    #plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
@@ -281,6 +281,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     if(case in [5,6]): norm_to_Jconf=False;
     take_gradient = 1*norm_to_Jconf; # whether to plot time derivatives of quantities
     if(case in [9]): 
+        norm_to_Jconf = False;
         use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
         assert("nosd" in datafiles[0]); # must always normalize to nosd case 
     else: use_Jobs = False; 
@@ -296,13 +297,13 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         # time evolution params
         params = json.load(open(dfile+".txt"));
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\nUpdate time = {:.2f}".format(params["tupdate"]));
+        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
         time_window_limits = (times[-1]//4, 2*times[-1]//4);
         time_window_mask = np.logical_and(np.array(times>time_window_limits[0]), np.array(times<time_window_limits[1]));
-        # time windo mask is used to extract plateau values!!
+        # ^^ time window mask is used to extract plateau values!!
 
         # which imps to get data for
         which_imp = 0;
@@ -374,7 +375,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 for ti in range(len(times)):
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
                     xjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"xjs_time{:.2f}.npy".format(times[ti]));
-                print("orbital_index = ",xjs_vs_time[0]);
+                print(obs2+" site indices = ",xjs_vs_time[0].astype(int));
 
                 # normalize by max incoming electron pcurrent
                 # Jconf = particle current through site Nconf
@@ -385,15 +386,17 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 print("Jconf = {:.6f}".format(Jconf));
              
                 # plot particle currents -> NO FACTORS
+                current_index = np.shape(yjs_vs_time)[1] - 1*block2site; # ensures inter-cell if diatomic
                 #ax.plot(times, yjs_vs_time[:,0*block2site]/Jconf, 
                 #        color=color2,linestyle=mylinestyle); # current through site Nconf
                 #ax.plot(times, yjs_vs_time[:,1*block2site]/Jconf, 
                 #        color=color1,linestyle=mylinestyle); # current through site NL
-                ax.plot(times, yjs_vs_time[:,2*block2site]/Jconf, 
+                ax.plot(times, yjs_vs_time[:,current_index]/Jconf, 
                         color=color4,linestyle=mylinestyle); # current through site NR
                 # current through NR, plateau-averaged
-                plateau = np.mean((yjs_vs_time[:,2*block2site]/Jconf)[time_window_mask]);
-                print("plateau = {:.6f}".format(plateau), "plateau limits = ",time_window_limits);
+                plateau = np.mean((yjs_vs_time[:,current_index]/Jconf)[time_window_mask]);
+                print("plateau avg = {:.6f}".format(plateau), "plateau limits = ",time_window_limits);
+                print("current max = {:.6f}".format(np.max(yjs_vs_time[:,current_index])));
 
                 # labels
                 label1 = "$J_{L}(t)$";
@@ -459,7 +462,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     ax4.spines.right.set(alpha=1.0);
     ax4.set_yticks([]);
     if(plot_occ and norm_to_Jconf): ticks1 = [0.0, 1.0];
-    else: ticks1 = [0.0, 1.0];
+    else: ticks1 = [];
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     if(plot_occ and use_Jobs and False): 
         for limit in time_window_limits: ax.axvline(limit,linestyle="solid",color="gray");
@@ -485,26 +488,30 @@ elif(case in [10,11]): # time-independent transport metric vs band structure met
     fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
 
     #### iter over triplet/singlet
-    qubitstate_magicnumber = 3;
+    qubit_labels = ["Qubits Removed",
+                    "$|T_0\\rangle$",
+                    "$|S  \\rangle$"]; # must all be same number characters
     # here we label triplet/singlet but plot against w on the x axis
     wvals = np.full((len(datafiles),),np.nan);
     maxJvals = np.full((len(datafiles),),np.nan); # metric plotted against w
-    myaxlabels = np.full((len(datafiles),),        "                ");
+    myaxlabels = np.full((len(datafiles),), " "*len(qubit_labels[0]));
     
     # iter over input files
-    assert(len(datafiles) % qubitstate_magicnumber == 0);
+    assert(len(datafiles) % len(qubit_labels) == 0);
     for di, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlabels[di] = "Qubits Decoupled";
-        elif("triplet" in dfile): myaxlabels[di] = "Triplet         ";
-        elif("singlet" in dfile): myaxlabels[di] = "Singlet         ";
+        if("nosd" in dfile):      myaxlabels[di] = qubit_labels[0];
+        elif("triplet" in dfile): myaxlabels[di] = qubit_labels[1];
+        elif("singlet" in dfile): myaxlabels[di] = qubit_labels[2];
         else: raise NotImplementedError;
 
         params = json.load(open(dfile+".txt"));
         wvals[di] = params["w"];
-        
+        yjs_observable = "J_";
+        print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
+
         # time evolution params
         Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
+        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
         times = np.zeros((Nupdates+1,),dtype=float);
         for ti in range(len(times)):
             times[ti] = (update0 + ti)*tupdate;
@@ -514,24 +521,24 @@ elif(case in [10,11]): # time-independent transport metric vs band structure met
         else: block2site = 1;
         
         # get current scattering region -> right lead
-        yjs_observable = "J_";
-        yjs_vs_time = np.zeros((len(times),qubitstate_magicnumber*block2site),dtype=float);
-        xjs_vs_time = np.zeros((len(times),qubitstate_magicnumber*block2site),dtype=float);
-        print("Loading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
+        # NB J_ is measured at boundary of Nconf, NL, NR (ie in 3 unit cells)
+        yjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
+        xjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
         for ti in range(len(times)):
             yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
             xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
-        print("orbital_index = ",xjs_vs_time[0]);
-        current_index = np.shape(yjs_vs_time)[1] - 1*block2site;
+        print("J_ site index in ",xjs_vs_time[0].astype(int));
+        current_index = np.shape(yjs_vs_time)[1] - 1*block2site; # ensures inter-cell if diatomic
         yjs_label = get_ylabel("J_", None, dstring = int(xjs_vs_time[0,current_index]));
         maxJvals[di] = np.max(yjs_vs_time[:,current_index]);
+        print("time(maxJ) = {:.0f} ({:.0f}%)".format(times[np.argmax(yjs_vs_time[:,current_index])],100*np.argmax(yjs_vs_time[:,current_index])/Nupdates));
         
     # set aside qubits decoupled maxima for normalization
-    for qubitstate_formask in ["Qubits Decoupled"]:
+    for qubitstate_formask in qubit_labels[:1]:
         metric_normalizers = maxJvals[np.isin(myaxlabels, [qubitstate_formask])];
 
     # plot
-    for colori, qubitstate_formask in enumerate(myaxlabels[:qubitstate_magicnumber]):
+    for colori, qubitstate_formask in enumerate(myaxlabels[:len(qubit_labels)]):
         print(qubitstate_formask)
         print(wvals)
         label_mask = np.isin(myaxlabels, [qubitstate_formask]);

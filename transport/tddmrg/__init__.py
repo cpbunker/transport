@@ -2068,6 +2068,7 @@ def H_STT_polarizer(params_dict, to_add_to, block, verbose=0):
             if(not ("triplet_flag" in params_dict.keys())):
                 print("no triplet flag")
                 builder.add_term("ZZ",jpair,-Bent);
+                # ^ just always skip this term
             else: print("triplet flag");
             builder.add_term("PM",jpair,-Bent/2);
             builder.add_term("MP",jpair,-Bent/2);
@@ -2287,21 +2288,26 @@ def H_STTRM_polarizer(params_dict, to_add_to, block, verbose=0):
                     h1e[nloc*jmu+1,nloc*jmu+1] += Be/2;
 
     # special case initialization
-    if("Bent" in params_dict.keys() and len(centrals)==1): # B field that entangles 2 loc spins
-        Bent = params_dict["Bent"];
+    if("Jmax" in params_dict.keys() and len(centrals)==1): # entangles the MSQs
+        Jentmax = params_dict["Jmax"];
+        phient = params_dict["phient"];
+        Jent = Jentmax*np.cos(phient);
+        Jentprime = np.sqrt(Jentmax*Jentmax - Jent*Jent);
+        print(">>> Jent  = {:.2f}".format(Jent)); 
+        print(">>> Jent' = {:.2f}".format(Jentprime)); 
         assert(len(centrals)==1); # as written only entangles intra-block
         for j in centrals: # every site in centrals hosts MSQ
             # jpair is a list of two sites to entangle
             jpair = (RMdofs*j, RMdofs*j+1);
 
             if(block):
-                if(not ("triplet_flag" in params_dict.keys())):
-                    print("no triplet flag")
-                    builder.add_term("ZZ",jpair,-Bent);
-                else: print("triplet flag");
-                builder.add_term("PM",jpair,-Bent/2);
-                builder.add_term("MP",jpair,-Bent/2);
-            else: pass #assert(Bent==0.0);
+                # -Jent   sigma_x
+                builder.add_term("PM",jpair,-Jent/2);
+                builder.add_term("MP",jpair,-Jent/2);
+                # -Jent'  sigma_y
+                builder.add_term("PM",jpair,complex(0, Jentprime/2));
+                builder.add_term("MP",jpair,complex(0,-Jentprime/2));
+            else: pass #assert(Jmax==0.0);
         
     # return
     if(block):

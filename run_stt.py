@@ -69,6 +69,8 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
         # (S1+S2)^2
         S2_dmrg = tddmrg.S2_wrapper(psi, eris_or_driver, central_j, is_impurity=True, block=block);
         print("<(S1+S2)^2> = {:.6f}".format(S2_dmrg));
+        if("phient" in params_dict.keys()):
+            print("1 + cos(phi)= {:.6f}".format(1+np.cos(params_dict["phient"])));
 
         # mutual info
         minfo = tddmrg.mutual_info_wrapper(psi, eris_or_driver, central_j, True, block);

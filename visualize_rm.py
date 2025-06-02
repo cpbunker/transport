@@ -11,6 +11,7 @@ import json
 
 def tb_hamiltonian(the_params, initialize, verbose=0):
     '''
+    Tight binding Hamiltonian of spinless system
     '''
 
     # construct Time=0 single-body Hamiltonian as matrix
@@ -30,10 +31,11 @@ def tb_hamiltonian(the_params, initialize, verbose=0):
     del g2e_dummy
     h = h1e_t0[::2,::2]; # <- make spinless !!
     Evals, Evecs = tdfci.solver(h);
-    kvals = np.arccos(1/(2*the_params["v"]*the_params["w"])*((Evals)**2 - the_params["u"]**2 - the_params["v"]**2 - the_params["w"]**2));
-    #del kvals; # switch to wfm.inverted_RiceMele?
-    return kvals, Evals, Evecs, h;
 
+    h00 = np.array([[the_params["u"], the_params["v"]],[the_params["v"],-the_params["u"]]]);
+    h01 = np.array([[0,0],[the_params["w"],0]]);
+    kvals = wfm.inverted_RiceMele(h00, h01, Evals);
+    return kvals, Evals, Evecs, h;
 
 def get_occs_Ne_TwoSz(the_Ne, the_TwoSz, num_skip = 0):
     '''
@@ -78,25 +80,26 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     print(the_occs,"-->\n", the_occs_final);
     the_occs = 1*the_occs_final; del the_occs_final;
     
-    ms_to_probe = [max(0,m_HOMO-2), min(m_HOMO+1,len(Emvecs))];
+    ms_to_probe = [max(0,m_HOMO-2), min(m_HOMO,len(Emvecs)-1)+1];
     ms_to_probe = range(ms_to_probe[0], ms_to_probe[1]);
     for m in ms_to_probe:
-        the_axes[0,0].plot(Emvecs[m], label="$m =${:.0f}, $k_m =${:.4f}".format(m, kmvals[m]));
+        the_axes[0,0].plot(Emvecs[m], label="$m ={:.0f}, k_m ={:.4f}$".format(m, kmvals[m]));
     diag_norm_t0 = np.max(abs(np.diag(h1e_t0)))
     if(diag_norm_t0 < 1e-10): diag_norm_t0 = 1;
     if(plothams):
         the_axes[0,0].plot(np.diag(h1e_t0)/diag_norm_t0,color="black")#,label="$\langle j | V |j \\rangle$"); # onsite
         the_axes[0,0].plot(np.diag(h1e_t0,k=1),color="teal",marker="o")#,label="$\langle j | V |j+1 \\rangle$"); # hopping
     else: the_axes[0,0].set_ylim(-0.4,0.4);
-    the_axes[0,0].legend(loc="lower right");
-    the_axes[0,0].set_xlabel("$j$");
+    the_axes[0,0].legend();
+    the_axes[0,0].set_xlabel("Site");
     the_axes[0,0].set_ylabel("$\langle j | k_m \\rangle$");
-    the_axes[0,0].set_title("$u =${:.2f}, $v =${:.2f}, $w =${:.2f}".format(the_params["u"], the_params["v"], the_params["w"]));
+    the_axes[0,0].set_title("$u ={:.2f}, v ={:.2f}, w ={:.2f}$".format(the_params["u"], the_params["v"], the_params["w"]));
 
     # t>0 eigenstates (|k_n> states)
     knvals, Envals, Envecs, h1e = tb_hamiltonian(the_params, initialize=False, verbose=0);
+    band_divider = len(knvals)//2;
     for n in range(4):
-        the_axes[1,0].plot(Envecs[n], label="$n =${:.0f}, $k_n=${:.4f}".format(n,knvals[n]));
+        the_axes[1,0].plot(Envecs[n], label="$n ={:.0f}, k_n={:.4f}$".format(n,knvals[n]));
     diag_norm = np.max(abs(np.diag(h1e)));
     if(diag_norm < 1e-10): diag_norm = 1;
     if(plothams):
@@ -104,29 +107,39 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
         the_axes[1,0].plot(np.diag(h1e,k=1),color="teal",marker="o")#,label="$\langle j | V |j+1 \\rangle$"); # hopping
     else: the_axes[1,0].set_ylim(-0.4,0.4);
     the_axes[1,0].legend(loc="lower right");
-    the_axes[1,0].set_xlabel("$j$");
+    the_axes[1,0].set_xlabel("Site");
     the_axes[1,0].set_ylabel("$\langle j | k_n \\rangle$");
+    print("km values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(kmvals)),kmvals);
+    print("Em values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(kmvals)),Emvals);
+    print("En values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(Envals)),Envals);
 
-    ####  3) overlap of the *occupied* t<0 states with t>0 k states
+    #### 3) occupation of the t<0 states
+    the_axes[0,1].scatter(Emvals[:band_divider], the_occs[:band_divider],marker="s", color=UniversalAccents[1]);
+    the_axes[0,1].scatter(Emvals[band_divider:], the_occs[band_divider:],marker="s", color=UniversalAccents[1]);
+    the_axes[0,1].set_xlabel("$E_m$");
+    the_axes[0,1].set_ylabel("$n_m$");
+    the_axes[0,1].set_ylim(0,2.0);
+
+    ####  4) overlap of the *occupied* t<0 states with t>0 k states
     the_pdfs = np.zeros((len(knvals),),dtype=float);
     for knvali in range(len(knvals)):
         # iter over *occupied* |k_m> states
         for kmvali in range(len(kmvals)):
             overlap = np.dot( np.conj(Emvecs[kmvali]), Envecs[knvali]);
             the_pdfs[knvali] += the_occs[kmvali]*np.real(np.conj(overlap)*overlap);
-    band_divider = len(knvals)//2;
-    the_axes[0,1].plot(knvals[:band_divider], the_pdfs[:band_divider], color="black");
-    the_axes[0,1].plot(knvals[band_divider:], the_pdfs[band_divider:], color="red");
-    the_axes[0,1].set_xlabel("$k_n$");
-    the_axes[0,1].set_ylabel("$ \sum_{k_m}^{occ} |\langle k_m | k_n \\rangle |^2$");
+    # overlap plotted vs E_n 
+    the_axes[1,1].plot(Envals[:band_divider], the_pdfs[:band_divider], color=UniversalAccents[0]);
+    the_axes[1,1].plot(Envals[band_divider:], the_pdfs[band_divider:], color=UniversalAccents[0]);
+    the_axes[1,1].set_xlabel("$E_n$");
+    the_axes[1,1].set_ylabel("$ \sum_{m}^{occ} |\langle k_m | k_n \\rangle |^2$");
+    the_axes[1,1].set_ylim(0,2.0);
 
-    #### overlap plotted again, but vs E_n rather than k_n
-    the_axes[1,1].plot(Envals[:band_divider], the_pdfs[:band_divider], color="black");
-    the_axes[1,1].plot(Envals[band_divider:], the_pdfs[band_divider:], color="red");
+    the_axes[1,1].scatter(Emvals+the_params["Vconf"], the_occs,marker="s", color=UniversalAccents[1]);
+    the_axes[1,1].set_xlim(np.min(Envals), np.max(Envals));
     
-    # visualize the k-state wavefunctions
-    the_fig.suptitle("$N_e =${:.0f}".format(np.sum(the_occs))+", $N_{conf} =$"+"{:.0f}".format(the_params["Nconf"])
-            +", $m_{HOMO} =$"+"{:.0f}".format(m_HOMO));
+    # visualize the k_m and k_n wavefunctions in real space
+    the_fig.suptitle("$N_e ={:.0f}".format(np.sum(the_occs))+", m_{HOMO} ="+"{:.0f}".format(m_HOMO)
+        +", N_{conf}="+"{:.0f}".format(the_params["Nconf"])+", V_{conf} ="+"{:.2f}$".format(the_params["Vconf"]));
     if(plotwfs): plt.tight_layout(), plt.show();
     else: plt.close();
    
@@ -274,16 +287,14 @@ elif(case in ["distroNconf"]):
 elif(case in ["distroNe"]):
 
     # iter over Ne, excited_state values
-    pairvals = np.array([(1,0),(2,0),(5,0), (10,0)]);
+    pairvals = np.array([(1,1),(2,0),(5,5), (10,0)]);
+    my_levels_skip = 0; # fixed
     # ^ Nconf=20 sites (10 blocks) fixed,
-    is_spinpol = True;
 
     for pairi in range(len(pairvals)):
 
         # unpack overriden values
-        myNe, my_levels_skip = pairvals[pairi];
-        if(is_spinpol): myTwoSz = 1*myNe;
-        else: myTwoSz=0; assert(myNe%2==0);
+        myNe, myTwoSz = pairvals[pairi];
         # repack overridden params
         myparams["Ne"] = myNe;
         myparams["TwoSz"] = myTwoSz;

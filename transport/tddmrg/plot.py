@@ -52,17 +52,17 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
     if(params_dict["sys_type"] in ["STT_RM","SIAM_RM", "SIETS_RM"]):
         assert("v" in params_dict.keys());
         is_RM = True;
-        tlstring = "$|v|$"
+        tlstring = "|v|"
     else:
         is_RM = False;
-        tlstring = "$t_l$";
+        tlstring = "t_l";
 
     # Sys_type tells what observables we want to compute and how to compute them
     if(sys_type in ["STT", "STT_RM"]):
         is_impurity = True; # bool that tells us whether custom operators (Z, P, M) defining localized spins are defined
         NFM,  Ne = params_dict["NFM"], params_dict["Ne"];
-        title_str = "$J_{sd} = $"+"{:.2f}".format(params_dict["Jsd"])+tlstring+", $N_e = ${:.0f}".format(Ne)+", $N_{conf} =$"+"{:.0f}".format(params_dict["Nconf"]);
-        if(is_RM): title_str = "$w =${:.2f}".format(params_dict["w"])+tlstring+", "+title_str;
+        title_str = "$J_{sd} = "+"{:.2f}".format(params_dict["Jsd"])+tlstring+", N_e = {:.0f}".format(Ne)+", N_{conf} ="+"{:.0f}$".format(params_dict["Nconf"]);
+        if(is_RM): title_str = "$w ={:.2f}".format(params_dict["w"])+tlstring+"$, "+title_str;
         # plot charge and spin vs site
         obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_"];
         if(not is_RM and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
