@@ -412,7 +412,6 @@ def inverted_RiceMele(diag, offdiag, Es) -> np.ndarray:
     w = offdiag[-1,0];
 
     ret = np.arccos(1/(2*v*w)*((Es-u0)**2 - u**2 - v**2 - w**2));
-    print(ret)
     return ret;
 
 def bandedges_RiceMele(diag, offdiag) -> np.ndarray:

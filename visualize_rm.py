@@ -31,6 +31,9 @@ def tb_hamiltonian(the_params, initialize, verbose=0):
     del g2e_dummy
     h = h1e_t0[::2,::2]; # <- make spinless !!
     Evals, Evecs = tdfci.solver(h);
+    Evals_offset = 0.0;
+    if(initialize): Evals_offset = the_params["Vconf"]+abs(the_params["Be"])/2;
+    Evals += Evals_offset
 
     h00 = np.array([[the_params["u"], the_params["v"]],[the_params["v"],-the_params["u"]]]);
     h01 = np.array([[0,0],[the_params["w"],0]]);
@@ -109,13 +112,14 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     the_axes[1,0].legend(loc="lower right");
     the_axes[1,0].set_xlabel("Site");
     the_axes[1,0].set_ylabel("$\langle j | k_n \\rangle$");
-    print("km values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(kmvals)),kmvals);
-    print("Em values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(kmvals)),Emvals);
-    print("En values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(Envals)),Envals);
+    print("km values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(kmvals)),kmvals[:band_divider]);
+    print("Em values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(Emvals)),Emvals[:band_divider]);
+    print("kn values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(knvals)),knvals[:band_divider]);
+    print("En values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(Envals)),Envals[:band_divider]);
 
     #### 3) occupation of the t<0 states
-    the_axes[0,1].scatter(Emvals[:band_divider], the_occs[:band_divider],marker="s", color=UniversalAccents[1]);
-    the_axes[0,1].scatter(Emvals[band_divider:], the_occs[band_divider:],marker="s", color=UniversalAccents[1]);
+    the_axes[0,1].scatter(Emvals[:band_divider], the_occs[:band_divider],marker="s", color="red");
+    the_axes[0,1].scatter(Emvals[band_divider:], the_occs[band_divider:],marker="s", color="red");
     the_axes[0,1].set_xlabel("$E_m$");
     the_axes[0,1].set_ylabel("$n_m$");
     the_axes[0,1].set_ylim(0,2.0);
@@ -128,13 +132,13 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
             overlap = np.dot( np.conj(Emvecs[kmvali]), Envecs[knvali]);
             the_pdfs[knvali] += the_occs[kmvali]*np.real(np.conj(overlap)*overlap);
     # overlap plotted vs E_n 
-    the_axes[1,1].plot(Envals[:band_divider], the_pdfs[:band_divider], color=UniversalAccents[0]);
-    the_axes[1,1].plot(Envals[band_divider:], the_pdfs[band_divider:], color=UniversalAccents[0]);
+    the_axes[1,1].plot(Envals[:band_divider], the_pdfs[:band_divider], color="black");
+    the_axes[1,1].plot(Envals[band_divider:], the_pdfs[band_divider:], color="black");
     the_axes[1,1].set_xlabel("$E_n$");
     the_axes[1,1].set_ylabel("$ \sum_{m}^{occ} |\langle k_m | k_n \\rangle |^2$");
     the_axes[1,1].set_ylim(0,2.0);
 
-    the_axes[1,1].scatter(Emvals+the_params["Vconf"], the_occs,marker="s", color=UniversalAccents[1]);
+    the_axes[1,1].scatter(Emvals, the_occs,marker="s", color="red");
     the_axes[1,1].set_xlim(np.min(Envals), np.max(Envals));
     
     # visualize the k_m and k_n wavefunctions in real space
@@ -156,7 +160,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
         spin_pdf += the_occs[kmvali]*(2-the_occs[kmvali])*np.conj(Emvecs[kmvali])*Emvecs[kmvali];
         
     # return
-    return Envals, knvals, the_pdfs, charge_pdf, spin_pdf;
+    return Emvals, kmvals, Envals, knvals, the_pdfs, charge_pdf, spin_pdf;
 
 
 if(__name__ == "__main__"):
@@ -195,16 +199,17 @@ if(case in ["None"]): pass;
 elif(case in ["distro"]):
 
     # parameters
-    wvals = np.array([-1.0,-0.2]);
+    wvals = np.array([-1.0,-0.4]);
     my_levels_skip = 0; # fixed
     myNe, myTwoSz = myparams["Ne"], myparams["TwoSz"];
     
     # set up figure
     fig, axes = plt.subplots();
     fig.set_size_inches(*UniversalFigRatios)
-    distax = axes;
-    distax.set_ylabel("$E_n$",fontsize=myfontsize);
-    distax.set_xlabel("$\sum_m |\langle k_m|k_n \\rangle |^2$",fontsize=myfontsize);
+    occax = axes;
+    #distax.set_ylabel("$E_n$",fontsize=myfontsize);
+    #distax.set_xlabel("$\sum_m ' |\langle k_m|k_n \\rangle |^2$",fontsize=myfontsize);
+    
 
     for pairi in range(len(wvals)): # iter over w
 
@@ -213,21 +218,36 @@ elif(case in ["distro"]):
 
         # occupation
         my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
-
-        # get time=0 and time>0 wavefunctions etc
-        my_E, _, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
-
-        # plot
+        m_HOMO = len(my_occs)-1;
+        
+        # get time<0 and time>0 wavefunctions etc
+        myEm, mykm, myEn, mykn, _, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
+        t0_occs = np.zeros((len(myEm),), dtype=int);
+        t0_occs[:len(my_occs)] = my_occs[:];
+        
+        # plot time<0 wf occupation
         mylabel = "$v = {:.2f}, w = {:.2f}$".format( myparams["v"], myparams["w"]);
-        distax.plot(my_dist[:len(my_E)//2],my_E[:len(my_E)//2],label=mylabel, color=UniversalColors[pairi]);
-        distax.plot(my_dist[len(my_E)//2:],my_E[len(my_E)//2:], color=UniversalColors[pairi]);
+        occax.plot(t0_occs[:len(myEm)//2],myEm[:len(myEm)//2],label=mylabel, color=UniversalColors[pairi]);
+        occax.plot(t0_occs[len(myEm)//2:],myEm[len(myEm)//2:], color=UniversalColors[pairi]);
+        if(wvals[pairi] == myparams["v"]): occax.set_ylim(1.05*np.min(myEn), 1.05*np.max(myEn));
+
+        # dos of the Em
+        myEm_gradient = np.array([np.gradient(myEm[:len(myEm)//2],mykm[:len(myEm)//2]),
+                                  np.gradient(myEm[len(myEm)//2:],mykm[len(myEm)//2:])]);
+        occax.plot((2/np.pi)*1/abs(myEm_gradient[0]), myEm[:len(myEm)//2], color=UniversalColors[pairi],linestyle="dashed");
+        occax.plot((2/np.pi)*1/abs(myEm_gradient[1]), myEm[len(myEm)//2:], color=UniversalColors[pairi],linestyle="dashed");
+        rho_HOMO = (2/np.pi)*1/abs(myEm_gradient[0,m_HOMO])
+        occax.text(rho_HOMO, myEm[m_HOMO], "$\\rho(E_F) = {:.2f}$".format(rho_HOMO),color=UniversalColors[pairi]);
+        
 
     # format
-    distax.set_xticks([]);
-    distax.set_title("$N_e = {:.0f}$".format(myparams["Ne"])+", $N_{conf} =$"+"{:.0f}".format(myparams["Nconf"]));
+    occax.set_xlim(0.0, 3.0);
+    occax.set_xlabel("$n_m, \,\, \\rho(E_m)$");
+    occax.set_ylabel("$E_m$");
+    occax.set_title("$N_e = {:.0f}$".format(myparams["Ne"])+", $N_{conf} =$"+"{:.0f}".format(myparams["Nconf"]));
         
     # show
-    distax.legend();
+    occax.legend();
     plt.tight_layout();
     plt.show();
 
@@ -259,7 +279,7 @@ elif(case in ["distroNconf"]):
         my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
         # get time=0 and time>0 wavefunctions etc
-        my_E, my_k, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
+        _, _, my_E, my_k, my_dist, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
         if(plot_vs_kn): indep_vals = 1*my_k/np.pi;
         else: indep_vals = 1*my_E
 
@@ -303,7 +323,7 @@ elif(case in ["distroNe"]):
         my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
 
         # get time=0 and time>0 wavefunctions etc
-        _, _, _, my_charge, my_spin = get_overlaps(myparams, my_occs, plotwfs=True);
+        _, _, _, _, _, my_charge, my_spin = get_overlaps(myparams, my_occs, plotwfs=True);
 
 #### Rice-Mele dos (continuous DOS, not surface DOS)
 elif(case in ["dos"]):

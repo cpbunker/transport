@@ -478,7 +478,8 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     plt.tight_layout();
     plt.show();
     
-elif(case in [10,11]): # time-independent transport metric vs band structure metric
+elif(case in [10,11]): # time-independent transport metric
+                       # vs band structure metric
 
     # axes
     fignrows, figncols = 1, 1
@@ -555,10 +556,187 @@ elif(case in [10,11]): # time-independent transport metric vs band structure met
     plt.legend();
     plt.tight_layout();
     plt.show();
+
+elif(case in [20,21]): # Jmax vs phient, colors are w vals
+    pass;
+
+elif(case in [24,25]): # Jmax vs Jsd, colors are S/T0
+    pass;
     
+elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density profile and <k_m|k_n> distro
+    assert(len(datafiles)==1);
+    dfile = datafiles[0];
+    params = json.load(open(dfile+".txt"));
+
+    if(False):
+        myfig, myax = plt.subplots();
+        rm_occs = visualize_rm.get_occs_Ne_TwoSz(params["Ne"], params["TwoSz"]);
+
+        # distribution over E_n states
+        rm_Em, rm_km, rm_En, rm_kn, rm_distro, rm_charge, _ = visualize_rm.get_overlaps(params, rm_occs, plotwfs=False);
+        myax.scatter(rm_kn/np.pi, rm_En)
+        myax.scatter(rm_km/np.pi, rm_Em)
+        plt.show();
+        assert False
+
+    
+    # axes
+    plot_dos = True;
+    fig = plt.figure(layout="constrained");
+    change_ratios = {"width_ratios":[0.01,1.0,0.33,0.33]};
+    fignrows, figncols = 1, len(change_ratios["width_ratios"])
+    densityax, heatmapax, Emax, Enax = fig.subplots(ncols=figncols,nrows=fignrows,sharey=True, gridspec_kw=change_ratios);
+    fig.set_size_inches(UniversalFigRatios[0]*np.sum(change_ratios["width_ratios"]),UniversalFigRatios[1])
+
+    #### iter over triplet/singlet
+    qubit_labels = ["Qubits Removed",
+                    "$|T_0\\rangle$",
+                    "$|S  \\rangle$"]; # must all be same number characters
+    if("nosd" in dfile):      myaxlab = qubit_labels[0];
+    elif("triplet" in dfile): myaxlab = qubit_labels[1];
+    elif("singlet" in dfile): myaxlab = qubit_labels[2];
+    else: raise NotImplementedError;
+
+    # time evolution params
+    Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+    print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
+    times = np.zeros((Nupdates+1,),dtype=float);
+    for ti in range(len(times)):
+        times[ti] = (update0 + ti)*tupdate;
+            
+    # rice-mele ?
+    if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): 
+        block2site = 2;
+        h00 = np.array([[params["u"], params["v"]], [params["v"],-params["u"]]]);
+        h01 = np.array([[0.0, 0.0],[params["w"], 0.0]]);
+        band_edges = wfm.bandedges_RiceMele(h00, h01);
+    else: 
+        block2site = 1;
+        band_edges = [];
+
+    # get heatmap data
+    Ntotal = block2site*(params["NL"]+params["NFM"]+params["NR"]); # number of j sites
+    yjs_vs_time = np.zeros((len(times),Ntotal),dtype=float);
+    for ti in range(len(times)):
+        yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
+    
+    #### heatmap        
+    # mesh grids for time (x) and site (y) plotting heatmap
+    timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Ntotal];
         
+    # plot heatmap
+    heatmapax.set_facecolor("steelblue");
+    heatmap=heatmapax.pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
+    print("    np.max(yjs_vs_time) = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
+        
+    # format heatmap
+    heatmapax.text(0.05,0.9,myaxlab, color="white",
+            transform=heatmapax.transAxes,fontsize=myfontsize);
+    heatmapax.set_xlabel("Time $(\hbar/|v|)$",fontsize=myfontsize);
+    cbar = fig.colorbar(heatmap,ax=heatmapax, location='top',pad=0.01);
+    if(True):
+        cbar_ticks = cbar.ax.get_xticks() #.tolist();
+        cbar_labels = np.copy(cbar_ticks).round(1).astype(str);
+        cbar_labels[0] = "$\langle n_{j\mu} \\rangle $";
+        print("\n",cbar_ticks,"\n",cbar_labels);
+        cbar.ax.set_xticks(cbar_ticks, labels=cbar_labels);           
+        cbar.ax.set_xlim(0.0,np.max(yjs_vs_time))
+        
+    ####  
+    #### E_n state occupation distribution and time-zero charge density profile
+    if(True): # use visualize_rm get_overlaps function to get time-zero charge density, energy distro
+        
+        # occupation of |km>
+        fixed_rho_points = np.array([0,10]);
+        assert(max(fixed_rho_points)%2 == 0);
+        distro_scaler = max(fixed_rho_points)//2;
+        rm_occs = visualize_rm.get_occs_Ne_TwoSz(params["Ne"], params["TwoSz"]);
+
+        # distribution over E_n states
+        rm_Em, rm_km, rm_En, rm_kn, rm_distro, rm_charge, _ = visualize_rm.get_overlaps(params, rm_occs, plotwfs=False);
+
+        # occupation of |km>
+        t0_distro = np.zeros((len(rm_Em),), dtype=int);
+        t0_distro[:len(rm_occs)] = rm_occs[:];
+
+        # format occupation of |km>
+        Enax_forxlabel = Enax;
+        Enax = Enax.twinx();
+        Emax_forxlabel = Emax;
+        Emax = Emax.twinx();
+        Emax_forxlabel.set_xlabel("${:.0f}n_m$".format(distro_scaler),fontsize=myfontsize);
+        Emax.set_ylabel("$E_m \, (|v|$)",fontsize=myfontsize);
+        Emax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
+        for edge in band_edges:
+            Emax.axhline(edge, color="gray", linestyle="dashed");
+        Emax.set_ylim(np.min(rm_En)*1.05, np.max(rm_En)*1.05);
+        # ^^ makes sure we don't plot non-confined energies
+
+        # format distribution over E_n states
+        Enax_forxlabel.set_xlabel("${:.0f}\sum_m' |\langle k_n | k_m \\rangle |^2 $".format(distro_scaler),fontsize=myfontsize);
+        Enax.set_ylabel("$E_n \, (|v|$)",fontsize=myfontsize); 
+        Enax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
+        for edge in band_edges:
+            Enax.axhline(edge, color="gray", linestyle="dashed");
+        Enax.set_ylim(np.min(rm_En)*1.05, np.max(rm_En)*1.05);
+        
+         # plot
+        Emax.plot(distro_scaler*t0_distro, rm_Em, color = "black");
+        Enax.plot(distro_scaler*rm_distro, rm_En, color = "black");
+                    
+        # E_n density of states;
+        if(plot_dos): # plot dos
+            # for Em
+            rm_Em_banded = np.array([rm_Em[:len(rm_Em)//2],rm_Em[len(rm_Em)//2:]]);
+            Em_gradient = np.array([np.gradient(rm_Em[:len(rm_Em)//2],rm_km[:len(rm_Em)//2]),
+                                    np.gradient(rm_Em[len(rm_Em)//2:],rm_km[len(rm_Em)//2:])]); 
+            # ^ handles both bands at once
+            for bandi in range(len(Em_gradient)):
+                Emax.plot(2/np.pi*abs(1/Em_gradient[bandi]),rm_Em_banded[bandi], color="cornflowerblue");
+            Emax.text(0,-0.3,"$\\rho(E_m) \, (|v|^{-1} a^{-1})$",transform=Emax.transAxes, fontsize=myfontsize,color="cornflowerblue");
+            Emax.set_xlim(*fixed_rho_points);
+            # for En
+            rm_En_banded = np.array([rm_En[:len(rm_En)//2],rm_En[len(rm_En)//2:]]);
+            En_gradient = np.array([np.gradient(rm_En[:len(rm_En)//2],rm_kn[:len(rm_En)//2]),
+                                    np.gradient(rm_En[len(rm_En)//2:],rm_kn[len(rm_En)//2:])]); 
+            # ^ handles both bands at once
+            for bandi in range(len(En_gradient)):
+                Enax.plot(2/np.pi*abs(1/En_gradient[bandi]),rm_En_banded[bandi], color="cornflowerblue");
+            Enax.text(0,-0.3,"$\\rho(E_n) \, (|v|^{-1} a^{-1})$",transform=Enax.transAxes, fontsize=myfontsize,color="cornflowerblue");
+            Enax.set_xlim(*fixed_rho_points);
+        else:
+            Enax.set_xticks([])
+          
+        # format plot and format time-zero charge density
+        densityax.plot(rm_charge, np.arange(0,Ntotal), color = matplotlib.colormaps['bwr'](np.linspace(0,1,10))[9]); 
+        densityax.set_xlabel("$\langle n_{j\mu} \\rangle$",fontsize=myfontsize);
+        densityax.set_ylabel("Site",fontsize=myfontsize); 
+    ####  
+    #### E_n state occupation distribution and time-zero charge density profile           
+    else:  # get direct from stored observables  
+        # plot time-zero charge density profile
+        densityax.plot(yjs_vs_time[0], np.arange(0,Ntotal), color="black",linestyle="dashed");                    
+        # plot En distribution
+        nB_vs_time = np.zeros((len(times),Ntotal),dtype=float);
+        for ti in [0]: # only need initial
+            nB_vs_time[ti] = np.load(dfile+"_arrays/nB_yjs_time{:.2f}.npy".format(times[ti]));           
+        distroax.plot(nB_vs_time[0], np.arange(0,Ntotal),color="black",linestyle="dashed");
+        
+    # format
+    fig.suptitle(get_title(dfile,["N_{conf}"]),fontsize=myfontsize);
+    #for axi, ax in enumerate([densityax, heatmapax, distroax]):ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
+
+    # show
+    #fig.tight_layout();
+    folder = datafiles[-1].split("_")[-1];
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf";
+    if(case in [31]): 
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else: plt.show();
+
     
-elif(case in [20,21]): # occupancy vs orbital vs time heatmap
+elif(case in [90,91]): # occupancy vs orbital vs time heatmap
 
     # axes
     horizontal = True; # puts heatmaps side by side, else stack
@@ -581,8 +759,8 @@ elif(case in [20,21]): # occupancy vs orbital vs time heatmap
     myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
         if("nosd" in dfile):      myaxlab = " Qubits Removed";
-        elif("triplet" in dfile): myaxlab = " $|T_0 \\rangle$";
-        elif("singlet" in dfile): myaxlab = " $|S \\rangle$";
+        elif("triplet" in dfile): myaxlab = " $|T_0\\rangle$";
+        elif("singlet" in dfile): myaxlab = " $|S  \\rangle$";
         elif("nofield" in dfile): myaxlab = " Field Removed";
         else: myaxlab = dfile.split("/")[-1].split("_")[0];
 
@@ -680,132 +858,10 @@ elif(case in [20,21]): # occupancy vs orbital vs time heatmap
     fig.tight_layout();
     folder = datafiles[-1].split("_")[-1];
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+".pdf"
-    if(case in [21]): 
+    if(case in [91]): 
         print("Saving to "+savename);
         plt.savefig(savename);
-    else: plt.show();
-    
-elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density profile and <k_m|k_n> distro
-    assert(len(datafiles)==1);
-    dfile = datafiles[0];
-
-    
-    # axes
-    fignrows, figncols = 1, 3;
-    fig = plt.figure(layout="constrained");
-    change_ratios = {"width_ratios":[0.33,1.0,0.33]};
-    densityax, heatmapax, distroax = fig.subplots(ncols=figncols,nrows=fignrows,sharey=True, gridspec_kw=change_ratios);
-    distroax_forxlabel = distroax;
-    distroax = distroax.twinx();
-    fig.set_size_inches(UniversalFigRatios[0]*np.sum(change_ratios["width_ratios"]),UniversalFigRatios[1])
-
-    if("nosd" in dfile):      myaxlab = " Qubits Removed";
-    else: raise NotImplementedError;
-
-    # time evolution params
-    params = json.load(open(dfile+".txt"));
-    Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-    print("\n    Nupdates = {:.0f}, Update time = {:.2f}".format(Nupdates,tupdate));
-    times = np.zeros((Nupdates+1,),dtype=float);
-    for ti in range(len(times)):
-        times[ti] = (update0 + ti)*tupdate;
-            
-    # rice-mele ?
-    if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): 
-        block2site = 2;
-        h00 = np.array([[params["u"], params["v"]], [params["v"],-params["u"]]]);
-        h01 = np.array([[0.0, 0.0],[params["w"], 0.0]]);
-        band_edges = wfm.bandedges_RiceMele(h00, h01);
-    else: 
-        block2site = 1;
-
-    # get heatmap data
-    Ntotal = block2site*(params["NL"]+params["NFM"]+params["NR"]); # number of j sites
-    yjs_vs_time = np.zeros((len(times),Ntotal),dtype=float);
-    for ti in range(len(times)):
-        yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-    
-    #### heatmap        
-    # mesh grids for time (x) and site (y) plotting heatmap
-    timex, sitey = np.mgrid[0:int(times[-1])+tupdate:tupdate, 0:Ntotal];
-        
-    # plot heatmap
-    heatmapax.set_facecolor("steelblue");
-    heatmap=heatmapax.pcolormesh(timex, sitey, yjs_vs_time, cmap='bwr', vmin=0.0, vmax=np.max(yjs_vs_time));
-    print("    np.max(yjs_vs_time) = {:.2f}".format(np.max(yjs_vs_time))); #colorbar limits depend on Ne, Nconf
-        
-    # format heatmap
-    heatmapax.text(0.05,0.9,myaxlab, color="white",
-            transform=heatmapax.transAxes,fontsize=myfontsize);
-    heatmapax.set_xlabel("Time $(\hbar/|v|)$",fontsize=myfontsize);
-    cbar = fig.colorbar(heatmap,ax=heatmapax, location='top',pad=0.01);
-    if(True):
-        cbar_ticks = cbar.ax.get_xticks() #.tolist();
-        cbar_labels = np.copy(cbar_ticks).round(1).astype(str);
-        cbar_labels[0] = "$\langle n_{j\mu} \\rangle $";
-        print("\n",cbar_ticks,"\n",cbar_labels);
-        cbar.ax.set_xticks(cbar_ticks, labels=cbar_labels);           
-        cbar.ax.set_xlim(0.0,np.max(yjs_vs_time))    
-        
-    ####  
-    #### E_n state occupation distribution and time-zero charge density profile
-    if(True): # use visualize_rm get_overlaps function to get time-zero charge density, energy distro
-        
-        # occupation of |km>
-        rm_occs = visualize_rm.get_occs_Ne_TwoSz(params["Ne"], params["TwoSz"]);
-
-        # occupation of |kn>, normalized (i.e. distribution over E_n states)
-        rm_En, rm_kn, rm_distro, rm_charge, _ = visualize_rm.get_overlaps(params, rm_occs, plotwfs=False);
-        fixed_rho_points = np.array([0,10]); 
-        distroax.plot(rm_distro*np.max(fixed_rho_points), rm_En, color = "black");
-        
-        # format distribution over E_n states
-        distroax_forxlabel.set_xlabel("$\sum_m |\langle k_n | k_m \\rangle |^2 $ (a.u.)",fontsize=myfontsize);
-        distroax.set_ylabel("$E_n \, (|v|$)",fontsize=myfontsize); 
-        distroax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
-        for edge in band_edges: distroax.axhline(edge, color="gray", linestyle="dashed");
-                     
-        # E_n density of states;
-        if(True):
-            rm_En_banded = np.array([rm_En[:len(rm_En)//2],rm_En[len(rm_En)//2:]]);
-            rm_gradient = np.array([np.gradient(rm_En[:len(rm_En)//2],rm_kn[:len(rm_En)//2]),
-                                    np.gradient(rm_En[len(rm_En)//2:],rm_kn[len(rm_En)//2:])]); 
-            # ^ handles both bands at once
-            for bandi in range(len(rm_gradient)):
-                distroax.plot(2/np.pi*abs(1/rm_gradient[bandi]),rm_En_banded[bandi], color="cornflowerblue");
-            distroax.text(0,-0.3,"$\\rho(E_n) \, (|v|^{-1} a^{-1})$",transform=distroax.transAxes, fontsize=myfontsize,color="cornflowerblue");
-            distroax.set_xlim(*fixed_rho_points);
-        else:
-            distroax.set_xticks([])
-          
-        # format plot and format time-zero charge density
-        densityax.plot(rm_charge, np.arange(0,Ntotal), color = matplotlib.colormaps['bwr'](np.linspace(0,1,10))[9]); 
-        densityax.set_xlabel("$\langle n_{j\mu} \\rangle$",fontsize=myfontsize);
-        densityax.set_ylabel("Site",fontsize=myfontsize); 
-    ####  
-    #### E_n state occupation distribution and time-zero charge density profile           
-    else:  # get direct from stored observables  
-        # plot time-zero charge density profile
-        densityax.plot(yjs_vs_time[0], np.arange(0,Ntotal), color="black",linestyle="dashed");                    
-        # plot En distribution
-        nB_vs_time = np.zeros((len(times),Ntotal),dtype=float);
-        for ti in [0]: # only need initial
-            nB_vs_time[ti] = np.load(dfile+"_arrays/nB_yjs_time{:.2f}.npy".format(times[ti]));           
-        distroax.plot(nB_vs_time[0], np.arange(0,Ntotal),color="black",linestyle="dashed");
-        
-    # format
-    fig.suptitle(get_title(dfile,["N_{conf}"]),fontsize=myfontsize);
-    #for axi, ax in enumerate([densityax, heatmapax, distroax]):ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
-
-    # show
-    #fig.tight_layout();
-    folder = datafiles[-1].split("_")[-1];
-    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf";
-    if(case in [31]): 
-        print("Saving to "+savename);
-        plt.savefig(savename);
-    else: plt.show();
-    
+    else: plt.show();   
 
 elif(case in [100,101]): # animate time evol
     datafile = datafiles[0];
