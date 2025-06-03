@@ -283,7 +283,6 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     if(case in [9]): 
         norm_to_Jconf = False;
         use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
-        assert("nosd" in datafiles[0]); # must always normalize to nosd case 
     else: use_Jobs = False; 
 
     #### iter over triplet/singlet
@@ -308,7 +307,8 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         # which imps to get data for
         which_imp = 0;
         assert(which_imp == 0);
-        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): 
+            block2site = 2;
         else: 
             block2site = 1;
             assert(params["NFM"] == 2); # number of d sites
@@ -379,10 +379,12 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
 
                 # normalize by max incoming electron pcurrent
                 # Jconf = particle current through site Nconf
-                if("nosd" in dfile and dfile==datafiles[0]): # <--- Jconf must come from Jsd=0 case
-                    if(norm_to_Jconf): Jconf = max(abs(yjs_vs_time[:,0]));
-                    else: Jconf = 1.0; # no normalization
+                if(norm_to_Jconf and dfile==datafiles[0]): # <--- Jconf must come from Jsd=0 case
+                    # set Jconf
+                    Jconf = max(abs(yjs_vs_time[:,0]));
                     print(">>> setting Jconf = {:.6f}".format(Jconf));
+                    assert("nosd" in dfile); # must always normalize to nosd case 
+                else: Jconf = 1.0; # no normalization
                 print("Jconf = {:.6f}".format(Jconf));
              
                 # plot particle currents -> NO FACTORS
@@ -412,23 +414,21 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 else: label2 = "$ n_{conf}$";
                 if(norm_to_Jconf): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
                 print(obs2,"-->",label2);
-                yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
+                yjs_vs_time = np.zeros((len(times),block2site*Nsites),dtype=float);
                 for ti in range(len(times)):
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
         
                 # normalize by max incoming electron pcurrent
-                yjC_vs_time = np.sum(yjs_vs_time[:,:Nconf], axis=1);
-                # Jconf = particle current through site Nconf, here expressed as dn/dt
-                if(norm_to_Jconf): Jconf = max(abs(np.gradient(factor2*yjC_vs_time, times)));
-                else: Jconf = 1.0; # no normalization
+                yjC_vs_time = np.sum(yjs_vs_time[:,:block2site*Nconf], axis=1);
+                Jconf = 1.0; # no normalization
                 ax.plot(times, abs(do_gradient(yjC_vs_time,times,do=take_gradient))/Jconf, 
                         color=color2, linestyle=mylinestyle);
              
                 # occ vs time
                 NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
                 Nsites = NL+NFM+NR; 
-                yjL_vs_time = np.sum(yjs_vs_time[:,:NL], axis=1);
-                yjR_vs_time = np.sum(yjs_vs_time[:,NL+NFM:], axis=1);
+                yjL_vs_time = np.sum(yjs_vs_time[:,:block2site*NL], axis=1);
+                yjR_vs_time = np.sum(yjs_vs_time[:,block2site*(NL+NFM):], axis=1);
              
                 # plot occupancies -> NO FACTORS
                 ax.plot(times, do_gradient(yjL_vs_time,times,do=take_gradient)/Jconf, 
@@ -436,8 +436,6 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient)/Jconf, 
                         color=color4,linestyle=mylinestyle);
                         
-                # plot occupancy of last site to show onset of finite size effects
-                ax.plot(times, np.sum(yjs_vs_time[:,-11:], axis=1),color="darkblue",linestyle=mylinestyle);               
             
                 # labels
                 label1 = "$n_{L}(t)$";
@@ -445,9 +443,6 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 if(take_gradient):
                     label1 = "$\left|\\frac{d}{dt}n_{L}(t)\\right|$";
                     label4 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
-                if(norm_to_Jconf):
-                    label1 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-                    label4 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
         
     # formatting
     ax3 = ax.twinx();
@@ -461,11 +456,6 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     ax4.spines.right.set_position(("axes", 1.0));
     ax4.spines.right.set(alpha=1.0);
     ax4.set_yticks([]);
-    if(plot_occ and norm_to_Jconf): ticks1 = [0.0, 1.0];
-    else: ticks1 = [];
-    for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
-    if(plot_occ and use_Jobs and False): 
-        for limit in time_window_limits: ax.axvline(limit,linestyle="solid",color="gray");
     
     # labels
     ax.set_ylabel( label1, color=color1, fontsize=fontsize1); # observable rate of change on left
@@ -558,7 +548,73 @@ elif(case in [10,11]): # time-independent transport metric
     plt.show();
 
 elif(case in [20,21]): # Jmax vs phient, colors are w vals
-    pass;
+
+    # axes
+    fignrows, figncols = 1, 1
+    change_ratios = {};
+    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
+    metricax = axes;
+    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
+
+    # here we label w but plot against phient
+    wvals_hist = {};
+    maxJvals = np.full((len(datafiles),),np.nan); # metric plotted against w
+    wvals = np.empty_like(maxJvals);
+    phivals = np.empty_like(maxJvals)
+    
+    # iter over input files
+    for di, dfile in enumerate(datafiles):
+
+        params = json.load(open(dfile+".txt"));
+        wvals[di] = params["w"];
+        if(wvals[di] not in wvals_hist.keys()): wvals_hist[wvals[di]]=1;
+        phivals[di] = params["phient"];
+        yjs_observable = "J_";
+        print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
+
+        # time evolution params
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+            
+        # rice-mele ?
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: block2site = 1;
+        
+        # get current scattering region -> right lead
+        # NB J_ is measured at boundary of Nconf, NL, NR (ie in 3 unit cells)
+        yjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
+        xjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
+        for ti in range(len(times)):
+            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
+            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
+        print("J_ site index in ",xjs_vs_time[0].astype(int));
+        current_index = np.shape(yjs_vs_time)[1] - 1*block2site; # ensures inter-cell if diatomic
+        yjs_label = get_ylabel("J_", None, dstring = int(xjs_vs_time[0,current_index]));
+        maxJvals[di] = np.max(yjs_vs_time[:,current_index]);
+        print("time(maxJ) = {:.0f} ({:.0f}%)".format(times[np.argmax(yjs_vs_time[:,current_index])],100*np.argmax(yjs_vs_time[:,current_index])/Nupdates));
+        
+    # plot
+    assert(len(datafiles) % len(wvals_hist.keys()) == 0);
+    print(wvals);
+    print(phivals);
+    for colori, wstring in enumerate(wvals_hist.keys()):
+        label_mask = np.isin(wvals, [wstring]);
+        metricax.plot(phivals[label_mask]/np.pi, maxJvals[label_mask], label="$w={:.2f}$".format(wstring),color=UniversalColors[colori],marker=ColorsMarkers[colori]);
+        print(  "x >>> ",phivals[label_mask], 
+              "\ny >>> ",maxJvals[label_mask]);
+    # format
+    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
+    metricax.set_ylabel(yjs_label, fontsize = myfontsize);
+    metricax.set_xlabel("$\phi_{ent}/\pi$", fontsize = myfontsize);
+    
+    
+    # show
+    plt.legend();
+    plt.tight_layout();
+    plt.show();
 
 elif(case in [24,25]): # Jmax vs Jsd, colors are S/T0
     pass;
@@ -581,7 +637,6 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
 
     
     # axes
-    plot_dos = True;
     fig = plt.figure(layout="constrained");
     change_ratios = {"width_ratios":[0.01,1.0,0.33,0.33]};
     fignrows, figncols = 1, len(change_ratios["width_ratios"])
@@ -647,10 +702,8 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
     if(True): # use visualize_rm get_overlaps function to get time-zero charge density, energy distro
         
         # occupation of |km>
-        fixed_rho_points = np.array([0,10]);
-        assert(max(fixed_rho_points)%2 == 0);
-        distro_scaler = max(fixed_rho_points)//2;
         rm_occs = visualize_rm.get_occs_Ne_TwoSz(params["Ne"], params["TwoSz"]);
+        m_Fermi = len(rm_occs) - 1; # index of Fermi energy, among energy arrs
 
         # distribution over E_n states
         rm_Em, rm_km, rm_En, rm_kn, rm_distro, rm_charge, _ = visualize_rm.get_overlaps(params, rm_occs, plotwfs=False);
@@ -660,11 +713,10 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         t0_distro[:len(rm_occs)] = rm_occs[:];
 
         # format occupation of |km>
-        Enax_forxlabel = Enax;
-        Enax = Enax.twinx();
-        Emax_forxlabel = Emax;
+        Emax.set_xlabel("$n(E_m) \\rho(E_m) (|v|^{-1} a^{-1})$");
+        fixed_rho_points = (0,10.0);
+        Emax.set_xlim(fixed_rho_points);
         Emax = Emax.twinx();
-        Emax_forxlabel.set_xlabel("${:.0f}n_m$".format(distro_scaler),fontsize=myfontsize);
         Emax.set_ylabel("$E_m \, (|v|$)",fontsize=myfontsize);
         Emax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
         for edge in band_edges:
@@ -673,47 +725,49 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         # ^^ makes sure we don't plot non-confined energies
 
         # format distribution over E_n states
-        Enax_forxlabel.set_xlabel("${:.0f}\sum_m' |\langle k_n | k_m \\rangle |^2 $".format(distro_scaler),fontsize=myfontsize);
+        Enax.set_xlabel("$n(E_n) \\rho(E_n) (|v|^{-1} a^{-1})$");
+        Enax.set_xlim(fixed_rho_points);
+        Enax = Enax.twinx();
         Enax.set_ylabel("$E_n \, (|v|$)",fontsize=myfontsize); 
         Enax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
         for edge in band_edges:
             Enax.axhline(edge, color="gray", linestyle="dashed");
         Enax.set_ylim(np.min(rm_En)*1.05, np.max(rm_En)*1.05);
-        
-         # plot
-        Emax.plot(distro_scaler*t0_distro, rm_Em, color = "black");
-        Enax.plot(distro_scaler*rm_distro, rm_En, color = "black");
                     
-        # E_n density of states;
-        if(plot_dos): # plot dos
-            # for Em
-            rm_Em_banded = np.array([rm_Em[:len(rm_Em)//2],rm_Em[len(rm_Em)//2:]]);
-            Em_gradient = np.array([np.gradient(rm_Em[:len(rm_Em)//2],rm_km[:len(rm_Em)//2]),
-                                    np.gradient(rm_Em[len(rm_Em)//2:],rm_km[len(rm_Em)//2:])]); 
-            # ^ handles both bands at once
-            for bandi in range(len(Em_gradient)):
-                Emax.plot(2/np.pi*abs(1/Em_gradient[bandi]),rm_Em_banded[bandi], color="cornflowerblue");
-            Emax.text(0,-0.3,"$\\rho(E_m) \, (|v|^{-1} a^{-1})$",transform=Emax.transAxes, fontsize=myfontsize,color="cornflowerblue");
-            Emax.set_xlim(*fixed_rho_points);
-            # for En
-            rm_En_banded = np.array([rm_En[:len(rm_En)//2],rm_En[len(rm_En)//2:]]);
-            En_gradient = np.array([np.gradient(rm_En[:len(rm_En)//2],rm_kn[:len(rm_En)//2]),
-                                    np.gradient(rm_En[len(rm_En)//2:],rm_kn[len(rm_En)//2:])]); 
-            # ^ handles both bands at once
-            for bandi in range(len(En_gradient)):
-                Enax.plot(2/np.pi*abs(1/En_gradient[bandi]),rm_En_banded[bandi], color="cornflowerblue");
-            Enax.text(0,-0.3,"$\\rho(E_n) \, (|v|^{-1} a^{-1})$",transform=Enax.transAxes, fontsize=myfontsize,color="cornflowerblue");
-            Enax.set_xlim(*fixed_rho_points);
-        else:
-            Enax.set_xticks([])
+        # Em density of states
+        rm_Em_banded = np.array([rm_Em[:len(rm_Em)//2],rm_Em[len(rm_Em)//2:]]);
+        Em_gradient = np.array([np.gradient(rm_Em[:len(rm_Em)//2],rm_km[:len(rm_Em)//2]),
+                                np.gradient(rm_Em[len(rm_Em)//2:],rm_km[len(rm_Em)//2:])]); 
+        # ^ handles both bands at once
+        rm_dos_factor = 2/np.pi 
+        for bandi in range(len(Em_gradient)):
+            Emax.plot(rm_dos_factor*abs(1/Em_gradient[bandi]),rm_Em_banded[bandi], color="black",linestyle="dotted");
+            
+        #  En density of states
+        rm_En_banded = np.array([rm_En[:len(rm_En)//2],rm_En[len(rm_En)//2:]]);
+        En_gradient = np.array([np.gradient(rm_En[:len(rm_En)//2],rm_kn[:len(rm_En)//2]),
+                                np.gradient(rm_En[len(rm_En)//2:],rm_kn[len(rm_En)//2:])]); 
+        # ^ handles both bands at once
+        for bandi in range(len(En_gradient)):
+            Enax.plot(rm_dos_factor*abs(1/En_gradient[bandi]),rm_En_banded[bandi], color="black",linestyle="dotted");
+
+        # plot n(Em) * rho(Em)
+        # since m's are 2's, normalize to 1
+        Emax.plot(0.5*t0_distro[:len(rm_Em_banded[0])]*rm_dos_factor*abs(1/Em_gradient[0]), rm_Em_banded[0], color = "black");
+
+        # density of states at Fermi energy
+        rho_Fermi = rm_dos_factor*abs(1/Em_gradient[0,m_Fermi]);
+        Emax.text(rho_Fermi, rm_Em[m_Fermi], "$\\rho(E_F) = {:.2f}$".format(rho_Fermi));
           
-        # format plot and format time-zero charge density
+        ####
+        # plot and format time-zero charge density
         densityax.plot(rm_charge, np.arange(0,Ntotal), color = matplotlib.colormaps['bwr'](np.linspace(0,1,10))[9]); 
         densityax.set_xlabel("$\langle n_{j\mu} \\rangle$",fontsize=myfontsize);
         densityax.set_ylabel("Site",fontsize=myfontsize); 
-    ####  
-    #### E_n state occupation distribution and time-zero charge density profile           
-    else:  # get direct from stored observables  
+
+    #### get 
+    #### E_m density of states and time-zero charge density profile           
+    else:  # direct from stored observables  
         # plot time-zero charge density profile
         densityax.plot(yjs_vs_time[0], np.arange(0,Ntotal), color="black",linestyle="dashed");                    
         # plot En distribution
