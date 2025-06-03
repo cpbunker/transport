@@ -1,0 +1,1 @@
+python ../../../visualize_stt.py 10 0 nosd_w-10 triplet_w-10 singlet_w-10 nosd_w-08 triplet_w-08 singlet_w-08 nosd_w-04 triplet_w-04 singlet_w-04 nosd_w-02 triplet_w-02 singlet_w-02
