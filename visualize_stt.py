@@ -83,7 +83,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
-    #plt.rcParams.update({"text.usetex": True});
+    plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
@@ -638,7 +638,7 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
     
     # axes
     fig = plt.figure(layout="constrained");
-    change_ratios = {"width_ratios":[0.01,1.0,0.33,0.33]};
+    change_ratios = {"width_ratios":[0.5,1.0,0.5,0.00001]};
     fignrows, figncols = 1, len(change_ratios["width_ratios"])
     densityax, heatmapax, Emax, Enax = fig.subplots(ncols=figncols,nrows=fignrows,sharey=True, gridspec_kw=change_ratios);
     fig.set_size_inches(UniversalFigRatios[0]*np.sum(change_ratios["width_ratios"]),UniversalFigRatios[1])
@@ -713,7 +713,7 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         t0_distro[:len(rm_occs)] = rm_occs[:];
 
         # format occupation of |km>
-        Emax.set_xlabel("$n(E_m) \\rho(E_m) (|v|^{-1} a^{-1})$");
+        Emax.set_xlabel("$n(E_m) \\rho(E_m) (|v|^{-1} a^{-1})$", fontsize=myfontsize);
         fixed_rho_points = (0,10.0);
         Emax.set_xlim(fixed_rho_points);
         Emax = Emax.twinx();
@@ -725,9 +725,9 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
         # ^^ makes sure we don't plot non-confined energies
 
         # format distribution over E_n states
-        Enax.set_xlabel("$n(E_n) \\rho(E_n) (|v|^{-1} a^{-1})$");
+        Enax.set_xlabel("$n(E_n) \\rho(E_n) (|v|^{-1} a^{-1})$", fontsize=myfontsize);
         Enax.set_xlim(fixed_rho_points);
-        Enax = Enax.twinx();
+        Enax, Enax_pretwin = Enax.twinx(), Enax;
         Enax.set_ylabel("$E_n \, (|v|$)",fontsize=myfontsize); 
         Enax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.1f"));
         for edge in band_edges:
@@ -757,7 +757,7 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
 
         # density of states at Fermi energy
         rho_Fermi = rm_dos_factor*abs(1/Em_gradient[0,m_Fermi]);
-        Emax.text(rho_Fermi, rm_Em[m_Fermi], "$\\rho(E_F) = {:.2f}$".format(rho_Fermi));
+        Emax.text(0, 0, "$\\rho(E_F) = {:.2f}$".format(rho_Fermi), fontsize=myfontsize);
           
         ####
         # plot and format time-zero charge density
@@ -781,8 +781,8 @@ elif(case in [30,31]): # single dataset heatmap, decorated by time-zero density 
     #for axi, ax in enumerate([densityax, heatmapax, distroax]):ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
 
     # show
-    #fig.tight_layout();
-    folder = datafiles[-1].split("_")[-1];
+    fig.delaxes(Enax); fig.delaxes(Enax_pretwin);
+    folder = datafiles[-1].split("_")[0];
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf";
     if(case in [31]): 
         print("Saving to "+savename);

@@ -228,18 +228,6 @@ def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
     h_cicc = np.array(h_cicc, dtype = complex);
     return h_cicc;
     
-def dos_RiceMele(u,v,w,Es):
-    '''
-    *Vectorized in Es* density of states of the *infinite* system (no relation to surface green's funct)
-    '''
-    
-    # invert Es to get ks
-    ks = np.arccos(1/(2*v*w)*(Es*Es - u*u - v*v - w*w));
-    band_deriv = np.gradient(Es,ks);
-    
-    # 1D tight-binding DOS is 2/pi * 1/|dE/dK|
-    return 2/(np.pi*abs(band_deriv)); # this is a function of Es argument since we got ks by inverting it
-
 if(__name__=="__main__"):
     # top level
     np.set_printoptions(precision = 4, suppress = True);
@@ -525,7 +513,6 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     dispax.scatter(discrete_ks/np.pi, discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]); 
     
     # graphical density of states for fixed energy
-    #discrete_dos = dos_RiceMele(uval, vval, -tl, discrete_band); # must correspond exactly to discrete this_band points
     discrete_dos = 2/np.pi*abs(1/np.gradient(discrete_band, discrete_ks));
     
     dosax.scatter(discrete_dos,discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]);

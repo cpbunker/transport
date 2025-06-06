@@ -186,7 +186,7 @@ if(__name__ == "__main__"):
     mylinewidth = 1.0;
     myfontsize = 14;
     plt.rcParams.update({"font.family": "serif"});
-    #plt.rcParams.update({"text.usetex": True});
+    plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5,5.5/1.25];
     
 else: # name NOT main 
@@ -196,20 +196,19 @@ else: # name NOT main
 #### Rice Mele Time > 0 occupation distribution
 if(case in ["None"]): pass;
 
-elif(case in ["distro"]):
+elif(case in ["rhoEF"]):
 
     # parameters
-    wvals = np.array([-1.0,-0.4]);
+    wvals = np.array([-1.0,-0.8,-0.6,-0.4,-0.2,-0.1]);
+    rhovals = np.empty_like(wvals);
     my_levels_skip = 0; # fixed
     myNe, myTwoSz = myparams["Ne"], myparams["TwoSz"];
+    fill_factor = myNe/(2*myparams["Nconf"])
     
     # set up figure
     fig, axes = plt.subplots();
-    fig.set_size_inches(*UniversalFigRatios)
-    occax = axes;
-    #distax.set_ylabel("$E_n$",fontsize=myfontsize);
-    #distax.set_xlabel("$\sum_m ' |\langle k_m|k_n \\rangle |^2$",fontsize=myfontsize);
-    
+    fig.set_size_inches(*UniversalFigRatios);
+    occax = axes; 
 
     for pairi in range(len(wvals)): # iter over w
 
@@ -236,8 +235,8 @@ elif(case in ["distro"]):
                                   np.gradient(myEm[len(myEm)//2:],mykm[len(myEm)//2:])]);
         occax.plot((2/np.pi)*1/abs(myEm_gradient[0]), myEm[:len(myEm)//2], color=UniversalColors[pairi],linestyle="dashed");
         occax.plot((2/np.pi)*1/abs(myEm_gradient[1]), myEm[len(myEm)//2:], color=UniversalColors[pairi],linestyle="dashed");
-        rho_HOMO = (2/np.pi)*1/abs(myEm_gradient[0,m_HOMO])
-        occax.text(rho_HOMO, myEm[m_HOMO], "$\\rho(E_F) = {:.2f}$".format(rho_HOMO),color=UniversalColors[pairi]);
+        rhovals[pairi] = (2/np.pi)*1/abs(myEm_gradient[0,m_HOMO])
+        occax.text(rhovals[pairi], myEm[m_HOMO], "$\\rho(E_F) = {:.2f}$".format(rhovals[pairi]),color=UniversalColors[pairi]);
         
 
     # format
@@ -247,9 +246,25 @@ elif(case in ["distro"]):
     occax.set_title("$N_e = {:.0f}$".format(myparams["Ne"])+", $N_{conf} =$"+"{:.0f}".format(myparams["Nconf"]));
         
     # show
-    occax.legend();
+    occax.legend(fontsize=myfontsize);
     plt.tight_layout();
     plt.show();
+    
+    # plot rho(EF) vs w values
+    rhofig, rhoax = plt.subplots();
+    rhofig.set_size_inches(*UniversalFigRatios[::-1]);
+    rhoax.plot(wvals, rhovals, label="$N_e/N_{band} ="+"{:.2f}$".format(fill_factor),color=UniversalColors[0], marker=ColorsMarkers[0]);
+    
+    # format
+    rhoax.set_xlabel("$w/|v|$", fontsize = myfontsize);
+    rhoax.set_ylabel("$\\rho(E_F)$", fontsize = myfontsize);
+    
+    # show
+    rhoax.legend(fontsize=myfontsize);
+    plt.tight_layout();
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+case+".pdf";
+    print("Saving to "+savename);
+    plt.savefig(savename);
 
 elif(case in ["distroNconf"]):
 

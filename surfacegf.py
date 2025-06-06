@@ -35,13 +35,16 @@ if(__name__=="__main__"):
     n_iterations = 21 # 201 #raise Exception("change all niter to conv_tol");
     imag_pt_E = 1e-2;
     
-if(case in ["dispersion","dispersion_pdf"]): 
+if(case in ["dispersion","dispersion_pdf", "sdos_pdf"]): 
 
     # set up figure
     nrow, ncol = 2, 2;
     
-    if("_pdf" in case):
+    if(case in ["dispersion_pdf"]):
         fig, axes = plt.subplots(nrow, ncol, sharey=True, gridspec_kw = {"height_ratios":[1.0, 0.001]});
+        fig.set_size_inches(ncol*3.5, 3);
+    elif(case in ["sdos_pdf"]):
+        fig, axes = plt.subplots(nrow, ncol, sharey=True, gridspec_kw = {"height_ratios":[0.001, 1.0]});
         fig.set_size_inches(ncol*3.5, 3);
     else:
         fig, axes = plt.subplots(nrow, ncol, sharey=True);
@@ -53,7 +56,7 @@ if(case in ["dispersion","dispersion_pdf"]):
         axes[rowi,0].set_ylabel("$E$", fontsize=myfontsize);
     dispax.set_xlabel("$ka/\pi$", fontsize=myfontsize);
     dispax.set_xlim(0.0,1.0);
-    dosax.set_xlabel("$\\rho$", fontsize=myfontsize);
+    dosax.set_xlabel("$\\rho (E)$", fontsize=myfontsize);
     dosax.set_xlim(0.0,10.0);
     sdosax.set_xlabel("Right Lead Surface DOS", fontsize=myfontsize);
     veloax.set_xlabel("Right Lead Velocities", fontsize=myfontsize);
@@ -62,7 +65,6 @@ if(case in ["dispersion","dispersion_pdf"]):
     wvals = np.linspace(wvals[0], wvals[-1], 5);
     wcolors = matplotlib.colormaps['bwr'](np.linspace(0,1,1+len(wvals)));
     uvals = float(sys.argv[3])*np.ones_like(wvals);
-    dispax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval));
 
     # run over different RM params
     for wi in range(len(wvals)):
@@ -118,17 +120,25 @@ if(case in ["dispersion","dispersion_pdf"]):
             velocities_closed = 2*abs(vval)*np.sqrt(1-np.power(np.real(Evals/(2*abs(vval))),2))
             veloax.plot(velocities_closed, np.real(Evals), color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
             
+    # format
+    dispax.legend(fontsize=myfontsize);
+    dispax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval), fontsize=myfontsize);
+    sdosax.legend(fontsize=myfontsize);
+    sdosax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval), fontsize=myfontsize);
+
+    
     # truncate axes
-    if("_pdf" in case):
+    if(case in ["dispersion_pdf"]):
         fig.delaxes(sdosax);
         fig.delaxes(veloax);
-        
-    # show
-    dispax.legend();
+    elif(case in ["sdos_pdf"]):
+        fig.delaxes(dispax);
+        fig.delaxes(dosax);
     plt.tight_layout();
     
     # save to pdf, if asked
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/dispersion_RiceMele.pdf";
+    if(case in ["sdos_pdf"]): savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/sdos_RiceMele.pdf";
     if("_pdf" in case):
         print("Saving to "+savename);
         plt.savefig(savename);
