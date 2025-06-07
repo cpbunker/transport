@@ -54,7 +54,7 @@ if(case in ["dispersion","dispersion_pdf", "sdos_pdf"]):
     # format figure
     for rowi in range(nrow):
         axes[rowi,0].set_ylabel("$E$", fontsize=myfontsize);
-    dispax.set_xlabel("$ka/\pi$", fontsize=myfontsize);
+    dispax.set_xlabel("$k_\sigma a/\pi$", fontsize=myfontsize);
     dispax.set_xlim(0.0,1.0);
     dosax.set_xlabel("$\\rho (E)$", fontsize=myfontsize);
     dosax.set_xlim(0.0,10.0);

@@ -23,56 +23,6 @@ import sys
 #################################################################################
 #### utils
 
-# load data
-def load_data(fname, nind, nloc):
-    print("Loading data from "+fname);
-    data = np.load(fname);
-    
-    # params and spin channels
-    myk = data[0,0];
-    myJ = data[0,1];
-    mysigmavals = data[0,2:];
-    mysigmavals = np.extract(np.isfinite(mysigmavals), mysigmavals).astype(int);
-    
-    # different flavors of independent variables
-    myxvals = data[1:1+nind];
-    
-    # transmission and reflection coefficients
-    myTvals = data[1+nind:1+nind+nloc];
-    myRvals = data[1+nind+nloc:1+nind+2*nloc]; # this is also sometimes overloaded
-    if(not(1+nind+2*nloc == np.shape(data)[0])):
-        print("shape data = ", np.shape(data));
-        print("nind = {:.0f}, nloc = {:.0f}".format(nind, nloc));
-        raise ValueError;
-    
-    # return
-    print("- sigmavals = ", mysigmavals);
-    print("- shape xvals = ", np.shape(myxvals));
-    print("- shape Tvals = ", np.shape(myTvals));
-    return myk, myJ, mysigmavals, myxvals, myRvals, myTvals;
-
-# colormap
-def get_color(colori,numcolors):
-    cm_reds = matplotlib.cm.get_cmap("seismic");
-    denominator = 2*numcolors
-    assert(colori >=0 and colori < numcolors);
-    if colori <= numcolors // 2: # get a blue
-        return cm_reds((1+colori)/denominator);
-    else:
-        return cm_reds((denominator-(numcolors-(colori+1)))/denominator);
-
-# compute p2
-def get_p2(Ti,Tp,theta):
-    assert isinstance(Ti,float) and isinstance(Tp,float); # vectorized in thetas only
-    return Ti*Tp/(Tp*np.cos(theta/2)*np.cos(theta/2)+Ti*np.sin(theta/2)*np.sin(theta/2));
-
-# figure of merit
-def FOM(Ti,Tp, grid=100000):
-    thetavals = np.linspace(0,np.pi,grid);
-    p2vals = p2(Ti,Tp,thetavals);
-    fom = np.trapz(p2vals, thetavals)/np.pi;
-    return fom;
-
 def entangle(H,bi,bj):
     '''
     Perform a change of basis on a matrix such that basis vectors bi, bj become entangled (unentangled)
@@ -256,8 +206,7 @@ if(case in ["Nx"]): # compare T vs rhoJa for N not fixed
 
         # energy
         Eval = Evals[Evali]; # Eval > 0 always, what I call K in paper
-        Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions etc
-        
+        Energy = Eval - 2*tl; # -2t < Energy < 2t and is the argument of self energies, Green's functions       
         # location of impurities, fixed by kx0 = pi
         k_rho = np.arccos(Energy/(-2*tl)); # = ka since \varepsilon_0ss = 0
         kx0 = 2.0*np.pi;
@@ -265,7 +214,6 @@ if(case in ["Nx"]): # compare T vs rhoJa for N not fixed
         print(">>> N0 = ",N0);
 
         # construct hams
-        # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = 1, 1+N0;
         hblocks, tnn = h_cicc_eff(Jeff, tl, i1, i2, i2+2, pair);
         tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
@@ -502,11 +450,8 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     else: raise NotImplementedError("case = "+case);
     dispks = np.linspace(-np.pi, np.pi,myxvals);
     disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
-    # plot and format the dispersion
+    # plot the dispersion
     for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
-    dispax.set_xlabel("$k_i a/\pi$", fontsize = myfontsize);
-    dispax.set_ylabel("$E(k_i)$", fontsize = myfontsize);
-    dispax.set_title(title_RiceMele, fontsize = myfontsize);
     
     # highlight the parts of the band we are considering
     discrete_ks = np.arccos(1/(-2*vval*tl)*(discrete_band**2 - uval**2 - vval**2 - tl**2))
@@ -536,9 +481,11 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     if(case in ["VB"]): RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
     elif(case in ["CB"]): RiceMele_shift_str="$,  E_{min}^{(CB)}="+"{:.2f}$".format(np.min(band_edges))
     RiceMele_shift_str += ",  $k_i a/\pi \in [{:.2f},{:.2f}]$".format(discrete_ks[0]/np.pi, discrete_ks[-1]/np.pi);
-    dispax.set_ylabel("$E(k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
+    dispax.set_ylabel("$E_\pm (k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
     dosax.set_xlabel("$\\rho, \\rho J_{sd} a ="+"{:.1f}".format(fixed_rhoJ)+", J_{sd} ="+"{:.2f}$".format( Jval), fontsize = myfontsize);
     dosax.set_xlim(0,10);
+    dispax.set_xlabel("$k_i a/\pi$", fontsize = myfontsize);
+    dispax.set_title(title_RiceMele, fontsize = myfontsize);
     
     # show
     plt.tight_layout();
@@ -611,8 +558,8 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
             # get  T coefs
             Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, tl, fixed_Energy, "g_RiceMele", source, 
                          False, False, all_debug = False);
-            Tdum = Tdum[n_loc_dof:];
-            Rdum = Rdum[n_loc_dof:]; # autom'ly extract only B orbital coefs !!
+            Tdum = Tdum[n_loc_dof:]; # extract only at boundary (B site for T)
+            Rdum = Rdum[:n_loc_dof]; # extract only at boundary (A site for R)
             Tvals[Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
             Tsummed[Distvali,sigmas[sigmai]] = np.sum(Tdum);
             TpRsummed[Distvali,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
@@ -638,13 +585,514 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
     print("Saving data to "+fname);
     np.save(fname, data);
 
+elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, different colors for rho value
+    my_unit_cell = 2; # since diatomic
+
+    # Rice-Mele tight binding
+    vval = -1.0; # sets energy scale
+    wval = float(sys.argv[3]);
+    uval = float(sys.argv[4]); 
+    Jval = -0.05;
+
+    # Rice-Mele matrices
+    n_loc_dof = 8; # spin dofs
+    diag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
+    diag_base_RM_spin[:n_loc_dof,:n_loc_dof] = uval*np.eye(n_loc_dof);
+    diag_base_RM_spin[n_loc_dof:,n_loc_dof:] = -uval*np.eye(n_loc_dof);
+    diag_base_RM_spin[:n_loc_dof,n_loc_dof:] = vval*np.eye(n_loc_dof);
+    diag_base_RM_spin[n_loc_dof:,:n_loc_dof] = vval*np.eye(n_loc_dof);
+    offdiag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
+    offdiag_base_RM_spin[n_loc_dof:,:n_loc_dof] = wval*np.eye(n_loc_dof);
+    diag_base_nospin = diag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+    offdiag_base_nospin = offdiag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+    assert(abs(np.sum(np.diagonal(diag_base_nospin))/len(diag_base_nospin)) < 1e-10); # u0 = 0
+    band_edges = wfm.bandedges_RiceMele(diag_base_nospin, offdiag_base_nospin)[-2:];
+    
+    # output Rice-Mele
+    title_RiceMele = wfm.string_RiceMele(diag_base_nospin, offdiag_base_nospin, energies=False, tex=True)
+    print("\n\nRice-Mele "+title_RiceMele);
+    print("h00 =\n",diag_base_nospin);
+    print("h01 =\n",offdiag_base_nospin);
+                                   
+    # channels
+    pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
+    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
+                                          # in this case, MSQs in singlet or triplet, A orbital 
+    # rhoJa = fixed throughout, thus fixing energy and wavenumber
+    print(">>> input "+sys.argv[2]+" is not used");
+    rhoJvals = np.array([0.5,1.0]);
+                                    
+    # return values
+    # shaped by fixed rhoJval (color), MSQ-MSQ distance (x axis), spin dofs 
+    # Transmission coefficients. Note:
+        # we compute only source channel -> source channel scattering, leave the rest as NaNs
+        # we evaluate T at SR boundary, namely the B site
+    Tvals = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float); 
+    
+    # Tsummed measures source channel -> all channels transmission
+    Tsummed = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float);
+    TpRsummed = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float); 
+    
+    # d = number of lattice constants between MSQ 1 and MSQ
+    vsN = True;
+    if(vsN): kdalims = 0.01*np.pi, 1.01*np.pi
+    else: kdalims = 0.01*np.pi, 2.1*np.pi
+    widelimsflag = False;
+    try: 
+        if(sys.argv[5]=="widelims"): widelimsflag = True;
+    except: print(">>> Not flagged to widen kda limits");
+    if(widelimsflag): kdalims = 0.01*np.pi, 100*np.pi; 
+    kdavals = np.full((len(rhoJvals),myxvals), np.nan, dtype=float);  
+    Distvals = np.full((len(rhoJvals),myxvals), np.nan, dtype=int);  
+    fixed_knumbers = np.full((len(rhoJvals),), np.nan, dtype = float);  
+    fixed_rhoJs = np.full((len(rhoJvals),), np.nan, dtype = float);   
+    fixed_Energies = np.full((len(rhoJvals),), np.nan, dtype = complex);    
+    
+    # iter over rhoJavals
+    for colori, target_rhoJ in enumerate(rhoJvals):
+
+        # graphical dispersion for fixed energy
+        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
+        Ks_for_solution = np.logspace(-6,1,499); # creates a discrete set of energy points, 
+                                             # logarithmic w/r/t desired band edge
+        if(case in ["CB_rhos"]): 
+            discrete_band = np.min(band_edges)+Ks_for_solution;
+            discrete_band = discrete_band[discrete_band < np.max(band_edges)]; # stay w/in conduction band
+        elif(case in ["VB_rhos"]): 
+            discrete_band = np.min(-band_edges)+Ks_for_solution;
+            discrete_band = discrete_band[discrete_band < np.max(-band_edges)]; # stay w/in valence band
+        else: raise NotImplementedError("case = "+case);
+        dispks = np.linspace(-np.pi, np.pi,myxvals);
+        disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
+        # plot and format the dispersion
+        for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
+    
+        # highlight the parts of the band we are considering
+        discrete_ks = np.arccos(1/(2*vval*wval)*(discrete_band**2 - uval**2 - vval**2 - wval**2))
+        dispax.scatter(discrete_ks/np.pi, discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]); 
+    
+        # graphical density of states for fixed energy
+        discrete_dos = 2/np.pi*abs(1/np.gradient(discrete_band, discrete_ks));
+    
+        dosax.scatter(discrete_dos,discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]);
+        dosline_from_rhoJ = target_rhoJ/abs(Jval);
+        dosax.axvline(dosline_from_rhoJ, color=UniversalAccents[1], linestyle = "dashed");
+        # solve graphically for fixed E *specifically in VB/CB* that gives desired rhoJa
+        fixed_Energies[colori] = complex(discrete_band[np.argmin(abs(discrete_dos-dosline_from_rhoJ))],0);
+        # ^ grabs one of the discrete energy points in this_band, based on having closest to desired rho(E)
+        # v grabs corresponding k and rho(E) values
+        fixed_knumbers[colori] = discrete_ks[np.argmin(abs(discrete_dos-dosline_from_rhoJ))];
+        fixed_rhoJs[colori] = discrete_dos[np.argmin(abs(discrete_dos-dosline_from_rhoJ))]*abs(Jval);
+        # NB we use this, the closest discrete rhoJ, rather than command-line rhoJ
+        del target_rhoJ;
+        print("\nfixed_rhoJ = {:.6f}".format(fixed_rhoJs[colori]));
+        print("fixed_Energy = {:.6f}".format(np.real(fixed_Energies[colori])));
+        print("fixed_knumber = {:.6f}".format(fixed_knumbers[colori]));
+
+        dosax.axhline(np.real(fixed_Energies[colori]), color=UniversalAccents[1], linestyle="dashed");
+        dispax.axhline(np.real(fixed_Energies[colori]), color=UniversalAccents[1], linestyle="dashed");
+     
+        # plotting
+        if(case in ["VB_rhos"]): 
+            RiceMele_band = "-";
+            RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
+        elif(case in ["CB_rhos"]): 
+            RiceMele_band = "+";
+            RiceMele_shift_str="$,  E_{min}^{(CB)}="+"{:.2f}$".format(np.min(band_edges))
+        RiceMele_shift_str += ",  $k_i a/\pi \in [{:.2f},{:.2f}]$".format(discrete_ks[0]/np.pi, discrete_ks[-1]/np.pi);
+        dispax.set_ylabel("$E_\pm( k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
+        dosax.set_xlabel("$\\rho, \\rho J_{sd} a ="+"{:.2f}".format(fixed_rhoJs[colori])+", J_{sd} ="+"{:.2f}$".format( Jval), fontsize = myfontsize);
+        dosax.set_xlim(0,10);
+        dispax.set_xlabel("$k_i a/\pi$", fontsize = myfontsize);
+        dispax.set_title(title_RiceMele, fontsize = myfontsize);
+    
+        # show
+        plt.tight_layout();
+        plt.show();
+        stopflag = False;
+        try: 
+            if(sys.argv[5]=="stop"): stopflag = True;
+        except: print(">>> Not flagged to stop");
+        assert(not stopflag); 
+        
+        ####
+        #### finally done determining energy, wavenumber for this color set (rhoJa fixed value)
+    
+        # determine the number of lattice constants across this range
+        kdavals[colori,:] = np.linspace(*kdalims, myxvals);
+        Distvals[colori,:] = np.rint(kdavals[colori]/fixed_knumbers[colori]).astype(int);
+        
+        # truncate to remove 0's, then extend back to length myxvals
+        kdavals_trunc = kdavals[colori, Distvals[colori] > 0];
+        kdavals[colori,:] = np.append(np.full((myxvals-len(kdavals_trunc),),kdavals_trunc[0]),kdavals_trunc); # extend
+        Distvals_trunc = Distvals[colori, Distvals[colori] > 0];
+        Distvals[colori,:] = np.append(np.full((myxvals-len(Distvals_trunc),),Distvals_trunc[0]),Distvals_trunc); # extend
+        print("Nd values covered ({:.0f} total) =\n".format(len(Distvals[colori])),Distvals[colori]);
+    
+        # iter over Distvals to compute T
+        for Distvali in range(len(Distvals[colori])):
+        
+            # construct hams
+            i1, i2 = [1], [Distvals[colori, Distvali]+1];
+            hblocks_noRM = h_cicc_hacked(Jval, abs(vval), i1, i2, i2[-1]+2, pair, my_unit_cell); 
+            # +2 for each lead site
+            hblocks = 1*hblocks_noRM;
+            tnn = np.zeros_like(hblocks);
+            for blocki in range(len(hblocks)):
+                hblocks[blocki] += diag_base_RM_spin;
+                tnn[blocki] += offdiag_base_RM_spin;
+            tnn = tnn[:-1];
+            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+            if(Distvali==0): 
+                print("hblocks =\n");
+                blockstoprint = 3;
+                for blocki in range(blockstoprint):
+                    print("\n\n");
+                    for chunki in range(my_unit_cell):
+                        print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,chunki, chunki))
+                        print(np.real(hblocks[blocki][chunki*n_loc_dof:(chunki+1)*n_loc_dof,chunki*n_loc_dof:(chunki+1)*n_loc_dof]));
+                    print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,0, 1))
+                    print(np.real(hblocks[blocki][0*n_loc_dof:(0+1)*n_loc_dof,1*n_loc_dof:(1+1)*n_loc_dof]));
+                    print("t(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,1, 0))
+                    print(np.real(tnn[blocki][n_loc_dof:,:n_loc_dof]));
+                print("J = {:.4f}".format(Jval));
+                print("rhoJ = {:.4f}".format(fixed_rhoJs[colori]));
+                print("max N = {:.0f}\n".format(np.max(Distvals[colori])+2));
+
+            for sigmai in range(len(sigmas)):   
+                # sourcei is one of the pairs always 
+                source = np.zeros(my_unit_cell*n_loc_dof);
+                source[sigmas[sigmai]] = 1;  # MSQs in singlet or triplet, impinging on A site
+
+                # get  T coefs
+                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, abs(vval), fixed_Energies[colori], "g_RiceMele", 
+                          source, False, False, all_debug = False);
+                Tdum = Tdum[n_loc_dof:]; # extract only at boundary (B site for T)
+                Rdum = Rdum[:n_loc_dof]; # extract only at boundary (A site for R)
+                Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
+                Tsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum);
+                TpRsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
+                
+        ####
+        #### end loop over MSQ-MSQ distance
+    
+    ####
+    #### end loop over rhoJa values (colors)
+    del rhoJvals;
+    
+    # figure
+    colorfig, colorax = plt.subplots();
+    colorfig.set_size_inches(1.2*3.5, 1.2*3);
+    colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize);
+    colorax.set_ylabel("$\sum_{\sigma} T_{\sigma}$", fontsize=myfontsize);
+    colorax.set_ylim(0.0, 1.0);
+    colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+    if(vsN):
+        colorax.set_xlabel("$N$",fontsize=myfontsize);
+        colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
+    
+    # plot transmission coefficients vs N (1+MSQ-MSQ distance)
+    yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
+    yvals_styles = ["dashed","solid"];
+    for colori in range(len(fixed_rhoJs)):
+    
+        # x axis
+        indep_vals = Distvals[colori]*fixed_knumbers[colori]/np.pi;
+        if(vsN): indep_vals = Distvals[colori]+1;
+        
+        # plot
+        for stylei, yvals in enumerate(yvals_to_plot):
+            # only label once per colori  
+            if(stylei==0):
+                style_label = "$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.2f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori])
+                #style_label += ", $E_{"+RiceMele_band+"}(k_i) = "+"{:.2f}4".format(np.real(fixed_Energies[colori]));   
+            else: style_label = "_";
+            colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+    
+    # show
+    colorax.legend(fontsize=myfontsize);
+    plt.tight_layout();
+    plt.show();
+    
+elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different colors for rho value
+    my_unit_cell = 2; # since diatomic
+
+    # Rice-Mele tight binding
+    vval = -1.0; # sets energy scale
+    wlims = (float(sys.argv[3]), float(sys.argv[4]));
+    wvals = np.array(sys.argv[3:]).astype(float);
+    uval = 0.0; # always 
+    Jval = -0.5;
+                                   
+    # channels
+    n_loc_dof = 8; # spin channels
+    pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
+    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
+                                          # in this case, MSQs in singlet or triplet, A orbital 
+    # rhoJa = fixed throughout, fixed by specifying energy or wavenumber
+    target_knumber = float(sys.argv[2])*np.pi;
+    assert(target_knumber > 0 and target_knumber < 1.0);
+                                    
+    # return values
+    # shaped by fixed rhoJval (color), MSQ-MSQ distance (x axis), spin dofs 
+    # Transmission coefficients. Note:
+        # we compute only source channel -> source channel scattering, leave the rest as NaNs
+        # we evaluate T at SR boundary, namely the B site
+    Tvals = np.full((len(wvals),myxvals,n_loc_dof), np.nan, dtype=float); 
+    
+    # Tsummed measures source channel -> all channels transmission
+    Tsummed = np.full((len(wvals),myxvals,n_loc_dof), np.nan, dtype=float);
+    TpRsummed = np.full((len(wvals),myxvals,n_loc_dof), np.nan, dtype=float); 
+    
+    # d = number of lattice constants between MSQ 1 and MSQ
+    kdalims = 0.01*np.pi, 2.1*np.pi; kdaticks = [0.0, 1.0, 2.0];
+    widelimsflag = False;
+    try: 
+        if(sys.argv[-1]=="widelims"): widelimsflag = True;
+    except: print(">>> Not flagged to widen kda limits");
+    if(widelimsflag): kdalims = 0.01*np.pi, 100*np.pi; kdaticks = [0.0, 40.0, 80.0];
+    kdavals = np.full((len(wvals),myxvals), np.nan, dtype=float);  
+    Distvals = np.full((len(wvals),myxvals), np.nan, dtype=int);  
+    fixed_knumbers = np.full((len(wvals),), np.nan, dtype = float);  
+    fixed_rhoJs = np.full((len(wvals),), np.nan, dtype = float);   
+    fixed_Energies = np.full((len(wvals),), np.nan, dtype = complex);    
+    
+    # iter over rhoJavals
+    for colori, wval in enumerate(wvals):
+    
+        # Rice-Mele matrices
+        diag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
+        diag_base_RM_spin[:n_loc_dof,:n_loc_dof] = uval*np.eye(n_loc_dof);
+        diag_base_RM_spin[n_loc_dof:,n_loc_dof:] = -uval*np.eye(n_loc_dof);
+        diag_base_RM_spin[:n_loc_dof,n_loc_dof:] = vval*np.eye(n_loc_dof);
+        diag_base_RM_spin[n_loc_dof:,:n_loc_dof] = vval*np.eye(n_loc_dof);
+        offdiag_base_RM_spin = np.zeros((my_unit_cell*n_loc_dof, my_unit_cell*n_loc_dof),dtype=float);
+        offdiag_base_RM_spin[n_loc_dof:,:n_loc_dof] = wval*np.eye(n_loc_dof);
+        diag_base_nospin = diag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+        offdiag_base_nospin = offdiag_base_RM_spin[::n_loc_dof,::n_loc_dof];
+        assert(abs(np.sum(np.diagonal(diag_base_nospin))/len(diag_base_nospin)) < 1e-10); # u0 = 0
+        band_edges = wfm.bandedges_RiceMele(diag_base_nospin, offdiag_base_nospin)[-2:];
+    
+        # output Rice-Mele
+        title_RiceMele = wfm.string_RiceMele(diag_base_nospin, offdiag_base_nospin, energies=False, tex=True)
+        print("\n\nRice-Mele "+title_RiceMele);
+        print("h00 =\n",diag_base_nospin);
+        print("h01 =\n",offdiag_base_nospin);
+
+        # graphical dispersion for fixed energy
+        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
+        Ks_for_solution = np.logspace(-6,1,499); # creates a discrete set of energy points, 
+                                             # logarithmic w/r/t desired band edge
+        if(case in ["CB_ws"]): 
+            discrete_band = np.min(band_edges)+Ks_for_solution;
+            discrete_band = discrete_band[discrete_band < np.max(band_edges)]; # stay w/in conduction band
+        elif(case in ["VB_ws"]): 
+            discrete_band = np.min(-band_edges)+Ks_for_solution;
+            discrete_band = discrete_band[discrete_band < np.max(-band_edges)]; # stay w/in valence band
+        else: raise NotImplementedError("case = "+case);
+        dispks = np.linspace(-np.pi, np.pi,myxvals);
+        disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
+        # plot and format the dispersion
+        for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
+    
+        # highlight the parts of the band we are considering
+        discrete_ks = np.arccos(1/(2*vval*wval)*(discrete_band**2 - uval**2 - vval**2 - wval**2))
+        dispax.scatter(discrete_ks/np.pi, discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]); 
+    
+        # target wavenumber
+        fixed_knumbers[colori] = discrete_ks[np.argmin(abs(discrete_ks-target_knumber))];
+        fixed_Energies[colori] = complex(discrete_band[np.argmin(abs(discrete_ks-target_knumber))],0);
+
+        # graphical density of states for fixed energy
+        discrete_dos = 2/np.pi*abs(1/np.gradient(discrete_band, discrete_ks));
+        fixed_rhoJs[colori] = discrete_dos[np.argmin(abs(discrete_ks-target_knumber))]*abs(Jval);
+        dosax.scatter(discrete_dos,discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]);
+        dosline_from_rhoJ = fixed_rhoJs[colori]/abs(Jval);
+        print("\nfixed_rhoJ = {:.6f}".format(fixed_rhoJs[colori]));
+        print("fixed_Energy = {:.6f}".format(np.real(fixed_Energies[colori])));
+        print("fixed_knumber = {:.6f}".format(fixed_knumbers[colori]));
+        dosax.axvline(dosline_from_rhoJ, color=UniversalAccents[1], linestyle = "dashed");
+        dosax.axhline(np.real(fixed_Energies[colori]), color=UniversalAccents[1], linestyle="dashed");
+        dispax.axvline(fixed_knumbers[colori]/np.pi, color=UniversalAccents[1], linestyle = "dashed");
+        dispax.axhline(np.real(fixed_Energies[colori]), color=UniversalAccents[1], linestyle="dashed");
+     
+        # plotting
+        if(case in ["VB_ws"]): 
+            RiceMele_band = "-";
+            RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
+        elif(case in ["CB_ws"]): 
+            RiceMele_band = "+";
+            RiceMele_shift_str="$,  E_{min}^{(CB)}="+"{:.2f}$".format(np.min(band_edges))
+        RiceMele_shift_str += ",  $k_i a/\pi \in [{:.2f},{:.2f}]$".format(discrete_ks[0]/np.pi, discrete_ks[-1]/np.pi);
+        dispax.set_ylabel("$E_\pm( k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
+        dosax.set_xlabel("$\\rho, \\rho J_{sd} a ="+"{:.2f}".format(fixed_rhoJs[colori])+", J_{sd} ="+"{:.2f}$".format( Jval), fontsize = myfontsize);
+        dosax.set_xlim(0,10);
+        dispax.set_xlabel("$k_i a/\pi$", fontsize = myfontsize);
+        dispax.set_title(title_RiceMele, fontsize = myfontsize);
+    
+        # show
+        plt.tight_layout();
+        plt.show();
+        stopflag = False;
+        try: 
+            if(sys.argv[-1]=="stop"): stopflag = True;
+        except: print(">>> Not flagged to stop");
+        assert(not stopflag); 
+        
+        ####
+        #### finally done determining energy, wavenumber for this color set (rhoJa fixed value)
+    
+        # determine the number of lattice constants across this range
+        kdavals[colori,:] = np.linspace(*kdalims, myxvals);
+        Distvals[colori,:] = np.rint(kdavals[colori]/fixed_knumbers[colori]).astype(int);
+        
+        # truncate to remove 0's, then extend back to length myxvals
+        kdavals_trunc = kdavals[colori, Distvals[colori] > 0];
+        kdavals[colori,:] = np.append(np.full((myxvals-len(kdavals_trunc),),kdavals_trunc[0]),kdavals_trunc); # extend
+        Distvals_trunc = Distvals[colori, Distvals[colori] > 0];
+        Distvals[colori,:] = np.append(np.full((myxvals-len(Distvals_trunc),),Distvals_trunc[0]),Distvals_trunc); # extend
+        print("Nd values covered ({:.0f} total) =\n".format(len(Distvals[colori])),Distvals[colori]);
+    
+        # iter over Distvals to compute T
+        for Distvali in range(len(Distvals[colori])):
+        
+            # construct hams
+            i1, i2 = [1], [Distvals[colori, Distvali]+1];
+            hblocks_noRM = h_cicc_hacked(Jval, abs(vval), i1, i2, i2[-1]+2, pair, my_unit_cell); 
+            # +2 for each lead site
+            hblocks = 1*hblocks_noRM;
+            tnn = np.zeros_like(hblocks);
+            for blocki in range(len(hblocks)):
+                hblocks[blocki] += diag_base_RM_spin;
+                tnn[blocki] += offdiag_base_RM_spin;
+            tnn = tnn[:-1];
+            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+            if(Distvali==0): 
+                print("hblocks =\n");
+                blockstoprint = 3;
+                for blocki in range(blockstoprint):
+                    print("\n\n");
+                    for chunki in range(my_unit_cell):
+                        print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,chunki, chunki))
+                        print(np.real(hblocks[blocki][chunki*n_loc_dof:(chunki+1)*n_loc_dof,chunki*n_loc_dof:(chunki+1)*n_loc_dof]));
+                    print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,0, 1))
+                    print(np.real(hblocks[blocki][0*n_loc_dof:(0+1)*n_loc_dof,1*n_loc_dof:(1+1)*n_loc_dof]));
+                    print("t(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,1, 0))
+                    print(np.real(tnn[blocki][n_loc_dof:,:n_loc_dof]));
+                print("J = {:.4f}".format(Jval));
+                print("rhoJ = {:.4f}".format(fixed_rhoJs[colori]));
+                print("max N = {:.0f}\n".format(np.max(Distvals[colori])+2));
+
+            for sigmai in range(len(sigmas)):   
+                # sourcei is one of the pairs always 
+                source = np.zeros(my_unit_cell*n_loc_dof);
+                source[sigmas[sigmai]] = 1;  # MSQs in singlet or triplet, impinging on A site
+
+                # get  T coefs
+                Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, abs(vval), fixed_Energies[colori], "g_RiceMele", 
+                          source, False, False, all_debug = False);
+                Tdum = Tdum[n_loc_dof:]; # extract only at boundary (B site for T)
+                Rdum = Rdum[:n_loc_dof]; # extract only at boundary (A site for R)
+                Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
+                Tsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum);
+                TpRsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
+                
+        ####
+        #### end loop over MSQ-MSQ distance
+    
+    ####
+    #### end loop over wvals (colors)
+    
+    # figure
+    colorfig, colorax = plt.subplots();
+    colorfig.set_size_inches(1.2*3.5, 1.2*3);
+    colorax.set_title("$J_{sd} = "+"{:.2f}".format(Jval)+", k_i a/\pi = "+"{:.2f}$".format(fixed_knumbers[0]/np.pi)+"$, E_{"+RiceMele_band+"}$ band", fontsize=myfontsize);
+    print(fixed_knumbers/np.pi);
+    colorax.set_ylabel("$\sum_{\sigma} T_{\sigma}$", fontsize=myfontsize);
+    colorax.set_ylim(0.0, 1.0);
+    colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+    colorax.set_xticks(kdaticks);
+    colorax.set_xlim(0.0, max(kdalims)/np.pi);
+    
+    # plot transmission coefficients vs N (1+MSQ-MSQ distance)
+    yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
+    yvals_styles = ["dashed","solid"];
+    for colori in range(len(wvals)):
+    
+        # x axis
+        indep_vals = Distvals[colori]*fixed_knumbers[colori]/np.pi;
+        
+        # plot
+        for stylei, yvals in enumerate(yvals_to_plot):
+            # only label once per colori  
+            if(stylei==0):
+                style_label = "$w/|v| = {:.2f}$".format(wvals[colori]); 
+                style_label += "$, \\rho(k_i) J_{sd} a ="+"{:.2f}$".format(fixed_rhoJs[colori]);
+            else: style_label = "_";
+            colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+    
+    # show
+    colorax.legend(fontsize=myfontsize);
+    plt.tight_layout();
+    plt.show();
+
 
 ########################################################################
 #### plot data
 
+# load data
+def load_data(fname, nind, nloc):
+    print("Loading data from "+fname);
+    data = np.load(fname);
+    
+    # params and spin channels
+    myk = data[0,0];
+    myJ = data[0,1];
+    mysigmavals = data[0,2:];
+    mysigmavals = np.extract(np.isfinite(mysigmavals), mysigmavals).astype(int);
+    
+    # different flavors of independent variables
+    myxvals = data[1:1+nind];
+    
+    # transmission and reflection coefficients
+    myTvals = data[1+nind:1+nind+nloc];
+    myRvals = data[1+nind+nloc:1+nind+2*nloc]; # this is also sometimes overloaded
+    if(not(1+nind+2*nloc == np.shape(data)[0])):
+        print("shape data = ", np.shape(data));
+        print("nind = {:.0f}, nloc = {:.0f}".format(nind, nloc));
+        raise ValueError;
+    
+    # return
+    print("- sigmavals = ", mysigmavals);
+    print("- shape xvals = ", np.shape(myxvals));
+    print("- shape Tvals = ", np.shape(myTvals));
+    return myk, myJ, mysigmavals, myxvals, myRvals, myTvals;
+
+# colormap
+def get_color(colori,numcolors):
+    cm_reds = matplotlib.cm.get_cmap("seismic");
+    denominator = 2*numcolors
+    assert(colori >=0 and colori < numcolors);
+    if colori <= numcolors // 2: # get a blue
+        return cm_reds((1+colori)/denominator);
+    else:
+        return cm_reds((denominator-(numcolors-(colori+1)))/denominator);
+
+# compute p2
+def get_p2(Ti,Tp,theta):
+    assert isinstance(Ti,float) and isinstance(Tp,float); # vectorized in thetas only
+    return Ti*Tp/(Tp*np.cos(theta/2)*np.cos(theta/2)+Ti*np.sin(theta/2)*np.sin(theta/2));
+
+# figure of merit
+def FOM(Ti,Tp, grid=100000):
+    thetavals = np.linspace(0,np.pi,grid);
+    p2vals = p2(Ti,Tp,thetavals);
+    fom = np.trapz(p2vals, thetavals)/np.pi;
+    return fom;
+
 
 #### plot transmission in same state like in Cicc fig 2
-elif(case in ["rhoJ_visualize"]):
+if(case in ["rhoJ_visualize"]):
 
     # set up plots
     num_plots = 1;
@@ -656,7 +1104,7 @@ elif(case in ["rhoJ_visualize"]):
     # get data
     dataf = sys.argv[2];
     datacase = dataf.split("/")[-2];
-    if(datacase in ["CB", "VB"]):
+    if(datacase in ["CB", "VB", "CB_rhos", "VB_rhos"]):
         xretrievalinteger = 2; # how many different types of x axis values to retrieve
         kval, Jval, sigmavals, xlist, Tsummed, Tvals = load_data(dataf, xretrievalinteger, 8);
         xvals, Ndvals = xlist[0], xlist[1];
@@ -792,5 +1240,4 @@ elif(case in ["gen_visualize"]):
     #plt.savefig('figs/double/model12.pdf');
     plt.show();
     
-else: raise NotImplementedError("case = "+case);
     
