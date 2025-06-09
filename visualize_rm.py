@@ -80,7 +80,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     kmvals, Emvals, Emvecs, h1e_t0 = tb_hamiltonian(the_params, initialize=True, verbose=1); 
     the_occs_final = np.zeros_like(Emvals, dtype = the_occs.dtype);
     the_occs_final[:len(the_occs)] = the_occs[:];
-    print(the_occs,"-->\n", the_occs_final);
+    print("occupations: ",the_occs,"-->\n", the_occs_final);
     the_occs = 1*the_occs_final; del the_occs_final;
     
     ms_to_probe = [max(0,m_HOMO-2), min(m_HOMO,len(Emvecs)-1)+1];
@@ -112,10 +112,11 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     the_axes[1,0].legend(loc="lower right");
     the_axes[1,0].set_xlabel("Site");
     the_axes[1,0].set_ylabel("$\langle j | k_n \\rangle$");
-    print("km values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(kmvals)),kmvals[:band_divider]);
-    print("Em values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(Emvals)),Emvals[:band_divider]);
-    print("kn values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(knvals)),knvals[:band_divider]);
-    print("En values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(Envals)),Envals[:band_divider]);
+    if(plotwfs):
+        print("km values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(kmvals)),kmvals[:band_divider]);
+        print("Em values ({:.0f} conf, {:.0f} total) =\n".format(the_params["Nconf"], len(Emvals)),Emvals[:band_divider]);
+        print("kn values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(knvals)),knvals[:band_divider]);
+        print("En values ({:.0f} band, {:.0f} total) =\n".format(band_divider, len(Envals)),Envals[:band_divider]);
 
     #### 3) occupation of the t<0 states
     the_axes[0,1].scatter(Emvals[:band_divider], the_occs[:band_divider],marker="s", color="red");
@@ -165,7 +166,8 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
 def wvals_to_rhoEF(wvals, the_params, plot=False):
     '''
     '''
-    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
+    if(the_params["Jsd"] != 0.0): raise ValueError("not nosd !");
+    UniversalColormap = plt.cm.get_cmap("tab20");
 
     rhovals = np.empty_like(wvals);
     levels_skip = 0; # fixed
@@ -191,17 +193,17 @@ def wvals_to_rhoEF(wvals, the_params, plot=False):
         
         # plot time<0 wf occupation
         mylabel = "$v = {:.2f}, w = {:.2f}$".format( the_params["v"], the_params["w"]);
-        occax.plot(t0_occs[:len(myEm)//2],myEm[:len(myEm)//2],label=mylabel, color=UniversalColors[pairi]);
-        occax.plot(t0_occs[len(myEm)//2:],myEm[len(myEm)//2:], color=UniversalColors[pairi]);
+        occax.plot(t0_occs[:len(myEm)//2],myEm[:len(myEm)//2],label=mylabel, color=UniversalColormap(pairi));
+        occax.plot(t0_occs[len(myEm)//2:],myEm[len(myEm)//2:], color=UniversalColormap(pairi));
         if(wvals[pairi] == the_params["v"]): occax.set_ylim(1.05*np.min(myEn), 1.05*np.max(myEn));
 
         # dos of the Em
         myEm_gradient = np.array([np.gradient(myEm[:len(myEm)//2],mykm[:len(myEm)//2]),
                                   np.gradient(myEm[len(myEm)//2:],mykm[len(myEm)//2:])]);
-        occax.plot((2/np.pi)*1/abs(myEm_gradient[0]), myEm[:len(myEm)//2], color=UniversalColors[pairi],linestyle="dashed");
-        occax.plot((2/np.pi)*1/abs(myEm_gradient[1]), myEm[len(myEm)//2:], color=UniversalColors[pairi],linestyle="dashed");
+        occax.plot((2/np.pi)*1/abs(myEm_gradient[0]), myEm[:len(myEm)//2], color=UniversalColormap(pairi),linestyle="dashed");
+        occax.plot((2/np.pi)*1/abs(myEm_gradient[1]), myEm[len(myEm)//2:], color=UniversalColormap(pairi),linestyle="dashed");
         rhovals[pairi] = (2/np.pi)*1/abs(myEm_gradient[0,m_HOMO])
-        occax.text(rhovals[pairi], myEm[m_HOMO], "$\\rho(E_F) = {:.2f}$".format(rhovals[pairi]),color=UniversalColors[pairi]);
+        occax.text(rhovals[pairi], myEm[m_HOMO], "$\\rho(E_F) = {:.2f}$".format(rhovals[pairi]),color=UniversalColormap(pairi));
         
 
     # format
@@ -242,7 +244,7 @@ if(__name__ == "__main__"):
     mylinewidth = 1.0;
     myfontsize = 14;
     plt.rcParams.update({"font.family": "serif"});
-    #plt.rcParams.update({"text.usetex": True});
+    plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5,5.5/1.25];
     
 else: # name NOT main 
@@ -408,7 +410,7 @@ elif(case in ["dos"]):
         fig, (dispax,dosax) = plt.subplots(ncols=ncols_here, sharey=True);
         fig.set_size_inches((4.5/1.3)*ncols_here,5.5/1.3)
         for bandi in [0,1]: # iter over band index
-            dispax.plot(ks/np.pi, Es[bandi], color=UniversalColors[bandi]);
+            dispax.plot(ks/np.pi, Es[bandi], color=UniversalColor[bandi]);
             dosax.plot(dos_Es[bandi], Es[bandi], color=UniversalColors[bandi]);
 
 	####
