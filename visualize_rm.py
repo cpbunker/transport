@@ -162,48 +162,13 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
     # return
     return Emvals, kmvals, Envals, knvals, the_pdfs, charge_pdf, spin_pdf;
 
+def wvals_to_rhoEF(wvals, the_params, plot=False):
+    '''
+    '''
 
-if(__name__ == "__main__"):
-    
-    # top level
-    verbose = 2; assert verbose in [1,2,3];
-    np.set_printoptions(precision = 6, suppress = True);
-    myxvals = 999;
-    case = sys.argv[1];
-    json_name = sys.argv[2];
-    try:
-        try:
-            myparams = json.load(open(json_name+".txt"));
-        except:
-            myparams = json.load(open(json_name));
-            json_name = json_name[:-4];
-        print(">>> Params = ",myparams);
-    except:
-        raise Exception(json_name+" cannot be found");
-
-    # fig standardizing
-    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
-    mylinewidth = 1.0;
-    myfontsize = 14;
-    plt.rcParams.update({"font.family": "serif"});
-    plt.rcParams.update({"text.usetex": True});
-    UniversalFigRatios = [4.5,5.5/1.25];
-    
-else: # name NOT main 
-      # code here just keeps this script from failing when it is imported
-    case = "None";
-
-#### Rice Mele Time > 0 occupation distribution
-if(case in ["None"]): pass;
-
-elif(case in ["rhoEF"]):
-
-    # parameters
-    wvals = np.array([-1.0,-0.8,-0.6,-0.4,-0.2,-0.1]);
     rhovals = np.empty_like(wvals);
-    my_levels_skip = 0; # fixed
-    myNe, myTwoSz = myparams["Ne"], myparams["TwoSz"];
-    fill_factor = myNe/(2*myparams["Nconf"])
+    levels_skip = 0; # fixed
+    Ne, TwoSz = the_params["Ne"], the_params["TwoSz"];
     
     # set up figure
     fig, axes = plt.subplots();
@@ -213,14 +178,14 @@ elif(case in ["rhoEF"]):
     for pairi in range(len(wvals)): # iter over w
 
         # repack overridden params
-        myparams["w"] = wvals[pairi];
+        the_params["w"] = wvals[pairi];
 
         # occupation
-        my_occs = get_occs_Ne_TwoSz(myNe, myTwoSz, num_skip = my_levels_skip);
+        my_occs = get_occs_Ne_TwoSz(Ne, TwoSz, num_skip = levels_skip);
         m_HOMO = len(my_occs)-1;
         
         # get time<0 and time>0 wavefunctions etc
-        myEm, mykm, myEn, mykn, _, _, _ = get_overlaps(myparams, my_occs, plotwfs=False);
+        myEm, mykm, myEn, mykn, _, _, _ = get_overlaps(the_params, my_occs, plotwfs=False);
         t0_occs = np.zeros((len(myEm),), dtype=int);
         t0_occs[:len(my_occs)] = my_occs[:];
         
@@ -248,12 +213,64 @@ elif(case in ["rhoEF"]):
     # show
     occax.legend(fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
+    if(plot): plt.show();
+    else: plt.close();
+
+    # return
+    return rhovals;
+
+if(__name__ == "__main__"):
+    
+    # top level
+    verbose = 2; assert verbose in [1,2,3];
+    np.set_printoptions(precision = 6, suppress = True);
+    myxvals = 999;
+    case = sys.argv[1];
+    json_name = sys.argv[2];
+    try:
+        try:
+            myparams = json.load(open(json_name+".txt"));
+        except:
+            myparams = json.load(open(json_name));
+            json_name = json_name[:-4];
+        print(">>> Params = ",myparams);
+    except:
+        raise Exception(json_name+" cannot be found");
+
+    # fig standardizing
+    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
+    mylinewidth = 1.0;
+    myfontsize = 14;
+    plt.rcParams.update({"font.family": "serif"});
+    #plt.rcParams.update({"text.usetex": True});
+    UniversalFigRatios = [4.5,5.5/1.25];
+    
+else: # name NOT main 
+      # code here just keeps this script from failing when it is imported
+    case = "None";
+
+#### Rice Mele Time > 0 occupation distribution
+if(case in ["None"]): pass;
+
+elif(case in ["rhoEF"]):
+
+    # parameters
+    ws = np.array([-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,-0.1]);
     
     # plot rho(EF) vs w values
     rhofig, rhoax = plt.subplots();
     rhofig.set_size_inches(*UniversalFigRatios[::-1]);
-    rhoax.plot(wvals, rhovals, label="$N_e/N_{band} ="+"{:.2f}$".format(fill_factor),color=UniversalColors[0], marker=ColorsMarkers[0]);
+
+    # for different fill factors
+    Nes_override = [10,16]
+    for Neindex in range(len(Nes_override)):
+        # override
+        myparams["Ne"] = Nes_override[Neindex];
+        fill_factor = myparams["Ne"]/(2*myparams["Nconf"])
+
+        # plot
+        rhos = wvals_to_rhoEF(ws, myparams);
+        rhoax.plot(ws, rhos, label="$N_e/N_{band} ="+"{:.2f}$".format(fill_factor),color=UniversalColors[Neindex], marker=ColorsMarkers[Neindex]);
     
     # format
     rhoax.set_xlabel("$w/|v|$", fontsize = myfontsize);
@@ -263,9 +280,10 @@ elif(case in ["rhoEF"]):
     rhoax.legend(fontsize=myfontsize);
     plt.tight_layout();
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+case+".pdf";
-    print("Saving to "+savename);
-    plt.savefig(savename);
-
+    #print("Saving to "+savename);
+    #plt.savefig(savename);
+    plt.show();
+    
 elif(case in ["distroNconf"]):
 
     # parameters
