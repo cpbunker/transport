@@ -165,6 +165,7 @@ def get_overlaps(the_params, the_occs, plotwfs=False, plothams=True):
 def wvals_to_rhoEF(wvals, the_params, plot=False):
     '''
     '''
+    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
     rhovals = np.empty_like(wvals);
     levels_skip = 0; # fixed
@@ -172,7 +173,6 @@ def wvals_to_rhoEF(wvals, the_params, plot=False):
     
     # set up figure
     fig, axes = plt.subplots();
-    fig.set_size_inches(*UniversalFigRatios);
     occax = axes; 
 
     for pairi in range(len(wvals)): # iter over w
@@ -190,10 +190,10 @@ def wvals_to_rhoEF(wvals, the_params, plot=False):
         t0_occs[:len(my_occs)] = my_occs[:];
         
         # plot time<0 wf occupation
-        mylabel = "$v = {:.2f}, w = {:.2f}$".format( myparams["v"], myparams["w"]);
+        mylabel = "$v = {:.2f}, w = {:.2f}$".format( the_params["v"], the_params["w"]);
         occax.plot(t0_occs[:len(myEm)//2],myEm[:len(myEm)//2],label=mylabel, color=UniversalColors[pairi]);
         occax.plot(t0_occs[len(myEm)//2:],myEm[len(myEm)//2:], color=UniversalColors[pairi]);
-        if(wvals[pairi] == myparams["v"]): occax.set_ylim(1.05*np.min(myEn), 1.05*np.max(myEn));
+        if(wvals[pairi] == the_params["v"]): occax.set_ylim(1.05*np.min(myEn), 1.05*np.max(myEn));
 
         # dos of the Em
         myEm_gradient = np.array([np.gradient(myEm[:len(myEm)//2],mykm[:len(myEm)//2]),
@@ -208,10 +208,10 @@ def wvals_to_rhoEF(wvals, the_params, plot=False):
     occax.set_xlim(0.0, 3.0);
     occax.set_xlabel("$n_m, \,\, \\rho(E_m)$");
     occax.set_ylabel("$E_m$");
-    occax.set_title("$N_e = {:.0f}$".format(myparams["Ne"])+", $N_{conf} =$"+"{:.0f}".format(myparams["Nconf"]));
+    occax.set_title("$N_e = {:.0f}$".format(the_params["Ne"])+", $N_{conf} =$"+"{:.0f}".format(the_params["Nconf"]));
         
     # show
-    occax.legend(fontsize=myfontsize);
+    occax.legend();
     plt.tight_layout();
     if(plot): plt.show();
     else: plt.close();

@@ -468,7 +468,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     plt.tight_layout();
     plt.show();
 
-elif(case in [10,11]): # time-independent transport metric
+elif(case in [10,11,12,13]): # time-independent transport metric
                        # vs band structure metric
 
     # axes
@@ -477,6 +477,11 @@ elif(case in [10,11]): # time-independent transport metric
     fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
     metricax = axes;
     fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
+    normalize = False;
+    if(case in [10,11]): convert_wvals = True;
+    else: convert_wvals = False;
+    if(case in [10]): savefig = True;
+    else: savefig = False;
 
     #### iter over triplet/singlet
     qubit_labels = ["Qubits Removed",
@@ -590,19 +595,31 @@ elif(case in [10,11]): # time-independent transport metric
     for qubitstate_formask in qubit_labels[:1]:
         metric_normalizers = nRvals[np.isin(myaxlabels, [qubitstate_formask])];
         # ^ len of this will = len(wvals)
+    if(not normalize):
+        metric_normalizers = np.ones_like(metric_normalizers);
+    else:
+        yjs_label += " (norm.)";
+
+    if(convert_wvals):
+        assert("nosd" in datafiles[0]);
+        indep_vals = visualize_rm.wvals_to_rhoEF(wvals, json.load(open(datafiles[0]+".txt")));
+        indep_label = "$\\rho(E_F)$";
+    else:
+        indep_vals = 1*wvals;
+        indep_label = "$w/|v|$";
 
     # plot
     for colori, qubitstate_formask in enumerate(myaxlabels[:len(qubit_labels)]):
         print(qubitstate_formask)
         print(wvals)
         label_mask = np.isin(myaxlabels, [qubitstate_formask]);
-        metricax.plot(wvals[label_mask], nRvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
+        metricax.plot(indep_vals[label_mask], nRvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
         print(  "x >>> ",wvals[label_mask], 
               "\ny >>> ",nRvals[label_mask]);
     # format
     metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
-    metricax.set_ylabel(yjs_label+" (normalized)", fontsize = myfontsize);
-    metricax.set_xlabel("$w/|v|$", fontsize = myfontsize);
+    metricax.set_ylabel(yjs_label, fontsize = myfontsize);
+    metricax.set_xlabel(indep_label, fontsize = myfontsize);
     
     
     # show
@@ -610,7 +627,7 @@ elif(case in [10,11]): # time-independent transport metric
     plt.tight_layout();
     plt.show();
     
-elif(case in [14,15]): # time-independent transport metric
+elif(case in [18,19]): # time-independent transport metric
                        # vs band structure metric
 
     # axes
