@@ -284,6 +284,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         norm_to_Jconf = False;
         use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
     else: use_Jobs = False; 
+    assert(norm_to_Jconf == False);
 
     #### iter over triplet/singlet
     for dfile in datafiles:
@@ -419,14 +420,12 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
         
                 # normalize by max incoming electron pcurrent
-                yjC_vs_time = np.sum(yjs_vs_time[:,:block2site*Nconf], axis=1);
                 Jconf = 1.0; # no normalization
-                ax.plot(times, abs(do_gradient(yjC_vs_time,times,do=take_gradient))/Jconf, 
-                        color=color2, linestyle=mylinestyle);
+
              
                 # occ vs time
                 NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
-                Nsites = NL+NFM+NR; 
+                Ntotal = NL+NFM+NR; 
                 yjL_vs_time = np.sum(yjs_vs_time[:,:block2site*NL], axis=1);
                 yjR_vs_time = np.sum(yjs_vs_time[:,block2site*(NL+NFM):], axis=1);
              
@@ -436,6 +435,14 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient)/Jconf, 
                         color=color4,linestyle=mylinestyle);
                         
+                # specific unit cell occupancy
+                if(True):
+                    specific_last = Ntotal - 1 # last unit cell on right
+                    yj_specific = np.sum(yjs_vs_time[:,block2site*specific_last:], axis=1);
+                    ax.plot(times, do_gradient(yj_specific,times,do=take_gradient)/Jconf, 
+                        color="hotpink", linestyle=mylinestyle);
+                    ax.plot(times, do_gradient(yj_specific,times,do=True)/np.max(do_gradient(yj_specific,times,do=True)), 
+                        color="violet", linestyle=mylinestyle);                        
             
                 # labels
                 label1 = "$n_{L}(t)$";
@@ -1150,7 +1157,7 @@ elif(case in [100,101]): # animate time evol
     fig, ax = plt.subplots();
     for tick in ticks1: ax.axhline(tick,linestyle=(0,(5,5)),color="gray");
     ax.set_yticks(ticks1);
-    ax.set_xlabel("$j(d)$", fontsize=fontsize1);
+    ax.set_xlabel("Site", fontsize=fontsize1);
     ax.set_title(get_title(datafile));
 
     # rice-mele ?
