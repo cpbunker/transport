@@ -83,7 +83,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
-    plt.rcParams.update({"text.usetex": True});
+    #plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
@@ -482,7 +482,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     plt.tight_layout();
     plt.show();
     
-elif(case in [10,11,12]): # time-independent transport metric
+elif(case in [10,11,12,16,17]): # time-independent transport metric
                        # vs band structure metric
 
     # axes
@@ -492,8 +492,13 @@ elif(case in [10,11,12]): # time-independent transport metric
     metricax = axes;
     fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
     normalize = False;
-    if(case in [10,11]): convert_wvals = True;
+    # whether to put w/v or rho(EF) on x axis
+    if(case in [10,11,16,17]): convert_wvals = True;
     else: convert_wvals = False;
+    # whether to plot quantum spin valve efficiency
+    if(case in [16,17]): plot_efficiency=True;
+    else: plot_efficiency=False;
+    # whether to save figure
     if(case in [11]): savefig = True;
     else: savefig = False;
 
@@ -504,6 +509,7 @@ elif(case in [10,11,12]): # time-independent transport metric
     # here we label triplet/singlet but plot against w on the x axis
     myaxlabels = np.full((len(datafiles),), " "*len(qubit_labels[0]));
     wvals = np.full((len(datafiles),),np.nan);
+    wvals_hist = {};
 
     # transport metric
     timefin_inds = np.full((len(datafiles),),1e10,dtype=int);
@@ -521,6 +527,7 @@ elif(case in [10,11,12]): # time-independent transport metric
 
         params = json.load(open(dfile+".txt"));
         wvals[di] = params["w"];
+        if(wvals[di] not in wvals_hist.keys()): wvals_hist[wvals[di]]=1;
         print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
 
         # time evolution params
@@ -550,7 +557,7 @@ elif(case in [10,11,12]): # time-independent transport metric
         for i in yjs_rmost_args: print(yjs_rmost_grad[i])
         print(yjs_rmost_grad)
         
-        if(len(yjs_rmost_args)==0): yjs_rmost_args = [-1]; # <-- TEMPORARY!!
+        #if(len(yjs_rmost_args)==0): yjs_rmost_args = [-1]; # <-- TEMPORARY!!
         
         
         timefin_inds[di] = yjs_rmost_args[0]; # <- earliest time that deriv < 0, may wish to change
@@ -580,17 +587,56 @@ elif(case in [10,11,12]): # time-independent transport metric
         indep_vals = 1*wvals;
         indep_label = "$w/|v|$";
 
-    # plot
-    for colori, qubitstate_formask in enumerate(myaxlabels[:len(qubit_labels)]):
-        print(qubitstate_formask)
-        print(wvals)
-        label_mask = np.isin(myaxlabels, [qubitstate_formask]);
-        metricax.plot(indep_vals[label_mask], nRvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
-        print(  "x >>> ",wvals[label_mask], 
+    # get unique rhoEF vals
+    wvals_unique = np.array(list(wvals_hist.keys()));
+    del wvals_hist
+    ref_params = json.load(open(datafiles[0]+".txt"))
+    rhoEFvals_unique = visualize_rm.wvals_to_rhoEF(wvals_unique, ref_params);
+    # ^ this fails if geometry is not same for all input files, so make sure to check 
+    ref_Ne, ref_Nconf =   ref_params["Ne"], ref_params["Nconf"];
+    for dfile in datafiles:
+        params = json.load(open(dfile+".txt"));
+        assert(params["Ne"] == ref_Ne);
+        assert(params["Nconf"] == ref_Nconf);
+
+    # plot efficiency
+    if(plot_efficiency):
+
+        # distinguish triplet and singlet
+        triplet_metric = np.full((len(wvals_unique),),np.nan);
+        singlet_metric = np.full((len(wvals_unique),),np.nan);
+        # grab data with same wval
+        for wvali, wval in enumerate(wvals_unique):
+            for di, dfile in enumerate(datafiles):
+                if(wval == wvals[di]):
+                    if("triplet" in dfile): triplet_metric[wvali] = 1*nRvals[di];
+                    elif("singlet" in dfile): singlet_metric[wvali] = 1*nRvals[di];
+                    else: assert("nosd" in dfile);
+
+        # efficiency plot
+        efficiency_metric = abs(triplet_metric - singlet_metric)/(triplet_metric + singlet_metric);
+        metricax.plot(rhoEFvals_unique, efficiency_metric, color=UniversalColors[0], marker=ColorsMarkers[0])
+        assert(convert_wvals); # plot vs rho(EF)
+
+        # formatting
+        metricax.set_ylabel("");
+        metricax.set_ylim(0.0,1.0);
+
+
+    # plot transport metric of each case separately
+    else:
+        for colori, qubitstate_formask in enumerate(myaxlabels[:len(qubit_labels)]):
+            print(qubitstate_formask)
+            print("w in ",wvals)
+            label_mask = np.isin(myaxlabels, [qubitstate_formask]);
+            metricax.plot(indep_vals[label_mask], nRvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
+            print(  "x >>> ",wvals[label_mask], 
               "\ny >>> ",nRvals[label_mask]);
-    # format
+        # format
+        metricax.set_ylabel(yjs_label, fontsize = myfontsize);
+
+    # overall formatting
     metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
-    metricax.set_ylabel(yjs_label, fontsize = myfontsize);
     metricax.set_xlabel(indep_label, fontsize = myfontsize);
     
     # show
@@ -675,6 +721,7 @@ elif(case in [20,21]): # charge accumulation vs phient, with wval as color
         
     # get unique rhoEF vals
     wvals_unique = np.array(list(wvals_hist.keys()));
+    del wvals_hist
     ref_params = json.load(open(datafiles[0]+".txt"))
     rhoEFvals_unique = visualize_rm.wvals_to_rhoEF(wvals_unique, ref_params); 
     # ^ this fails if geometry is not same for all input files, so make sure to check 
@@ -690,7 +737,7 @@ elif(case in [20,21]): # charge accumulation vs phient, with wval as color
             nRvals[di] = np.nan;
   
     # plot
-    assert(len(datafiles) % len(wvals_hist.keys()) == 0);
+    assert(len(datafiles) % len(wvals_unique) == 0);
     print("wvals = ",wvals);
     print("phivals = ",phivals);
     for colori in range(len(wvals_unique)):
