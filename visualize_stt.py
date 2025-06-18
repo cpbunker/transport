@@ -6,6 +6,7 @@ from transport import wfm
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import numpy as np
 import matplotlib.animation as animation
 
@@ -257,9 +258,9 @@ if(case in [3,4]): # observables vs time, for two data sets side by side
     
 if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data sets side by side
     '''
-    5 -- plot MI, S_1^z + S_2^z vs time
-    6 -- plot nL, nR, nconf vs time
-    8 -- plot time derivatives of nL, nR, nconf vs time. Normalize w/r/t incoming pcurrent in Jsd=0 case
+    5 -- plot MI, S_1^z + S_2^z vs time (no derivative)
+    6 -- plot nL, nR, nconf vs time     (no derivative)
+    9 -- plot currents vs time          (no derivative)
     '''
 
     def do_gradient(yarr, xarr, do=True):
@@ -277,14 +278,11 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     else: plot_occ = False;     
     
     # choose whether or not to normalize plotted quantities
-    norm_to_Jconf = True; # as written, the code always normalizes for d/dt and J quantities
-    if(case in [5,6]): norm_to_Jconf=False;
-    take_gradient = 1*norm_to_Jconf; # whether to plot time derivatives of quantities
-    if(case in [9]): 
-        norm_to_Jconf = False;
-        use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
+    take_gradient = True; # # whether to plot time derivatives of quantities
+    if(case in [5,6]): take_gradient = False;
+    if(case in [9]): use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
     else: use_Jobs = False; 
-    assert(norm_to_Jconf == False);
+
 
     #### iter over triplet/singlet
     for dfile in datafiles:
@@ -317,16 +315,10 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         Nsites = params["NL"]+params["NFM"]+params["NR"]; # number of j sites
 
         if(not plot_occ): # plot spin observables: S1^z + S2^z, MI[1,2]
-        
-            # normalize by max incoming electron pcurrent
-            # Jconf = particle current through site Nconf 
-            #if(norm_to_Jconf): raise notImplementedError #Jconf = max(abs(yjs_vs_time[:,0]));
-            #else: Jconf = 1.0; # no normalization
-            
+           
             # incoming electron pcurrent = dn_conf / dt
             if(take_gradient): label2 = "$ \left| \\frac{d}{dt} n_{conf} \\right|$";
             else: label2 = "$ n_{conf}$";
-            if(norm_to_Jconf): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
             print(obs2,"-->",label2);
             yjs_vs_time = np.zeros((len(times),Nsites),dtype=float);
             for ti in range(len(times)):
@@ -365,64 +357,35 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
         else: # plot rate of change of occupancy of different regions
         
             if(use_Jobs): # occ rate of change expressed with particle current (<J>)
-                assert(take_gradient);
-                
-                obs2, label2 = "J_", "$J_{conf}$";
-                normalizer_label = " (normalized)"
-                if(norm_to_Jconf): label2 += normalizer_label;
-                print(obs2,"-->",label2);
+               
+                obs2, label2 = "J_", "";
                 yjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
                 xjs_vs_time = np.zeros((len(times),3*block2site),dtype=float);
                 for ti in range(len(times)):
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
                     xjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"xjs_time{:.2f}.npy".format(times[ti]));
                 print(obs2+" site indices = ",xjs_vs_time[0].astype(int));
-
-                # normalize by max incoming electron pcurrent
-                # Jconf = particle current through site Nconf
-                if(norm_to_Jconf and dfile==datafiles[0]): # <--- Jconf must come from Jsd=0 case
-                    # set Jconf
-                    Jconf = max(abs(yjs_vs_time[:,0]));
-                    print(">>> setting Jconf = {:.6f}".format(Jconf));
-                    assert("nosd" in dfile); # must always normalize to nosd case 
-                else: Jconf = 1.0; # no normalization
-                print("Jconf = {:.6f}".format(Jconf));
-             
+            
                 # plot particle currents -> NO FACTORS
                 current_index = np.shape(yjs_vs_time)[1] - 1*block2site; # ensures inter-cell if diatomic
-                #ax.plot(times, yjs_vs_time[:,0*block2site]/Jconf, 
-                #        color=color2,linestyle=mylinestyle); # current through site Nconf
-                #ax.plot(times, yjs_vs_time[:,1*block2site]/Jconf, 
-                #        color=color1,linestyle=mylinestyle); # current through site NL
-                ax.plot(times, yjs_vs_time[:,current_index]/Jconf, 
-                        color=color4,linestyle=mylinestyle); # current through site NR
+                ax.plot(times, yjs_vs_time[:,current_index], 
+                        color=color1,linestyle=mylinestyle); # current through site NR
                 # current through NR, plateau-averaged
-                plateau = np.mean((yjs_vs_time[:,current_index]/Jconf)[time_window_mask]);
+                plateau = np.mean((yjs_vs_time[:,current_index])[time_window_mask]);
                 print("plateau avg = {:.6f}".format(plateau), "plateau limits = ",time_window_limits);
                 print("current max = {:.6f}".format(np.max(yjs_vs_time[:,current_index])));
 
                 # labels
-                label1 = "$J_{L}(t)$";
-                label4 = "$J_{R}(t)$";
-                if(norm_to_Jconf):
-                    label1 += normalizer_label;
-                    label4 += normalizer_label;
-                    
+                label1 = "$J_{R}$";
+                label4 = "" #"$J_{L}$";
+                   
             else: # occ rate of change expressed with dn/dt
             
                 # incoming electron pcurrent = dn_conf / dt
-                if(take_gradient): label2 = "$ \left| \\frac{d}{dt} n_{conf} \\right|$";
-                else: label2 = "$ n_{conf}$";
-                if(norm_to_Jconf): label2 += "$/max \left( \left| \\frac{d}{dt} n_{conf} \\right| \\right)$";
-                print(obs2,"-->",label2);
                 yjs_vs_time = np.zeros((len(times),block2site*Nsites),dtype=float);
                 for ti in range(len(times)):
                     yjs_vs_time[ti] = np.load(dfile+"_arrays/"+obs2+"yjs_time{:.2f}.npy".format(times[ti]));
-        
-                # normalize by max incoming electron pcurrent
-                Jconf = 1.0; # no normalization
-
-             
+       
                 # occ vs time
                 NL, Nconf, NFM, NR = params["NL"], params["Nconf"], params["NFM"], params["NR"];
                 Ntotal = NL+NFM+NR; 
@@ -430,33 +393,25 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 yjR_vs_time = np.sum(yjs_vs_time[:,block2site*(NL+NFM):], axis=1);
              
                 # plot occupancies -> NO FACTORS
-                ax.plot(times, do_gradient(yjL_vs_time,times,do=take_gradient)/Jconf, 
+                ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient), 
                         color=color1,linestyle=mylinestyle);
-                ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient)/Jconf, 
-                        color=color4,linestyle=mylinestyle);
                         
                 # specific unit cell occupancy
                 if(True):
                     # rightmost
-                    specific_last = block2site*(Ntotal - 1) #+ 1
+                    specific_last = block2site*(Ntotal - 1) 
                     specific_start = block2site*(Ntotal - 2)
                     yj_specific = np.sum(yjs_vs_time[:,specific_last:], axis=1);
-                    ax.plot(times, do_gradient(yj_specific,times,do=take_gradient)/Jconf, 
-                        color="hotpink", linestyle=mylinestyle);
                     # derivative
                     ax.plot(times, np.gradient(yj_specific,times)/np.max(np.gradient(yj_specific,times)), 
-                        color="violet", linestyle=mylinestyle);   
-                    # 2nd rightmost
-                    yj_specific = np.sum(yjs_vs_time[:,specific_start:specific_last], axis=1);
-                    ax.plot(times, do_gradient(yj_specific,times,do=take_gradient)/Jconf, 
-                        color="green", linestyle=mylinestyle);                     
-            
+                        color=color2, linestyle=mylinestyle);   
+ 
                 # labels
-                label1 = "$n_{L}(t)$";
-                label4 = "$n_{R}(t)$";
+                label1 = "$n_{R}$";
+                label2 = "$\\frac{d}{dt} n_{bdy}$"
+                label4 = "" #"$n_{L}$";
                 if(take_gradient):
-                    label1 = "$\left|\\frac{d}{dt}n_{L}(t)\\right|$";
-                    label4 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
+                    label1 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
         
     # formatting
     ax3 = ax.twinx();
@@ -499,7 +454,7 @@ elif(case in [10,11,12,16,17]): # time-independent transport metric
     if(case in [16,17]): plot_efficiency=True;
     else: plot_efficiency=False;
     # whether to save figure
-    if(case in [11]): savefig = True;
+    if(case in [11,17]): savefig = True;
     else: savefig = False;
 
     #### iter over triplet/singlet
@@ -618,9 +573,21 @@ elif(case in [10,11,12,16,17]): # time-independent transport metric
         metricax.plot(rhoEFvals_unique, efficiency_metric, color=UniversalColors[0], marker=ColorsMarkers[0])
         assert(convert_wvals); # plot vs rho(EF)
 
+        # inset
+        wvsrho_fortwin = metricax.inset_axes(
+            [0.1,0.5,0.4,0.4], #low left x, low left y, x range, y range
+            )
+        wvsrho_inset = wvsrho_fortwin.twinx();
+        wvsrho_fortwin.yaxis.set_visible(False);
+        wvsrho_inset.plot(rhoEFvals_unique, wvals_unique, color=UniversalColors[1], marker = ColorsMarkers[1]);
+
         # formatting
-        metricax.set_ylabel("");
+        metricax.set_ylabel("$\eta (t_{fin})$",fontsize=myfontsize);
         metricax.set_ylim(0.0,1.0);
+        wvsrho_inset.set_ylabel("$w/|v|$");
+        wvsrho_inset.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.1f"))
+        wvsrho_fortwin.set_xlabel("$\\rho(E_F)$")
+        wvsrho_inset.xaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.1f"))
 
 
     # plot transport metric of each case separately
@@ -634,17 +601,128 @@ elif(case in [10,11,12,16,17]): # time-independent transport metric
               "\ny >>> ",nRvals[label_mask]);
         # format
         metricax.set_ylabel(yjs_label, fontsize = myfontsize);
+        plt.legend();
 
     # overall formatting
     metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
     metricax.set_xlabel(indep_label, fontsize = myfontsize);
     
     # show
+    plt.tight_layout();
+    plt.show();
+
+elif(case in [20,21]): # time-independent transport metric vs evaluation time
+
+    # axes
+    fignrows, figncols = 1, 1
+    change_ratios = {};
+    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
+    metricax = axes;
+    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
+    normalize = False;
+    # whether to save figure
+    if(case in [21]): savefig = True;
+    else: savefig = False;
+
+    #### iter over triplet/singlet
+    qubit_labels = ["Qubits Removed",
+                    "$|T_0\\rangle$",
+                    "$|S  \\rangle$"]; # must all be same number characters
+    # here we label triplet/singlet but plot against w on the x axis
+    myaxlabels = np.full((len(datafiles),), " "*len(qubit_labels[0]));
+    wvals = np.full((len(datafiles),),np.nan);
+    wvals_hist = {};
+
+    # get unique rhoEF vals
+    for di, dfile in enumerate(datafiles):
+        params = json.load(open(dfile+".txt"));
+        wvals[di] = params["w"];
+        if(wvals[di] not in wvals_hist.keys()): wvals_hist[wvals[di]]=1;
+    wvals_unique = np.array(list(wvals_hist.keys()));
+    del wvals_hist
+    ref_params = json.load(open(datafiles[0]+".txt"))
+    rhoEFvals_unique = visualize_rm.wvals_to_rhoEF(wvals_unique, ref_params);
+    # ^ this fails if geometry is not same for all input files, so make sure to check 
+    ref_Ne, ref_Nconf =   ref_params["Ne"], ref_params["Nconf"];
+    for dfile in datafiles:
+        params = json.load(open(dfile+".txt"));
+        assert(params["Ne"] == ref_Ne);
+        assert(params["Nconf"] == ref_Nconf);
+
+    # transport metric is time-dependent now
+    # so these must be ragged lists
+    triplet_vstime = [];
+    singlet_vstime = [];
+    times_vstime = [];
+    yjs_observable = "occ_";
+    yjs_label = "$n_R (t)$";
+    
+    # iter over input files to get reference times (to eval transport metric at)
+    assert(len(datafiles) % len(qubit_labels) == 0);
+    for di, dfile in enumerate(datafiles):
+        if("nosd" in dfile):      myaxlabels[di] = qubit_labels[0];
+        elif("triplet" in dfile): myaxlabels[di] = qubit_labels[1];
+        elif("singlet" in dfile): myaxlabels[di] = qubit_labels[2];
+        else: raise NotImplementedError;
+
+        params = json.load(open(dfile+".txt"));
+        print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
+
+        # time evolution params
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+            
+        # rice-mele ?
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: block2site = 1;
+        
+        # get occ vs time vs site
+        Ntotal = params["NL"] + params["NFM"] + params["NR"];
+        yjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
+        xjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
+        for ti in range(len(times)):
+            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
+            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));       
+        # get right lead occ  vs time
+        yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
+
+        # distinguish triplet and singlet
+        # grab data with same wval
+        for wvali, wval in enumerate(wvals_unique):
+            if(wval == wvals[di]):
+                if("triplet" in dfile):
+                    triplet_vstime.append(yjs_RL[:])
+                    times_vstime.append(times[:]);
+                elif("singlet" in dfile):
+                    singlet_vstime.append(yjs_RL[:])
+                else: assert("nosd" in dfile);
+    print("wvals_unique = {:.0f}".format(len(wvals_unique)), wvals_unique);
+    print("triplet_vstime shape = {:.0f}".format(len(triplet_vstime)),[len(row) for row in triplet_vstime]);
+    print("singlet_vstime shape = {:.0f}".format(len(triplet_vstime)),[len(row) for row in singlet_vstime]);
+
+    # plot -- wvals are colors
+    assert(len(datafiles) % len(wvals_unique) == 0);
+    for colori in range(len(wvals_unique)):
+
+        # efficiency plot
+        label = "$\\rho(E_F) = {:.2f}$".format(rhoEFvals_unique[colori])+" ($w={:.2f}$)".format(wvals_unique[colori])
+        efficiency_metric = abs(triplet_vstime[colori]- singlet_vstime[colori])/(triplet_vstime[colori] + singlet_vstime[colori]);
+        metricax.plot(times_vstime[colori], efficiency_metric, color=UniversalColors[colori], marker=ColorsMarkers[colori], label=label)
+ 
+    # overall formatting
+    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
+    metricax.set_xlabel("Time $(\hbar/t_l)$", fontsize = myfontsize);
+    metricax.set_ylabel("$\eta(t)$", fontsize = myfontsize);
+    
+    # show
     plt.legend();
     plt.tight_layout();
     plt.show();
     
-elif(case in [20,21]): # charge accumulation vs phient, with wval as color
+elif(case in [30,31]): # charge accumulation vs phient, with wval as color
     # axes
     fignrows, figncols = 1, 1
     change_ratios = {};
@@ -736,7 +814,7 @@ elif(case in [20,21]): # charge accumulation vs phient, with wval as color
         if("nosd" in dfile):
             nRvals[di] = np.nan;
   
-    # plot
+    # plot -- wvals are colors
     assert(len(datafiles) % len(wvals_unique) == 0);
     print("wvals = ",wvals);
     print("phivals = ",phivals);
@@ -755,301 +833,6 @@ elif(case in [20,21]): # charge accumulation vs phient, with wval as color
     plt.legend();
     plt.tight_layout();
     plt.show();
-
-elif(case in []): # time-independent transport metric
-                       # vs band structure metric
-
-    # axes
-    fignrows, figncols = 1, 1
-    change_ratios = {};
-    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
-    metricax = axes;
-    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
-    normalize = False;
-    if(case in [10,11]): convert_wvals = True;
-    else: convert_wvals = False;
-    if(case in [11]): savefig = True;
-    else: savefig = False;
-
-    #### iter over triplet/singlet
-    qubit_labels = ["Qubits Removed",
-                    "$|T_0\\rangle$",
-                    "$|S  \\rangle$"]; # must all be same number characters
-    # here we label triplet/singlet but plot against w on the x axis
-    myaxlabels = np.full((len(datafiles),), " "*len(qubit_labels[0]));
-    wvals = np.full((len(datafiles),),np.nan);
-
-    # transport metric
-    threshold_charge = 4;
-    ref_time_inds = np.full((len(datafiles),),1e10,dtype=int);
-    nRvals = np.full((len(datafiles),),np.nan); # metric plotted against w
-    yjs_observable = "occ_";
-    yjs_label = "$n_R$";
-    
-    # iter over input files to get reference times (to eval transport metric at)
-    assert(len(datafiles) % len(qubit_labels) == 0);
-    for di, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlabels[di] = qubit_labels[0];
-        elif("triplet" in dfile): myaxlabels[di] = qubit_labels[1];
-        elif("singlet" in dfile): myaxlabels[di] = qubit_labels[2];
-        else: raise NotImplementedError;
-
-        params = json.load(open(dfile+".txt"));
-        assert(params["Ne"] > threshold_charge);
-        wvals[di] = params["w"];
-        print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
-
-        # time evolution params
-        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
-        times = np.zeros((Nupdates+1,),dtype=float);
-        for ti in range(len(times)):
-            times[ti] = (update0 + ti)*tupdate;
-            
-        # rice-mele ?
-        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
-        else: block2site = 1;
-        
-        # get occ vs time vs site
-        Ntotal = params["NL"] + params["NFM"] + params["NR"];
-        yjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        xjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
-            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
-
-        # sum the occupancy in the right lead for all times
-        yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
-        if("nosd" in dfile):
-            ref_time_inds[di] = np.argmin(abs(yjs_RL - threshold_charge));
-            print("ref time = {:.0f}".format(times[ref_time_inds[di]]));
-            print("nR (reftime) = {:.2f}".format(yjs_RL[ref_time_inds[di]]));
-        else: pass; # leave fake value in ref_time inds
-
-    # place nosd ref_time_inds in triplet and singlet based on wvals
-    for wvali in range(len(wvals)):
-        if("nosd" not in datafiles[wvali]):
-            # find matching nosd
-            for wvalj in range(len(wvals)):
-                if("nosd" in datafiles[wvalj]):
-                    if(wvals[wvali]==wvals[wvalj]):
-                        #  overwrite
-                        ref_time_inds[wvali] = 1*ref_time_inds[wvalj];
-
-    # reference times
-    print(">>> reference times = ");
-    for di in range(len(datafiles)):
-        print(datafiles[di], wvals[di], ref_time_inds[di]);
-
-    # reload input files to get transport metric
-    assert(len(datafiles) % len(qubit_labels) == 0);
-    for di, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlabels[di] = qubit_labels[0];
-        elif("triplet" in dfile): myaxlabels[di] = qubit_labels[1];
-        elif("singlet" in dfile): myaxlabels[di] = qubit_labels[2];
-        else: raise NotImplementedError;
-
-        params = json.load(open(dfile+".txt"));
-        # time evolution params
-        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
-        times = np.zeros((Nupdates+1,),dtype=float);
-        for ti in range(len(times)):
-            times[ti] = (update0 + ti)*tupdate;
-            
-        # rice-mele ?
-        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
-        else: block2site = 1;
-        
-        # get occ vs time vs site
-        Ntotal = params["NL"] + params["NFM"] + params["NR"];
-        yjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        xjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
-            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
-
-        # sum the occupancy in the right lead for all times
-        yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
-        nRvals[di] = yjs_RL[ref_time_inds[di]];
-        
-
-    # set aside qubits decoupled maxima for normalization
-    for qubitstate_formask in qubit_labels[:1]:
-        metric_normalizers = nRvals[np.isin(myaxlabels, [qubitstate_formask])];
-        # ^ len of this will = len(wvals)
-    if(not normalize):
-        metric_normalizers = np.ones_like(metric_normalizers);
-    else:
-        yjs_label += " (norm.)";
-
-    if(convert_wvals):
-        indep_vals = visualize_rm.wvals_to_rhoEF(wvals, json.load(open(datafiles[0]+".txt")));
-        indep_label = "$\\rho(E_F)$";
-    else:
-        indep_vals = 1*wvals;
-        indep_label = "$w/|v|$";
-
-    # plot
-    for colori, qubitstate_formask in enumerate(myaxlabels[:len(qubit_labels)]):
-        print(qubitstate_formask)
-        print(wvals)
-        label_mask = np.isin(myaxlabels, [qubitstate_formask]);
-        metricax.plot(indep_vals[label_mask], nRvals[label_mask]/metric_normalizers, label=qubitstate_formask,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
-        print(  "x >>> ",wvals[label_mask], 
-              "\ny >>> ",nRvals[label_mask]);
-    # format
-    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
-    metricax.set_ylabel(yjs_label, fontsize = myfontsize);
-    metricax.set_xlabel(indep_label, fontsize = myfontsize);
-    
-    
-    # show
-    plt.legend();
-    plt.tight_layout();
-    plt.show();
-    
-elif(case in [29]): # charge accumulation vs phient, with wval as color
-    # axes
-    fignrows, figncols = 1, 1
-    change_ratios = {};
-    fig, axes = plt.subplots(ncols=figncols,nrows=fignrows, gridspec_kw=change_ratios);
-    metricax = axes;
-    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
-    normalize = False;
-    if(case in [21]): savefig = True;
-    else: savefig = False;
-
-    wvals = np.full((len(datafiles),),np.nan);
-    wvals_hist = {};
-    phivals = np.full((len(datafiles),),np.nan);
-    
-
-    # transport metric
-    threshold_charge = 4;
-    ref_time_inds = np.full((len(datafiles),),1e10,dtype=int);
-    nRvals = np.full((len(datafiles),),np.nan); # metric plotted against w
-    yjs_observable = "occ_";
-    yjs_label = "$n_R$";
-    
-    # iter over input files to get reference times (to eval transport metric at)
-    for di, dfile in enumerate(datafiles):
-
-        params = json.load(open(dfile+".txt"));
-        assert(params["Ne"] > threshold_charge);
-        print("\nLoading "+dfile+"_arrays/"+yjs_observable+"yjs_time0.00.npy");
-        
-        # fill entries for w and phient
-        wvals[di] = params["w"];
-        if(wvals[di] not in wvals_hist.keys()): wvals_hist[wvals[di]]=1;
-        phivals[di] = params["phient"];
-
-        # time evolution params
-        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
-        times = np.zeros((Nupdates+1,),dtype=float);
-        for ti in range(len(times)):
-            times[ti] = (update0 + ti)*tupdate;
-            
-        # rice-mele ?
-        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
-        else: block2site = 1;
-        
-        # get occ vs time vs site
-        Ntotal = params["NL"] + params["NFM"] + params["NR"];
-        yjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        xjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
-            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
-
-        # sum the occupancy in the right lead for all times
-        yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
-        if("nosd" in dfile):
-            ref_time_inds[di] = np.argmin(abs(yjs_RL - threshold_charge));
-            print("ref time = {:.0f}".format(times[ref_time_inds[di]]));
-            print("nR (reftime) = {:.2f}".format(yjs_RL[ref_time_inds[di]]));
-        else: pass; # leave fake value in ref_time inds
-
-    # place nosd ref_time_inds in triplet and singlet based on wvals
-    for wvali in range(len(wvals)):
-        if("nosd" not in datafiles[wvali]):
-            # find matching nosd
-            for wvalj in range(len(wvals)):
-                if("nosd" in datafiles[wvalj]):
-                    if(wvals[wvali]==wvals[wvalj]):
-                        #  overwrite
-                        ref_time_inds[wvali] = 1*ref_time_inds[wvalj];
-
-    # reference times
-    print(">>> reference times = ");
-    for di in range(len(datafiles)):
-        print(datafiles[di], wvals[di], ref_time_inds[di]);    
-    
-    
-    # reload input files to get transport metric
-    for di, dfile in enumerate(datafiles):
-
-        params = json.load(open(dfile+".txt"));    
-        # time evolution params
-        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
-        print("    Update time = {:.2f}, Stop time = {:.2f}, Nupdates = {:.0f}".format(tupdate,tupdate*Nupdates, Nupdates));
-        times = np.zeros((Nupdates+1,),dtype=float);
-        for ti in range(len(times)):
-            times[ti] = (update0 + ti)*tupdate;
-            
-        # rice-mele ?
-        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
-        else: block2site = 1;
-        
-        # get occ vs time vs site
-        Ntotal = params["NL"] + params["NFM"] + params["NR"];
-        yjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        xjs_vs_time = np.zeros((len(times),Ntotal*block2site),dtype=float);
-        for ti in range(len(times)):
-            yjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"yjs_time{:.2f}.npy".format(times[ti]));
-            xjs_vs_time[ti] = np.load(dfile+"_arrays/"+yjs_observable+"xjs_time{:.2f}.npy".format(times[ti]));
-
-        # sum the occupancy in the right lead for all times
-        yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
-        nRvals[di] = yjs_RL[ref_time_inds[di]];
-        
-    # get unique rhoEF vals
-    wvals_unique = np.array(list(wvals_hist.keys()));
-    ref_params = json.load(open(datafiles[0]+".txt"))
-    rhoEFvals_unique = visualize_rm.wvals_to_rhoEF(wvals_unique, ref_params); 
-    # ^ this fails if geometry is not same for all input files
-    ref_Ne, ref_Nconf =   ref_params["Ne"], ref_params["Nconf"];
-    for dfile in datafiles:
-        params = json.load(open(dfile+".txt"));
-        assert(params["Ne"] == ref_Ne);
-        assert(params["Nconf"] == ref_Nconf);
-        
-    # screen out nosd nRvals -- they were just to get reference times, not to plot
-    for di, dfile in enumerate(datafiles):
-        if("nosd" in dfile):
-            nRvals[di] = np.nan;
-  
-    # plot
-    assert(len(datafiles) % len(wvals_hist.keys()) == 0);
-    print("wvals = ",wvals);
-    print("phivals = ",phivals);
-    for colori in range(len(wvals_unique)):
-        label_mask = np.isin(wvals, [wvals_unique[colori]]);
-        label = "$\\rho(E_F) = {:.2f}$".format(rhoEFvals_unique[colori])+" ($w={:.2f}$)".format(wvals_unique[colori])
-        metricax.plot(phivals[label_mask]/np.pi, nRvals[label_mask], label=label,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
-        print(  "x >>> ",phivals[label_mask], 
-              "\ny >>> ",nRvals[label_mask]);
-    # format
-    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
-    metricax.set_ylabel(yjs_label, fontsize = myfontsize);
-    metricax.set_xlabel("$\phi_{ent}/\pi$", fontsize = myfontsize);
-    
-    # show
-    plt.legend();
-    plt.tight_layout();
-    plt.show();
-    
     
 elif(case in [80,81]): # single dataset heatmap, decorated by time-zero density profile and <k_m|k_n> distro
     assert(len(datafiles)==1);
