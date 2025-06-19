@@ -113,26 +113,23 @@ def h_cicc_eff(J, t, i1, i2, Nsites, pair_to_entangle):
     
     return h_cicc, tblocks;
     
-def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
+def h_cicc_dia(J, i1, i2, Nunits, unitcell, pair_to_entangle):
     '''
     Construct tight binding blocks (each block has many body dofs) to implement
     cicc model in quasi many body GF method
 
     Args:
     - J, float, eff heisenberg coupling
-    - t, float, hopping btwn sites - corresponds to t' in my setup
     - i1, list of unit cell indices containing 1st spin. Must start at 1
     - i2, list of unit cell indices containing 2nd spin. Last site is N -> N sites in the SR
     - Nunits, int, total number of unit cells (typically SR contains N, plus 1 from each lead, for N+2 total)
     - pair_to_entangle, tuple,  channel indices that form entangled states
     - unitcell, int, how many matrix elements define a unit cell
     '''
-
-    # check inputs\
     assert(isinstance(i1, list) and isinstance(i2, list));
-    assert(i1[0] == 1);
+    assert(i1[0] == 1); # SR starts at 1
     assert(i1[-1] < i2[0]);
-    N = i2[-1];
+    N = i2[-1]; # SR ends at N
     
     # heisenberg interaction matrices
     Se_dot_S1 = (J/4.0)*np.array([ [1,0,0,0,0,0,0,0], # coupling to first spin impurity
@@ -155,7 +152,7 @@ def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
     Se_dot_S1 = entangle(Se_dot_S1,*pair_to_entangle); # change from product to triplet-singlet basis|verified 
     Se_dot_S2 = entangle(Se_dot_S2,*pair_to_entangle);
     
-    # expand into unit cell space
+    # expand from spin space into unit cell space
     # Currently all the S dot S terms get localized to the A orbital of the unit cell only
     n_spin_dof = len(Se_dot_S1);
     Se_dot_S1_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
@@ -164,7 +161,7 @@ def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
     Se_dot_S2_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
     Se_dot_S2_unit[:n_spin_dof,:n_spin_dof] = Se_dot_S2[:,:];
     
-    # insert these local interactions
+    # insert these local interactions on certain unit cells only
     h_cicc =[];
     for sitei in range(Nunits): # iter over all sites
         if(sitei in i1 and sitei not in i2):
@@ -173,6 +170,46 @@ def h_cicc_hacked(J, t, i1, i2, Nunits, pair_to_entangle, unitcell):
             h_cicc.append(Se_dot_S2_unit);
         elif(sitei not in i1 and sitei not in i2):
             h_cicc.append(np.zeros_like(Se_dot_S1_unit) );
+        else:
+            raise Exception;
+    h_cicc = np.array(h_cicc, dtype = complex);
+    return h_cicc;
+
+# constructing the hamiltonian
+def h_cicc_reduced(Jsd, i1, i2, Nunits, unitcell, S) -> np.ndarray:
+    '''
+    
+    '''
+    assert(isinstance(i1, list) and isinstance(i2, list));
+    assert(i1[0] == 1); # SR starts at 1
+    assert(i1[-1] < i2[0]);
+    N = i2[-1]; # SR ends at N
+    
+    # get S dot S in the reduced subspace
+    # ie Eq (40) in my PRA paper  with JK1=JK2=Jsd only nonzero parameter                        
+    h_deltaj1 = (Jsd/2)*np.array([[S-1/2,1/2, np.sqrt(S)],
+                           [1/2,S-1/2,-np.sqrt(S)],
+                           [np.sqrt(S),-np.sqrt(S),-S]]);
+    h_deltaj2 = (Jsd/2)*np.array([[S-1/2,-1/2,np.sqrt(S)],
+                           [-1/2,S-1/2,np.sqrt(S)],
+                           [np.sqrt(S),np.sqrt(S),-S]]);
+
+    # expand from spin space into unit cell space
+    n_spin_dof = len(h_deltaj1);
+    h_deltaj1_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
+    h_deltaj1_unit[:n_spin_dof,:n_spin_dof] = h_deltaj1[:,:];
+    # ^ only puts S dot S on first orbital of unit cell, mu=A
+    h_deltaj2_unit = np.zeros((unitcell*n_spin_dof, unitcell*n_spin_dof),dtype=float);
+    h_deltaj2_unit[:n_spin_dof,:n_spin_dof] = h_deltaj2[:,:];
+    # insert these local interactions on certain unit cells only
+    h_cicc =[];
+    for sitei in range(Nunits): # iter over all sites
+        if(sitei in i1 and sitei not in i2):
+            h_cicc.append(h_deltaj1_unit);
+        elif(sitei in i2 and sitei not in i1):
+            h_cicc.append(h_deltaj2_unit);
+        elif(sitei not in i1 and sitei not in i2):
+            h_cicc.append(np.zeros_like(h_deltaj1_unit) );
         else:
             raise Exception;
     h_cicc = np.array(h_cicc, dtype = complex);
@@ -245,6 +282,7 @@ elif(case in ["N2","N2_k"]): # compare T vs rhoJa for N=2 fixed
     source = np.zeros(8); 
     sourcei = 4; # down up up - the initial state when *generating* entanglement
     sigmas = [pair[0],pair[1],sourcei]; # all the channels of interest to generating entanglement
+                                        # NB the electron spin is well-defined
     source[sourcei] = 1; 
 
     # tight binding params
@@ -325,7 +363,8 @@ elif(case in ["rhoJ"]): # entanglement *preservation* at fixed rhoJa, N variable
 
     # channels
     pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
-    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement 
+    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
+    # NB the electron spin is up in both
 
     # tight binding params
     tl = 1.0;
@@ -524,7 +563,7 @@ elif(case in ["CB","VB"]): # entanglement *preservation* at fixed rhoJa, N varia
         # construct hams
         # since t=tl everywhere, can use h_cicc_eff to get LL, RL blocks directly
         i1, i2 = [1], [Distvals[Distvali]+1];
-        hblocks_noRM = h_cicc_hacked(Jval, tl, i1, i2, i2[-1]+2, pair, my_unit_cell); 
+        hblocks_noRM = h_cicc_dia(Jval, i1, i2, i2[-1]+2, my_unit_cell, pair); 
         print("shape hblocks = "+str(np.shape(hblocks_noRM))+", should be ({:.0f}, 16,16)".format(i2[-1]+2));
         # +2 for each lead site
         hblocks = 1*hblocks_noRM;
@@ -617,7 +656,8 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
     # channels
     pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
     sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
-                                          # in this case, MSQs in singlet or triplet, A orbital 
+                                          # in this case, elec up, MSQs in singlet or triplet
+                                          # source must impinge on A orbital 
     # rhoJa = fixed throughout, thus fixing energy and wavenumber
     print(">>> input "+sys.argv[2]+" is not used");
     rhoJvals = np.array([0.5,1.0]);
@@ -627,8 +667,8 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
     # Transmission coefficients. Note:
         # we compute only source channel -> source channel scattering, leave the rest as NaNs
         # we evaluate T at SR boundary, namely the B site
-    Tvals = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float); 
-    
+    Tvals = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float);
+   
     # Tsummed measures source channel -> all channels transmission
     Tsummed = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float);
     TpRsummed = np.full((len(rhoJvals),myxvals,n_loc_dof), np.nan, dtype=float); 
@@ -734,15 +774,29 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
         
             # construct hams
             i1, i2 = [1], [Distvals[colori, Distvali]+1];
-            hblocks_noRM = h_cicc_hacked(Jval, abs(vval), i1, i2, i2[-1]+2, pair, my_unit_cell); 
-            # +2 for each lead site
+            hblocks_noRM = h_cicc_dia(Jval, i1, i2, i2[-1]+2, my_unit_cell, pair); 
+            # ^ the +2 is for each lead site
             hblocks = 1*hblocks_noRM;
             tnn = np.zeros_like(hblocks);
+            # add Rice Mele terms
             for blocki in range(len(hblocks)):
                 hblocks[blocki] += diag_base_RM_spin;
                 tnn[blocki] += offdiag_base_RM_spin;
             tnn = tnn[:-1];
             tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+            blocki, chunki = 1,0
+            print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,chunki, chunki))
+            result_of_h_cicc_dia = hblocks[blocki][chunki*n_loc_dof:(chunki+1)*n_loc_dof,chunki*n_loc_dof:(chunki+1)*n_loc_dof];
+            print(np.real(result_of_h_cicc_dia))
+            maskety = np.isin( range(len(result_of_h_cicc_dia)), [1,2,4]);
+            print(np.real(result_of_h_cicc_dia[maskety][:,maskety]))
+            result_of_h_cicc_reduced = h_cicc_reduced(Jval, i1, i2, i2[-1]+2, my_unit_cell, 0.5);
+            blocki, chunki = 1,0
+            n_loc_dof = 3
+            result_of_h_cicc_reduced = result_of_h_cicc_reduced[blocki][chunki*n_loc_dof:(chunki+1)*n_loc_dof,chunki*n_loc_dof:(chunki+1)*n_loc_dof];
+            print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,chunki, chunki))
+            print(np.real(result_of_h_cicc_reduced))
+            assert False
             if(Distvali==0): 
                 print("hblocks =\n");
                 blockstoprint = 3;
@@ -759,6 +813,7 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
                 print("rhoJ = {:.4f}".format(fixed_rhoJs[colori]));
                 print("max N = {:.0f}\n".format(np.max(Distvals[colori])+2));
 
+            assert False
             for sigmai in range(len(sigmas)):# sourcei is one of the entangled pairs always 
                 source = np.zeros(my_unit_cell*n_loc_dof); # <- has site flavor dofs so the vector
                                       # outputs of wfm.kernel will as well.
@@ -775,6 +830,8 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
                 Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
                 Tsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum);
                 TpRsummed[colori, Distvali,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
+                for i in range(len(Tdum)):
+                    if(abs(Tdum[i]) > 1e-10): assert(i in [1,2,4]);
                 
         ####
         #### end loop over MSQ-MSQ distance
@@ -822,7 +879,6 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
 
     # Rice-Mele tight binding
     vval = -1.0; # sets energy scale
-    #wlims = (float(sys.argv[3]), float(sys.argv[4]));
     wvals = np.array(sys.argv[3:]).astype(float);
     uval = 0.0; # always 
     Jval = -0.05;
@@ -831,7 +887,8 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
     n_loc_dof = 8; # spin channels
     pair = (1,2); # following entanglement change of basis, pair[0] = |+> channel
     sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
-                                          # in this case, MSQs in singlet or triplet, A orbital 
+                                          # in this case, elec up, MSQs in singlet or triplet
+                                          # source must impinge on A orbital 
     # rhoJa = fixed throughout, fixed by specifying energy or wavenumber
     target_knumber = float(sys.argv[2])*np.pi;
     assert(target_knumber > 0 and target_knumber < 1.0);
@@ -961,10 +1018,11 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
         
             # construct hams
             i1, i2 = [1], [Distvals[colori, Distvali]+1];
-            hblocks_noRM = h_cicc_hacked(Jval, abs(vval), i1, i2, i2[-1]+2, pair, my_unit_cell); 
-            # +2 for each lead site
+            hblocks_noRM = h_cicc_dia(Jval, i1, i2, i2[-1]+2, my_unit_cell, pair); 
+            # ^ the +2 is for each lead site
             hblocks = 1*hblocks_noRM;
             tnn = np.zeros_like(hblocks);
+            # add Rice Mele terms
             for blocki in range(len(hblocks)):
                 hblocks[blocki] += diag_base_RM_spin;
                 tnn[blocki] += offdiag_base_RM_spin;
