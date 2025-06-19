@@ -39,7 +39,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     -E, complex, energy of the incident electron
     -imE, float, the small imaginary part of the energy (if the iterative scheme for the surface green's function is used)
     -conv_tol, float, the convergence criteria (if the iterative scheme is used)
-    -Ajsigma, incident particle amplitude at site 0 in spin channel j
+    -Ajsigma, incident particle amplitude at site 0 in spin channel sigma
     -is_psi_jsigma, whether to return computed wavefunction
     -is_Rhat, whether to return Rhat operator or just R, T probabilities
     Optional args
@@ -62,11 +62,11 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     for hi in [0, -1]: # LL, RL
         isdiag = h[hi] - np.diagflat(np.diagonal(h[hi])); # subtract off diag
         if(all_debug and np.any(isdiag)): # True if there are nonzero off diag terms
-            assert(not np.any(np.diagonal(h[hi]))); # diagonal must be zero
-            #raise Exception("Not diagonal\n"+str(h[hi]))
+            #raise Exception("Not diagonal\n"+str(np.real(h[hi])))
+            pass # diagonality does not apply for diatomic unit cell
     for sigma in range(len(Ajsigma)): # always set incident mu = 0
         if(Ajsigma[sigma] != 0):
-            pass;
+            pass; # for diatomic unit cell, u != 0 breaks this
             assert(h[0,sigma,sigma] == 0);
 
     # check incident amplitude
@@ -78,8 +78,15 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     n_loc_dof = np.shape(h[0])[0];
 
     # compute velocities directly through g_ functions -> vectors over channels
-    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger);
-    # assert the Sigmas are diagonal
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = verbose);
+    if(all_debug): # assert the Sigmas are diagonal
+        for Sigmamat in [SigmaLmat, SigmaRmat]:
+            Sigma_isdiag = Sigmamat - np.diagflat(np.diagonal(Sigmamat));
+            assert(not np.any(Sigma_isdiag));
+    if(all_debug): assert(np.any(np.imag(np.diagonal(SigmaLmat))) );
+    # ^^ checks that given energy allows propagating modes in *at least some* LL channels
+ 
+    # velocities
     v_L, v_R = -2*np.imag(np.diagonal(SigmaLmat)), -2*np.imag(np.diagonal(SigmaRmat));
 
     # Green's function
@@ -93,6 +100,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     # from Green's func, determine matrix elements < \sigma | rhat | \sigma'> of the
     # reflection operator Rhat, which scatters \sigma' -> \sigma
     #Rhat_matrix = 2*tl*complex(0,1)*Gmat[0,0]*np.sin(ka_L) - np.eye(n_loc_dof);
+    # need to update Rhat for Rice-Mele
     if(is_Rhat): return Rhat_matrix;
 
     # determine matrix elements
@@ -102,7 +110,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     # (eq:Rcoef and eq:Tcoef in paper)
     Rs = np.zeros(n_loc_dof, dtype = float); # force as float bc we check that imag part is tiny
     Ts = np.zeros(n_loc_dof, dtype = float);
-    for sigma in range(n_loc_dof): # iter over spin dofs
+    for sigma in range(n_loc_dof): # iter over internal dofs
         # sqrt of r flux, numerator of eq:Rcoef in manuscript
         r_flux = (complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
         r_el = r_flux/i_flux;
@@ -120,6 +128,9 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
             assert(abs(np.imag(Tcoef_to_add))<1e-10);
         Ts[sigma] = np.real(Tcoef_to_add);
     
+    # NB these will be vectors over site flavor and spin channel
+    # for >1 site flavor, MUST use the boundary site flavor
+    # i.e. A for Rs, B for Ts
     return Rs, Ts;
 
 def Green(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
@@ -219,19 +230,19 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
 
     # unpack
     N = len(h) - 2; # num scattering region sites
-    n_loc_dof = np.shape(h[0])[0]; # encompasses all dofs that are not the site number
+    n_loc_dof = np.shape(h[0])[0]; # encompasses all dofs that are not the unit cell index
+                                   # here that means site flavor and spin
 
     # base hamiltonian
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
    
     # compute lead self energies directly through g_ functions
-    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger);
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = verbose);
 
     # add self energies to Hprime
     Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
     Hp[-n_loc_dof:, -n_loc_dof:] += SigmaRmat;
 
-    #assert(np.any(np.imag(np.diag(SigmaLmat))) ); # checks that given energy allows propagating modes in *at least some* LL channels
     for sigmai in range(n_loc_dof):
         if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):
             assert(np.sign(np.imag(SigmaLmat[sigmai,sigmai])) == np.sign(np.imag(SigmaRmat[sigmai,sigmai])));
@@ -253,13 +264,16 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
         print("Im[Hp]=\n",np.imag(Hp)); 
     return Hp;
 
-def SelfEnergies(h, tnn, tnnn, tl, E, converger) -> tuple:
+def SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = 0) -> tuple:
     '''
     Self energy of each lead (left, right) for a two-lead system
     Args:
     -E, complex, energy to evaluate the self energy at
        NB the g_closed function assumes a band -2*tl <= E <= +2*tl
        More complicated systems will have different bands
+
+    Returns: tuple of left lead self-energy, right lead self-energy
+             each are matrices acting on both site flavor and spin dofs
     '''
 
     # compute lead self energies directly through g_ functions
@@ -344,6 +358,7 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
     
     Returns: 
     -the surface green's function, matrix in channel space--same shape as diag
+       ie has both site flavor and spin dofs
     '''
     if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
     if(inoutsign not in [1,-1]): raise ValueError;
@@ -363,16 +378,25 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
 
     # not totally sure how to deal with u0 at this point
     u0 = (np.diagonal(diag)[:n_spin]+np.diagonal(diag)[n_spin:])/2;
-    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10); # ??
-    del u0; # I don't use it in ny of the formulas below
+    for u0_sigmasigma in u0: assert(abs(u0_sigmasigma)<1e-10);
+    # ^ just to flag when u0 turns on
+    if False:
+        print("u  [{:.0f}] = ".format(len(u)), np.real(u));
+        print("v  [{:.0f}] = ".format(len(v)), np.real(v));
+        print("w  [{:.0f}] = ".format(len(w)), np.real(w));
+        print("u0 [{:.0f}] = ".format(len(u0)),np.real(u0));
+        assert False
+
+    def Z_of_x(x):
+        return (x+u)*(x-u)+(w+v)*(w-v);
 
     # functional form
-    squared_val = np.power((E+u)*(E-u)+(w+v)*(w-v),2);
-    sqrt_val = np.lib.scimath.sqrt( 4*w*w*(u+E)*(u-E)**2/(u-E) + squared_val);
-    prefactor = 1/(2*w*w*(E-u));
+    prefactor = 1/(2*w*w*(E-u0-u));
+    squared_val = np.power( Z_of_x(E-u0), 2);
+    sqrt_val = np.lib.scimath.sqrt( 4*w*w*(u+E-u0)*(u-E+u0)+squared_val)
     for sigma in range(n_spin):   # Enforce Im[g_ret]<0
         if(np.imag(sqrt_val[sigma]*prefactor[sigma]) > 0): sqrt_val[sigma] = (-1)*sqrt_val[sigma]; 
-    g = prefactor*((E+u)*(E-u)+(w+v)*(w-v) + sqrt_val);
+    g = prefactor*( Z_of_x(E-u0) + sqrt_val);
 
     # return as same sized array
     gmat = np.zeros(np.shape(diag), dtype=complex);
@@ -439,43 +463,13 @@ def string_RiceMele(diag, offdiag, energies=True, tex=True) -> str:
     v = diag[0,-1];
     w = offdiag[-1,0];
 
-    B_pm = np.array([np.sqrt(u*u+(w+v)*(w+v)),
-                       np.sqrt(u*u+(w-v)*(w-v))]);
-    B_edges = np.array([u0 - np.max(B_pm), u0-np.min(B_pm), u0+np.min(B_pm), u0+np.max(B_pm)]);
-
+    B_edges = bandedges_RiceMele(diag, offdiag);
     # strings
     params_str = "$u = {:.2f}, v ={:.2f}, w ={:.2f}$".format(u,v,w);
     energies_str = ", $E_{gap}="+"{:.2f}".format(B_edges[2]-B_edges[1])+", E_{band}=$"+"{:.2f}$".format(B_edges[1]-B_edges[0]);
     if(energies): params_str += energies_str;
     if(not tex): params_str = params_str.replace("$","");
     return params_str;
-
-def velocity_RiceMele(diag, offdiag, E) -> np.ndarray:
-    '''
-    '''
-    raise NotImplementedError("should get velocities from Im[self energy]")
-    if(np.shape(diag) != np.shape(offdiag) or np.shape(diag) == ()): raise ValueError;
-    # check RM compatibility
-    offdiag_check = 1*offdiag;
-    offdiag_check[-1,0] = 0.0;
-    if(np.any(offdiag_check)): raise ValueError("offdiag is not Rice-Mele type");
-    
-    # decompose into u, w, v
-    u0 = np.sum(np.diagonal(diag))/len(diag); assert(abs(u0)<1e-10);
-    u = (diag[0,0]-diag[1,1])/2; assert(len(diag)==2);
-    v = diag[0,-1];
-    w = offdiag[-1,0];
-
-    # invert the dispersion to get cos(ka)
-    coska = 1/(2*v*w)*((E-u0)*(E-u0) - u*u - v*v - w*w);
-    sinka = np.sqrt(1-coska*coska);
-
-    # determine if E is in the valence or conduction band
-    bandsign = np.sign(E-u0);
-
-    # velocity(E)
-    sqrt = np.sqrt( 1+(u/v)*(u/v)+(w/v)*(w/v)+(2*w/v)*coska);
-    return (-1)*bandsign*w*sinka/sqrt;
 
 def g_iter(diag, offdiag, E, inoutsign, imE, conv_tol, 
               conv_rep=5, min_iter=int(1e2), max_iter=int(1e5), full=False) -> np.ndarray:

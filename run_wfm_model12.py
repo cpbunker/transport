@@ -190,7 +190,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
-    plt.rcParams.update({"text.usetex": True})
+    #plt.rcParams.update({"text.usetex": True})
     
 ##################################################################################
 #### entanglement generation (cicc Fig 6)
@@ -759,14 +759,17 @@ elif(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differ
                 print("rhoJ = {:.4f}".format(fixed_rhoJs[colori]));
                 print("max N = {:.0f}\n".format(np.max(Distvals[colori])+2));
 
-            for sigmai in range(len(sigmas)):   
-                # sourcei is one of the pairs always 
-                source = np.zeros(my_unit_cell*n_loc_dof);
+            for sigmai in range(len(sigmas)):# sourcei is one of the entangled pairs always 
+                source = np.zeros(my_unit_cell*n_loc_dof); # <- has site flavor dofs so the vector
+                                      # outputs of wfm.kernel will as well.
+                                      # You must remove the site flavor dofs manually!!
+
+                
                 source[sigmas[sigmai]] = 1;  # MSQs in singlet or triplet, impinging on A site
 
                 # get  T coefs
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, abs(vval), fixed_Energies[colori], "g_RiceMele", 
-                          source, False, False, all_debug = False);
+                          source, False, False, all_debug = True);
                 Tdum = Tdum[n_loc_dof:]; # extract only at boundary (B site for T)
                 Rdum = Rdum[:n_loc_dof]; # extract only at boundary (A site for R)
                 Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
@@ -819,10 +822,10 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
 
     # Rice-Mele tight binding
     vval = -1.0; # sets energy scale
-    wlims = (float(sys.argv[3]), float(sys.argv[4]));
+    #wlims = (float(sys.argv[3]), float(sys.argv[4]));
     wvals = np.array(sys.argv[3:]).astype(float);
     uval = 0.0; # always 
-    Jval = -0.5;
+    Jval = -0.05;
                                    
     # channels
     n_loc_dof = 8; # spin channels
@@ -990,7 +993,7 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
 
                 # get  T coefs
                 Rdum, Tdum = wfm.kernel(hblocks, tnn, tnnn, abs(vval), fixed_Energies[colori], "g_RiceMele", 
-                          source, False, False, all_debug = False);
+                          source, False, False, all_debug = True);
                 Tdum = Tdum[n_loc_dof:]; # extract only at boundary (B site for T)
                 Rdum = Rdum[:n_loc_dof]; # extract only at boundary (A site for R)
                 Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
@@ -1016,6 +1019,8 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
     
     # plot transmission coefficients vs N (1+MSQ-MSQ distance)
     yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
+    #yvals_to_plot = [TpRsummed[:,:,sigmas[0]], TpRsummed[:,:,sigmas[1]]];
+    # ^ for checking
     yvals_styles = ["dashed","solid"];
     for colori in range(len(wvals)):
     
