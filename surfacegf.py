@@ -35,7 +35,7 @@ if(__name__=="__main__"):
     n_iterations = 21 # 201 #raise Exception("change all niter to conv_tol");
     imag_pt_E = 1e-2;
     
-if(case in ["dispersion","dispersion_pdf", "sdos_pdf"]): 
+if(case in ["dispersion","dispersion_pdf", "sdos", "sdos_pdf"]): 
 
     # set up figure
     nrow, ncol = 2, 2;
@@ -111,20 +111,16 @@ if(case in ["dispersion","dispersion_pdf", "sdos_pdf"]):
             velocities_Sigma[Evali] = -2*np.imag(SigmaRmat)[1,1]; # <- get B,B component
         veloax.plot(velocities_Sigma,np.real(Evals),color=wcolors[wi]); 
 
-        if(False): # monatomic case -- closed form solution
-            sdos_closed = np.zeros_like(Evals,dtype=float); # NB lack of mu dofs
-            for Evali in range(len(Evals)): 
-                sdos_closed[Evali] =(-1/np.pi)*np.imag(wfm.g_closed(h00[:1,:1],h01[1:,:1], Evals[Evali], houtgoing))[0,0];
-            sdosax.plot(sdos_closed,np.real(Evals),label="$\infty$ (monatomic cell)",color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
-            # monatomic velocities
-            velocities_closed = 2*abs(vval)*np.sqrt(1-np.power(np.real(Evals/(2*abs(vval))),2))
-            veloax.plot(velocities_closed, np.real(Evals), color=UniversalAccents[0], marker=AccentsMarkers[0],markevery=UniversalMarkevery);
-            
+        if(wi==0): # monatomic case -- closed form solution
+            sdos_closed = 1/(np.pi*abs(vval)) * abs(np.sin(kvals/2))
+            sdosax.scatter(sdos_closed, np.real(Evals_forkvals[0]), color="black", marker="x");
+           
     # format
     dispax.legend(fontsize=myfontsize);
     dispax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval), fontsize=myfontsize);
     sdosax.legend(fontsize=myfontsize);
     sdosax.set_title("$u = {:.2f}, v = {:.2f}$".format(uvals[0], vval), fontsize=myfontsize);
+    assert(uvals[0]==uvals[-1]);
 
     
     # truncate axes
