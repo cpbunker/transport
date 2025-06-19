@@ -437,8 +437,13 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     plt.tight_layout();
     plt.show();
     
-elif(case in [10,11,12,16,17]): # time-independent transport metric
-                       # vs band structure metric
+elif(case in [10,11,12,16,17]): 
+    '''
+    time-independent transport metric (charge accumulation in right lead) 
+    vs band structure metric (density of states at Fermi energy)
+    case 10 -- plot transport metric for triplet, singlet, qubits removed seperately
+    case 16 -- combine transport metric for triplet, singlet into quantum spin valve efficiency
+    '''
 
     # axes
     fignrows, figncols = 1, 1
@@ -611,7 +616,10 @@ elif(case in [10,11,12,16,17]): # time-independent transport metric
     plt.tight_layout();
     plt.show();
 
-elif(case in [20,21]): # time-independent transport metric vs evaluation time
+elif(case in [20,21]): 
+    '''
+    time-independent transport metric vs evaluation time, up to tfin
+    '''
 
     # axes
     fignrows, figncols = 1, 1
@@ -655,7 +663,6 @@ elif(case in [20,21]): # time-independent transport metric vs evaluation time
     singlet_vstime = [];
     times_vstime = [];
     yjs_observable = "occ_";
-    yjs_label = "$n_R (t)$";
     
     # iter over input files to get reference times (to eval transport metric at)
     assert(len(datafiles) % len(qubit_labels) == 0);
@@ -715,7 +722,7 @@ elif(case in [20,21]): # time-independent transport metric vs evaluation time
     # overall formatting
     metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
     metricax.set_xlabel("Time $(\hbar/t_l)$", fontsize = myfontsize);
-    metricax.set_ylabel("$\eta(t)$", fontsize = myfontsize);
+    metricax.set_ylabel("$\eta$", fontsize = myfontsize);
     
     # show
     plt.legend();
