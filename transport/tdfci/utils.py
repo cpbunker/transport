@@ -346,6 +346,35 @@ def mat_4d_to_2d(mat):
 
     return new_mat;
 
+def entangle(H,bi,bj):
+    '''
+    Perform a change of basis on a matrix such that basis vectors bi, bj become entangled (unentangled)
+    in new ham, index bi -> + entangled state, bj -> - entangled state
+    '''
+
+    # check inputs
+    assert(bi < bj);
+    assert(bj < max(np.shape(H)));
+
+    # rotation matrix
+    R = np.zeros_like(H);
+    for i in range(np.shape(H)[0]):
+        for j in range(np.shape(H)[1]):
+            if( i != bi and i != bj):
+                if(i == j):
+                    R[i,j] = 1; # identity
+            elif( i == bi and j == bi):
+                R[i,j] = 1/np.sqrt(2);
+            elif( i == bj and j == bj):
+                R[i,j] = -1/np.sqrt(2);
+            elif( i == bi and j == bj):
+                R[i,j] = 1/np.sqrt(2);
+            elif( i == bj and j== bi):
+                R[i,j] = 1/np.sqrt(2);
+
+    return np.matmul(np.matmul(R.T,H),R);
+
+
 ################################################################################
 #### second quant
 

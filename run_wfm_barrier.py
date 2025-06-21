@@ -26,12 +26,8 @@ if(__name__=="__main__"):
     # fig standardizing
     myxvals = 199;
     myfontsize = 14;
-    mycolors = ["cornflowerblue", "darkgreen", "darkred", "darkcyan", "darkmagenta","darkgray"];
-    accentcolors = ["black","red"];
-    mymarkers = ["+","o","^","s","d","*","X"];
-    mymarkevery = (10, 10);
     mylinewidth = 1.0;
-    mypanels = ["(a)","(b)","(c)","(d)"];
+    from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
     #plt.rcParams.update({"text.usetex": True}) 
 
@@ -44,7 +40,7 @@ if(__name__=="__main__"):
 # tight binding params
 tl = 1.0;
 Vb = 0.1; # barrier height
-NC = 4; # barrier width
+NC = 14; # barrier width
 assert(NC%2 == 0); # for compatibility with diatomic unit cell
 
 # blocks and inter block hopping
@@ -98,10 +94,10 @@ for Kvali in range(len(Kvals)):
 # plot the closed form surface green's function
 axes[0].plot(np.real(Kvals), np.real(Tvals_clos[:,0]),
 label=conv_closed+", $E_{min}=$"+"{:.2f}".format(-2), 
-color=mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth=mylinewidth); 
+color=UniversalAccents[0], marker=AccentsMarkers[0], markevery=UniversalMarkevery, linewidth=mylinewidth); 
 # and plot its error w/r/t ideal
 axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_clos[:,0])/ideal_Tvals)), 
-  color = mycolors[0], marker=mymarkers[1], markevery=mymarkevery, linewidth = mylinewidth); 
+  color =UniversalAccents[0], marker=AccentsMarkers[0], markevery=UniversalMarkevery, linewidth = mylinewidth); 
 
 #################################################################
 # test various schemes for surface green's function of Rice-Mele
@@ -130,10 +126,13 @@ print("h01 =\n",h01);
 h_dia = [1*h00]; # LL part of hblocks
 for _ in range(NC//2): h_dia.append(h00+Vb*np.eye(len(h00))); # include barrier
 h_dia.append(1*h00); # RL part of hblocks
-h_dia = np.array(h_dia, dtype = float);
 tnn_dia = [1*h01]; # *upper diagonal* hopping blocks
 for _ in range(NC//2): tnn_dia.append(1*h01);
 # we assume that h01 is same for LL, SR, RL
+for further_cell in range(200): # to verify that evaluating further into lead does not change the physics
+    h_dia.append(1*h00)
+    tnn_dia.append(1*h01)
+h_dia = np.array(h_dia, dtype = float);
 tnn_dia = np.array(tnn_dia);
 tnnn_dia = np.zeros_like(tnn_dia)[:-1];
 if verbose: print("\nh_dia:\n",h_dia,"\ntnn_dia:\n", tnn_dia,"\ntnnn_dia:\n",tnnn_dia);
@@ -170,7 +169,7 @@ for myconvergeri in range(len(myconverger_values)):
                        source_dia, False, False, all_debug=True, verbose=verbose);
         else: # not verbose
             Rdum, Tdum = wfm.kernel(h_dia, tnn_dia, tnnn_dia,tl,Energy,myconverger,
-                        source_dia, False, False, all_debug=False, verbose=0);
+                        source_dia, False, False, all_debug=True, verbose=0);
         Tvals_iter[Kvali] = Tdum;
 
     # plot the Tvals
@@ -181,17 +180,16 @@ for myconvergeri in range(len(myconverger_values)):
 
     # NB Tvals[:,dia_out] gives transmission *into the right lead*
     axes[0].plot(np.real(Kvals), np.real(Tvals_iter[:,dia_out]), 
-      label=myconverger_lab, color=mycolors[1+myconvergeri], marker=mymarkers[2+myconvergeri], 
-      markevery=mymarkevery, linewidth=mylinewidth);
+      label=myconverger_lab, color=UniversalColors[myconvergeri], marker=ColorsMarkers[myconvergeri], 
+      markevery=UniversalMarkevery, linewidth=mylinewidth);
     axes[1].plot(np.real(Kvals),abs(np.real((ideal_Tvals-Tvals_iter[:,dia_out])/ideal_Tvals)),
-      color=mycolors[1+myconvergeri], marker=mymarkers[2+myconvergeri], 
-      markevery=mymarkevery, linewidth=mylinewidth); 
+      color=UniversalColors[myconvergeri], markevery=UniversalMarkevery, linewidth=mylinewidth); 
 
 ### end loop over different gf methods
 
 # plot ideal for comparison
 axes[0].plot(np.real(Kvals),np.real(ideal_Tvals), label="exact, $E_{min}=$"+"{:.2f}".format(-2), 
-  color = 'black', marker=mymarkers[0], markevery=mymarkevery, linewidth = mylinewidth);
+  color = UniversalAccents[1], marker=AccentsMarkers[1], markevery=UniversalMarkevery, linewidth = mylinewidth);
        
 # format
 title_str = "Barrier height$=${:.2f}, barrier width$=${:.0f}".format(Vb, NC)

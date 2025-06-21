@@ -78,7 +78,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     n_loc_dof = np.shape(h[0])[0];
 
     # compute velocities directly through g_ functions -> vectors over channels
-    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = verbose);
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, E, converger, verbose = verbose);
     if(all_debug): # assert the Sigmas are diagonal
         for Sigmamat in [SigmaLmat, SigmaRmat]:
             Sigma_isdiag = Sigmamat - np.diagflat(np.diagonal(Sigmamat));
@@ -87,6 +87,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     # ^^ checks that given energy allows propagating modes in *at least some* LL channels
  
     # velocities
+    # note that bc Sigma is added only to the boundary sites, v_LB = v_RA = 0
     v_L, v_R = -2*np.imag(np.diagonal(SigmaLmat)), -2*np.imag(np.diagonal(SigmaRmat));
 
     # Green's function
@@ -111,7 +112,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
     Rs = np.zeros(n_loc_dof, dtype = float); # force as float bc we check that imag part is tiny
     Ts = np.zeros(n_loc_dof, dtype = float);
     for sigma in range(n_loc_dof): # iter over internal dofs
-        # sqrt of r flux, numerator of eq:Rcoef in manuscript
+        # sqrt of r flux, numerator of eq:Rcoef 
         r_flux = (complex(0,1)*np.dot(Gmat[0,0,sigma], Ajsigma*v_L)-Ajsigma[sigma])*np.sqrt(np.real(v_L[sigma]));
         r_el = r_flux/i_flux;
         Rcoef_to_add = r_el*np.conjugate(r_el);
@@ -119,7 +120,7 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
             print("Imag(Rs[{:.0f}]) = {:.10f}".format(sigma, np.imag(Rcoef_to_add)));
             assert(abs(np.imag(Rcoef_to_add))<1e-10);
         Rs[sigma] = np.real(Rcoef_to_add);
-        # sqrt of t flux, numerator of eq:Tcoef in manuscript
+        # sqrt of t flux, numerator of eq:Tcoef 
         t_flux = complex(0,1)*np.dot(Gmat[N+1,0,sigma], Ajsigma*v_L)*np.sqrt(np.real(v_R[sigma]));
         t_el = t_flux/i_flux;
         Tcoef_to_add = t_el*np.conjugate(t_el);
@@ -128,9 +129,11 @@ def kernel(h, tnn, tnnn, tl, E, converger, Ajsigma,
             assert(abs(np.imag(Tcoef_to_add))<1e-10);
         Ts[sigma] = np.real(Tcoef_to_add);
     
-    # NB these will be vectors over site flavor and spin channel
-    # for >1 site flavor, MUST use the boundary site flavor
-    # i.e. A for Rs, B for Ts
+    # NB R and T will be vectors over site flavor and spin channel
+    # but due to velocities being nonzero only on boundary sites, R and T are
+    # nonzero only at boundary sites
+    if(all_debug): assert(abs(np.sum(Rs)+np.sum(Ts) - 1)<1e-10);
+    # user should extract Rs at first site flavor, Ts at last site flavor
     return Rs, Ts;
 
 def Green(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
@@ -211,7 +214,7 @@ def Hmat(h, tnn, tnnn) -> np.ndarray:
                         
     return H; # end Hmat
 
-def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
+def Hprime(h, tnn, tnnn, tlmag, E, converger, verbose = 0) -> np.ndarray:
     '''
     Make H' (hamiltonian + self energy) for N+2 x N+2 system
     where there are N sites in the scattering region (SR).
@@ -219,7 +222,7 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
     -h, array, on site blocks at each of the N+2 sites of the system
     -tnn, array, upper diagonal nearest neighbor hopping, N-1 blocks
     -tnnn, array, upper diagonal next nearest neighbor hopping, N-2 blocks
-    -tl, float, hopping in leads, distinct from hopping within SR def'd by tnn, tnnn
+    -tl, float>0, sets scale of hopping in leads (diff from hopping in SR)
     -E, complex, energy to evaluate the self energy at
     -converger, either a keyword to use a closed-form green's function, 
      or (if the iterative scheme for the surface green's function is used) tuple of
@@ -237,7 +240,7 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
     Hp = Hmat(h, tnn, tnnn); # SR on site, hopping blocks
    
     # compute lead self energies directly through g_ functions
-    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = verbose);
+    SigmaLmat, SigmaRmat = SelfEnergies(h, tnn, tnnn, E, converger, verbose = verbose);
 
     # add self energies to Hprime
     Hp[0:n_loc_dof, 0:n_loc_dof] += SigmaLmat;
@@ -247,27 +250,27 @@ def Hprime(h, tnn, tnnn, tl, E, converger, verbose = 0) -> np.ndarray:
         if(abs(np.imag(SigmaLmat[sigmai,sigmai])) > 1e-10 and abs(np.imag(SigmaRmat[sigmai,sigmai])) > 1e-10 ):
             assert(np.sign(np.imag(SigmaLmat[sigmai,sigmai])) == np.sign(np.imag(SigmaRmat[sigmai,sigmai])));
     if(verbose > 3):
-        ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tl)); # vector running over sigma
-        ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tl));
+        ka_L = np.arccos((E-np.diagonal(h[0]))/(-2*tlmag)); # vector running over sigma
+        ka_R = np.arccos((E-np.diagonal(h[-1]))/(-2*tlmag));
         for sigmai in range(n_loc_dof):
             print(" - chan "+str(sigmai)+", SigmaL = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
                   .format( 
                    np.real(SigmaLmat[sigmai,sigmai]), np.imag(SigmaLmat[sigmai,sigmai]),
-                   np.real(-tl*np.exp(complex(0,ka_L[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_L[sigmai])))));
+                   np.real(-tlmag*np.exp(complex(0,ka_L[sigmai]))), np.imag(-tlmag*np.exp(complex(0,ka_L[sigmai])))));
             print(" - chan "+str(sigmai)+", SigmaR = {:.3f}+{:.3f}j, -teika = {:.3f}+{:.3f}j"
                   .format(
                    np.real(SigmaRmat[sigmai,sigmai]), np.imag(SigmaRmat[sigmai,sigmai]),
-                   np.real(-tl*np.exp(complex(0,ka_R[sigmai]))), np.imag(-tl*np.exp(complex(0,ka_R[sigmai])))));
+                   np.real(-tlmag*np.exp(complex(0,ka_R[sigmai]))), np.imag(-tlmag*np.exp(complex(0,ka_R[sigmai])))));
                   
     if(verbose>4): 
         print("Re[Hp]=\n",np.real(Hp));
         print("Im[Hp]=\n",np.imag(Hp)); 
     return Hp;
 
-def SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = 0) -> tuple:
+def SelfEnergies(h, tnn, tnnn, E, converger, verbose = 0) -> tuple:
     '''
     Self energy of each lead (left, right) for a two-lead system
-    Args:
+    Args: (see Hprime above)
     -E, complex, energy to evaluate the self energy at
        NB the g_closed function assumes a band -2*tl <= E <= +2*tl
        More complicated systems will have different bands
@@ -295,7 +298,7 @@ def SelfEnergies(h, tnn, tnnn, tl, E, converger, verbose = 0) -> tuple:
     # my convention is that hopping^\dagger is on lower diagonal. 
     # See Khomyakov 2005 Eq. (22), NB the \dagger convention there is flipped
     assert(np.shape(gLmat) == np.shape(tnn[0]));
-    SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));   
+    SigmaLmat = np.matmul(np.conj(tnn[0]).T, np.matmul(gLmat, tnn[0]));
     SigmaRmat = np.matmul(tnn[-1], np.matmul(gRmat, np.conj(tnn[-1]).T)); 
 
     return SigmaLmat, SigmaRmat;
@@ -322,10 +325,11 @@ def g_closed(diag, offdiag, E, inoutsign) -> np.ndarray:
     if(inoutsign not in [1,-1]): raise ValueError;
     # check diagonality
     if(np.any(diag-np.diagflat(np.diagonal(diag)))): raise Exception("Not diagonal:\n"+str(diag)); 
-    raise NotImplementedError("everything should call g_RiceMele");
     # everything is vectorized by channel
     diag = np.diagonal(diag);
     offdiag = np.diagonal(offdiag);
+
+    #raise NotImplementedError("everything should call g_RiceMele");
 
     # this decomposition gives correct sign of sqrt always, but need to double-check
     if(True):
@@ -400,12 +404,13 @@ def g_RiceMele(diag, offdiag, E, inoutsign) -> np.ndarray:
 
     # return as same sized array
     gmat = np.zeros(np.shape(diag), dtype=complex);
-    if(inoutsign ==-1): # for left lead, return <B|g_00|B>
-                        # ie fill all spin channels of last B orb
-        gmat[n_spin:,n_spin:] = np.diagflat(g);
-    elif(inoutsign== 1): # for right lead, return <A|g_00|A>
-                        # ie fill all spin channels of first A orb
-        gmat[:n_spin,:n_spin] = np.diagflat(g);
+    if(inoutsign ==-1): # for left lead, fill all spin channels of last B orb
+          # others components remain 0 since multiplication by h_01 zeros them out
+        gmat[:n_spin,:n_spin] = 0*np.diagflat(g);    # <A|g_00|A>
+        gmat[n_spin:,n_spin:] = np.diagflat(g);      # <B|g_00|B>
+    elif(inoutsign== 1): # for right lead, fill all spin channels of first A orb
+        gmat[:n_spin,:n_spin] = np.diagflat(g);      # <A|g_00|A>
+        gmat[n_spin:,n_spin:] = 0*np.diagflat(g);    # <B|g_00|B>
     return gmat;
 
 def dispersion_RiceMele(diag, offdiag, ks) -> np.ndarray:
