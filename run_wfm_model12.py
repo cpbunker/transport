@@ -742,7 +742,7 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
     # figure
     colorfig, colorax = plt.subplots();
     colorfig.set_size_inches(1.2*3.5, 1.2*3);
-    colorax.set_title("$J_{sd} = "+"{:.2f}".format(Jval)+", k_i a/\pi = "+"{:.2f}$".format(fixed_knumber/np.pi)+"$,", fontsize=myfontsize);
+    colorax.set_title("$J_{sd} = "+"{:.2f}".format(Jval)+", k_i a/\pi = "+"{:.2f}$".format(fixed_knumber/np.pi), fontsize=myfontsize);
     colorax.set_ylabel("$T$", fontsize=myfontsize);
     colorax.set_ylim(0.0, 1.0);
     colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
@@ -752,6 +752,7 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
     # plot transmission coefficients vs N (1+MSQ-MSQ distance)
     yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
     yvals_styles = ["dashed","solid"];
+    labels_styles = ["$|T_0\\rangle$", "$|S\\rangle$"];
     for colori in range(len(spinSvals)):
     
         # x axis
@@ -761,9 +762,17 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
         for stylei, yvals in enumerate(yvals_to_plot):
             # only label once per colori  
             if(stylei==0):
-                style_label = "$s = {:.0f}/2$".format(2*spinSvals[colori]); 
+                style_label = "$s = {:.0f}/2$".format(2*spinSvals[colori]);
             else: style_label = "_";
             colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+
+            # annotate first color
+            if(colori==len(spinSvals)-1):
+                colorax.annotate(labels_styles[stylei],
+                        xycoords="data",xy=(indep_vals[0], yvals[colori][0]),
+                        textcoords="data",xytext=(-0.1,yvals[colori][0]),
+                        arrowprops=dict(arrowstyle="->"),
+                        fontsize=myfontsize);
     
     # show
     colorax.legend(fontsize=myfontsize);
