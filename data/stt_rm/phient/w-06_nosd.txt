@@ -1,0 +1,10 @@
+{
+"sys_type":"STT_RM",
+"u":0.0,"v":-1.0,"w":-0.6,
+"Vconf":30.0, "Be":0.0, "BFM": 0.0, "Jmax":100.0,"phient":3.14159,
+"Jsd":0.0,
+"NL":15, "NFM":1, "NR":15, "Nconf":15, "Ne":10, "TwoSz":0,"TwoSd":1,
+"symmetry":"Sz", "ex_sites":[15,15],"plot":0,
+"bdim_0":[150,150,150,200,200],"bdim_t":[250], "noises":[1e-2,1e-3,1e-4,1e-5,0.0], "dmrg_sweeps":20,"cutoff":-1.0,"te_type":"tdvp",
+"time_step":0.1, "tupdate":4.0, "Nupdates":30
+}
