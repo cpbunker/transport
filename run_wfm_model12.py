@@ -74,7 +74,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True})
+    plt.rcParams.update({"text.usetex": True})
 else: pass;
 
 #################################################################

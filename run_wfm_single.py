@@ -87,13 +87,6 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     vval = float(sys.argv[3]);
     uval = float(sys.argv[4]); 
     # w is always -tl; # <- change
-    band_edges = np.array([np.sqrt(uval*uval+(-tl+vval)*(-tl+vval)),
-                           np.sqrt(uval*uval+(-tl-vval)*(-tl-vval))]);
-    RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
-    if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
-    RiceMele_Energies = Kvals - 2*tl + RiceMele_shift; # value in the RM band
-    RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
-
 
     # Rice-Mele matrices
     diag_base_RM_spin=np.array([[+uval,0, +vval,0],  # elec up, imp dw, A orb
@@ -104,6 +97,15 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
                                    [0,0,   0,0], 
                                    [-tl,0, 0,0],  
                                    [0,-tl, 0,0]]);
+    n_spin_dof = len(offdiag_base_RM_spin)//my_unit_cell                              
+    title_RiceMele = wfm.string_RiceMele(diag_base_RM_spin[::n_spin_dof,::n_spin_dof], offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof], energies=False, tex=True)
+    print("\n\nRice-Mele "+title_RiceMele);
+    band_edges = wfm.bandedges_RiceMele(diag_base_RM_spin[::n_spin_dof,::n_spin_dof], offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof])[-2:];
+    RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
+    if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
+    RiceMele_Energies = Kvals - 2*tl + RiceMele_shift; # value in the RM band
+    RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
+
 
     # inelastic ?
     if(case in ["inelastic"]): inelastic = True; Delta = 0.001; raise NotImplementedError
@@ -111,11 +113,11 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
     # set up figure
     num_plots = 4;
-    plot_differences = False;
+    plot_differences = True;
     if(inelastic or not plot_differences): num_plots = 2;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
-    fig.set_size_inches(6,3*num_plots/2);
+    fig.set_size_inches(6,2*num_plots);
 
     # iter over effective J
     Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
@@ -171,7 +173,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
             Energy = Kval-2*tl+RiceMele_shift; #energy that is `Kval` above either VB or CB
 
-            if(Kvali < 3): # verbose
+            if(Kvali < 2): # verbose
                 Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
                                 False, False, all_debug = True, verbose = verbose);
             else: # not verbose
@@ -187,8 +189,8 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
         axes[ax2].plot(np.real(Kvals),Tvals[:,out_noflip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
         #axes[-1].plot(np.real(Kvals), totals, color="red", label = "total ");
-        axes[ax0].set_ylabel('$T_{spin flip}$', fontsize = myfontsize );
-        axes[ax2].set_ylabel('$T_{no flip}$', fontsize = myfontsize );
+        axes[ax0].set_ylabel('$T_{+\\frac{1}{2},-\\frac{1}{2}}$', fontsize = myfontsize );
+        axes[ax2].set_ylabel('$T_{-\\frac{1}{2},+\\frac{1}{2}}$', fontsize = myfontsize );
             
        
         # continuum results
@@ -198,40 +200,41 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             axes[ax0].plot(Kvals, menez_Tf, color = mycolors[Jvali],linestyle = "dashed", marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth); 
             axes[ax2].plot(Kvals, menez_Tnf, color = mycolors[Jvali],linestyle = "dashed", marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
             axes[ax0].set_ylim(-0.4*lower_y,0.4)
-            axes[ax0].set_ylabel('$T_{f}$', fontsize = myfontsize );
+            axes[ax0].set_ylabel('$T_{}$', fontsize = myfontsize );
             axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));
-            axes[ax2].set_ylabel('$T_{nf}$', fontsize = myfontsize );
+            axes[ax2].set_ylabel('$T_{+\\frac{1}{2},-\\frac{1}{2}}$', fontsize = myfontsize );
 
         # differences
         if(not inelastic and plot_differences):
             axes[ax1].plot(np.real(Kvals),abs(Tvals[:,out_flip]-menez_Tf)/menez_Tf,
-              color = mycolors[Jvali], label="$J=${:.4f}".format(Jval),
+              color = mycolors[Jvali], label="$J_{sd}="+"{:.4f}$".format(Jval),
               marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
             axes[ax3].plot(np.real(Kvals),abs(Tvals[:,out_noflip]-menez_Tnf)/menez_Tnf,
-              color = mycolors[Jvali], label="$J=${:.4f}".format(Jval),
+              color = mycolors[Jvali], label="$J_{sd}="+"{:.4f}$".format(Jval),
               marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax1].plot(np.real(Kvals), abs(RiceMele_numbers**2 - np.real(Kvals)),color="red")
+            axes[ax1].legend();
             axes[ax0].set_ylim(-0.4*lower_y,0.4)          
             axes[ax1].set_ylim(-0.1*lower_y,0.1);
-            axes[ax1].set_ylabel('$|T_{f}-T_{f,c}|/T_{f,c}$', fontsize = myfontsize );
+            axes[ax1].set_ylabel('$|T_{+\\frac{1}{2},-\\frac{1}{2}}-T^{(ex)}_{+\\frac{1}{2},-\\frac{1}{2}}|/T^{(ex)}_{+\\frac{1}{2},-\\frac{1}{2}}$', fontsize = myfontsize );
             axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));          
             axes[ax3].set_ylim(-0.1*lower_y,0.1);
-            axes[ax3].set_ylabel('$|T_{nf}-T_{nf,c}|/T_{nf,c}$', fontsize = myfontsize );
+            axes[ax3].set_ylabel('$|T_{}-T^{(ex)}_{}|/T^{(ex)}$', fontsize = myfontsize );
     
     # format
-    title_str = "$u=${:.2f}, $v=${:.2f}, $w=${:.2f}".format(uval, vval, -tl)
-    axes[0].set_title(title_str);
-    axes[-1].legend();
+    axes[0].set_title(title_RiceMele, fontsize = myfontsize);
     axes[-1].set_xscale('log', subs = []);
     axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
     axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
-    RiceMele_shift_str = "$-E_{min}^{(VB)}, E_{min}^{(VB)}=$"+"{:.2f}".format(np.min(-band_edges))
-    if(case=="CB"): RiceMele_shift_str="$-E_{min}^{(CB)},  E_{min}^{(CB)}=$"+"{:.2f}".format(np.min(band_edges))
-    RiceMele_shift_str += ",  $ka/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
-    axes[-1].set_xlabel("$E$"+RiceMele_shift_str,fontsize = myfontsize);
+    RiceMele_shift_str = "$-B^{lo}_{-,i}, B^{lo}_{-,i}=$"+"{:.2f}".format(np.min(-band_edges))
+    if(case=="CB"): RiceMele_shift_str="$-B^{lo}_{+,i},  B^{lo}_{+,i}=$"+"{:.2f}".format(np.min(band_edges))
+    RiceMele_shift_str += ",  $k_i a/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
+    axes[-1].set_xlabel("$E^T$"+RiceMele_shift_str,fontsize = myfontsize);
 
     # show 
     plt.tight_layout();
-    fname = 'figs/'+case+'.pdf'
+    folder = "~/Desktop/FIGS_Controlled_entanglement/"
+    fname = folder+'onespin12.pdf'
     plt.show();
 
 #################################################################
