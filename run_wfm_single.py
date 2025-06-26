@@ -66,7 +66,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
     plt.rcParams.update({"font.family": "serif"})
-    plt.rcParams.update({"text.usetex": True}) 
+    #plt.rcParams.update({"text.usetex": True}) 
 
     # tight binding params
     Msites = 1; # non contact interaction
@@ -103,7 +103,8 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     band_edges = wfm.bandedges_RiceMele(diag_base_RM_spin[::n_spin_dof,::n_spin_dof], offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof])[-2:];
     RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
     if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
-    RiceMele_Energies = Kvals - 2*tl + RiceMele_shift; # value in the RM band
+    RiceMele_Energies = Kvals +np.min(-band_edges) # value in the RM band
+    assert(case=="VB");
     RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
 
 
@@ -113,7 +114,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
 
     # set up figure
     num_plots = 4;
-    plot_differences = True;
+    plot_differences = False;
     if(inelastic or not plot_differences): num_plots = 2;
     fig, axes = plt.subplots(num_plots, sharex = True);
     if num_plots == 1: axes = [axes];
@@ -159,12 +160,25 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             if(inelastic): assert False
 
         # Menezes' exact results
-        kavals = np.arccos((Kvals-2*tl)/(-2*tl));
-        jprimevals = Jval/(4*tl*kavals);
+        if(False):
+            kavals = np.arccos((Kvals-2*tl)/(-2*tl));
+            axes[0].plot(kavals, Kvals)
+            axes[0].scatter(kavals, RiceMele_Energies+2*tl)
+            axes[0].plot(kavals, 2-2*np.cos(kavals), linestyle="dashed");
+            axes[0].plot(kavals, kavals**2)
+            # kavals and menez results are in terms of k *a_c
+            # so we need to write Rice Mele k's in terms of a_c=/2
+            axes[0].plot(kavals, (RiceMele_numbers/2)**2, linestyle="dashed")
+            axes[1].plot(kavals, abs((RiceMele_numbers/2)**2 - np.real(Kvals))/np.real(Kvals))
+            axes[1].plot(kavals, np.real(Kvals))
+            axes[1].plot(kavals, (RiceMele_numbers/2)**2 )
+            plt.show();
+            del kavals
+            assert False
+        jprimevals = Jval/(4*tl*np.sqrt(Kvals));
         menez_Tf = jprimevals*jprimevals/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
         menez_Tnf = (1+jprimevals*jprimevals/4)/(1+(5/2)*jprimevals*jprimevals+(9/16)*np.power(jprimevals,4));
         menez_Tf, menez_Tnf = np.real(menez_Tf), np.real(menez_Tnf);
-        del kavals;
         Rvals = np.empty((len(Kvals),len(source)), dtype = float);
         Tvals = np.empty((len(Kvals),len(source)), dtype = float); 
         for Kvali in range(len(Kvals)):
@@ -172,13 +186,14 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             # energy
             Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
             Energy = Kval-2*tl+RiceMele_shift; #energy that is `Kval` above either VB or CB
+            Energy = Kval+np.min(-band_edges)
 
             if(Kvali < 2): # verbose
                 Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
                                 False, False, all_debug = True, verbose = verbose);
             else: # not verbose
                  Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
-                                False, False, all_debug = False, verbose = 0);
+                                False, False, all_debug = True, verbose = 0);
             Rvals[Kvali] = Rdum;
             Tvals[Kvali] = Tdum;
 
@@ -188,7 +203,6 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
         axes[ax0].plot(np.real(Kvals),Tvals[:,out_flip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         axes[ax2].plot(np.real(Kvals),Tvals[:,out_noflip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
-        #axes[-1].plot(np.real(Kvals), totals, color="red", label = "total ");
         axes[ax0].set_ylabel('$T_{+\\frac{1}{2},-\\frac{1}{2}}$', fontsize = myfontsize );
         axes[ax2].set_ylabel('$T_{-\\frac{1}{2},+\\frac{1}{2}}$', fontsize = myfontsize );
             
@@ -212,7 +226,15 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             axes[ax3].plot(np.real(Kvals),abs(Tvals[:,out_noflip]-menez_Tnf)/menez_Tnf,
               color = mycolors[Jvali], label="$J_{sd}="+"{:.4f}$".format(Jval),
               marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
-            axes[ax1].plot(np.real(Kvals), abs(RiceMele_numbers**2 - np.real(Kvals)),color="red")
+
+            # dispersion difference
+            renormer = abs(vval+np.sign(vval/(-tl))*(-tl))/2 * 4*vval*(-tl)/(vval-tl)**2
+            # renormer gives correct k^2 term for nontrivial Rice Mele
+            # see dispersion_freespace in my thesis
+            axes[ax1].plot(np.real(Kvals), abs(renormer*(RiceMele_numbers/2)**2 - np.real(Kvals))/np.real(Kvals),
+                           color="red", linestyle="dotted")
+
+            # format
             axes[ax1].legend();
             axes[ax0].set_ylim(-0.4*lower_y,0.4)          
             axes[ax1].set_ylim(-0.1*lower_y,0.1);
@@ -220,7 +242,11 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             axes[ax2].set_ylim(-1*lower_y,1*(1+lower_y));          
             axes[ax3].set_ylim(-0.1*lower_y,0.1);
             axes[ax3].set_ylabel('$|T_{}-T^{(ex)}_{}|/T^{(ex)}$', fontsize = myfontsize );
-    
+        else:
+            axes[ax0].plot(np.real(Kvals),menez_Tf,linestyle="dashed", color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
+            axes[ax2].plot(np.real(Kvals),menez_Tnf,linestyle="dashed", color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);           
+            # annotte dashed?
+            
     # format
     axes[0].set_title(title_RiceMele, fontsize = myfontsize);
     axes[-1].set_xscale('log', subs = []);
@@ -228,7 +254,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
     RiceMele_shift_str = "$-B^{lo}_{-,i}, B^{lo}_{-,i}=$"+"{:.2f}".format(np.min(-band_edges))
     if(case=="CB"): RiceMele_shift_str="$-B^{lo}_{+,i},  B^{lo}_{+,i}=$"+"{:.2f}".format(np.min(band_edges))
-    RiceMele_shift_str += ",  $k_i a/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
+    #RiceMele_shift_str += ",  $k_i a/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
     axes[-1].set_xlabel("$E^T$"+RiceMele_shift_str,fontsize = myfontsize);
 
     # show 
