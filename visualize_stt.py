@@ -84,7 +84,7 @@ if(__name__=="__main__"):
     num_xticks = 4;
     datamarkers = ["o","^","s","*"];
     plt.rcParams.update({"font.family": "serif"});
-    #plt.rcParams.update({"text.usetex": True});
+    plt.rcParams.update({"text.usetex": True});
     UniversalFigRatios = [4.5/1.25,5.5/1.25/1.25];
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
 
@@ -395,6 +395,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 # plot occupancies -> NO FACTORS
                 ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient), 
                         color=color1,linestyle=mylinestyle);
+                ax.axhline(0.0, color="gray", linestyle="dashed");
                         
                 # specific unit cell occupancy
                 if(True):
@@ -435,7 +436,12 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
 
     # show
     plt.tight_layout();
-    plt.show();
+    if(False):
+        folder = datafiles[-1].split("_")[0];
+        savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/tfin.pdf"
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else: plt.show();
     
 elif(case in [10,11,12,16,17]): 
     '''
@@ -511,7 +517,7 @@ elif(case in [10,11,12,16,17]):
         
         # rightmost determines tfinite
         yjs_rmost_grad = np.gradient(np.sum(yjs_vs_time[:,-1*block2site:], axis=1), times);
-        yjs_rmost_grad_neg = np.where(yjs_rmost_grad < 0.0, yjs_rmost_grad, np.zeros_like(yjs_rmost_grad));
+        yjs_rmost_grad_neg = np.where(yjs_rmost_grad < -1e-10, yjs_rmost_grad, np.zeros_like(yjs_rmost_grad));
         yjs_rmost_args = np.nonzero(yjs_rmost_grad_neg)[0]
         print(yjs_rmost_args)
         for i in yjs_rmost_args: print(yjs_rmost_grad[i])
@@ -614,7 +620,14 @@ elif(case in [10,11,12,16,17]):
     
     # show
     plt.tight_layout();
-    plt.show();
+    folder = datafiles[-1].split("_")[0];
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/transport_metric.pdf";
+    if(plot_efficiency):
+        savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/efficiency.pdf";
+    if(savefig): 
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else: plt.show();
 
 elif(case in [20,21]): 
     '''

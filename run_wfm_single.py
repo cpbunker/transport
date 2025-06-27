@@ -66,7 +66,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     mypanels = ["(a)","(b)","(c)","(d)"];
     plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True}) 
+    plt.rcParams.update({"text.usetex": True}) 
 
     # tight binding params
     Msites = 1; # non contact interaction
@@ -103,8 +103,7 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     band_edges = wfm.bandedges_RiceMele(diag_base_RM_spin[::n_spin_dof,::n_spin_dof], offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof])[-2:];
     RiceMele_shift = np.min(-band_edges) + 2*tl; # new band bottom - old band bottom
     if(case=="CB"): RiceMele_shift = np.min(band_edges) + 2*tl; #new band=conduction band!
-    RiceMele_Energies = Kvals +np.min(-band_edges) # value in the RM band
-    assert(case=="VB");
+    RiceMele_Energies = Kvals-2*tl +RiceMele_shift # value in the RM band
     RiceMele_numbers = np.arccos(1/(2*vval*(-tl))*(RiceMele_Energies**2 - uval**2 - vval**2 - tl**2));
 
 
@@ -113,12 +112,16 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     else: inelastic = False; Delta = 0.0;
 
     # set up figure
-    num_plots = 4;
     plot_differences = False;
-    if(inelastic or not plot_differences): num_plots = 2;
-    fig, axes = plt.subplots(num_plots, sharex = True);
-    if num_plots == 1: axes = [axes];
-    fig.set_size_inches(6,2*num_plots);
+    if(inelastic or not plot_differences):
+        width_ratios = [0.8,0.2];
+        numrows = 2;
+    else:
+        width_ratios = [1];
+        numrows = 4;
+    fig, axes_arr = plt.subplots(numrows, len(width_ratios), sharex = "col",
+                       gridspec_kw = dict(width_ratios=width_ratios));
+    fig.set_size_inches(6*np.sum(width_ratios),2*numrows);
 
     # iter over effective J
     Jvals = np.array([-0.005,-0.05,-0.5,-5.0]);
@@ -186,9 +189,8 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             # energy
             Kval = Kvals[Kvali]; # Eval > 0 always, what I call K in paper
             Energy = Kval-2*tl+RiceMele_shift; #energy that is `Kval` above either VB or CB
-            Energy = Kval+np.min(-band_edges)
 
-            if(Kvali < 2): # verbose
+            if(Kvali < 0): # verbose
                 Rdum,Tdum=wfm.kernel(hblocks,tnn,tnnn,tl,Energy,myconverger,source, 
                                 False, False, all_debug = True, verbose = verbose);
             else: # not verbose
@@ -198,8 +200,13 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             Tvals[Kvali] = Tdum;
 
         # plot tight binding results
-        ax0, ax1, ax2, ax3 = 0,1,2,3;
-        if(inelastic or not plot_differences): ax0, ax2 = 0,1
+
+        if(inelastic or not plot_differences): 
+            axes = [axes_arr[0,0], axes_arr[1,0], axes_arr[0,1], axes_arr[1,1]];
+            ax0, ax2, ax3 = 0,1,2
+        else:
+            axes = [axes_arr[0], axes_arr[1], axes_arr[2], axes_arr[3]]
+            ax0, ax1, ax2, ax3 = 0,1,2,3;
         axes[ax0].plot(np.real(Kvals),Tvals[:,out_flip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         axes[ax2].plot(np.real(Kvals),Tvals[:,out_noflip], color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
         totals = np.sum(Tvals, axis = 1) + np.sum(Rvals, axis = 1);
@@ -243,25 +250,45 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
             axes[ax3].set_ylim(-0.1*lower_y,0.1);
             axes[ax3].set_ylabel('$|T_{}-T^{(ex)}_{}|/T^{(ex)}$', fontsize = myfontsize );
         else:
+            # exact vals as dashed comparison
             axes[ax0].plot(np.real(Kvals),menez_Tf,linestyle="dashed", color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);
             axes[ax2].plot(np.real(Kvals),menez_Tnf,linestyle="dashed", color = mycolors[Jvali], marker = mymarkers[Jvali], markevery = mymarkevery, linewidth = mylinewidth);           
             # annotte dashed?
             
+            # plot dispersion
+            if(Jvali==0):
+                kainthezone = np.linspace(-np.pi, np.pi, 199);
+                Einthezone = wfm.dispersion_RiceMele(diag_base_RM_spin[::n_spin_dof,::n_spin_dof], offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof], kainthezone)
+                for band in Einthezone:
+                    axes[ax3].plot(kainthezone, band,color="red");
+                axes[ax3].scatter(RiceMele_numbers, RiceMele_Energies);
+            
     # format
-    axes[0].set_title(title_RiceMele, fontsize = myfontsize);
-    axes[-1].set_xscale('log', subs = []);
-    axes[-1].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
-    axes[-1].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
-    RiceMele_shift_str = "$-B^{lo}_{-,i}, B^{lo}_{-,i}=$"+"{:.2f}".format(np.min(-band_edges))
-    if(case=="CB"): RiceMele_shift_str="$-B^{lo}_{+,i},  B^{lo}_{+,i}=$"+"{:.2f}".format(np.min(band_edges))
+    axes[ax0].set_title(title_RiceMele, fontsize = myfontsize);
+    axes[ax2].set_xscale('log', subs = []);
+    axes[ax2].set_xlim(10**(logKlims[0]), 10**(logKlims[1]));
+    axes[ax2].set_xticks([10**(logKlims[0]), 10**(logKlims[1])]);
+    RiceMele_shift_str = "$, B^{lo}_{-,i}="+"{:.2f}$".format(np.min(-band_edges))
+    if(case=="CB"): RiceMele_shift_str="$, B^{lo}_{+,i}="+"{:.2f}$".format(np.min(band_edges))
     #RiceMele_shift_str += ",  $k_i a/\pi \in $[{:.2f},{:.2f}]".format(np.real(RiceMele_numbers[0]/np.pi), np.real(RiceMele_numbers[-1]/np.pi))
-    axes[-1].set_xlabel("$E^T$"+RiceMele_shift_str,fontsize = myfontsize);
+    axes[ax2].set_xlabel("$K_i$"+RiceMele_shift_str,fontsize = myfontsize);
+    
+    # format dispersion
+    axes_arr[1,1].remove();
+    axes[ax3].axis("off")
+    axes[ax3].axvline(0,color="black");
+    axes[ax3].axhline(0,color="black");
+    axes[ax3].text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=axes[ax3].transAxes);
+    axes[ax3].text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=axes[ax3].transAxes);
 
     # show 
     plt.tight_layout();
-    folder = "~/Desktop/FIGS_Controlled_entanglement/"
+    folder = "/home/cpbunker/Desktop/FIGS_Controlled_entanglement/"
     fname = folder+'onespin12.pdf'
-    plt.show();
+    if(not plot_differences): 
+        print("Saving plot to "+fname);
+        plt.savefig(fname);
+    else: plt.show();
 
 #################################################################
 #### replication of continuum solution, monatomic unit cell
