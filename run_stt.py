@@ -108,6 +108,7 @@ my_sites = params["ex_sites"]; # j indices
 for j in my_sites: assert(j in np.arange(myNbuffer+myNL,myNbuffer+myNL+myNFM)); # must be FM sites or conc will fail
 espin = myNe*np.sign(params["Be"]);
 locspin = myNFM*np.sign(params["BFM"]);
+if(params["sys_type"] in ["STT_RM"]): locspin = locspin*2;
 special_cases = ["specialcase","BFM_first", "Bsd", "Bcentral", "Bsd_x","noFM","notspinpol"];
 special_cases_flag = False;
 for case in special_cases:
