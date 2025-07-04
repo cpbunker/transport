@@ -280,6 +280,11 @@ if(myconverger=="g_RiceMele" and case in ["VB","CB"]):
     axes[ax3].axhline(0,color="black");
     axes[ax3].text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=axes[ax3].transAxes);
     axes[ax3].text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=axes[ax3].transAxes);
+    
+    # subplot labels
+    axes[ax0].text(0.0,0.8,"(a)",fontsize=myfontsize,transform=axes[ax0].transAxes);
+    axes[ax2].text(0.0,0.8,"(b)",fontsize=myfontsize,transform=axes[ax2].transAxes);
+    axes[ax3].text(0.0,0.8,"(c)",fontsize=myfontsize,transform=axes[ax3].transAxes);
 
     # show 
     plt.tight_layout();

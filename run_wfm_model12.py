@@ -18,6 +18,7 @@ from transport import wfm
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm
+import matplotlib.legend_handler
 import sys
     
 #################################################################################
@@ -117,7 +118,8 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
                                           # in this case, elec up, MSQs in triplet, singlet
                                           # source must impinge on A orbital 
     # rhoJa = fixed throughout, thus fixing energy and wavenumber
-    print(">>> input "+sys.argv[2]+" is not used");
+    if(sys.argv[2]=="vsN"): vsN = True;
+    else: vsN = False;
     rhoJvals = np.array([0.5,1.0]);
                                     
     # return values
@@ -132,7 +134,6 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
     TpRsummed = np.full((len(rhoJvals),myxvals,n_spin_dof), np.nan, dtype=float); 
     
     # d = number of lattice constants between MSQ 1 and MSQ 2
-    vsN = True;
     if(vsN): kdalims = 0.01*np.pi, 1.01*np.pi; 
     else: kdalims = 0.01*np.pi, 2.1*np.pi; 
     widelimsflag = False;
@@ -269,7 +270,7 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
 
                 # get  T coefs
                 Rdum_mu, Tdum_mu = wfm.kernel(hblocks, tnn, tnnn, abs(vval), fixed_Energies[colori], "g_RiceMele", 
-                          source, False, False, all_debug = True, verbose=10);
+                          source, False, False, all_debug = True, verbose=0);
                 Tdum = Tdum_mu[n_spin_dof:]; # extract only at boundary (B site for T)
                 Rdum = Rdum_mu[:n_spin_dof]; # extract only at boundary (A site for R)
                 Tvals[colori, Distvali,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
@@ -283,9 +284,30 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
     #### end loop over rhoJa values (colors)
     del rhoJvals;
     
-    # figure
-    colorfig, colorax = plt.subplots();
-    colorfig.set_size_inches(1.2*3.5, 1.2*3);
+    # figure setup
+    width_ratios = [0.8,0.2];
+    numrows = 2;
+    colorfig, axes_arr = plt.subplots(numrows, len(width_ratios), sharex = "col",
+                       gridspec_kw = dict(width_ratios=width_ratios));
+    colorfig.set_size_inches(6*np.sum(width_ratios),2*numrows); #aspect ratio of run_wfm_single plots= 6*sum,4
+    color_gridspec = axes_arr[0,0].get_gridspec();
+    axes_arr[0,0].remove(); # remove both the 1st col axes where we will then create one combined
+    axes_arr[1,0].remove();
+    # combine into colorax
+    colorax = colorfig.add_subplot(color_gridspec[:,0]) # gridspec grabs all 1st column rows
+
+    # create and format axis for dispersion
+    axes_arr[1,1].remove();
+    dispax = axes_arr[0,1];
+    dispax.axis("off")
+    dispax.axvline(0,color="black");
+    dispax.axhline(0,color="black");
+    dispax.text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=dispax.transAxes);
+    dispax.text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=dispax.transAxes);
+    dispax.plot(dispks, disp[0], color="red");
+    dispax.plot(dispks, disp[1], color="red");
+    
+    # figure formatting
     colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize);
     colorax.set_ylabel("$T$", fontsize=myfontsize);
     colorax.set_ylim(0.0, 1.0);
@@ -295,9 +317,12 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
         colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
     else:
         colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+        
     # plot transmission coefficients vs N (1+MSQ-MSQ distance)
     yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
-    yvals_styles = ["dashed","solid"];
+    yvals_styles = ["dotted","solid"];
+    lines_to_legend_tuples = []; # append solid, dashed tuple for each color
+    lines_to_legend_labels = [];
     for colori in range(len(fixed_rhoJs)):
     
         # x axis
@@ -305,18 +330,28 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
         if(vsN): indep_vals = Distvals[colori]+1;
         
         # plot
+        this_line_tuple = [];
         for stylei, yvals in enumerate(yvals_to_plot):
-            # only label once per colori  
+            # handle label--only label once per colori  
             if(stylei==0):
-                style_label = "$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.2f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi)
-                #style_label += ", $E_{"+RiceMele_band+"}(k_i) = "+"{:.2f}4".format(np.real(fixed_Energies[colori]));   
-            else: style_label = "_";
-            colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
-    
+                lines_to_legend_labels.append("$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.2f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi));
+                
+            # plot line
+            line_fromstyle, = colorax.plot(indep_vals, yvals[colori], color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+            
+            # handle line object for passing to legend
+            this_line_tuple.append(line_fromstyle);
+        lines_to_legend_tuples.append(tuple(this_line_tuple)); 
+
     # show
-    colorax.legend(fontsize=myfontsize);
+    colorax.legend(lines_to_legend_tuples, lines_to_legend_labels, 
+           handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
+    folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/"
+    if(vsN): fname = folder+'vsN.pdf';
+    else: fname = folder+'disparity_periodic.pdf';
+    print("Saving plot to "+fname);
+    plt.savefig(fname);
     
 elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different colors for rho value
     my_unit_cell = 2; # since diatomic
@@ -360,7 +395,8 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
     Distvals = np.full((len(wvals),myxvals), np.nan, dtype=int);  
     fixed_knumbers = np.full((len(wvals),), np.nan, dtype = float);  
     fixed_rhoJs = np.full((len(wvals),), np.nan, dtype = float);   
-    fixed_Energies = np.full((len(wvals),), np.nan, dtype = complex);    
+    fixed_Energies = np.full((len(wvals),), np.nan, dtype = complex);
+    disp_ofw = []; # for plotting band structure inset on final plot   
     
     # iter over rhoJavals
     for colori, wval in enumerate(wvals):
@@ -397,6 +433,7 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
         else: raise NotImplementedError("case = "+case);
         dispks = np.linspace(-np.pi, np.pi,myxvals);
         disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
+        disp_ofw.append(1*disp);
         # plot and format the dispersion
         for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
     
@@ -511,9 +548,31 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
     ####
     #### end loop over wvals (colors)
     
-    # figure
-    colorfig, colorax = plt.subplots();
-    colorfig.set_size_inches(1.2*3.5, 1.2*3);
+    # figure setup
+    width_ratios = [0.8,0.2];
+    numrows = 2;
+    colorfig, axes_arr = plt.subplots(numrows, len(width_ratios), sharex = "col",
+                       gridspec_kw = dict(width_ratios=width_ratios));
+    colorfig.set_size_inches(6*np.sum(width_ratios),2*numrows); #aspect ratio of run_wfm_single plots= 6*sum,4
+    color_gridspec = axes_arr[0,0].get_gridspec();
+    axes_arr[0,0].remove(); # remove both the 1st col axes where we will then create one combined
+    axes_arr[1,0].remove();
+    # combine into colorax
+    colorax = colorfig.add_subplot(color_gridspec[:,0]) # gridspec grabs all 1st column rows
+
+    # create and format axis for dispersion
+    axes_arr[1,1].remove();
+    dispax = axes_arr[0,1];
+    dispax.axis("off")
+    dispax.axvline(0,color="black");
+    dispax.axhline(0,color="black");
+    dispax.text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=dispax.transAxes);
+    dispax.text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=dispax.transAxes);
+    for colori in range(len(wvals)):
+        dispax.plot(dispks, disp_ofw[colori][0], color=UniversalColors[colori]);
+        dispax.plot(dispks, disp_ofw[colori][1], color=UniversalColors[colori]);
+    
+    # figure formatting
     colorax.set_title("$J_{sd} = "+"{:.2f}".format(Jval)+", k_i a/\pi = "+"{:.2f}$".format(fixed_knumbers[0]/np.pi)+"$, E_{"+RiceMele_band+"}$ band", fontsize=myfontsize);
     print(fixed_knumbers/np.pi);
     colorax.set_ylabel("$T$", fontsize=myfontsize);
@@ -524,25 +583,38 @@ elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different 
     
     # plot transmission coefficients vs N (1+MSQ-MSQ distance)
     yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
-    yvals_styles = ["dashed","solid"];
+    yvals_styles = ["dotted","solid"];
+    lines_to_legend_tuples = []; # append solid, dashed tuple for each color
+    lines_to_legend_labels = [];
     for colori in range(len(wvals)):
     
         # x axis
         indep_vals = Distvals[colori]*fixed_knumbers[colori]/np.pi;
         
         # plot
+        this_line_tuple = [];
         for stylei, yvals in enumerate(yvals_to_plot):
             # only label once per colori  
             if(stylei==0):
                 style_label = "$w/|v| = {:.2f}$".format(wvals[colori]); 
                 style_label += "$, \\rho(k_i) J_{sd} a ="+"{:.2f}$".format(fixed_rhoJs[colori]);
-            else: style_label = "_";
-            colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
-    
+                lines_to_legend_labels.append(style_label);
+
+            # plot line
+            line_fromstyle, = colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+            
+            # handle line object for passing to legend
+            this_line_tuple.append(line_fromstyle);
+        lines_to_legend_tuples.append(tuple(this_line_tuple)); 
+
     # show
-    colorax.legend(fontsize=myfontsize);
+    colorax.legend(lines_to_legend_tuples, lines_to_legend_labels, 
+           handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
     plt.tight_layout();
-    plt.show();
+    folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/"
+    fname = folder+'disparity_'+case[:2]+'_nearGamma.pdf'
+    print("Saving plot to "+fname);
+    plt.savefig(fname);
 
 elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors for rho value
     my_unit_cell = 2; # since diatomic
