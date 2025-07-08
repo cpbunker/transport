@@ -409,7 +409,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
  
                 # labels
                 label1 = "$n_{R}$";
-                label2 = "$\\frac{d}{dt} n_{bdy}$"
+                label2 = "$\\frac{d}{dt} n_\mathrm{bdy}$"
                 label4 = "" #"$n_{L}$";
                 if(take_gradient):
                     label1 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
@@ -436,7 +436,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
 
     # show
     plt.tight_layout();
-    if(False):
+    if(True):
         folder = datafiles[-1].split("_")[0];
         savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/tfin.pdf"
         print("Saving to "+savename);
@@ -469,9 +469,16 @@ elif(case in [10,11,12,16,17]):
     else: savefig = False;
 
     #### iter over triplet/singlet
-    qubit_labels = ["Qubits Removed",
-                    "$|T_0\\rangle$",
-                    "$|S  \\rangle$"]; # must all be same number characters
+    if(plot_efficiency):
+        qubit_labels = ["Qubits Absent ",
+                        "$|T_0\\rangle$",
+                        "$|S  \\rangle$"]; # must all be same number characters
+    else:
+        qubit_labels = ["Qubits Absent ",
+                        "$|T_0\\rangle$",
+                        "$|S  \\rangle$",
+                        "$|T_+\\rangle$",
+                        "$|T_-\\rangle$"]; # must all be same number characters
     # here we label triplet/singlet but plot against w on the x axis
     myaxlabels = np.full((len(datafiles),), " "*len(qubit_labels[0]));
     wvals = np.full((len(datafiles),),np.nan);
@@ -481,7 +488,7 @@ elif(case in [10,11,12,16,17]):
     timefin_inds = np.full((len(datafiles),),1e10,dtype=int);
     nRvals = np.full((len(datafiles),),np.nan); # metric plotted against w
     yjs_observable = "occ_";
-    yjs_label = "$n_R (t_{fin})$";
+    yjs_label = "$n_R (t_{\mathrm{fin}})$";
     
     # iter over input files to get reference times (to eval transport metric at)
     assert(len(datafiles) % len(qubit_labels) == 0);
@@ -489,6 +496,8 @@ elif(case in [10,11,12,16,17]):
         if("nosd" in dfile):      myaxlabels[di] = qubit_labels[0];
         elif("triplet" in dfile): myaxlabels[di] = qubit_labels[1];
         elif("singlet" in dfile): myaxlabels[di] = qubit_labels[2];
+        elif("Taa" in dfile):     myaxlabels[di] = qubit_labels[3];
+        elif("Tbb" in dfile):     myaxlabels[di] = qubit_labels[4];
         else: raise NotImplementedError;
 
         params = json.load(open(dfile+".txt"));
@@ -593,7 +602,7 @@ elif(case in [10,11,12,16,17]):
         wvsrho_inset.plot(rhoEFvals_unique, wvals_unique, color=UniversalColors[1], marker = ColorsMarkers[1]);
 
         # formatting
-        metricax.set_ylabel("$\eta (t_{fin})$",fontsize=myfontsize);
+        metricax.set_ylabel("$\eta (t_\mathrm{fin})$",fontsize=myfontsize);
         metricax.set_ylim(0.0,1.0);
         wvsrho_inset.set_ylabel("$w/|v|$");
         wvsrho_inset.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.1f"))
@@ -646,7 +655,7 @@ elif(case in [20,21]):
     else: savefig = False;
 
     #### iter over triplet/singlet
-    qubit_labels = ["Qubits Removed",
+    qubit_labels = ["Qubits Absent",
                     "$|T_0\\rangle$",
                     "$|S  \\rangle$"]; # must all be same number characters
     # here we label triplet/singlet but plot against w on the x axis
@@ -750,7 +759,7 @@ elif(case in [30,31]): # charge accumulation vs phient, with wval as color
     metricax = axes;
     fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
     normalize = False;
-    if(case in [21]): savefig = True;
+    if(case in [31]): savefig = True;
     else: savefig = False;
 
     # wvals = colors
@@ -762,7 +771,7 @@ elif(case in [30,31]): # charge accumulation vs phient, with wval as color
     timefin_inds = np.full((len(datafiles),),1e10,dtype=int);
     nRvals = np.full((len(datafiles),),np.nan); # metric plotted against w
     yjs_observable = "occ_";
-    yjs_label = "$n_R(t_{fin})$";
+    yjs_label = "$n_R(t_\mathrm{fin})$";
     
     # iter over input files to get reference times (to eval transport metric at)
     for di, dfile in enumerate(datafiles):
@@ -847,12 +856,16 @@ elif(case in [30,31]): # charge accumulation vs phient, with wval as color
     # format
     metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
     metricax.set_ylabel(yjs_label, fontsize = myfontsize);
-    metricax.set_xlabel("$\phi_{ent}/\pi$", fontsize = myfontsize);
+    metricax.set_xlabel("$\phi_\mathrm{ent}/\pi$", fontsize = myfontsize);
     
     # show
     plt.legend();
     plt.tight_layout();
-    plt.show();
+    savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/vsphi.pdf";
+    if(savefig): 
+        print("Saving to "+savename);
+        plt.savefig(savename);
+    else: plt.show();
     
 elif(case in [80,81]): # single dataset heatmap, decorated by time-zero density profile and <k_m|k_n> distro
     assert(len(datafiles)==1);
@@ -879,7 +892,7 @@ elif(case in [80,81]): # single dataset heatmap, decorated by time-zero density 
     fig.set_size_inches(UniversalFigRatios[0]*np.sum(change_ratios["width_ratios"]),UniversalFigRatios[1])
 
     #### iter over triplet/singlet
-    qubit_labels = ["Qubits Removed",
+    qubit_labels = ["Qubits Absent",
                     "$|T_0\\rangle$",
                     "$|S  \\rangle$"]; # must all be same number characters
     if("nosd" in dfile):      myaxlab = qubit_labels[0];
@@ -1019,7 +1032,7 @@ elif(case in [80,81]): # single dataset heatmap, decorated by time-zero density 
     fig.delaxes(Enax); fig.delaxes(Enax_pretwin);
     folder = datafiles[-1].split("_")[0];
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+"init.pdf";
-    if(case in [31]): 
+    if(case in [81]): 
         print("Saving to "+savename);
         plt.savefig(savename);
     else: plt.show();
@@ -1047,7 +1060,7 @@ elif(case in [90,91]): # occupancy vs orbital vs time heatmap
     #### iter over triplet/singlet
     myaxlabels = [];
     for axi, dfile in enumerate(datafiles):
-        if("nosd" in dfile):      myaxlab = " Qubits Removed";
+        if("nosd" in dfile):      myaxlab = " Qubits Absent";
         elif("triplet" in dfile): myaxlab = " $|T_0\\rangle$";
         elif("singlet" in dfile): myaxlab = " $|S  \\rangle$";
         elif("nofield" in dfile): myaxlab = " Field Removed";
@@ -1145,7 +1158,7 @@ elif(case in [90,91]): # occupancy vs orbital vs time heatmap
 
     # show
     fig.tight_layout();
-    folder = datafiles[-1].split("_")[-1];
+    folder = datafiles[-1].split("_")[0];
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+".pdf"
     if(case in [91]): 
         print("Saving to "+savename);
