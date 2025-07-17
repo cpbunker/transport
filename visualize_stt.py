@@ -77,7 +77,7 @@ if(__name__=="__main__"):
     # plotting
     myfontsize=14;
     obs1, factor1, color1, mark1, = "Sdz_", 2,"darkred", "s";
-    ticks1, linewidth1, fontsize1 =  (-1.0,-0.5,0.0,0.5,1.0), 3.0, 16;
+    ticks1, linewidth1, fontsize1 =  (-1.0,-0.5,0.0,0.5,1.0), 3.0, 14;
     obs2, factor2, color2, mark2 = "occ_", 1, "cornflowerblue", "o";
     obs3, factor3, color3, mark3 = "sz_", 2, "darkblue", "o";
     obs4, factor4, color4 = "MI_", 1/np.log(2), "black";
@@ -270,7 +270,9 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
             return yarr;
         
     # axes
-    fig, ax = plt.subplots();
+    figncols, fignrows = 1, 1;
+    fig, ax = plt.subplots(ncols=figncols, nrows=fignrows);
+    fig.set_size_inches(UniversalFigRatios[0]*figncols, UniversalFigRatios[1]*fignrows)
 
     # chooses observables to be plotted
     # True means we plot occupancies, False means we describe MSQ quantum state (MI, Sz, etc)
@@ -282,13 +284,24 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     if(case in [5,6]): take_gradient = False;
     if(case in [9]): use_Jobs = True; # particle current (<J>) replaces d/dt of occupancy 
     else: use_Jobs = False; 
+    
+    # determine largest time vale we will encounter
+    #### iter over triplet/singlet
+    max_all_times = 0;
+    for dfile in datafiles:
+        params = json.load(open(dfile+".txt"));
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+        if(max(times) > max_all_times): max_all_times = max(times);
 
 
     #### iter over triplet/singlet
     for dfile in datafiles:
         if("singlet" in dfile): mylinestyle = "dashed";
-        elif("triplet" in dfile): mylinestyle = "solid";
-        elif("nosd" in dfile): mylinestyle = "dotted" #"None" #to turn off
+        elif("triplet" in dfile): mylinestyle = "dotted";
+        elif("nosd" in dfile): mylinestyle = "solid" #"None" #to turn off
         else: mylinestyle = "dashdot";
         print("\n>>>",mylinestyle,"=",dfile);
         
@@ -380,6 +393,7 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 label4 = "" #"$J_{L}$";
                    
             else: # occ rate of change expressed with dn/dt
+                  # <---- this is code block for tfin.pdf
             
                 # incoming electron pcurrent = dn_conf / dt
                 yjs_vs_time = np.zeros((len(times),block2site*Nsites),dtype=float);
@@ -391,28 +405,45 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
                 Ntotal = NL+NFM+NR; 
                 yjL_vs_time = np.sum(yjs_vs_time[:,:block2site*NL], axis=1);
                 yjR_vs_time = np.sum(yjs_vs_time[:,block2site*(NL+NFM):], axis=1);
-             
-                # plot occupancies -> NO FACTORS
-                ax.plot(times, do_gradient(yjR_vs_time,times,do=take_gradient), 
-                        color=color1,linestyle=mylinestyle);
-                ax.axhline(0.0, color="gray", linestyle="dashed");
                         
                 # specific unit cell occupancy
                 if(True):
-                    # rightmost
+                    assert(case in [6]);
+                    # bdy (rightmost site)
                     specific_last = block2site*(Ntotal - 1) 
                     specific_start = block2site*(Ntotal - 2)
                     yj_specific = np.sum(yjs_vs_time[:,specific_last:], axis=1);
-                    # derivative
-                    ax.plot(times, np.gradient(yj_specific,times)/np.max(np.gradient(yj_specific,times)), 
-                        color=color2, linestyle=mylinestyle);   
+                    # bdy occupancy
+                    ax.plot(times, yj_specific/np.max(yj_specific),color=color1, linestyle=mylinestyle);
+                    
+                    # bdy derivative
+                    yj_specific_grad = np.gradient(yj_specific,times)/np.max( np.gradient(yj_specific,times))
+                        
+                    yj_specific_grad_neg = np.where(yj_specific_grad < -1e-10, yj_specific_grad, np.zeros_like(yj_specific_grad));
+                    yj_specific_args = np.nonzero(yj_specific_grad_neg)[0]
+                    tfin_from_spec = yj_specific_args[0]*params["tupdate"];
+                    tfin_to_point = (yj_specific_args[0] -0.5)*params["tupdate"];
+                    tfin_datascaler = tfin_from_spec/max_all_times;
+        
+                    # plot and arrow bdy deriv
+                    ax.plot(times, yj_specific_grad, 
+                        color=color2, linestyle=mylinestyle);
+                    ax.annotate("$t_\mathrm{fin} = "+"{:.0f} \,(w = {:.2f})$".format(tfin_from_spec,params["w"]), 
+                        (tfin_to_point,-0.05), 
+                        (max_all_times/3*tfin_datascaler, -0.25-0.75*tfin_datascaler),
+                        arrowprops = dict(facecolor="black",arrowstyle="->"));
+                    ax.set_ylim(-1,1);
+                        
+                    # labels
+                    label1 = "$n_\mathrm{bdy}$ (norm.)";
+                    label2 = "$\\frac{d}{dt} n_\mathrm{bdy}$ (norm.)";
+                    label4 = ""
+                        
+                else: 
+                    # plot occupancies -> NO FACTORS
+                    pass;
  
-                # labels
-                label1 = "$n_{R}$";
-                label2 = "$\\frac{d}{dt} n_\mathrm{bdy}$"
-                label4 = "" #"$n_{L}$";
-                if(take_gradient):
-                    label1 = "$\left|\\frac{d}{dt}n_{R}(t)\\right|$";
+
         
     # formatting
     ax3 = ax.twinx();
@@ -431,12 +462,12 @@ if(case in [5,6,7,8,9]): # observables RATES OF CHANGE vs time, for two data set
     ax.set_ylabel( label1, color=color1, fontsize=fontsize1); # observable rate of change on left
     ax3.set_ylabel(label4, color=color4, fontsize=fontsize1); # observable rate of change on left
     ax4.set_ylabel(label2, color=color2, fontsize=fontsize1); # labels dn/dt normalizing quantity on right
-    ax.set_xlabel("Time $(\hbar/t_l)$", fontsize = fontsize1);
-    ax.set_title( get_title(datafiles[-1]), fontsize = fontsize1);
+    ax.set_xlabel("Time $(\hbar/|v|)$", fontsize = fontsize1);
+    #ax.set_title( get_title(datafiles[-1]), fontsize = fontsize1);
 
     # show
     plt.tight_layout();
-    if(True):
+    if(plot_occ and (not use_Jobs)):
         folder = datafiles[-1].split("_")[0];
         savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/tfin.pdf"
         print("Saving to "+savename);
@@ -1041,6 +1072,7 @@ elif(case in [80,81]): # single dataset heatmap, decorated by time-zero density 
 elif(case in [90,91]): # occupancy vs orbital vs time heatmap
 
     # axes
+    myfontsize = 1.5*myfontsize; # due to figure size being so big
     horizontal = True; # puts heatmaps side by side, else stack
     if(horizontal): fignrows, figncols = 1, len(datafiles)+1;
     else: fignrows, figncols = len(datafiles)+1, 1;
