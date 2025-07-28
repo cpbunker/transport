@@ -630,7 +630,8 @@ elif(case in [10,11,12,16,17]):
                     else: assert("nosd" in dfile);
 
         # efficiency plot
-        efficiency_metric = abs(triplet_metric - singlet_metric)/(triplet_metric + singlet_metric);
+        efficiency_metric = abs(singlet_metric - triplet_metric)/(singlet_metric + triplet_metric);
+        assert False; # remove abs
         metricax.plot(rhoEFvals_unique, efficiency_metric, color=UniversalColors[0], marker=ColorsMarkers[0])
         assert(convert_wvals); # plot vs rho(EF)
 
@@ -779,7 +780,7 @@ elif(case in [20,21]):
 
         # efficiency plot
         label = "$\\rho(E_F) = {:.2f}$".format(rhoEFvals_unique[colori])+" ($w={:.2f}$)".format(wvals_unique[colori])
-        efficiency_metric = abs(triplet_vstime[colori]- singlet_vstime[colori])/(triplet_vstime[colori] + singlet_vstime[colori]);
+        efficiency_metric = abs(singlet_vstime[colori]- triplet_vstime[colori])/(singlet_vstime[colori] + triplet_vstime[colori]);
         metricax.plot(times_vstime[colori], efficiency_metric, color=UniversalColors[colori], marker=ColorsMarkers[colori], label=label)
  
     # overall formatting
@@ -1227,7 +1228,7 @@ elif(case in [90,91]): # occupancy vs orbital vs time heatmap
         if("triplet" in dfile): triplet_metric = 1*nRvals[di];
         elif("singlet" in dfile): singlet_metric = 1*nRvals[di];
         else: assert("nosd" in dfile);
-    efficiency_metric = abs(triplet_metric - singlet_metric)/(triplet_metric + singlet_metric);
+    efficiency_metric = abs(singlet_metric - triplet_metric)/(singlet_metric + triplet_metric);
     efficiency_string = ", $\eta(t_\mathrm{fin}) ="+" {:.2f}$".format(efficiency_metric);
     if(np.any(timefins-timefins[0])): # triggers if the simulations have different tfin values
         raise Exception("tfin differs between simulations");
