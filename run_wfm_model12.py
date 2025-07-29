@@ -75,14 +75,14 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
-    plt.rcParams.update({"text.usetex": True})
+    #plt.rcParams.update({"text.usetex": True})
 else: pass;
 
 #################################################################
 #### **DIATOMIC UNIT CELL**
 #### Rice-Mele model
 
-if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, different colors for rho value
+if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation* vs N, different colors for rho value
     my_unit_cell = 2; # since diatomic
 
     # Rice-Mele tight binding
@@ -121,6 +121,7 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
     if(sys.argv[2]=="vsN"): vsN = True;
     else: vsN = False;
     rhoJvals = np.array([0.5,1.0,1.5]);
+    if(case in ["cartoon_rhos"]): rhoJvals = np.array([1.5]);
                                     
     # return values
     # shaped by fixed rhoJval (color), MSQ-MSQ distance (x axis), spin dofs 
@@ -157,7 +158,7 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
         if(case in ["CB_rhos"]): 
             discrete_band = np.min(band_edges)+Ks_for_solution;
             discrete_band = discrete_band[discrete_band < np.max(band_edges)]; # stay w/in conduction band
-        elif(case in ["VB_rhos"]): 
+        elif(case in ["VB_rhos","cartoon_rhos"]): 
             discrete_band = np.min(-band_edges)+Ks_for_solution;
             discrete_band = discrete_band[discrete_band < np.max(-band_edges)]; # stay w/in valence band
         else: raise NotImplementedError("case = "+case);
@@ -192,7 +193,7 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
         dispax.axhline(np.real(fixed_Energies[colori]), color=UniversalAccents[1], linestyle="dashed");
       
         # plotting
-        if(case in ["VB_rhos"]): 
+        if(case in ["VB_rhos","cartoon_rhos"]): 
             RiceMele_band = "-";
             RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
         elif(case in ["CB_rhos"]): 
@@ -316,16 +317,30 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
     dispax.plot(dispks, disp[0], color="red");
     dispax.plot(dispks, disp[1], color="red");
     
-    # figure formatting
-    colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize);
+    # figure formatting;
     #colorax.set_ylabel("$T$", fontsize=myfontsize);
-    colorax.set_ylim(0.0, 1.0);
-    colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
-    if(vsN):
-        colorax.set_xlabel("$N$",fontsize=myfontsize);
-        colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
-    else:
-        colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+    if(case in ["cartoon_rhos"]): # cartoon labels
+        colorax.axis("off");
+        colorax.set_ylim(0.0,1.2)
+        if(vsN):
+            middle_klim = np.median(Distvals[0]);
+            colorax.axvline(middle_klim,color="black",linewidth=2);           
+        else:
+            middle_klim = 1.0;
+            colorax.axvline(middle_klim,color="black",linewidth=2);
+            colorax.set_xlim(middle_klim*0.5, middle_klim*1.5);
+        colorax.axhline(0,color="black",linewidth=4);
+        colorax.text(0.0,-0.05,"MSQ-MSQ separation",fontsize=myfontsize,transform=colorax.transAxes);
+    else: # non-cartoon labels
+        colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize)
+        colorax.set_ylim(0.0, 1.0);
+        if(vsN):
+            colorax.set_xlabel("$N$",fontsize=myfontsize);
+            colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
+        else:
+            colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+            colorax.set_xlim(kdalims[0]/np.pi, kdalims[1]/np.pi);
+            colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
         
     # efficiency
     efficiency_colors_N = (Tsummed[:,:,sigmas[1]]-Tsummed[:,:,sigmas[0]])/(Tsummed[:,:,sigmas[1]] + Tsummed[:,:,sigmas[0]]);
@@ -368,7 +383,7 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
             lines_to_legend_tuples[tupi] = (lines_to_legend_tuples[tupi][0],); 
 
     # show
-    if(True):
+    if(True and (len(fixed_rhoJs)>1)):
         color_legend = colorax.legend(lines_to_legend_tuples, lines_to_legend_labels,
            #bbox_to_anchor =(0.00,1.02,1.00,0.102),loc="lower left",mode="expand",borderaxespad=0.0, 
            handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
@@ -378,7 +393,283 @@ if(case in ["CB_rhos", "VB_rhos"]): # entanglement *preservation* vs N, differen
     if(vsN): fname = folder+'vsN.pdf';
     else: fname = folder+'disparity_periodic.pdf';
     print("Saving plot to "+fname);
-    plt.savefig(fname);
+    plt.show();#plt.savefig(fname);
+
+if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
+    my_unit_cell = 2; # since diatomic
+
+    # Rice-Mele tight binding
+    vval = -1.0; # sets energy scale
+    wval = float(sys.argv[3]);
+    uval = float(sys.argv[4]); 
+    Jval = -0.05;
+    myspinS = 0.5;
+    if(case in ["cartoon_ks"]): Distvals = np.array([20]);
+    else: Distvals = np.array([2,20,40]) #10,100]); # diff colors for MSQ-MSQ separation
+
+    # Rice-Mele matrices
+    n_spin_dof = 3; # spin dofs
+    diag_base_RM_spin = np.zeros((my_unit_cell*n_spin_dof, my_unit_cell*n_spin_dof),dtype=float);
+    diag_base_RM_spin[:n_spin_dof,:n_spin_dof] = uval*np.eye(n_spin_dof);
+    diag_base_RM_spin[n_spin_dof:,n_spin_dof:] = -uval*np.eye(n_spin_dof);
+    diag_base_RM_spin[:n_spin_dof,n_spin_dof:] = vval*np.eye(n_spin_dof);
+    diag_base_RM_spin[n_spin_dof:,:n_spin_dof] = vval*np.eye(n_spin_dof);
+    offdiag_base_RM_spin = np.zeros((my_unit_cell*n_spin_dof, my_unit_cell*n_spin_dof),dtype=float);
+    offdiag_base_RM_spin[n_spin_dof:,:n_spin_dof] = wval*np.eye(n_spin_dof);
+    diag_base_nospin = diag_base_RM_spin[::n_spin_dof,::n_spin_dof];
+    offdiag_base_nospin = offdiag_base_RM_spin[::n_spin_dof,::n_spin_dof];
+    assert(abs(np.sum(np.diagonal(diag_base_nospin))/len(diag_base_nospin)) < 1e-10); # u0 = 0
+    band_edges = wfm.bandedges_RiceMele(diag_base_nospin, offdiag_base_nospin)[-2:];
+    
+    # output Rice-Mele
+    title_RiceMele = wfm.string_RiceMele(diag_base_nospin, offdiag_base_nospin, energies=False, tex=True)
+    print("\n\nRice-Mele "+title_RiceMele);
+    print("h00 =\n",diag_base_nospin);
+    print("h01 =\n",offdiag_base_nospin);
+                                   
+    # channels
+    pair = (0,1); # pair[0] = |+> channel, pair[1] = |-> channel
+    sigmas = np.array([pair[0],pair[1]]); # all the channels of interest to generating entanglement
+                                          # in this case, elec up, MSQs in triplet, singlet
+                                          # source must impinge on A orbital 
+
+                                    
+    # return values
+    # shaped by fixed NMSQ-MSQ distance (color), wavenumber (k axis), spin dofs 
+    # Transmission coefficients. Note:
+        # we compute only source channel -> source channel scattering, leave the rest as NaNs
+        # we evaluate T at SR boundary, namely the B site
+    Tvals = np.full((len(Distvals),myxvals,n_spin_dof), np.nan, dtype=float);
+   
+    # Tsummed measures source channel -> all channels transmission
+    Tsummed = np.full((len(Distvals),myxvals,n_spin_dof), np.nan, dtype=float);
+    TpRsummed = np.full((len(Distvals),myxvals,n_spin_dof), np.nan, dtype=float); 
+
+    # k = wavenumber
+    # d = number of lattice constants between MSQ 1 and MSQ 2
+    kdalims = 0.1*np.pi, 1.01*np.pi; 
+    if(sys.argv[2] == "vskda"): vskda=True;
+    else: vskda = False;
+    knumbers = np.full((len(Distvals),myxvals), np.nan, dtype=float);
+    kdavals = np.full((len(Distvals),myxvals), np.nan, dtype=float);
+    rhoJvals = np.full((len(Distvals),myxvals), np.nan, dtype=float);
+
+    # iter over MSQ-MSQ distance
+    for colori in range(len(Distvals)):
+
+        # determine range of wavenumbers from Dist value
+        if(vskda):
+            discrete_ks = np.linspace(kdalims[0]/Distvals[colori],kdalims[1]/Distvals[colori], myxvals);
+        else:
+            klims = (0.0001*np.pi, 0.1*np.pi);
+            discrete_ks = np.logspace(np.log10(klims[0]), np.log10(klims[1]), myxvals);
+
+
+        # graphical dispersion for this run
+        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
+        if(case in ["CB_ks"]): 
+            discrete_band = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, discrete_ks)[1];
+        elif(case in ["VB_ks","cartoon_ks"]): 
+            discrete_band = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, discrete_ks)[0];
+        else: raise NotImplementedError("case = "+case);
+   
+        # highlight the parts of the band we are considering
+        print(np.shape(discrete_ks))
+        print(np.shape(discrete_band))
+        dispax.scatter(discrete_ks, discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]); 
+    
+        # graphical density of states for fixed energy
+        discrete_dos = 2/np.pi*abs(1/np.gradient(discrete_band, discrete_ks));
+        dosax.scatter(discrete_dos,discrete_band, color=UniversalAccents[0], marker=AccentsMarkers[0]);
+
+        # plotting
+        if(case in ["VB_ks","cartoon_ks"]): 
+            RiceMele_band = "-";
+            RiceMele_shift_str = "$, E_{min}^{(VB)}="+"{:.2f}$".format(np.min(-band_edges))
+        elif(case in ["CB_ks"]): 
+            RiceMele_band = "+";
+            RiceMele_shift_str="$,  E_{min}^{(CB)}="+"{:.2f}$".format(np.min(band_edges))
+        dispax.set_ylabel("$E_\pm( k_i)$"+RiceMele_shift_str, fontsize = myfontsize);
+        dosax.set_xlabel("$\\rho, J_{sd} ="+"{:.2f}$".format( Jval), fontsize = myfontsize);
+        dispax.set_xlabel("$k_i$", fontsize = myfontsize);
+        dispax.set_title(title_RiceMele, fontsize = myfontsize);
+    
+        # show
+        plt.tight_layout();
+        plt.show();
+        stopflag = False;
+        try: 
+            if(sys.argv[5]=="stop"): stopflag = True;
+        except: print(">>> Not flagged to stop");
+        assert(not stopflag); 
+        
+        # determine kda
+        knumbers[colori,:] = discrete_ks[:];
+        kdavals[colori,:] = discrete_ks*Distvals[colori];
+        rhoJvals[colori, :] = discrete_dos*abs(Jval);
+        print("Nd = {:.0f}".format(Distvals[colori]));
+    
+        # iter over Distvals to compute T
+        for ki in range(len(discrete_ks)):
+        
+            # construct hams
+            i1, i2 = [1], [Distvals[colori]+1];
+            hblocks_noRM = h_cicc_reduced(Jval, i1, i2, i2[-1]+2, my_unit_cell, myspinS); 
+            # ^ the +2 is for each lead site
+            assert(np.shape(hblocks_noRM)[1] == my_unit_cell*n_spin_dof);
+            hblocks = 1*hblocks_noRM;
+            tnn = np.zeros_like(hblocks);
+            # add Rice Mele terms
+            for blocki in range(len(hblocks)):
+                hblocks[blocki] += diag_base_RM_spin;
+                tnn[blocki] += offdiag_base_RM_spin;
+            tnn = tnn[:-1];
+            tnnn = np.zeros_like(tnn)[:-1]; # no next nearest neighbor hopping
+
+            if(ki==0): 
+                print("hblocks =\n");
+                blockstoprint = 3;
+                for blocki in range(blockstoprint):
+                    print("\n\n");
+                    for chunki in range(my_unit_cell):
+                        print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,chunki, chunki))
+                        print(np.real(hblocks[blocki][chunki*n_spin_dof:(chunki+1)*n_spin_dof,chunki*n_spin_dof:(chunki+1)*n_spin_dof]));
+                    print("h(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,0, 1))
+                    print(np.real(hblocks[blocki][0*n_spin_dof:(0+1)*n_spin_dof,1*n_spin_dof:(1+1)*n_spin_dof]));
+                    print("t(j = {:.0f}, mu = {:.0f}, muprime = {:.0f})".format(blocki,1, 0))
+                    print(np.real(tnn[blocki][n_spin_dof:,:n_spin_dof]));
+                print("J = {:.4f}".format(Jval));
+                print("rhoJ min, median, max = {:.2f}, {:.2f}, {:.2f}".format(np.min(rhoJvals[colori]), np.median(rhoJvals[colori]), np.max(rhoJvals[colori])));
+                print("Nd = {:.0f}\n".format(Distvals[colori]));
+
+            for sigmai in range(len(sigmas)):# sourcei is one of the entangled pairs always 
+                source = np.zeros(my_unit_cell*n_spin_dof); # <- has site flavor dofs so the vector
+                                      # outputs of wfm.kernel will as well.
+                                      # You must remove the site flavor dofs manually!!
+
+                source[sigmas[sigmai]] = 1;  # MSQs in singlet or triplet, impinging on A site
+
+                # get  T coefs
+                Rdum_mu, Tdum_mu = wfm.kernel(hblocks, tnn, tnnn, abs(vval), discrete_band[ki], "g_RiceMele", 
+                          source, False, False, all_debug = True, verbose=0);
+                Tdum = Tdum_mu[n_spin_dof:]; # extract only at boundary (B site for T)
+                Rdum = Rdum_mu[:n_spin_dof]; # extract only at boundary (A site for R)
+                Tvals[colori, ki,sigmas[sigmai]] = Tdum[sigmas[sigmai]];
+                Tsummed[colori, ki,sigmas[sigmai]] = np.sum(Tdum);
+                TpRsummed[colori, ki,sigmas[sigmai]] = np.sum(Tdum) + np.sum(Rdum);
+               
+        ####
+        #### end loop over electron wavenumber
+    
+    ####
+    #### end loop over colors
+    
+    # figure setup
+    width_ratios = [0.7,0.3];
+    numrows = 2;
+    colorfig, axes_arr = plt.subplots(numrows, len(width_ratios), sharex = "col",
+                       gridspec_kw = dict(width_ratios=width_ratios));
+    colorfig.set_size_inches(6*np.sum(width_ratios),2*numrows); #aspect ratio of run_wfm_single plots= 6*sum,4
+    color_gridspec = axes_arr[0,0].get_gridspec();
+    axes_arr[0,0].remove(); # remove both the 1st col axes where we will then create one combined
+    axes_arr[1,0].remove();
+    # combine into colorax
+    colorax = colorfig.add_subplot(color_gridspec[:,0]) # gridspec grabs all 1st column rows
+
+    # create and format axis for dispersion
+    #axes_arr[1,1].remove();
+    legend_ax = axes_arr[1,1];
+    legend_ax.set_xticks(np.arange(2));
+    legend_ax.set_yticks(np.arange(2));
+    legend_ax.axis("off");
+    dispax = axes_arr[0,1];
+    dispax.axis("off")
+    dispax.axvline(0,color="black");
+    dispax.axhline(0,color="black");
+    dispax.text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=dispax.transAxes);
+    dispax.text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=dispax.transAxes);
+    ks_for_disp = np.linspace(-np.pi, np.pi, 99);
+    bands_for_disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, ks_for_disp);
+    dispax.plot(ks_for_disp, bands_for_disp[0], color="red");
+    dispax.plot(ks_for_disp, bands_for_disp[1], color="red");
+    if(not vskda): dispax.scatter(discrete_ks, discrete_band);
+    
+    # figure formatting
+    if(case not in ["cartoon_ks"]): colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize);
+    #colorax.set_ylabel("$T$", fontsize=myfontsize);
+    colorax.set_ylim(0.0, 1.0);
+    if(case in ["cartoon_ks"]): # cartoon labels
+        colorax.axis("off");
+        colorax.axvline(0,color="black",linewidth=4);
+        colorax.axhline(0,color="black",linewidth=4);
+        colorax.text(1.01,0.0,"$k_i$",fontsize=myfontsize,transform=colorax.transAxes);
+    else: # non-cartoon labels
+        if(vskda):
+            colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+            colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+        else:
+            colorax.set_xlabel("$k_i a / \pi$",fontsize=myfontsize);
+            colorax.set_xscale("log");
+
+    # efficiency
+    efficiency_colors_k = (Tsummed[:,:,sigmas[1]]-Tsummed[:,:,sigmas[0]])/(Tsummed[:,:,sigmas[1]] + Tsummed[:,:,sigmas[0]]);
+        
+    # plot transmission coefficients vs N (1+MSQ-MSQ distance)
+    # to_plot = |T0>,|S>, eta
+    yvals_identifiers = ["$T(|S\\rangle )$", "$T(|T_0 \\rangle)$", "$\eta$"];
+    yvals_to_plot = [Tsummed[:,:,sigmas[1]], Tsummed[:,:,sigmas[0]], efficiency_colors_k]; # |T0> then |S>
+    yvals_styles = ["solid","dotted","dashdot"];
+    lines_to_legend_tuples = []; # append solid, dashed tuple for each color
+    lines_to_legend_labels = [];
+    for colori in range(len(Distvals)):
+    
+        # x axis
+        # NB we will be monotonically changing rho Jsd a as we sweep k
+        # but large rho Jsd a only helps **at resonance**
+        if(vskda):
+            indep_vals = kdavals[colori]/np.pi;
+        else:
+            indep_vals = knumbers[colori]/np.pi
+            #indep_vals = rhoJvals[colori]
+            #colorax.set_xlabel("$\\rho(k_i) J_{sd} a$", fontsize=myfontsize);
+        colorax.set_xlim(np.min(indep_vals), np.max(indep_vals))
+        
+        # plot
+        this_line_tuple = [];
+        for stylei, yvals in enumerate(yvals_to_plot):
+            # handle label--only label once per colori  
+            if(stylei==0):
+                lines_to_legend_labels.append("$ N_d = {:.0f}$".format(Distvals[colori]));
+
+             # handle identifiers: one for each style
+            if(colori==0):
+                legend_ax.plot([np.nan], [np.nan], color="black",linestyle=yvals_styles[stylei], label = yvals_identifiers[stylei]);
+                
+            # plot line
+            line_fromstyle, = colorax.plot(indep_vals, yvals[colori], color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+            
+            # handle line object for passing to legend
+            this_line_tuple.append(line_fromstyle);
+        lines_to_legend_tuples.append(tuple(this_line_tuple)); 
+
+    # truncate tuples if not desiring to combine solid-dotted-dash lines in main legend
+    if(True):
+        for tupi in range(len(lines_to_legend_tuples)): 
+            lines_to_legend_tuples[tupi] = (lines_to_legend_tuples[tupi][0],); 
+
+    # show
+    if(True and (case not in ["cartoon_ks"])):
+        color_legend = colorax.legend(lines_to_legend_tuples, lines_to_legend_labels,
+           #bbox_to_anchor =(0.00,1.02,1.00,0.102),loc="lower left",mode="expand",borderaxespad=0.0, 
+           handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
+    legend_ax.legend(fontsize = myfontsize);
+    plt.tight_layout();
+    folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/";
+    if(vskda): fname = folder+"vskda.pdf";
+    else: fname = folder+"vsk.pdf";
+    print("Saving plot to "+fname);
+    plt.show();
+    #plt.savefig(fname);
     
 elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different colors for rho value
     my_unit_cell = 2; # since diatomic
