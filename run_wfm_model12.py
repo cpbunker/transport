@@ -75,7 +75,7 @@ if(__name__=="__main__"):
     mylinewidth = 1.0;
     from transport.wfm import UniversalColors, UniversalAccents, ColorsMarkers, AccentsMarkers, UniversalMarkevery, UniversalPanels;
     plt.rcParams.update({"font.family": "serif"})
-    #plt.rcParams.update({"text.usetex": True})
+    plt.rcParams.update({"text.usetex": True})
 else: pass;
 
 #################################################################
@@ -121,7 +121,9 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     if(sys.argv[2]=="vsN"): vsN = True;
     else: vsN = False;
     rhoJvals = np.array([0.5,1.0,1.5]);
-    if(case in ["cartoon_rhos"]): rhoJvals = np.array([1.5]);
+    if(case in ["cartoon_rhos"]): 
+        rhoJvals = np.array([1.5,0.5]); 
+        myfontsize = 1.5*myfontsize
                                     
     # return values
     # shaped by fixed rhoJval (color), MSQ-MSQ distance (x axis), spin dofs 
@@ -152,7 +154,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     for colori, target_rhoJ in enumerate(rhoJvals):
 
         # graphical dispersion for fixed energy
-        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
+        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); 
         Ks_for_solution = np.logspace(-6,1,499); # creates a discrete set of energy points, 
                                              # logarithmic w/r/t desired band edge
         if(case in ["CB_rhos"]): 
@@ -319,6 +321,15 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     
     # figure formatting;
     #colorax.set_ylabel("$T$", fontsize=myfontsize);
+    # labels
+    if(vsN):
+        colorax.set_xlabel("$N$",fontsize=myfontsize);
+        colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
+    else:
+        colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+        colorax.set_xlim(kdalims[0]/np.pi, kdalims[1]/np.pi);
+        colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+        
     if(case in ["cartoon_rhos"]): # cartoon labels
         colorax.axis("off");
         colorax.set_ylim(0.0,1.2)
@@ -330,17 +341,10 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
             colorax.axvline(middle_klim,color="black",linewidth=2);
             colorax.set_xlim(middle_klim*0.5, middle_klim*1.5);
         colorax.axhline(0,color="black",linewidth=4);
-        colorax.text(0.0,-0.05,"MSQ-MSQ separation",fontsize=myfontsize,transform=colorax.transAxes);
+        colorax.text(0.0,-0.1,"MSQ-MSQ separation",fontsize=myfontsize,transform=colorax.transAxes);
     else: # non-cartoon labels
         colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize)
         colorax.set_ylim(0.0, 1.0);
-        if(vsN):
-            colorax.set_xlabel("$N$",fontsize=myfontsize);
-            colorax.set_xlim(np.min(np.min(Distvals,axis=1))+1, np.min(np.max(Distvals, axis=1))+1);
-        else:
-            colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
-            colorax.set_xlim(kdalims[0]/np.pi, kdalims[1]/np.pi);
-            colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
         
     # efficiency
     efficiency_colors_N = (Tsummed[:,:,sigmas[1]]-Tsummed[:,:,sigmas[0]])/(Tsummed[:,:,sigmas[1]] + Tsummed[:,:,sigmas[0]]);
@@ -383,17 +387,21 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
             lines_to_legend_tuples[tupi] = (lines_to_legend_tuples[tupi][0],); 
 
     # show
-    if(True and (len(fixed_rhoJs)>1)):
+    if(True and (case not in ["cartoon_rhos"])):
         color_legend = colorax.legend(lines_to_legend_tuples, lines_to_legend_labels,
            #bbox_to_anchor =(0.00,1.02,1.00,0.102),loc="lower left",mode="expand",borderaxespad=0.0, 
            handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
     legend_ax.legend(fontsize = myfontsize);
     plt.tight_layout();
     folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/"
-    if(vsN): fname = folder+'vsN.pdf';
-    else: fname = folder+'disparity_periodic.pdf';
+    if(case in ["cartoon_rhos"]):
+        dispax.remove();
+        fname = folder+"cartoon_rhos.pdf";
+    else:
+        if(vsN): fname = folder+'vsN.pdf';
+        else: fname = folder+'disparity_periodic.pdf';
     print("Saving plot to "+fname);
-    plt.show();#plt.savefig(fname);
+    plt.savefig(fname);
 
 if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
     my_unit_cell = 2; # since diatomic
@@ -404,8 +412,11 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
     uval = float(sys.argv[4]); 
     Jval = -0.05;
     myspinS = 0.5;
-    if(case in ["cartoon_ks"]): Distvals = np.array([20]);
-    else: Distvals = np.array([2,20,40]) #10,100]); # diff colors for MSQ-MSQ separation
+    if(case in ["cartoon_ks"]): 
+        Distvals = np.array([20]);
+        myfontsize = 1.5*myfontsize;
+    else: 
+        Distvals = np.array([2,20,40]) #10,100]); # diff colors for MSQ-MSQ separation
 
     # Rice-Mele matrices
     n_spin_dof = 3; # spin dofs
@@ -461,12 +472,12 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
         if(vskda):
             discrete_ks = np.linspace(kdalims[0]/Distvals[colori],kdalims[1]/Distvals[colori], myxvals);
         else:
-            klims = (0.0001*np.pi, 0.1*np.pi);
+            klims = (1e-4*np.pi, 1e-1*np.pi); # logarithmic!
             discrete_ks = np.logspace(np.log10(klims[0]), np.log10(klims[1]), myxvals);
 
 
         # graphical dispersion for this run
-        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True); myfontsize = 14;
+        fig, (dispax, dosax) = plt.subplots(ncols=2, sharey = True);
         if(case in ["CB_ks"]): 
             discrete_band = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, discrete_ks)[1];
         elif(case in ["VB_ks","cartoon_ks"]): 
@@ -496,12 +507,14 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
     
         # show
         plt.tight_layout();
-        plt.show();
         stopflag = False;
         try: 
-            if(sys.argv[5]=="stop"): stopflag = True;
+            if(sys.argv[5]=="stop"): 
+                plt.show();
+                stopflag = True;
         except: print(">>> Not flagged to stop");
         assert(not stopflag); 
+        plt.close();
         
         # determine kda
         knumbers[colori,:] = discrete_ks[:];
@@ -598,18 +611,18 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
     if(case not in ["cartoon_ks"]): colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize);
     #colorax.set_ylabel("$T$", fontsize=myfontsize);
     colorax.set_ylim(0.0, 1.0);
+    # labels
+    if(vskda):
+        colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
+        colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+    else:
+        colorax.set_xlabel("$k_i a / \pi$",fontsize=myfontsize);
+        colorax.set_xscale("log");
     if(case in ["cartoon_ks"]): # cartoon labels
         colorax.axis("off");
         colorax.axvline(0,color="black",linewidth=4);
         colorax.axhline(0,color="black",linewidth=4);
-        colorax.text(1.01,0.0,"$k_i$",fontsize=myfontsize,transform=colorax.transAxes);
-    else: # non-cartoon labels
-        if(vskda):
-            colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
-            colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
-        else:
-            colorax.set_xlabel("$k_i a / \pi$",fontsize=myfontsize);
-            colorax.set_xscale("log");
+        colorax.text(0,-0.1,"Electron wavenumber",fontsize=myfontsize,transform=colorax.transAxes);
 
     # efficiency
     efficiency_colors_k = (Tsummed[:,:,sigmas[1]]-Tsummed[:,:,sigmas[0]])/(Tsummed[:,:,sigmas[1]] + Tsummed[:,:,sigmas[0]]);
@@ -665,11 +678,14 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
     legend_ax.legend(fontsize = myfontsize);
     plt.tight_layout();
     folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/";
-    if(vskda): fname = folder+"vskda.pdf";
-    else: fname = folder+"vsk.pdf";
+    if(case in ["cartoon_ks"]):
+        fname = folder+"cartoon_ks.pdf";
+        dispax.remove();
+    else:
+        if(vskda): fname = folder+"vskda.pdf";
+        else: fname = folder+"vsk.pdf";
     print("Saving plot to "+fname);
-    plt.show();
-    #plt.savefig(fname);
+    plt.savefig(fname);
     
 elif(case in ["CB_ws", "VB_ws"]): # entanglement *preservation* vs N, different colors for rho value
     my_unit_cell = 2; # since diatomic

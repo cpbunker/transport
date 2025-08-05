@@ -531,6 +531,9 @@ elif(case in [10,11,12,16,17]):
     yjs_observable = "occ_";
     yjs_label = "$n_R (t_{\mathrm{fin}})$";
     
+    # mutual information
+    MI_tfin_ofsinglet = [];
+    
     # iter over input files to get reference times (to eval transport metric at)
     assert(len(datafiles) % len(qubit_labels) == 0);
     for di, dfile in enumerate(datafiles):
@@ -573,14 +576,21 @@ elif(case in [10,11,12,16,17]):
         for i in yjs_rmost_args: print(yjs_rmost_grad[i])
         print(yjs_rmost_grad)
         
-        #if(len(yjs_rmost_args)==0): yjs_rmost_args = [-1]; # <-- TEMPORARY!!
-        
-        
+
         timefin_inds[di] = yjs_rmost_args[0]; # <- earliest time that deriv < 0, may wish to change
         
         # get right lead occ at tfinite
         yjs_RL = np.sum(yjs_vs_time[:,block2site*(params["NL"]+params["NFM"]):], axis=1);
         nRvals[di] = yjs_RL[timefin_inds[di]];
+        
+        # get MI values
+        MI_vs_time = np.zeros((len(times),block2site*params["NFM"]),dtype=float);
+        MI_observable = "MI_"
+        for ti in range(len(times)):
+            MI_vs_time[ti] = np.load(dfile+"_arrays/"+MI_observable+"yjs_time{:.2f}.npy".format(times[ti]));  
+        # grab MI, eval'd at tfin, of **singlet data only**
+        if("singlet" in dfile):
+            MI_tfin_ofsinglet.append(MI_vs_time[timefin_inds[di]]);     
 
     # finite size times
     print(">>> finite size times = ");
@@ -598,7 +608,7 @@ elif(case in [10,11,12,16,17]):
 
     if(convert_wvals):
         indep_vals = visualize_rm.wvals_to_rhoEF(wvals, json.load(open(datafiles[0]+".txt")));
-        indep_label = "$\\rho(E_F)$";
+        indep_label = "$\\rho(E_F) /(|v|^{-1} a^{-1})$";
     else:
         indep_vals = 1*wvals;
         indep_label = "$w/|v|$";
@@ -630,26 +640,38 @@ elif(case in [10,11,12,16,17]):
                     else: assert("nosd" in dfile);
 
         # efficiency plot
-        efficiency_metric = abs(singlet_metric - triplet_metric)/(singlet_metric + triplet_metric);
-        assert False; # remove abs
-        metricax.plot(rhoEFvals_unique, efficiency_metric, color=UniversalColors[0], marker=ColorsMarkers[0])
+        efficiency_metric = (singlet_metric - triplet_metric)/(singlet_metric + triplet_metric);
+        metricax.plot(rhoEFvals_unique, efficiency_metric, color=UniversalAccents[0], marker=AccentsMarkers[0])
         assert(convert_wvals); # plot vs rho(EF)
+        
+        # formatting
+        metricax.set_ylabel("$\eta (t_\mathrm{fin})$",fontsize=myfontsize,color=UniversalAccents[0],loc="bottom");
+        metricax.set_ylim(0.0,1.3);
 
         # inset
         wvsrho_fortwin = metricax.inset_axes(
-            [0.1,0.5,0.4,0.4], #low left x, low left y, x range, y range
+            [0.05,0.6,0.4,0.4], #low left x, low left y, x range, y range
             )
         wvsrho_inset = wvsrho_fortwin.twinx();
         wvsrho_fortwin.yaxis.set_visible(False);
         wvsrho_inset.plot(rhoEFvals_unique, wvals_unique, color=UniversalColors[1], marker = ColorsMarkers[1]);
-
-        # formatting
-        metricax.set_ylabel("$\eta (t_\mathrm{fin})$",fontsize=myfontsize);
-        metricax.set_ylim(0.0,1.0);
+        # format inset
         wvsrho_inset.set_ylabel("$w/|v|$");
         wvsrho_inset.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.1f"))
-        wvsrho_fortwin.set_xlabel("$\\rho(E_F)$")
+        wvsrho_fortwin.set_xlabel("$\\rho(E_F)/(|v|^{-1} a^{-1})$",color=UniversalColors[1])
         wvsrho_inset.xaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.1f"))
+
+        
+        # bandwidth on inset
+        wvsrho_forEband = wvsrho_inset.twiny();
+        wvsrho_forEband.plot(-2*wvals_unique, wvals_unique, color=UniversalColors[2], marker = ColorsMarkers[2]);
+        wvsrho_forEband.set_xlabel("$E_\mathrm{band}/|v|$",color=UniversalColors[2])
+        
+        # mutual information
+        assert(len(MI_tfin_ofsinglet) == len(wvals_unique));
+        metricax.plot(rhoEFvals_unique, MI_tfin_ofsinglet/np.log(2),color=UniversalAccents[1], marker=AccentsMarkers[1]);
+        metricax.text(-0.18,0.3,"$I(t_\mathrm{fin})/\ln(2)$", fontsize=myfontsize, color=UniversalAccents[1], rotation="vertical", transform = metricax.transAxes)
+
 
 
     # plot transport metric of each case separately
@@ -666,7 +688,7 @@ elif(case in [10,11,12,16,17]):
         plt.legend();
 
     # overall formatting
-    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
+    metricax.set_title( get_title(datafiles[-1], to_exclude=["w","conf","N_e"]), fontsize = myfontsize,loc="right");
     metricax.set_xlabel(indep_label, fontsize = myfontsize);
     
     # show
@@ -891,12 +913,13 @@ elif(case in [30,31]): # charge accumulation vs phient, with wval as color
     print("phivals = ",phivals);
     for colori in range(len(wvals_unique)):
         label_mask = np.isin(wvals, [wvals_unique[colori]]);
-        label = "$\\rho(E_F) = {:.2f}$".format(rhoEFvals_unique[colori])+" ($w={:.2f}$)".format(wvals_unique[colori])
+        label = "$\\rho(E_F)|v|a = {:.2f}$".format(rhoEFvals_unique[colori])
+        #label += " ($w={:.2f}$)".format(wvals_unique[colori])
         metricax.plot(phivals[label_mask]/np.pi, nRvals[label_mask], label=label,color=UniversalColors[colori],marker=ColorsMarkers[colori]);
         print(  "x >>> ",phivals[label_mask], 
               "\ny >>> ",nRvals[label_mask]);
     # format
-    metricax.set_title( get_title(datafiles[-1], to_exclude=["w"]), fontsize = myfontsize);
+    metricax.set_title( get_title(datafiles[-1], to_exclude=["w","conf","N_e"]), fontsize = myfontsize, loc="right");
     metricax.set_ylabel(yjs_label, fontsize = myfontsize);
     metricax.set_xlabel("$\phi_\mathrm{ent}/\pi$", fontsize = myfontsize);
     
