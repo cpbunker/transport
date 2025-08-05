@@ -1,1 +1,1 @@
-python ../../../visualize_stt.py 30 0 w-04_nosd w-04_pi04 w-04_pi14 w-04_pi24 w-04_pi34 w-04_pi44 w-10_nosd w-10_pi04 w-10_pi14 w-10_pi24 w-10_pi34 w-10_pi44
+python ../../../visualize_stt.py 30 0 w-02_nosd w-02_pi04 w-02_pi14 w-02_pi24 w-02_pi34 w-02_pi44  w-04_nosd w-04_pi04 w-04_pi14 w-04_pi24 w-04_pi34 w-04_pi44 w-06_nosd w-06_pi04 w-06_pi14 w-06_pi24 w-06_pi34 w-06_pi44 w-08_nosd w-08_pi04 w-08_pi14 w-08_pi24 w-08_pi34 w-08_pi44 w-10_nosd w-10_pi04 w-10_pi14 w-10_pi24 w-10_pi34 w-10_pi44

@@ -181,15 +181,22 @@ def oneorb_entropies_wrapper(psi, eris_or_driver, whichsites, sites_are_imps, bl
         ents[sitei] = np.trace( -oneorb_rdm*np.log(oneorb_rdm));
 
     return ents;
-
-def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
+    
+def twoorb_negativity(psi, eris_or_driver, whichsites, are_all_impurities, block):
     '''
-    Compute the two-orbital reduced density matrix and extract the von Neumann entropy
+    Compute the two-orbital reduced density matrix
+    to get the negativity (https://doi.org/10.1103/PhysRevA.65.032314)
+    zero entanglement -> 0 negativity
+    max entanglement -> negativity 0.5 (two-qubit system)
+
+    SPECIAL CASE that only singly-occupied states are allowed in the basis ("impurity sites" rather than "molecular orbitals")
+    whichsites tells us all such states
     '''
     if(core.SymmetryTypes.SZ not in eris_or_driver.bw.symm_type): raise TypeError;
+    assert(are_all_impurities);
 
     # return value
-    ents = np.full((eris_or_driver.n_sites,eris_or_driver.n_sites), np.inf, dtype=float); # 
+    negativities = np.full((eris_or_driver.n_sites,eris_or_driver.n_sites), np.inf, dtype=float); # 
 
     # O(m) operators chosen come from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 3
     twoorb_Oms = [[[ 1, 1],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0],[ 0, 0]],
@@ -225,12 +232,19 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ],
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,False,True ,True ],
                                  [True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ,True ]]);
-
-    # we get whichsites paired withh ALL OTHERS but no pairs where neither are whichsites
+    #TRUNCATE above to singly-occupied basis states only!
+    singly_occupied_mask = np.array([False, False, False, False, False, True, False, True, True, False, True, False, False, False, False, False]);
+    if(are_all_impurities):
+        twoorb_Oms = twoorb_Oms[singly_occupied_mask][:,singly_occupied_mask];
+        twoorb_Oms_flags = twoorb_Oms_flags[singly_occupied_mask][:,singly_occupied_mask];
+    
+    # only get entropy between sites both in whichsites
     site_mask = np.array([True if site in whichsites else False for site in range(eris_or_driver.n_sites)]);
     for sitei in range(eris_or_driver.n_sites):
-        if(site_mask[sitei]): jsites_iter = np.append(np.arange(0,sitei), np.arange(sitei+1,eris_or_driver.n_sites));
-        else: jsites_iter = []; # skip these: sitejs with mask=True will be recovered when we do ents[sitei, sitej] = ents[sitej, sitei]
+        if(site_mask[sitei]): 
+            jsites_iter = np.arange(0, eris_or_driver.n_sites)[site_mask];
+            jsites_iter = jsites_iter[jsites_iter < sitei]; # just do j<i and use ents2[j,i] = ents2[i,j]
+        else: jsites_iter = []; 
         for sitej in jsites_iter:
 
             # two-orbital reduced density matrix for (sitei, sitej) pair
@@ -238,19 +252,20 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
 
             # expressions from Reiher 2013 (https://doi.org/10.1021/ct400247p) Table 3
             for rowi in range(len(twoorb_Oms)):
-                #for coli in range(rowi+1): # only do lower half triangle, then use symmetry
-                for coli in range(len(twoorb_Oms)):
+                for coli in range(rowi+1): # only do lower half triangle, then use symmetry
                     Om_On = twoorb_Oms[rowi, coli];
                     if(not np.any(Om_On)): pass; # this matrix element is always zero
                     else: # Om_On is a tuple of integers telling which Om, On operator expressions to use
                         if(twoorb_Oms_flags[rowi,coli] == True):
-                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                            On_exprs, On_coefs = get_Om(Om_On[1]);
+                            Om_exprs, Om_coefs = get_Om(Om_On[0], are_all_impurities);
+                            On_exprs, On_coefs = get_Om(Om_On[1], are_all_impurities); # <-- impurity assumption
+
                         else: # instead of taking <O(m)O(n)> we use the complex conjugate of the transposed matrix element
+                            assert(not are_all_impurities);
                             Om_On = twoorb_Oms[coli,rowi]; #<--- Here is where we call for transposed matrix element
                             assert(twoorb_Oms_flags[coli,rowi]==True); # otherwise neither is correct!
-                            Om_exprs, Om_coefs = get_Om(Om_On[0]);
-                            On_exprs, On_coefs = get_Om(Om_On[1]);
+                            Om_exprs, Om_coefs = get_Om(Om_On[0], are_all_impurities);
+                            On_exprs, On_coefs = get_Om(Om_On[1], are_all_impurities);
 
                         # distribute two lists of expressions into one
                         combo_exprs = []
@@ -270,9 +285,10 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
                         expect_mpo = eris_or_driver.get_mpo(expect_builder.finalize(adjust_order=True, fermionic_ops="cdCD"));
                         expect_val = compute_obs(psi, expect_mpo, eris_or_driver);
                         if(twoorb_Oms_flags[rowi,coli] == False):
-                            twoorb_rdm[rowi, coli] = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
-                        else:
-                            twoorb_rdm[rowi, coli] = expect_val;
+                            assert(not are_all_impurities);
+                            expect_val = np.conj(expect_val); #<--- Here is where we take conjugate of transposed matrix element
+                        twoorb_rdm[rowi, coli] = expect_val;
+                        twoorb_rdm[coli, rowi] = np.conj(expect_val); # fill in upper half triangle of rdm with complex conjugate of lower half
 
             # clean up numerical instabilities
             for rowi in range(len(twoorb_Oms)):
@@ -297,34 +313,25 @@ def twoorb_entropies_wrapper(psi, eris_or_driver, whichsites, block):
                                 for eigval in np.linalg.eig(twoorb_rdm)[0]: print(eigval);
                                 raise ValueError;
 
-            # diagonalize two orb rdm
-            #print("before diagonalization:\n",twoorb_rdm[6:10,6:10]);
-            twoorb_eigvals, _ = np.linalg.eigh(twoorb_rdm); # these will all be real
+            # now we have the 4x4 two orbital rdm of sitei, sitej
+            # do transpose over first orbital
+            twoorb_rhoA = np.zeros_like(twoorb_rdm);
+            A_dofs = len(twoorb_rdm)//2;
+            for iA in range(A_dofs):
+                for jB in range(A_dofs):
+                    for kA in range(A_dofs):
+                        for lB in range(A_dofs):
+                            twoorb_rhoA[A_dofs*iA+jB, A_dofs*kA+lB] = twoorb_rdm[kA*A_dofs+jB,iA*A_dofs+lB];
+                    
+            # get the eigenvals of twoorb_rhoA
+            twoorb_rhoA_eigvals, _ = np.linalg.eig(twoorb_rhoA);
+                 
+            # ``Negativity`` is the abs value of sum of negative eigvals
+            negativities[sitei, sitej] = abs(sum(twoorb_rhoA_eigvals[twoorb_rhoA_eigvals < 0]));
+            negativities[sitej, sitei] = 1*negativities[sitei, sitej]; # symmetrize
 
-            # clean up numerical instabilities in eigvals
-            for eigi in range(len(twoorb_eigvals)): 
-                if(twoorb_eigvals[eigi]<0):
-                    if(abs(twoorb_eigvals[eigi])<1e-10): twoorb_eigvals[eigi] = abs(twoorb_eigvals[eigi]); # eliminate log(-x)=nan
-                    else: print("<{:.0f}|rho_ij|{:.0f}> = {:.10f}+{:.10f}j".format(eigi,eigi, np.real(twoorb_eigvals[eigi]), np.imag(twoorb_eigvals[eigi]))); raise ValueError;
-                elif(twoorb_eigvals[eigi]==0): twoorb_eigvals[eigi] = np.exp(-100); # replace log(0.0)=-inf with log(e^-100)=-100
-
-                                                                    # <---- maybe change e^-100 above
-            del twoorb_rdm;
-            if False:
-                print("after diagonalization:");
-                for eigi in range(len(twoorb_eigvals)): print(twoorb_eigvals[eigi]);
-                print("after log(rho):");
-                for eigi in range(len(twoorb_eigvals)): print(np.log(twoorb_eigvals[eigi]));
-                print("after multiplication:");
-                for eigi in range(len(twoorb_eigvals)): print(-twoorb_eigvals[eigi]*np.log(twoorb_eigvals[eigi]));
-            # finish cleaning up numerical instabilities
-
-            # get non Neumann entropy
-            ents[sitei, sitej] = np.dot( -twoorb_eigvals, np.log(twoorb_eigvals)); # = trace since 2orb_rdm is diag
-            ents[sitej, sitei] = 1*ents[sitei, sitej]; # symmetrize
-            print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
-
-    return ents;
+    assert(len(whichsites)==2)
+    return negativities[whichsites[0], whichsites[1]];                     
 
 def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, are_all_impurities, block):
     '''
@@ -478,7 +485,6 @@ def twoorb_entropies_impurity(psi, eris_or_driver, whichsites, are_all_impuritie
             # get non Neumann entropy
             ents[sitei, sitej] = np.dot( -twoorb_eigvals, np.log(twoorb_eigvals)); # = trace since 2orb_rdm is diag
             ents[sitej, sitei] = 1*ents[sitei, sitej]; # symmetrize
-            print("ents2[{:.0f},{:.0f}] = {:.10f}".format(sitei, sitej, ents[sitei, sitej]));
 
     return ents;
 

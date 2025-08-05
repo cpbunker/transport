@@ -1235,6 +1235,13 @@ elif(case in [90,91]): # occupancy vs orbital vs time heatmap
                 MI_vs_time[ti] = np.load(dfile+"_arrays/"+obs4+"yjs_time{:.2f}.npy".format(times[ti]));
             # plot
             MIaxes[axi].plot(times, factor4*MI_vs_time[:,which_imp], color=color4, linewidth=2);
+            
+            # load and plot the negativity
+            neg_vs_time = np.zeros_like(MI_vs_time);
+            for ti in range(len(times)):
+                neg_vs_time[ti] = np.load(dfile+"_arrays/neg_yjs_time{:.2f}.npy".format(times[ti]));
+            # plot
+            MIaxes[axi].plot(times, 2*neg_vs_time[:,which_imp], color="red", linewidth=2);
         
         # format colorbar
         if(axi==len(axes)-2): 

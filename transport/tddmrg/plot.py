@@ -16,6 +16,7 @@ def vs_site(params_dict, js,psi,eris_or_driver,which_obs, is_impurity, block, pr
                  "pur_":tddmrg.purity_wrapper,
                  "G_":tddmrg.conductance_wrapper, "J_":tddmrg.pcurrent_wrapper,
                  "S2_":tddmrg.S2_wrapper, "MI_":tddmrg.mutual_info_wrapper,
+                 "neg_":tddmrg.twoorb_negativity,
                  "nB_":tddmrg.band_wrapper};
     if(block): compute_func = tddmrg.compute_obs;
     else: compute_func = tdfci.compute_obs;
@@ -23,7 +24,7 @@ def vs_site(params_dict, js,psi,eris_or_driver,which_obs, is_impurity, block, pr
     # site array
     vals = np.zeros_like(js,dtype=float)
     for ji in range(len(js)):
-        if(which_obs in ["S2_", "MI_"]): # WRAPPED operators on MULTIPLE sites -> all should have impurity/not impurity functionality
+        if(which_obs in ["S2_", "MI_","neg_"]): # WRAPPED operators on MULTIPLE sites -> all should have impurity/not impurity functionality
             if(ji!=len(js)-1):
                 vals[ji] = obs_funcs[which_obs](psi,eris_or_driver,[js[ji],js[ji+1]],is_impurity,block);
             else: vals[ji] = np.nan; # since op = op(d,d+1), we cannot compute for the final site.
@@ -64,7 +65,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         title_str = "$J_{sd} = "+"{:.2f}".format(params_dict["Jsd"])+tlstring+"$, $N_e = {:.0f}$".format(Ne)+", $N_\mathrm{conf} ="+"{:.0f}$".format(params_dict["Nconf"]);
         if(is_RM): title_str = "$w ={:.2f}".format(params_dict["w"])+tlstring+"$, "+title_str;
         # plot charge and spin vs site
-        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_"];
+        obs_strs = ["occ_","sz_","Sdz_", "J_", "MI_","neg_"];
         if(not is_RM and params_dict["NFM"]< 2): # not enough impurities to do S2_ or MI_
             raise NotImplementedError;
     elif(sys_type in ["SIAM", "SIAM_RM"]):
@@ -95,7 +96,7 @@ def snapshot_bench(psi_mps, driver_inst, params_dict, savename, time, block=True
         for obsi in range(len(obs_strs)):
 
             # what sites to find <operator> over
-            if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_"]): 
+            if(obs_strs[obsi] in ["Sdz_","pur_","S2_","MI_","neg_"]): 
                 js_pass = centrals; # operators on impurity sites only
             #elif(obs_strs[obsi] in ["nB_"]):
             #js_pass = np.arange(Nsites//2);

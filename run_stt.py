@@ -74,7 +74,15 @@ def check_observables(params_dict,psi,eris_or_driver, none_or_mpo,the_time,block
 
         # mutual info
         minfo = tddmrg.mutual_info_wrapper(psi, eris_or_driver, central_j, True, block);
+        print("*"*60);
+        print("\nTime = {:.2f}".format(the_time));
         print("MI[{:.0f},{:.0f}] = {:.6f} (max = {:.6f})".format(*central_j, minfo, np.log(2)));
+        
+        # negativity
+        negativities = tddmrg.twoorb_negativity(psi, eris_or_driver, central_j, 
+        are_all_impurities=True, block=block);
+        print("Neg[{:.0f},{:.0f}] = {:.6f}".format(*central_j, negativities));
+        print("*"*60);
 
     return;
                            
