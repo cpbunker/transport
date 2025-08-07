@@ -646,11 +646,11 @@ elif(case in [10,11,12,16,17]):
         
         # formatting
         metricax.set_ylabel("$\eta (t_\mathrm{fin})$",fontsize=myfontsize,color=UniversalAccents[0],loc="bottom");
-        metricax.set_ylim(0.0,1.3);
+        metricax.set_ylim(0.0,1.0);
 
         # inset
         wvsrho_fortwin = metricax.inset_axes(
-            [0.05,0.6,0.4,0.4], #low left x, low left y, x range, y range
+            [0.05,0.7,0.35,0.35], #low left x, low left y, x range, y range
             )
         wvsrho_inset = wvsrho_fortwin.twinx();
         wvsrho_fortwin.yaxis.set_visible(False);
@@ -688,7 +688,7 @@ elif(case in [10,11,12,16,17]):
         plt.legend();
 
     # overall formatting
-    metricax.set_title( get_title(datafiles[-1], to_exclude=["w","conf","N_e"]), fontsize = myfontsize,loc="right");
+    metricax.set_title( "\n"+get_title(datafiles[-1], to_exclude=["w","conf","N_e"]), fontsize = myfontsize,loc="right");
     metricax.set_xlabel(indep_label, fontsize = myfontsize);
     
     # show

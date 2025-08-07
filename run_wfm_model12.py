@@ -89,8 +89,9 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     vval = -1.0; # sets energy scale
     wval = float(sys.argv[3]);
     uval = float(sys.argv[4]); 
-    Jval = -0.05;
+    Jval = -0.005;
     myspinS = 0.5;
+    if(Jval == -0.005): myxvals = 30;
 
     # Rice-Mele matrices
     n_spin_dof = 3; # spin dofs
@@ -142,8 +143,10 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     widelimsflag = False;
     try: 
         if(sys.argv[5]=="widelims"): widelimsflag = True;
-    except: print(">>> Not flagged to widen kda limits");
+    except: 
+        print(">>> Not flagged to widen kda limits");
     if(widelimsflag): kdalims = 0.01*np.pi, 100*np.pi; 
+    print("kda limits = ", kdalims);
     kdavals = np.full((len(rhoJvals),myxvals), np.nan, dtype=float);  
     Distvals = np.full((len(rhoJvals),myxvals), np.nan, dtype=int);  
     fixed_knumbers = np.full((len(rhoJvals),), np.nan, dtype = float);  
@@ -164,7 +167,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
             discrete_band = np.min(-band_edges)+Ks_for_solution;
             discrete_band = discrete_band[discrete_band < np.max(-band_edges)]; # stay w/in valence band
         else: raise NotImplementedError("case = "+case);
-        dispks = np.linspace(-np.pi, np.pi,myxvals);
+        dispks = np.linspace(-np.pi, np.pi,len(Ks_for_solution));
         disp = wfm.dispersion_RiceMele(diag_base_nospin, offdiag_base_nospin, dispks);
         # plot and format the dispersion
         for dispvals in disp: dispax.plot(dispks/np.pi, dispvals,color="cornflowerblue");
@@ -328,7 +331,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     else:
         colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
         colorax.set_xlim(kdalims[0]/np.pi, kdalims[1]/np.pi);
-        colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
+        colorax.set_xticks( np.arange(int(np.rint(max(kdalims)/np.pi+1))));
         
     if(case in ["cartoon_rhos"]): # cartoon labels
         colorax.axis("off");
@@ -343,7 +346,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
         colorax.axhline(0,color="black",linewidth=4);
         colorax.text(0.0,-0.1,"MSQ-MSQ separation",fontsize=myfontsize,transform=colorax.transAxes);
     else: # non-cartoon labels
-        colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize)
+        colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.4f}$".format(Jval), fontsize=myfontsize)
         colorax.set_ylim(0.0, 1.0);
         
     # efficiency
@@ -368,7 +371,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
         for stylei, yvals in enumerate(yvals_to_plot):
             # handle label--only label once per colori  
             if(stylei==0):
-                lines_to_legend_labels.append("$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.2f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi));
+                lines_to_legend_labels.append("$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.3f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi));
                 
             # handle identifiers: one for each style
             if(colori==0):
@@ -399,7 +402,9 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
         fname = folder+"cartoon_rhos.pdf";
     else:
         if(vsN): fname = folder+'vsN.pdf';
-        else: fname = folder+'disparity_periodic.pdf';
+        else: 
+            if(Jval == -0.005): fname = folder+'disparity_periodic_Jsmall.pdf';
+            else: fname = folder+'disparity_periodic.pdf';
     print("Saving plot to "+fname);
     plt.savefig(fname);
 
@@ -993,6 +998,7 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
     target_rhoJ = float(sys.argv[2]);
     # we will iter over spinS
     spinSvals = np.array(sys.argv[3:]).astype(float)
+    myxvals = 2*myxvals
 
     # Rice-Mele matrices
     n_spin_dof = 3; # spin dofs
@@ -1032,7 +1038,7 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
     TpRsummed = np.full((len(spinSvals),myxvals,n_spin_dof), np.nan, dtype=float); 
     
     # d = number of lattice constants between MSQ 1 and MSQ 2
-    kdalims = 0.01*np.pi, 1.1*np.pi; 
+    kdalims = 0.01*np.pi, 2.1*np.pi; 
     widelimsflag = False;
     try: 
         if(sys.argv[5]=="widelims"): widelimsflag = True;
@@ -1176,46 +1182,114 @@ elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors
     ####
     #### end loop over S (colors)
     
+    width_ratios = [0.7,0.3];
+    numrows = 2;
+    colorfig, axes_arr = plt.subplots(numrows, len(width_ratios), sharex = "col",
+                       gridspec_kw = dict(width_ratios=width_ratios));
+    colorfig.set_size_inches(6*np.sum(width_ratios),2*numrows); #aspect ratio of run_wfm_single plots= 6*sum,4
+    color_gridspec = axes_arr[0,0].get_gridspec();
+    axes_arr[0,0].remove(); # remove both the 1st col axes where we will then create one combined
+    axes_arr[1,0].remove();
+    # combine into colorax
+    colorax = colorfig.add_subplot(color_gridspec[:,0]) # gridspec grabs all 1st column rows
+
+    # create and format axis for dispersion
+    #axes_arr[1,1].remove();
+    legend_ax = axes_arr[1,1];
+    legend_ax.set_xticks(np.arange(2));
+    legend_ax.set_yticks(np.arange(2));
+    legend_ax.axis("off");
+    dispax = axes_arr[0,1];
+    dispax.axis("off")
+    dispax.axvline(0,color="black");
+    dispax.axhline(0,color="black");
+    dispax.text(0.5,1.1,"$E_\pm(k_\sigma)$",fontsize=myfontsize,transform=dispax.transAxes);
+    dispax.text(1.1,0.5,"$k_\sigma$",fontsize=myfontsize,transform=dispax.transAxes);
+    for bandi in range(len(disp)):
+        dispax.plot(dispks, disp[bandi], color=UniversalAccents[1]);
+
+    
     # figure
-    colorfig, colorax = plt.subplots();
-    colorfig.set_size_inches(1.2*3.5, 1.2*3);
     colorax.set_title("$J_{sd} = "+"{:.2f}".format(Jval)+", k_i a/\pi = "+"{:.2f}$".format(fixed_knumber/np.pi), fontsize=myfontsize);
-    colorax.set_ylabel("$T$", fontsize=myfontsize);
     colorax.set_ylim(0.0, 1.0);
     colorax.set_xlabel("$N_d k_i a / \pi$",fontsize=myfontsize);
     colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
     colorax.set_xlim(0.0, max(kdalims)/np.pi);
     
+    # efficiency
+    efficiency_colors_N = (Tsummed[:,:,sigmas[1]]-Tsummed[:,:,sigmas[0]])/(Tsummed[:,:,sigmas[1]] + Tsummed[:,:,sigmas[0]]);
+        
     # plot transmission coefficients vs N (1+MSQ-MSQ distance)
-    yvals_to_plot = [Tsummed[:,:,sigmas[0]], Tsummed[:,:,sigmas[1]]]; # |T0> then |S>
-    yvals_styles = ["dashed","solid"];
-    labels_styles = ["$|T_0\\rangle$", "$|S\\rangle$"];
+    # to_plot = |T0>,|S>, eta
+    yvals_identifiers = ["$T(|S\\rangle )$", "$T(|T_0 \\rangle)$"]#, "$\eta$"];
+    yvals_to_plot = [Tsummed[:,:,sigmas[1]], Tsummed[:,:,sigmas[0]]]#, efficiency_colors_N]; 
+    yvals_styles = ["solid","dotted"]#,"dashdot"];
+    lines_to_legend_tuples = []; # append solid, dashed tuple for each color
+    lines_to_legend_labels = [];    
     for colori in range(len(spinSvals)):
     
         # x axis
         indep_vals = Distvals*fixed_knumber/np.pi;
         
         # plot
+        this_line_tuple = [];
         for stylei, yvals in enumerate(yvals_to_plot):
-            # only label once per colori  
+            # handle label--only label once per colori  
             if(stylei==0):
-                style_label = "$s = {:.0f}/2$".format(2*spinSvals[colori]);
-            else: style_label = "_";
-            colorax.plot(indep_vals, yvals[colori], label=style_label, color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+                lines_to_legend_labels.append("$s = {:.0f}/2$".format(2*spinSvals[colori]));
+                
+            # handle identifiers: one for each style
+            if(colori==0):
+                legend_ax.plot([np.nan], [np.nan], color="black",linestyle=yvals_styles[stylei], label = yvals_identifiers[stylei]);
+                
+            # plot line
+            line_fromstyle, = colorax.plot(indep_vals, yvals[colori], color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+            
+            # handle line object for passing to legend
+            this_line_tuple.append(line_fromstyle);
+        lines_to_legend_tuples.append(tuple(this_line_tuple)); 
 
-            # annotate first color
-            if(colori==len(spinSvals)-1):
-                colorax.annotate(labels_styles[stylei],
-                        xycoords="data",xy=(indep_vals[0], yvals[colori][0]),
-                        textcoords="data",xytext=(-0.1,yvals[colori][0]),
-                        arrowprops=dict(arrowstyle="->"),
-                        fontsize=myfontsize);
-    
+    # truncate tuples if not desiring to combine solid-dotted-dash lines in main legend
+    if(True):
+        for tupi in range(len(lines_to_legend_tuples)): 
+            lines_to_legend_tuples[tupi] = (lines_to_legend_tuples[tupi][0],); 
+
     # show
-    colorax.legend(fontsize=myfontsize);
+    if(True):
+        color_legend = colorax.legend(lines_to_legend_tuples, lines_to_legend_labels,
+           #bbox_to_anchor =(0.00,1.02,1.00,0.102),loc="lower left",mode="expand",borderaxespad=0.0, 
+           handler_map={tuple: matplotlib.legend_handler.HandlerTuple( ndivide=None)},fontsize=myfontsize);
+    legend_ax.legend(fontsize = myfontsize);
     plt.tight_layout();
-    plt.show();
-
+    folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/"
+    fname = folder+'vsS.pdf';
+    print("Saving plot to "+fname);
+    plt.savefig(fname);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
 ##################################################################################
 #### entanglement generation (cicc Fig 6)
