@@ -89,7 +89,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     vval = -1.0; # sets energy scale
     wval = float(sys.argv[3]);
     uval = float(sys.argv[4]); 
-    Jval = -0.005;
+    Jval = -0.05;
     myspinS = 0.5;
     if(Jval == -0.005): myxvals = 30;
 
@@ -121,7 +121,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
     # rhoJa = fixed throughout, thus fixing energy and wavenumber
     if(sys.argv[2]=="vsN"): vsN = True;
     else: vsN = False;
-    rhoJvals = np.array([0.5,1.0,1.5]);
+    rhoJvals = np.array([0.5,1.0]);
     if(case in ["cartoon_rhos"]): 
         rhoJvals = np.array([1.5,0.5]); 
         myfontsize = 1.5*myfontsize
@@ -346,7 +346,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
         colorax.axhline(0,color="black",linewidth=4);
         colorax.text(0.0,-0.1,"MSQ-MSQ separation",fontsize=myfontsize,transform=colorax.transAxes);
     else: # non-cartoon labels
-        colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.4f}$".format(Jval), fontsize=myfontsize)
+        colorax.set_title(title_RiceMele+", $J_{sd} = "+"{:.2f}$".format(Jval), fontsize=myfontsize)
         colorax.set_ylim(0.0, 1.0);
         
     # efficiency
@@ -371,7 +371,7 @@ if(case in ["CB_rhos", "cartoon_rhos", "VB_rhos"]): # entanglement *preservation
         for stylei, yvals in enumerate(yvals_to_plot):
             # handle label--only label once per colori  
             if(stylei==0):
-                lines_to_legend_labels.append("$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.3f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi));
+                lines_to_legend_labels.append("$\\rho (k_i) J_{sd} a = "+"{:.1f}, k_i a/\pi = {:.2f}$".format(fixed_rhoJs[colori], fixed_knumbers[colori]/np.pi));
                 
             # handle identifiers: one for each style
             if(colori==0):
@@ -421,7 +421,7 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
         Distvals = np.array([20]);
         myfontsize = 1.5*myfontsize;
     else: 
-        Distvals = np.array([2,20,40]) #10,100]); # diff colors for MSQ-MSQ separation
+        Distvals = np.array([20,40,80])  # diff colors for MSQ-MSQ separation
 
     # Rice-Mele matrices
     n_spin_dof = 3; # spin dofs
@@ -477,8 +477,10 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
         if(vskda):
             discrete_ks = np.linspace(kdalims[0]/Distvals[colori],kdalims[1]/Distvals[colori], myxvals);
         else:
-            klims = (1e-4*np.pi, 1e-1*np.pi); # logarithmic!
-            discrete_ks = np.logspace(np.log10(klims[0]), np.log10(klims[1]), myxvals);
+            #klims = (1e-3*np.pi, 1e-1*np.pi); # logarithmic!
+            #discrete_ks = np.logspace(np.log10(klims[0]), np.log10(klims[1]), myxvals);
+            klims = (1e-4*np.pi, 0.06*np.pi); # linear
+            discrete_ks = np.linspace(klims[0], klims[1], myxvals);
 
 
         # graphical dispersion for this run
@@ -622,7 +624,7 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
         colorax.set_xticks( np.arange(int(np.rint(max(kdalims)+1))));
     else:
         colorax.set_xlabel("$k_i a / \pi$",fontsize=myfontsize);
-        colorax.set_xscale("log");
+        #colorax.set_xscale("log");
     if(case in ["cartoon_ks"]): # cartoon labels
         colorax.axis("off");
         colorax.axvline(0,color="black",linewidth=4);
@@ -665,6 +667,7 @@ if(case in ["CB_ks", "cartoon_ks", "VB_ks"]): # entanglement *preservation* vs k
                 
             # plot line
             line_fromstyle, = colorax.plot(indep_vals, yvals[colori], color=UniversalColors[colori], linestyle=yvals_styles[stylei]);
+            #colorax.axvline(1/Distvals[colori], color=UniversalColors[colori],alpha=0.4)
             
             # handle line object for passing to legend
             this_line_tuple.append(line_fromstyle);
