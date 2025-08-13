@@ -1029,13 +1029,13 @@ elif(case in [40,41]): # <k_m|k_n> distro and other energy space considerations
     Emax.set_xlim(fixed_rho_points);
  
     # format
-    #Emax.legend();
+    Emax.legend();
     #for axi, ax in enumerate([densityax, heatmapax, distroax]):ax.text(0.7,0.9,UniversalPanels[axi],fontsize=myfontsize,transform=ax.transAxes);
 
     # show
     folder = datafiles[-1].split("_")[0];
     if(compare_Ne): savename_append = "init_Ne.pdf";
-    else: savename_append = "init_w.pdf";
+    else: savename_append = "init_w_legend.pdf";
     savename = "/home/cpbunker/Desktop/FIGS_Cicc_with_DMRG/"+folder+savename_append;
     if(case in [41]): 
         print("Saving to "+savename);

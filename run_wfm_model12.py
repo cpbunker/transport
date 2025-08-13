@@ -1279,9 +1279,8 @@ elif(case in ["VB_rho_fixed", "CB_rho_fixed"]):
     legend_ax.legend(fontsize = myfontsize);
     plt.tight_layout();
     folder = "/home/cpbunker/Desktop/FIGS_Cicc_WFM/"
-    fname = "";
+    fname = folder+"rho_fixed.pdf";
     print("Saving plot to "+fname);
-    plt.show()
     plt.savefig(fname);
 
 elif(case in ["VB_spins"]): # entanglement *preservation* vs N, different colors for rho value
