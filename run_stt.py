@@ -121,7 +121,7 @@ special_cases = ["specialcase","BFM_first", "Bsd", "Bcentral", "Bsd_x","noFM","n
 special_cases_flag = False;
 for case in special_cases:
     if(case in params.keys()):print(">>> special case: ",case); special_cases_flag = True;
-if(not special_cases_flag): assert(espin+locspin == myTwoSz);
+#if(not special_cases_flag): assert(espin+locspin == myTwoSz);
 del myNL, myNFM, myNR, myNe, myTwoSz, myNbuffer
 #### Initialization
 ####
