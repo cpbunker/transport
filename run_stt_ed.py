@@ -21,6 +21,12 @@ import sys
 
 def snapshot(state,the_H,nsites,time, the_sites,plot=False):
     '''
+    Args:
+    state
+    the_H
+    nsites
+    time
+    the_sites, list, indices of fermionic sites
     '''
 
     fig, ax = plt.subplots(2,sharex=True);
@@ -33,6 +39,17 @@ def snapshot(state,the_H,nsites,time, the_sites,plot=False):
         sz_ret = np.dot( np.conj(state), np.matmul(sz_op_kwarg[sitei],state));
         assert(np.imag(sz_ret) < 1e-10);
         szs[sitei] = np.real(sz_ret);
+
+    # 
+    #
+    #
+    #
+    #
+    # TODO: use occ_ret to get n_R
+    #
+    #
+    #
+    #
 
     # printout
     print("Time = {:.2f}".format(time));
@@ -62,6 +79,9 @@ def snapshot(state,the_H,nsites,time, the_sites,plot=False):
 def main(ham, nsites, init_state, time_snap, time_N, the_sites):
     '''
     wraps all the time evolution and printout steps
+
+    Args:
+    the_sites, list, indices of fermionic sites
     '''
 
     eigvals, eigvecs = tdfci.solver(ham);
@@ -215,6 +235,11 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
     for sitei in range(L):
         Sz2_4d[sitei,sitei] = np.copy(star_z2);
 
+
+    ###############################
+    ####
+    #### here we define global operators !!
+
     # site occ operators, listed
     occ_op_kwarg = [];
     for sitei in range(L):
@@ -223,7 +248,9 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
         occ_op_kwarg.append(utils.mat_4d_to_2d(nj_4d));
     occ_op_kwarg = np.array(occ_op_kwarg);
     
-    # Sd spin operators, listed
+    # spin operators, listed
+    # if a fermionic site, the spin operator in this list is fermionic spin in the z
+    # if a impurity supersite, the spin operator is impurity spin(even tho there is also fermionic spin on the site)
     sz_op_kwarg = [];
     for sitei in range(L):
         if(sitei==jds[0]):
@@ -232,6 +259,10 @@ elif(case=="Ne1_NFM2"): # 2 impurity SWAP
             sz_op_kwarg.append(utils.mat_4d_to_2d(Sz2_4d));
         else:
             sz_op_kwarg.append(utils.mat_4d_to_2d(np.zeros_like(Sz1_4d)));
+
+    ###############################
+    ####
+    #### finished defining global operators !!
     
     # run
     psii = np.zeros((L*n_loc_dof,),dtype=float);
