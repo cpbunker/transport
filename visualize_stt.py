@@ -1149,7 +1149,7 @@ elif(case in [90,91]): # occupancy vs orbital vs time heatmap
     horizontal = True; # puts heatmaps side by side, else stack
     if(horizontal): fignrows, figncols = 1, len(datafiles)+1;
     else: fignrows, figncols = len(datafiles)+1, 1;
-    add_MI = True;
+    add_MI = False;
     change_ratios = {};
     if(add_MI):
         fignrows += 1; assert(horizontal);
@@ -1346,6 +1346,10 @@ elif(case in [100,101]): # animate time evol
     ax2 = ax.twinx();
     ax2.set_yticks([]);
     ax2.set_ylabel(get_ylabel(obs2, factor2), color=color2, fontsize=fontsize1);
+    
+    if(True):
+        for j in range(len(yjs)):
+            print("j = {:.0f}, yj = {:.4f}".format(j, yjs[j]))
 
     # set up spin density animation
     xjs_3 = np.load(datafile+"_arrays/"+obs3+"xjs_time{:.2f}.npy".format(update0*tupdate));
@@ -1357,7 +1361,7 @@ elif(case in [100,101]): # animate time evol
     ax3.spines.left.set(alpha=0.0);
     ax3.set_yticks([])
     ax3.set_ylabel(get_ylabel(obs3, factor3), color=color3, fontsize=fontsize1);
-    if(params["Ne"]==1):
+    if(params["Ne"]==1 and False):
         ax.set_ylim([0.0,0.25]);
         ax.set_yticks([0.0,0.20]);
 
@@ -1417,5 +1421,78 @@ elif(case in [100,101]): # animate time evol
     # writer = animation.FFMpegWriter(
     #     fps=15, metadata=dict(artist='Me'), bitrate=1800)
     # ani.save("movie.mp4", writer=writer)
+    
+    
+    
+elif(case in [200]): # compare data across different methods
+    methodfiles = datafiles[:]
+    
+    # axes
+    observable_strs = ["Sdz_", "Sdz_", "occ_","occ_"];
+    observable_labs = ["$S_1^z$", "$S_2^z$","$n_L$","$n_R$"];
+    fig, axes = plt.subplots(len(observable_strs),sharex=True);
+    axes[-1].set_xlabel("$t/(\hbar/|v|)$", fontsize=fontsize1);
+    axes[0].set_title(get_title(methodfiles[0]));
+    
+    # iter over different datasets -- different methods
+    for methodi in range(len(methodfiles)):
+        method = methodfiles[methodi];
+   
+        # rice-mele ?
+        params = json.load(open(method+".txt"));
+        if(params["sys_type"] in ["STT_RM","SIETS_RM","SIAM_RM"]): block2site = 2;
+        else: block2site = 1; 
+        
+        # geometry
+        Ntotal = block2site*(params["NL"]+params["NFM"]+params["NR"]);       
+        observable_masks = [np.array([1,0]),  # how we select the site(s) for each observable
+                            np.array([0,1]),
+                            np.array([1 if sitei < params["NL"]*block2site else 0 for sitei in range(Ntotal)]),  # left lead--first 10
+                            np.array([1 if sitei >= (params["NL"]+params["NFM"])*block2site else 0 for sitei in range(Ntotal)])]; # right lead--last 10
+        
+        #print(observable_masks[2]);
+        #print(observable_masks[3]);
+        #assert False;
+    
+        # time evolution params
+        Nupdates, tupdate = params["Nupdates"]-update0, params["tupdate"];
+        print("\nUpdate time = {:.2f}".format(params["tupdate"]));
+        times = np.zeros((Nupdates+1,),dtype=float);
+        for ti in range(len(times)):
+            times[ti] = (update0 + ti)*tupdate;
+            
+            
+        # iter over different observables
+        for obsi in range(len(observable_strs)):
+        
+            # obs vs time
+            obs_v_time = np.zeros_like(times);
+            for ti in range(len(times)):
+        
+                # data retrieval
+                xjs = np.load(method+"_arrays/"+observable_strs[obsi]+"xjs_time{:.2f}.npy".format(times[ti]));
+                yjs = np.load(method+"_arrays/"+observable_strs[obsi]+"yjs_time{:.2f}.npy".format(times[ti]));
+                print(observable_strs[obsi]);
+                print(yjs[observable_masks[obsi] > 0])
+                print(np.sum(yjs[observable_masks[obsi] > 0]))
+                obs_v_time[ti] = np.sum(yjs[observable_masks[obsi] > 0]);
+                
+            # plot and format
+            if(method=="ed"): method_mfc = "None"; method_mec = UniversalColors[methodi];
+            else: method_mfc = UniversalColors[methodi]; method_mec = UniversalColors[methodi];
+            axes[obsi].plot(times, obs_v_time, label=method,
+                marker=ColorsMarkers[methodi], markevery=0.2+0.2*methodi, 
+                color=method_mec, markerfacecolor=method_mfc, markeredgecolor=method_mec);
+            
+            # formatting
+            axes[obsi].set_ylabel(observable_labs[obsi], fontsize=fontsize1);
+            
+    # show
+    axes[-1].legend();
+    plt.show();
+
+
+
+
 
 else: raise Exception("case = {:.0f} not supported".format(case));
